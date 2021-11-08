@@ -17,6 +17,27 @@ use namespace::clean;
 
 extends 'JSON::Schema::Modern::Document';
 
+sub traverse {
+  my ($self, $evaluator) = @_;
+
+  my $state = {
+    initial_schema_uri => $self->canonical_uri,
+    traversed_schema_path => '',
+    schema_path => '',
+    data_path => '',
+    errors => [],
+    evaluator => $evaluator,
+    identifiers => [],
+    configs => {},
+    spec_version => $evaluator->SPECIFICATION_VERSION_DEFAULT,
+    vocabularies => [],
+  };
+
+  # TODO: determine default json_schema_dialect from /jsonSchemaDialect
+
+  return $state;
+}
+
 1;
 __END__
 
