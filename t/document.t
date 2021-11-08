@@ -13,11 +13,19 @@ use Test::Deep;
 use JSON::Schema::Modern;
 use JSON::Schema::Modern::Document::OpenAPI;
 
+my $valid_schema = {
+  openapi => '3.1.0',
+  info => {
+    title => 'my title',
+    version => '1.2.3',
+  },
+};
+
 subtest 'basic construction' => sub {
   my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
     evaluator => my $js = JSON::Schema::Modern->new,
-    schema => {},
+    schema => $valid_schema,
   );
 
   cmp_deeply(
@@ -31,6 +39,62 @@ subtest 'basic construction' => sub {
       },
     },
     'the document itself is recorded as a resource',
+  );
+};
+
+subtest 'top level document fields' => sub {
+  my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
+    canonical_uri => 'http://localhost:1234/api',
+    evaluator => my $js = JSON::Schema::Modern->new,
+    schema => {},
+  );
+  cmp_deeply(
+    [ map $_->TO_JSON, $doc->errors ],
+    [
+      {
+        instanceLocation => '',
+        keywordLocation => '/openapi',
+        absoluteKeywordLocation => 'http://localhost:1234/api#/openapi',
+        error => 'openapi keyword is required',
+      },
+    ],
+    'missing openapi',
+  );
+
+  $doc = JSON::Schema::Modern::Document::OpenAPI->new(
+    canonical_uri => 'http://localhost:1234/api',
+    evaluator => $js,
+    schema => {
+      openapi => '2.1.3',
+      info => {
+        title => undef,
+        version => undef,
+      },
+    },
+  );
+  cmp_deeply(
+    [ map $_->TO_JSON, $doc->errors ],
+    [
+      {
+        instanceLocation => '',
+        keywordLocation => '/openapi',
+        absoluteKeywordLocation => 'http://localhost:1234/api#/openapi',
+        error => 'unrecognized openapi version 2.1.3',
+      },
+      {
+        instanceLocation => '',
+        keywordLocation => '/info/title',
+        absoluteKeywordLocation => 'http://localhost:1234/api#/info/title',
+        error => 'title value is not a string',
+      },
+      {
+        instanceLocation => '',
+        keywordLocation => '/info/version',
+        absoluteKeywordLocation => 'http://localhost:1234/api#/info/version',
+        error => 'version value is not a string',
+      },
+    ],
+    'many invalid properties',
   );
 };
 
