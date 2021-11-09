@@ -68,27 +68,24 @@ __END__
 
 =head1 SYNOPSIS
 
+  use JSON::Schema::Modern;
   use JSON::Schema::Modern::Document::OpenAPI;
 
-  ...
+  my $js = JSON::Schema::Modern->new;
+  my $openapi_document = JSON::Schema::Modern::Document::OpenAPI->new(
+    evaluator => $js,
+    canonical_uri => 'https://example.com/v1/api',
+    schema => $schema,
+    metaschema_uri => 'https://example.com/my_custom_dialect',
+  );
 
 =head1 DESCRIPTION
 
-...
+Provides structured parsing of an OpenAPI document, suitable as the base for more tooling such as
+request and response validation, code generation or form generation.
 
-=head1 FUNCTIONS/METHODS
-
-=head2 foo
-
-...
-
-=head1 ACKNOWLEDGEMENTS
-
-...
-
-=head1 SEE ALSO
-
-=for :list
-* L<foo>
+The provided document must be a valid OpenAPI document, as specified by the schema identified by
+C<https://spec.openapis.org/oas/3.1/schema-base/2021-09-28> (the latest document available)
+and the L<OpenAPI v3.1 specification|https://spec.openapis.org/oas/v3.1.0>.
 
 =cut
