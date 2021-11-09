@@ -12,6 +12,8 @@ use if $ENV{AUTHOR_TESTING}, 'Test::Warnings';
 use Test::Deep;
 use JSON::Schema::Modern;
 use JSON::Schema::Modern::Document::OpenAPI;
+use Test::File::ShareDir -share => { -dist => { 'JSON-Schema-Modern-Document-OpenAPI' => 'share' } };
+use constant { true => JSON::PP::true, false => JSON::PP::false };
 
 my $valid_schema = {
   openapi => '3.1.0',
@@ -95,6 +97,172 @@ subtest 'top level document fields' => sub {
       },
     ],
     'many invalid properties',
+  );
+
+
+  $doc = JSON::Schema::Modern::Document::OpenAPI->new(
+    canonical_uri => 'http://localhost:1234/api',
+    evaluator => $js,
+    schema => {
+      openapi => '3.1.0',
+      info => {
+        title => 'my title',
+        version => '1.2.3',
+      },
+      jsonSchemaDialect => undef,
+    },
+  );
+  cmp_deeply(
+    [ map $_->TO_JSON, $doc->errors ],
+    [
+      {
+        instanceLocation => '',
+        keywordLocation => '/jsonSchemaDialect',
+        absoluteKeywordLocation => 'http://localhost:1234/api#/jsonSchemaDialect',
+        error => 'jsonSchemaDialect value is not a string',
+      },
+    ],
+    'null jsonSchemaDialect is rejected',
+  );
+
+
+  $js->add_schema({
+    '$id' => 'https://metaschema/with/wrong/spec',
+    '$vocabulary' => {
+      'https://json-schema.org/draft/2020-12/vocab/core' => true,
+      'https://unknown' => true,
+    },
+  });
+
+  $doc = JSON::Schema::Modern::Document::OpenAPI->new(
+    canonical_uri => 'http://localhost:1234/api',
+    evaluator => $js,
+    schema => {
+      openapi => '3.1.0',
+      info => {
+        title => 'my title',
+        version => '1.2.3',
+      },
+      jsonSchemaDialect => 'https://metaschema/with/wrong/spec',
+    },
+  );
+
+  cmp_deeply(
+    [ map $_->TO_JSON, $doc->errors ],
+    [
+      {
+        instanceLocation => '',
+        keywordLocation => '/jsonSchemaDialect/$vocabulary/https:~1~1unknown',
+        absoluteKeywordLocation => 'https://metaschema/with/wrong/spec#/$vocabulary/https:~1~1unknown',
+        error => '"https://unknown" is not a known vocabulary',
+      },
+      {
+        instanceLocation => '',
+        keywordLocation => '/jsonSchemaDialect',
+        absoluteKeywordLocation => 'http://localhost:1234/api#/jsonSchemaDialect',
+        error => '"https://metaschema/with/wrong/spec" is not a valid metaschema',
+      },
+    ],
+    'bad jsonSchemaDialect is rejected',
+  );
+
+
+  $js = JSON::Schema::Modern->new;
+  $doc = JSON::Schema::Modern::Document::OpenAPI->new(
+    canonical_uri => 'http://localhost:1234/api',
+    evaluator => $js,
+    schema => {
+      openapi => '3.1.0',
+      info => {
+        title => 'my title',
+        version => '1.2.3',
+      },
+      # no jsonSchemaDialect
+      paths => {},
+    },
+  );
+  cmp_deeply([ $doc->errors ], [], 'no errors with default jsonSchemaDialect');
+  is($doc->json_schema_dialect, 'https://spec.openapis.org/oas/3.1/dialect/base', 'default jsonSchemaDialect is saved in the document');
+
+  $js->add_schema($doc);
+  cmp_deeply(
+    $js->{_resource_index},
+    {
+      # our document itself is a resource, even if it isn't a json schema itself
+      'http://localhost:1234/api' => {
+        canonical_uri => str('http://localhost:1234/api'),
+        path => '',
+        specification_version => 'draft2020-12',
+        document => shallow($doc),
+        vocabularies => [ map 'JSON::Schema::Modern::Vocabulary::'.$_,
+          qw(Core Applicator Validation FormatAnnotation Content MetaData Unevaluated OpenAPI) ],
+      },
+      # the oas vocabulary, and the dialect that uses it
+      (map +($_ => {
+        canonical_uri => str('https://spec.openapis.org/oas/3.1/dialect/base'),
+        path => '',
+        specification_version => 'draft2020-12',
+        document => ignore,
+        vocabularies => ignore,
+      }), 'https://spec.openapis.org/oas/3.1/dialect/base', 'https://spec.openapis.org/oas/3.1/dialect/base#meta'),
+      (map +($_ => {
+        canonical_uri => str('https://spec.openapis.org/oas/3.1/meta/base'),
+        path => '',
+        specification_version => 'draft2020-12',
+        document => ignore,
+        vocabularies => ignore,
+      }), 'https://spec.openapis.org/oas/3.1/meta/base', 'https://spec.openapis.org/oas/3.1/meta/base#meta'),
+    },
+    'resources are properly stored on the evaluator',
+  );
+
+
+  $js = JSON::Schema::Modern->new;
+  $js->add_schema({
+    '$id' => 'https://mymetaschema',
+    '$vocabulary' => {
+      'https://json-schema.org/draft/2020-12/vocab/core' => true,
+      'https://json-schema.org/draft/2020-12/vocab/applicator' => false,
+    },
+  });
+
+  $doc = JSON::Schema::Modern::Document::OpenAPI->new(
+    canonical_uri => 'http://localhost:1234/api',
+    evaluator => $js,
+    schema => {
+      openapi => '3.1.0',
+      info => {
+        title => 'my title',
+        version => '1.2.3',
+      },
+      jsonSchemaDialect => 'https://mymetaschema',
+      paths => {},
+    },
+  );
+  cmp_deeply([], [ $doc->errors ], 'no errors with a custom jsonSchemaDialect');
+  is($doc->json_schema_dialect, 'https://mymetaschema', 'custom jsonSchemaDialect is saved in the document');
+
+  $js->add_schema($doc);
+  cmp_deeply(
+    $js->{_resource_index},
+    {
+      # our document itself is a resource, even if it isn't a json schema itself
+      'http://localhost:1234/api' => {
+        canonical_uri => str('http://localhost:1234/api'),
+        path => '',
+        specification_version => 'draft2020-12',
+        document => shallow($doc),
+        vocabularies => [ map 'JSON::Schema::Modern::Vocabulary::'.$_, qw(Core Applicator) ],
+      },
+      (map +($_ => {
+        canonical_uri => str('https://mymetaschema'),
+        path => '',
+        specification_version => 'draft2020-12',
+        document => ignore,
+        vocabularies => ignore,
+      }), 'https://mymetaschema'),
+    },
+    'resources are properly stored on the evaluator',
   );
 };
 
