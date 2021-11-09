@@ -2,6 +2,6 @@
 /.build/
 !/.gitignore
 /.latest
-/TODO
+/TODO*
 /JSON-Schema-Modern-Document-OpenAPI-*/
 /JSON-Schema-Modern-Document-OpenAPI-*.tar.gz
