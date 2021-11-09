@@ -181,13 +181,15 @@ subtest 'top level document fields' => sub {
       paths => {},
     },
   );
+  my $result = $doc->validate;
+  ok($result, 'document is semantically valid') or diag explain $result->TO_JSON;
   cmp_deeply([ $doc->errors ], [], 'no errors with default jsonSchemaDialect');
   is($doc->json_schema_dialect, 'https://spec.openapis.org/oas/3.1/dialect/base', 'default jsonSchemaDialect is saved in the document');
 
   $js->add_schema($doc);
   cmp_deeply(
     $js->{_resource_index},
-    {
+    superhashof({
       # our document itself is a resource, even if it isn't a json schema itself
       'http://localhost:1234/api' => {
         canonical_uri => str('http://localhost:1234/api'),
@@ -212,7 +214,7 @@ subtest 'top level document fields' => sub {
         document => ignore,
         vocabularies => ignore,
       }), 'https://spec.openapis.org/oas/3.1/meta/base', 'https://spec.openapis.org/oas/3.1/meta/base#meta'),
-    },
+    }),
     'resources are properly stored on the evaluator',
   );
 
@@ -238,14 +240,17 @@ subtest 'top level document fields' => sub {
       jsonSchemaDialect => 'https://mymetaschema',
       paths => {},
     },
+    metaschema_uri => 'https://spec.openapis.org/oas/3.1/schema', # '#meta' is now just {"type": ["object","boolean"]}
   );
+  $result = $doc->validate;
+  ok($result, 'document is semantically valid') or diag explain $result->TO_JSON;
   cmp_deeply([], [ $doc->errors ], 'no errors with a custom jsonSchemaDialect');
   is($doc->json_schema_dialect, 'https://mymetaschema', 'custom jsonSchemaDialect is saved in the document');
 
   $js->add_schema($doc);
   cmp_deeply(
     $js->{_resource_index},
-    {
+    superhashof({
       # our document itself is a resource, even if it isn't a json schema itself
       'http://localhost:1234/api' => {
         canonical_uri => str('http://localhost:1234/api'),
@@ -261,7 +266,7 @@ subtest 'top level document fields' => sub {
         document => ignore,
         vocabularies => ignore,
       }), 'https://mymetaschema'),
-    },
+    }),
     'resources are properly stored on the evaluator',
   );
 };

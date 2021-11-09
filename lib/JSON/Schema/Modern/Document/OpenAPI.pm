@@ -25,12 +25,21 @@ extends 'JSON::Schema::Modern::Document';
 use constant DEFAULT_DIALECT => 'https://spec.openapis.org/oas/3.1/dialect/base';
 
 use constant DEFAULT_SCHEMAS => {
-  'oas/dialect/base.schema.json' => 'https://spec.openapis.org/oas/3.1/dialect/base',
-  'oas/meta/base.schema.json'    => 'https://spec.openapis.org/oas/3.1/meta/base',
+  # local filename => identifier to add the schema as
+  'oas/dialect/base.schema.json' => 'https://spec.openapis.org/oas/3.1/dialect/base', # metaschema for json schemas contained within openapi documents
+  'oas/meta/base.schema.json' => 'https://spec.openapis.org/oas/3.1/meta/base',  # vocabulary definition
+  'oas/schema-base.json' => 'https://spec.openapis.org/oas/3.1/schema-base',  # openapi document schema + custom json schema dialect
+  'oas/schema.json' => 'https://spec.openapis.org/oas/3.1/schema', # the main openapi document schema
 };
+
+use constant DEFAULT_METASCHEMA => 'https://spec.openapis.org/oas/3.1/schema-base/2021-09-28';
 
 has '+evaluator' => (
   required => 1,
+);
+
+has '+metaschema_uri' => (
+  default => DEFAULT_METASCHEMA,
 );
 
 has json_schema_dialect => (
@@ -86,14 +95,7 @@ sub traverse {
 
   if (not $json_schema_dialect) {
     # "If [jsonSchemaDialect] is not set, then the OAS dialect schema id MUST be used for these Schema Objects."
-    $evaluator->add_vocabulary('JSON::Schema::Modern::Vocabulary::OpenAPI');
-
-    foreach my $filename (keys %{(DEFAULT_SCHEMAS)}) {
-      $evaluator->add_schema(
-        DEFAULT_SCHEMAS->{$filename},
-        $evaluator->_json_decoder->decode(path(dist_dir('JSON-Schema-Modern-Document-OpenAPI'), $filename)->slurp_raw),
-      );
-    }
+    $self->_add_vocab_and_default_schemas;
     $json_schema_dialect = DEFAULT_DIALECT;
   }
 
@@ -113,6 +115,26 @@ sub traverse {
   }
 
   return $state;
+}
+
+before validate =>sub {
+  my $self = shift;
+  $self->_add_vocab_and_default_schemas;
+};
+
+sub _add_vocab_and_default_schemas {
+  my $self = shift;
+
+  my $js = $self->evaluator;
+  $js->add_vocabulary('JSON::Schema::Modern::Vocabulary::OpenAPI');
+
+  foreach my $filename (keys %{(DEFAULT_SCHEMAS)}) {
+    $js->add_schema(
+      DEFAULT_SCHEMAS->{$filename},
+      $js->_json_decoder->decode(path(dist_dir('JSON-Schema-Modern-Document-OpenAPI'), $filename)->slurp_raw),
+    )
+    if not $js->_resource_exists(DEFAULT_SCHEMAS->{$filename});
+  }
 }
 
 1;
@@ -156,6 +178,11 @@ A L<JSON::Schema::Modern> object. Unlike in the parent class, this is B<REQUIRED
 vocabularies, metaschemas and resource identifiers must be stored here as they are discovered in the
 OpenAPI document. This is the object that will be used for subsequent evaluation of data against
 schemas in the document, either manually or perhaps via a web framework plugin (coming soon).
+
+=head2 metaschema_uri
+
+The URI of the schema that describes the OpenAPI document itself. Defaults to
+C<https://spec.openapis.org/oas/3.1/schema-base/2021-09-28> (the latest document available).
 
 =head2 json_schema_dialect
 
