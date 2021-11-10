@@ -13,6 +13,7 @@ no if "$]" >= 5.031009, feature => 'indirect';
 no if "$]" >= 5.033001, feature => 'multidimensional';
 no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 use Moo;
+use namespace::clean;
 
 extends 'JSON::Schema::Modern::Document';
 
