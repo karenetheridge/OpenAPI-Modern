@@ -2,7 +2,7 @@ use strict;
 use warnings;
 package JSON::Schema::Modern::Document::OpenAPI;
 # vim: set ts=8 sts=2 sw=2 tw=100 et :
-# ABSTRACT: One JSON Schema document
+# ABSTRACT: One OpenAPI v3.1 document
 # KEYWORDS: JSON Schema data validation request response OpenAPI
 
 our $VERSION = '0.002';
