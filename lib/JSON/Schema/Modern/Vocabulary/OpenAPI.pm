@@ -24,15 +24,10 @@ sub vocabulary {
 }
 
 sub keywords {
-  my ($self, $spec_version) = @_;
-  return (
-    qw(discriminator example externalDocs xml),
-  );
+  qw(discriminator example externalDocs xml);
 }
 
-sub _traverse_keyword_discriminator {
-  my ($self, $schema, $state) = @_;
-
+sub _traverse_keyword_discriminator ($self, $schema, $state) {
   return if not assert_keyword_type($state, $schema, 'object');
 
   # "the discriminator field MUST be a required field"
@@ -59,9 +54,7 @@ sub _traverse_keyword_discriminator {
   return 1;
 }
 
-sub _eval_keyword_discriminator {
-  my ($self, $data, $schema, $state) = @_;
-
+sub _eval_keyword_discriminator ($self, $data, $schema, $state) {
   # Note: the spec is unclear of the expected behaviour when the data instance is not an object
   return 1 if not is_type('object', $data);
 
@@ -97,8 +90,7 @@ sub _eval_keyword_discriminator {
 
 sub _traverse_keyword_example { 1 }
 
-sub _eval_keyword_example {
-  my ($self, $data, $schema, $state) = @_;
+sub _eval_keyword_example ($self, $data, $schema, $state) {
   annotate_self($state, $schema);
 }
 

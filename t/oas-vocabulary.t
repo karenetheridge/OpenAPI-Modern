@@ -38,8 +38,7 @@ $js->add_schema(
 );
 
 $accepter->acceptance(
-  validate_data => sub {
-    my ($schema, $instance_data) = @_;
+  validate_data => sub ($schema, $instance_data) {
     my $result = $js->evaluate($instance_data, $schema);
 
     my $encoder = JSON::MaybeXS->new(allow_nonref => 1, utf8 => 0, convert_blessed => 1, canonical => 1, pretty => 1);

@@ -50,9 +50,7 @@ has json_schema_dialect => (
   coerce => sub { $_[0]->$_isa('Mojo::URL') ? $_[0] : Mojo::URL->new($_[0]) },
 );
 
-sub traverse {
-  my ($self, $evaluator) = @_;
-
+sub traverse ($self, $evaluator) {
   my $schema = $self->schema;
 
   my $state = {
@@ -119,14 +117,11 @@ sub traverse {
   return $state;
 }
 
-before validate =>sub {
-  my $self = shift;
+before validate => sub ($self) {
   $self->_add_vocab_and_default_schemas;
 };
 
-sub _add_vocab_and_default_schemas {
-  my $self = shift;
-
+sub _add_vocab_and_default_schemas ($self) {
   my $js = $self->evaluator;
   $js->add_vocabulary('JSON::Schema::Modern::Vocabulary::OpenAPI');
 
