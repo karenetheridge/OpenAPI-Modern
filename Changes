@@ -1,6 +1,7 @@
 Revision history for JSON-Schema-Modern-Document-OpenAPI
 
 {{$NEXT}}
+          - minimum Perl version raised to 5.20
 
 0.001     2021-11-10 04:50:17Z
           - Initial release.

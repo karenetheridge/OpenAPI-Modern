@@ -7,7 +7,10 @@ package JSON::Schema::Modern::Document::OpenAPI;
 
 our $VERSION = '0.002';
 
-use 5.016;
+use 5.020;  # for fc, unicode_strings features
+use Moo;
+use strictures 2;
+use experimental qw(signatures postderef);
 use if "$]" >= 5.022, experimental => 're_strict';
 no if "$]" >= 5.031009, feature => 'indirect';
 no if "$]" >= 5.033001, feature => 'multidimensional';
@@ -16,7 +19,6 @@ use JSON::Schema::Modern::Utilities 0.524 qw(assert_keyword_exists assert_keywor
 use Safe::Isa;
 use File::ShareDir 'dist_dir';
 use Path::Tiny;
-use Moo;
 use Types::Standard 'InstanceOf';
 use namespace::clean;
 

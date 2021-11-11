@@ -6,14 +6,15 @@ package JSON::Schema::Modern::Vocabulary::OpenAPI;
 
 our $VERSION = '0.002';
 
-use 5.016;
+use 5.020;  # for fc, unicode_strings features
+use Moo;
+use strictures 2;
+use experimental qw(signatures postderef);
 use if "$]" >= 5.022, experimental => 're_strict';
 no if "$]" >= 5.031009, feature => 'indirect';
 no if "$]" >= 5.033001, feature => 'multidimensional';
 no if "$]" >= 5.033006, feature => 'bareword_filehandles';
-use strictures 2;
 use JSON::Schema::Modern::Utilities 0.524 qw(assert_keyword_type annotate_self E is_type is_uri_reference jsonp);
-use Moo;
 use namespace::clean;
 
 with 'JSON::Schema::Modern::Vocabulary';
