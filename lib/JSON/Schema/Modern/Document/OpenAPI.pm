@@ -107,10 +107,10 @@ sub traverse ($self, $evaluator) {
     initial_schema_uri => $self->canonical_uri->clone->fragment('/jsonSchemaDialect'),
   });
 
-  @{$state}{qw(spec_version vocabularies)} = @{$check_metaschema_state}{qw(spec_version vocabularies)};
+  $state->@{qw(spec_version vocabularies)} = $check_metaschema_state->@{qw(spec_version vocabularies)};
 
-  if (@{$check_metaschema_state->{errors}}) {
-    push @{$state->{errors}}, @{$check_metaschema_state->{errors}};
+  if ($check_metaschema_state->{errors}->@*) {
+    push $state->{errors}->@*, $check_metaschema_state->{errors}->@*;
     return $state;
   }
 
@@ -125,7 +125,7 @@ sub _add_vocab_and_default_schemas ($self) {
   my $js = $self->evaluator;
   $js->add_vocabulary('JSON::Schema::Modern::Vocabulary::OpenAPI');
 
-  foreach my $filename (keys %{(DEFAULT_SCHEMAS)}) {
+  foreach my $filename (keys DEFAULT_SCHEMAS->%*) {
     $js->add_schema(
       DEFAULT_SCHEMAS->{$filename},
       $js->_json_decoder->decode(path(dist_dir('JSON-Schema-Modern-Document-OpenAPI'), $filename)->slurp_raw),

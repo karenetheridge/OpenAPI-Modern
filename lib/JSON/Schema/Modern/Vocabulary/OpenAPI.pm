@@ -41,7 +41,7 @@ sub _traverse_keyword_discriminator ($self, $schema, $state) {
     return if not assert_keyword_type({ %$state, _schema_path_suffix => 'mapping' }, $schema, 'object');
     return E({ %$state, _schema_path_suffix => 'mapping' }, 'discriminator mapping is not an object ')
       if not is_type('object', $schema->{discriminator}{mapping});
-    foreach my $mapping_key (sort keys %{$schema->{discriminator}{mapping}}) {
+    foreach my $mapping_key (sort keys $schema->{discriminator}{mapping}->%*) {
       my $uri = $schema->{discriminator}{mapping}{$mapping_key};
       $valid = E({ %$state, _schema_path_suffix => [ 'mapping', $mapping_key ] }, 'discriminator mapping value for "%s" is not a string', $mapping_key), next if not is_type('string', $uri);
       $valid = E({ %$state, _schema_path_suffix => [ 'mapping', $mapping_key ] }, 'discriminator mapping value for "%s" is not a uri-reference', $mapping_key), next if not is_uri_reference($uri);

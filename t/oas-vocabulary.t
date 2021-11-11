@@ -48,7 +48,7 @@ $accepter->acceptance(
     warn('evaluation generated an exception: '.$encoder->encode($_))
       foreach
         grep +($_->{error} =~ /^EXCEPTION/),
-          @{$result->TO_JSON->{errors}};
+          $result->TO_JSON->{errors}->@*;
 
     $result;
   },
