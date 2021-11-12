@@ -16,19 +16,17 @@ use JSON::Schema::Modern::Document::OpenAPI;
 use Test::File::ShareDir -share => { -dist => { 'JSON-Schema-Modern-Document-OpenAPI' => 'share' } };
 use constant { true => JSON::PP::true, false => JSON::PP::false };
 
-my $valid_schema = {
-  openapi => '3.1.0',
-  info => {
-    title => 'my title',
-    version => '1.2.3',
-  },
-};
-
 subtest 'basic construction' => sub {
   my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
     evaluator => my $js = JSON::Schema::Modern->new,
-    schema => $valid_schema,
+    schema => {
+      openapi => '3.1.0',
+      info => {
+        title => 'my title',
+        version => '1.2.3',
+      },
+    },
   );
 
   cmp_deeply(
@@ -38,7 +36,8 @@ subtest 'basic construction' => sub {
         path => '',
         canonical_uri => str('http://localhost:1234/api'),
         specification_version => 'draft2020-12',
-        vocabularies => ignore, # TODO, after we parse /jsonSchemaDialect
+        vocabularies => [ map 'JSON::Schema::Modern::Vocabulary::'.$_,
+          qw(Core Applicator Validation FormatAnnotation Content MetaData Unevaluated OpenAPI) ],
       },
     },
     'the document itself is recorded as a resource',
