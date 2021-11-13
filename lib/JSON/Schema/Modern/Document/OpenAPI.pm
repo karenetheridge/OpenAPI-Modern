@@ -66,7 +66,7 @@ sub traverse ($self, $evaluator) {
     vocabularies => [],
   };
 
-  # /openapi
+  # /openapi: https://spec.openapis.org/oas/v3.1.0#openapi-object
   return $state if not assert_keyword_exists({ %$state, keyword => 'openapi' }, $schema)
     or not assert_keyword_type({ %$state, keyword => 'openapi' }, $schema, 'string');
 
@@ -74,7 +74,7 @@ sub traverse ($self, $evaluator) {
   $valid = E({ %$state, keyword => 'openapi' }, 'unrecognized openapi version %s', $schema->{openapi})
     if $schema->{openapi} !~ /^3\.1\.[0-9]+(-.+)?$/;
 
-  # /info -> /info/title, /info/version
+  # /info: https://spec.openapis.org/oas/v3.1.0#info-object
   {
     my $state = { %$state, schema_path => $state->{schema_path}.'/info', keyword => 'info' };
 
@@ -86,7 +86,7 @@ sub traverse ($self, $evaluator) {
         qw(title version);
   }
 
-  # /jsonSchemaDialect
+  # /jsonSchemaDialect: https://spec.openapis.org/oas/v3.1.0#specifying-schema-dialects
 
   return $state if exists $schema->{jsonSchemaDialect}
     and not assert_keyword_type({ %$state, keyword => 'jsonSchemaDialect' }, $schema, 'string');
