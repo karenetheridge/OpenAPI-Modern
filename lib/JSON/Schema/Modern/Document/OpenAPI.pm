@@ -90,33 +90,36 @@ sub traverse ($self, $evaluator) {
         qw(title version);
   }
 
+
   # /jsonSchemaDialect: https://spec.openapis.org/oas/v3.1.0#specifying-schema-dialects
+  {
+    return $state if exists $schema->{jsonSchemaDialect}
+      and not assert_keyword_type({ %$state, keyword => 'jsonSchemaDialect' }, $schema, 'string');
 
-  return $state if exists $schema->{jsonSchemaDialect}
-    and not assert_keyword_type({ %$state, keyword => 'jsonSchemaDialect' }, $schema, 'string');
+    my $json_schema_dialect = $self->json_schema_dialect // $schema->{jsonSchemaDialect};
 
-  my $json_schema_dialect = $self->json_schema_dialect // $schema->{jsonSchemaDialect};
+    if (not $json_schema_dialect) {
+      # "If [jsonSchemaDialect] is not set, then the OAS dialect schema id MUST be used for these Schema Objects."
+      $self->_add_vocab_and_default_schemas;
+      $json_schema_dialect = DEFAULT_DIALECT;
+    }
 
-  if (not $json_schema_dialect) {
-    # "If [jsonSchemaDialect] is not set, then the OAS dialect schema id MUST be used for these Schema Objects."
-    $self->_add_vocab_and_default_schemas;
-    $json_schema_dialect = DEFAULT_DIALECT;
+    # traverse an empty schema with this metaschema uri to confirm it is valid
+    my $check_metaschema_state = $evaluator->traverse({}, {
+      metaschema_uri => $json_schema_dialect,
+      initial_schema_uri => $self->canonical_uri->clone->fragment('/jsonSchemaDialect'),
+    });
+
+    # we cannot continue if the metaschema is invalid
+    if ($check_metaschema_state->{errors}->@*) {
+      push $state->{errors}->@*, $check_metaschema_state->{errors}->@*;
+      return $state;
+    }
+
+    $state->@{qw(spec_version vocabularies)} = $check_metaschema_state->@{qw(spec_version vocabularies)};
+    $self->_set_json_schema_dialect($json_schema_dialect);
   }
 
-  $self->_set_json_schema_dialect($json_schema_dialect);
-
-  # traverse an empty schema with this metaschema uri to confirm it is valid
-  my $check_metaschema_state = $evaluator->traverse({}, {
-    metaschema_uri => $json_schema_dialect,
-    initial_schema_uri => $self->canonical_uri->clone->fragment('/jsonSchemaDialect'),
-  });
-
-  $state->@{qw(spec_version vocabularies)} = $check_metaschema_state->@{qw(spec_version vocabularies)};
-
-  if ($check_metaschema_state->{errors}->@*) {
-    push $state->{errors}->@*, $check_metaschema_state->{errors}->@*;
-    return $state;
-  }
 
   return $state;
 }
