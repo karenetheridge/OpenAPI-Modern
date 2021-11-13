@@ -15,10 +15,11 @@ use if "$]" >= 5.022, experimental => 're_strict';
 no if "$]" >= 5.031009, feature => 'indirect';
 no if "$]" >= 5.033001, feature => 'multidimensional';
 no if "$]" >= 5.033006, feature => 'bareword_filehandles';
-use JSON::Schema::Modern::Utilities 0.524 qw(assert_keyword_exists assert_keyword_type E);
+use JSON::Schema::Modern::Utilities 0.525 qw(assert_keyword_exists assert_keyword_type E get_type canonical_uri);
 use Safe::Isa;
 use File::ShareDir 'dist_dir';
 use Path::Tiny;
+use List::Util 'any';
 use Types::Standard 'InstanceOf';
 use namespace::clean;
 
@@ -103,13 +104,33 @@ sub traverse ($self, $evaluator) {
     $self->_set_json_schema_dialect($json_schema_dialect);
   }
 
-
-  # evaluate the document against its metaschema to find any errors
-  my $result = $self->evaluator->evaluate($self->schema, $self->metaschema_uri);
+  # evaluate the document against its metaschema to find any errors, and to identify all schema
+  # resources within to add to the global resource index.
+  my @json_schema_paths;
+  my $result = $self->evaluator->evaluate(
+    $self->schema,
+    $self->metaschema_uri,
+    {
+      callbacks => {
+        '$dynamicRef' => sub ($schema, $state) {
+          push @json_schema_paths, $state->{data_path} if $schema->{'$dynamicRef'} eq '#meta';
+        },
+      },
+    },
+  );
 
   if (not $result) {
     push $state->{errors}->@*, $result->errors;
     return $state;
+  }
+
+  my @real_json_schema_paths;
+  foreach my $path (sort @json_schema_paths) {
+    # disregard paths that are not the root of each embedded subschema.
+    next if any { $_->subsumes($path) } @real_json_schema_paths;
+
+    push @real_json_schema_paths, path($path);
+    $self->_traverse_schema($self->get($path), { %$state, schema_path => $path });
   }
 
   return $state;
@@ -128,6 +149,24 @@ sub _add_vocab_and_default_schemas ($self) {
     )
     if not $js->_resource_exists(DEFAULT_SCHEMAS->{$filename});
   }
+}
+
+# https://spec.openapis.org/oas/v3.1.0#schema-object
+sub _traverse_schema ($self, $schema, $state) {
+  my $schema_type = get_type($schema);
+  return 1 if $schema_type eq 'boolean' or $schema_type eq 'object' and not keys %$schema;
+
+  my $subschema_state = $self->evaluator->traverse($schema, {
+    %$state,  # so we don't have to ennumerate everything that may be in config_override
+    initial_schema_uri => canonical_uri($state),
+    traversed_schema_path => $state->{traversed_schema_path}.$state->{schema_path},
+    metaschema_uri => $self->json_schema_dialect,
+  });
+
+  push $state->{errors}->@*, $subschema_state->{errors}->@*;
+  return if @{$subschema_state->{errors}};
+
+  push $state->{identifiers}->@*, $subschema_state->{identifiers}->@*;
 }
 
 1;
