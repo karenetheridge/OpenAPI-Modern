@@ -50,6 +50,10 @@ has json_schema_dialect => (
   coerce => sub { $_[0]->$_isa('Mojo::URL') ? $_[0] : Mojo::URL->new($_[0]) },
 );
 
+before validate => sub ($self) {
+  $self->_add_vocab_and_default_schemas;
+};
+
 sub traverse ($self, $evaluator) {
   my $schema = $self->schema;
 
@@ -117,9 +121,7 @@ sub traverse ($self, $evaluator) {
   return $state;
 }
 
-before validate => sub ($self) {
-  $self->_add_vocab_and_default_schemas;
-};
+######## NO PUBLIC INTERFACES FOLLOW THIS POINT ########
 
 sub _add_vocab_and_default_schemas ($self) {
   my $js = $self->evaluator;
