@@ -50,13 +50,10 @@ has json_schema_dialect => (
   coerce => sub { $_[0]->$_isa('Mojo::URL') ? $_[0] : Mojo::URL->new($_[0]) },
 );
 
-before validate => sub ($self) {
-  $self->_add_vocab_and_default_schemas;
-};
-
 sub traverse ($self, $evaluator) {
-  my $schema = $self->schema;
+  $self->_add_vocab_and_default_schemas;
 
+  my $schema = $self->schema;
   my $state = {
     initial_schema_uri => $self->canonical_uri,
     traversed_schema_path => '',
@@ -74,20 +71,9 @@ sub traverse ($self, $evaluator) {
   return $state if not assert_keyword_exists({ %$state, keyword => 'openapi' }, $schema)
     or not assert_keyword_type({ %$state, keyword => 'openapi' }, $schema, 'string');
 
-  my $valid = 1;
-  $valid = E({ %$state, keyword => 'openapi' }, 'unrecognized openapi version %s', $schema->{openapi})
-    if $schema->{openapi} !~ /^3\.1\.[0-9]+(-.+)?$/;
-
-  # /info: https://spec.openapis.org/oas/v3.1.0#info-object
-  {
-    my $state = { %$state, schema_path => $state->{schema_path}.'/info', keyword => 'info' };
-
-    return $state if not assert_keyword_exists($state, $schema)
-      or not assert_keyword_type($state, $schema, 'object')
-      or not grep
-        assert_keyword_exists($state, $schema)
-          && assert_keyword_type({ %$state, keyword => $_, schema_path => '/info' }, $schema->{info}, 'string'),
-        qw(title version);
+  if ($schema->{openapi} !~ /^3\.1\.[0-9]+(-.+)?$/) {
+    ()= E({ %$state, keyword => 'openapi' }, 'unrecognized openapi version %s', $schema->{openapi});
+    return $state;
   }
 
 
@@ -98,11 +84,8 @@ sub traverse ($self, $evaluator) {
 
     my $json_schema_dialect = $self->json_schema_dialect // $schema->{jsonSchemaDialect};
 
-    if (not $json_schema_dialect) {
-      # "If [jsonSchemaDialect] is not set, then the OAS dialect schema id MUST be used for these Schema Objects."
-      $self->_add_vocab_and_default_schemas;
-      $json_schema_dialect = DEFAULT_DIALECT;
-    }
+    # "If [jsonSchemaDialect] is not set, then the OAS dialect schema id MUST be used for these Schema Objects."
+    $json_schema_dialect //= DEFAULT_DIALECT;
 
     # traverse an empty schema with this metaschema uri to confirm it is valid
     my $check_metaschema_state = $evaluator->traverse({}, {
@@ -120,6 +103,14 @@ sub traverse ($self, $evaluator) {
     $self->_set_json_schema_dialect($json_schema_dialect);
   }
 
+
+  # evaluate the document against its metaschema to find any errors
+  my $result = $self->evaluator->evaluate($self->schema, $self->metaschema_uri);
+
+  if (not $result) {
+    push $state->{errors}->@*, $result->errors;
+    return $state;
+  }
 
   return $state;
 }

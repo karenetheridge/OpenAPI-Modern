@@ -16,6 +16,9 @@ use JSON::Schema::Modern::Document::OpenAPI;
 use Test::File::ShareDir -share => { -dist => { 'JSON-Schema-Modern-Document-OpenAPI' => 'share' } };
 use constant { true => JSON::PP::true, false => JSON::PP::false };
 
+# the document where most constraints are defined
+use constant SCHEMA => 'https://spec.openapis.org/oas/3.1/schema/2021-09-28';
+
 subtest 'basic construction' => sub {
   my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
@@ -26,6 +29,7 @@ subtest 'basic construction' => sub {
         title => 'my title',
         version => '1.2.3',
       },
+      paths => {},
     },
   );
 
@@ -67,11 +71,36 @@ subtest 'top level document fields' => sub {
     canonical_uri => 'http://localhost:1234/api',
     evaluator => $js,
     schema => {
-      openapi => '2.1.3',
-      info => {
-        title => undef,
-        version => undef,
+      openapi => '3.1.0',
+      info => {},
+      paths => {},
+    },
+  );
+  cmp_deeply(
+    [ map $_->TO_JSON, $doc->errors ],
+    [
+      {
+        instanceLocation => '/info',
+        keywordLocation => '/$ref/properties/info/$ref/required',
+        absoluteKeywordLocation => SCHEMA.'#/$defs/info/required',
+        error => 'missing properties: title, version',
       },
+      {
+        instanceLocation => '',
+        keywordLocation => '/$ref/properties',
+        absoluteKeywordLocation => SCHEMA.'#/properties',
+        error => 'not all properties are valid',
+      },
+      (ignore)x4, # useless unevaluatedProperties errors
+    ],
+    'missing /info properties',
+  );
+
+  $doc = JSON::Schema::Modern::Document::OpenAPI->new(
+    canonical_uri => 'http://localhost:1234/api',
+    evaluator => $js,
+    schema => {
+      openapi => '2.1.3',
     },
   );
   cmp_deeply(
@@ -83,20 +112,8 @@ subtest 'top level document fields' => sub {
         absoluteKeywordLocation => 'http://localhost:1234/api#/openapi',
         error => 'unrecognized openapi version 2.1.3',
       },
-      {
-        instanceLocation => '',
-        keywordLocation => '/info/title',
-        absoluteKeywordLocation => 'http://localhost:1234/api#/info/title',
-        error => 'title value is not a string',
-      },
-      {
-        instanceLocation => '',
-        keywordLocation => '/info/version',
-        absoluteKeywordLocation => 'http://localhost:1234/api#/info/version',
-        error => 'version value is not a string',
-      },
     ],
-    'many invalid properties',
+    'invalid openapi version',
   );
 
 
@@ -167,6 +184,83 @@ subtest 'top level document fields' => sub {
   );
 
 
+  $doc = JSON::Schema::Modern::Document::OpenAPI->new(
+    canonical_uri => 'http://localhost:1234/api',
+    evaluator => $js,
+    schema => {
+      openapi => '3.1.0',
+      info => {
+        title => 'my title',
+        version => '1.2.3',
+      },
+      map +($_ => 'not an object'), qw(servers security tags externalDocs),
+    },
+  );
+  my $iter = 0;
+  cmp_deeply(
+    [ map $_->TO_JSON, $doc->errors ],
+    [
+      (map +{
+        instanceLocation => '',
+        keywordLocation => '/$ref/anyOf/'.$iter.'/required',
+        absoluteKeywordLocation => SCHEMA.'#/anyOf/'.$iter++.'/required',
+        error => 'missing property: '.$_,
+      }, qw(paths components webhooks)),
+      {
+        instanceLocation => '',
+        keywordLocation => '/$ref/anyOf',
+        absoluteKeywordLocation => SCHEMA.'#/anyOf',
+        error => 'no subschemas are valid',
+      },
+      (map +{
+        instanceLocation => '/'.$_,
+        keywordLocation => ignore,  # a $defs somewhere
+        absoluteKeywordLocation => ignore,
+        error => re(qr/^wrong type/),
+      }, qw(externalDocs security servers tags)),
+      {
+        instanceLocation => '',
+        keywordLocation => "/\$ref/properties",
+        absoluteKeywordLocation => SCHEMA.'#/properties',
+        error => 'not all properties are valid',
+      },
+      (ignore)x7, # useless unevaluatedProperties errors
+    ],
+    'missing paths (etc), and bad types for top level fields',
+  );
+
+  $doc = JSON::Schema::Modern::Document::OpenAPI->new(
+    canonical_uri => 'http://localhost:1234/api',
+    evaluator => $js,
+    schema => {
+      openapi => '3.1.0',
+      info => {
+        title => 'my title',
+        version => '1.2.3',
+      },
+      map +($_ => 'not an object'), qw(paths webhooks components),
+    },
+  );
+  cmp_deeply(
+    [ map $_->TO_JSON, $doc->errors ],
+    [
+      (map +{
+        instanceLocation => '/'.$_,
+        keywordLocation => ignore,  # a $defs somewhere
+        absoluteKeywordLocation => ignore,
+        error => re(qr/^wrong type/),
+      }, qw(components paths webhooks)),
+      {
+        instanceLocation => '',
+        keywordLocation => '/$ref/properties',
+        absoluteKeywordLocation => SCHEMA.'#/properties',
+        error => 'not all properties are valid',
+      },
+      (ignore)x6, # useless unevaluatedProperties errors
+    ],
+    'bad types for paths, webhooks, components',
+  );
+
   $js = JSON::Schema::Modern->new;
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
@@ -181,8 +275,7 @@ subtest 'top level document fields' => sub {
       paths => {},
     },
   );
-  my $result = $doc->validate;
-  ok($result, 'document is semantically valid') or diag explain $result->TO_JSON;
+
   cmp_deeply([ $doc->errors ], [], 'no errors with default jsonSchemaDialect');
   is($doc->json_schema_dialect, 'https://spec.openapis.org/oas/3.1/dialect/base', 'default jsonSchemaDialect is saved in the document');
 
@@ -242,9 +335,7 @@ subtest 'top level document fields' => sub {
     },
     metaschema_uri => 'https://spec.openapis.org/oas/3.1/schema', # '#meta' is now just {"type": ["object","boolean"]}
   );
-  $result = $doc->validate;
-  ok($result, 'document is semantically valid') or diag explain $result->TO_JSON;
-  cmp_deeply([], [ $doc->errors ], 'no errors with a custom jsonSchemaDialect');
+  cmp_deeply([], [ map $_->TO_JSON, $doc->errors ], 'no errors with a custom jsonSchemaDialect');
   is($doc->json_schema_dialect, 'https://mymetaschema', 'custom jsonSchemaDialect is saved in the document');
 
   $js->add_schema($doc);
