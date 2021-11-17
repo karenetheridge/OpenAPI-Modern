@@ -164,7 +164,7 @@ sub _traverse_schema ($self, $schema, $state) {
   });
 
   push $state->{errors}->@*, $subschema_state->{errors}->@*;
-  return if @{$subschema_state->{errors}};
+  return if $subschema_state->{errors}->@*;
 
   push $state->{identifiers}->@*, $subschema_state->{identifiers}->@*;
 }
