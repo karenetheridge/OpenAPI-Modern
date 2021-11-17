@@ -90,8 +90,8 @@ tests pass.
 
 If you have found a bug, but do not have an accompanying patch to fix it, you
 can submit an issue report here:
-https://rt.cpan.org/Public/Dist/Display.html?Name=JSON-Schema-Modern-Document-OpenAPI
-or via email: bug-JSON-Schema-Modern-Document-OpenAPI@rt.cpan.org
+https://github.com/karenetheridge/JSON-Schema-Modern-Document-OpenAPI/issues
+
 This is a good place to send your questions about the usage of this distribution.
 
 If you send me a patch or pull request, your name and email address will be

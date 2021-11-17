@@ -4,11 +4,11 @@
 
 =head1 NAME
 
-JSON::Schema::Modern::Document::OpenAPI - One JSON Schema document
+JSON::Schema::Modern::Document::OpenAPI - One OpenAPI v3.1 document
 
 =head1 VERSION
 
-version 0.001
+version 0.002
 
 =head1 SYNOPSIS
 
@@ -72,8 +72,7 @@ longer be assumed.
 
 =head1 SUPPORT
 
-Bugs may be submitted through L<the RT bug tracker|https://rt.cpan.org/Public/Dist/Display.html?Name=JSON-Schema-Modern-Document-OpenAPI>
-(or L<bug-JSON-Schema-Modern-Document-OpenAPI@rt.cpan.org|mailto:bug-JSON-Schema-Modern-Document-OpenAPI@rt.cpan.org>).
+Bugs may be submitted through L<https://github.com/karenetheridge/JSON-Schema-Modern-Document-OpenAPI/issues>.
 
 I am also usually active on irc, as 'ether' at C<irc.perl.org> and C<irc.libera.chat>.
 

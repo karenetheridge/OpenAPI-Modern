@@ -1,6 +1,6 @@
 Revision history for JSON-Schema-Modern-Document-OpenAPI
 
-{{$NEXT}}
+0.002     2021-11-17 05:49:29Z
           - minimum Perl version raised to 5.20
           - embedded schemas are now traversed for resource URIs
 
