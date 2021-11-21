@@ -20,6 +20,7 @@ use Safe::Isa;
 use File::ShareDir 'dist_dir';
 use Path::Tiny;
 use List::Util 'any';
+use MooX::TypeTiny 0.002002;
 use Types::Standard 'InstanceOf';
 use namespace::clean;
 
