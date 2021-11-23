@@ -562,7 +562,7 @@ YAML
           instanceLocation => '/request/body',
           keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post requestBody content text/html)),
           absoluteKeywordLocation => str($doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post requestBody content text/html)))),
-          error => 'EXCEPTION: unsupported Content-Type "text/html": add support with $openapi->evaluator->add_media_type(...)',
+          error => 'EXCEPTION: unsupported Content-Type "text/html": add support with $openapi->add_media_type(...)',
         },
       ],
     },

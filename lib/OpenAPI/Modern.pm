@@ -43,6 +43,7 @@ has evaluator => (
   is => 'ro',
   isa => InstanceOf['JSON::Schema::Modern'],
   required => 1,
+  handles => [ qw(get_media_type add_media_type) ],
 );
 
 around BUILDARGS => sub ($orig, $class, @args) {
@@ -281,33 +282,28 @@ sub _validate_body ($self, $state, $body_obj, $message) {
   return E({ %$state, keyword => 'content' }, 'incorrect Content-Type "%s"', $content_type)
     if not exists $body_obj->{content}{$content_type};
 
-  # for now, we hardcode support for 'application/json' and 'text/plain' only.
-  # in the future we can make use of JSM's registry.
-  my @supported_media_types = qw(application/json text/plain);
-  abort({ %$state, keyword => 'content', _schema_path_suffix => $content_type },
-      'EXCEPTION: unsupported Content-Type "%s": add support with $openapi->evaluator->add_media_type(...)', $content_type)
-    if not grep $content_type eq $_, @supported_media_types;
+  die 'found encoding: TODO' if exists $body_obj->{content}{$content_type}{encoding};
 
   # undoes the Content-Encoding header
   my $decoded_content_ref = $message->decoded_content(ref => 1);
 
-  # TODO: support additional charsets?
+  # decode the charset
   my $charset = $message->content_charset;
+  $decoded_content_ref = \ Encode::decode($charset, $decoded_content_ref->$*, Encode::FB_CROAK);
 
-# FIXME: use JSM->get_media_type.
-  my $decoded_content =
-      $content_type eq 'application/json'
-        ? JSON::MaybeXS->new(allow_nonref => 1, canonical => 1, utf8 => ($charset eq 'UTF-8'))
-          ->decode($decoded_content_ref->$*)
-    : $content_type eq 'text/plain'
-        ? $decoded_content_ref->$*
-    : die 'wrong Content-Type';
+  # TODO: fix JSM for utf8 decoding.
+  my $media_type_decoder = $content_type eq 'application/json'
+    ? sub { \ JSON::MaybeXS->new(allow_nonref => 1, canonical => 1, utf8 => 0)->decode($_[0]->$*) }
+    : $self->get_media_type($content_type);
+  abort({ %$state, keyword => 'content', _schema_path_suffix => $content_type },
+      'EXCEPTION: unsupported Content-Type "%s": add support with $openapi->add_media_type(...)', $content_type)
+    if not $media_type_decoder;
 
-  die 'found encoding: TODO' if exists $body_obj->{content}{$content_type}{encoding};
+  $decoded_content_ref = $media_type_decoder->($decoded_content_ref);
 
   $state = { %$state, schema_path => jsonp($state->{schema_path}, 'content', $content_type, 'schema') };
   my $result = $self->evaluator->evaluate(
-    $decoded_content,
+    $decoded_content_ref->$*,
     canonical_uri($state),
     { data_path => $state->{data_path}, traversed_schema_path => $state->{schema_path} },
   );
@@ -442,7 +438,6 @@ Only certain permutations of OpenAPI specifications and are supported at this ti
 * for query parameters, only C<style: form> is supported
 * for header parameters, only C<style: simple> is supported
 * cookie parameters are not checked
-* for C<< content/<media-type> >>, only C<application/json> and C<text/plain> are supported
 
 =head1 SEE ALSO
 
