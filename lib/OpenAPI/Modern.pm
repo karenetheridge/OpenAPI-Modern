@@ -185,6 +185,13 @@ sub validate_request ($self, $request, $options) {
   return $self->_result($state);
 }
 
+sub validate_response ($self, $response, @) {
+  return JSON::Schema::Modern::Result->new(
+    output_format => $self->evaluator->output_format,
+    valid => true,
+  );
+}
+
 ######## NO PUBLIC INTERFACES FOLLOW THIS POINT ########
 
 # for now, we only use captures, rather than parsing the URI directly.
@@ -427,6 +434,17 @@ The second argument is a hashref that contains extra information about the reque
 * C<path_template>: a string representing the request URI, with placeholders in braces (e.g.
   C</pets/{petId}>); see L<https://spec.openapis.org/oas/v3.1.0#paths-object>.
 * C<path_captures>: a hashref mapping placeholders in the path to their actual values in the request URI
+
+=head2 validate_response
+
+  $result = $openapi->validate_response(
+    $response,
+    {
+      path_spec => '/foo/{arg1}/bar/{arg2}',
+    },
+  );
+
+Not yet implemented.
 
 =head1 LIMITATIONS
 
