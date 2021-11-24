@@ -510,6 +510,22 @@ The second argument is a hashref that contains extra information about the reque
 
 Not yet implemented.
 
+=head1 ON THE USE OF JSON SCHEMAS
+
+Embedded JSON Schemas, through the use of the C<schema> keyword, are fully draft2020-12-compliant,
+as per the spec, and implemented with L<JSON::Schema::Modern>. Unless overridden with the use of the
+L<jsonSchemaDialect|https://spec.openapis.org/oas/v3.1.0#specifying-schema-dialects> keyword, their
+metaschema is L<https://spec.openapis.org/oas/3.1/dialect/base>, which allows for use of the
+OpenAPI-specific keywords (C<discriminator>, C<xml>, C<externalDocs>, and C<example>), as defined in
+L<the specification/https://spec.openapis.org/oas/v3.1.0#schema-object>. Format validation is turned
+B<on>, and the use of content* keywords is off (see
+L<JSON::Schema::Modern/validate_content_schemas>).
+
+References (with the C<$ref>) keyword may reference any position within the entire OpenAPI document;
+as such, json pointers are relative to the B<root> of the document, not the root of the subschema
+itself. References to other documents are also permitted, provided those documents have been loaded
+into the evaluator in advance (see L<JSON::Schema::Modern/add_schema>).
+
 =head1 LIMITATIONS
 
 Only certain permutations of OpenAPI specifications and are supported at this time:
