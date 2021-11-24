@@ -433,7 +433,10 @@ prints:
 
 =head1 DESCRIPTION
 
-This module provides various tools for working with an OpenAPI Specification document within your application.
+This module provides various tools for working with an OpenAPI Specification v3.1 document within
+your application. The JSON Schema evaluator is fully specification-compliant; the OpenAPI evaluator
+aims to be but some features are not yet available. My belief is that missing features are better
+than features that seem to work but actually cut corners for simplicity.
 
 =head1 CONSTRUCTOR ARGUMENTS
 
@@ -450,8 +453,8 @@ Ignored if L</openapi_document> is provided.
 
 =head2 openapi_schema
 
-The data structure describing the OpenAPI document. See spec link here TODO.
-Ignored if L</openapi_document> is provided.
+The data structure describing the OpenAPI v3.1 document (as specified at
+L<https://spec.openapis.org/oas/v3.1.0>). Ignored if L</openapi_document> is provided.
 
 =head2 evaluator
 
@@ -471,7 +474,7 @@ The URI that identifies the OpenAPI document.
 
 =head2 openapi_schema
 
-The data structure describing the OpenAPI document. See spec link here TODO.
+The data structure describing the OpenAPI document. See L<the specification/https://spec.openapis.org/oas/v3.1.0>.
 
 =head2 evaluator
 
@@ -489,7 +492,7 @@ The L<JSON::Schema::Modern> object to use for all URI resolution and JSON Schema
     },
   );
 
-Validates an L<HTTP::Request> object against the corresponding API specification, returning a
+Validates an L<HTTP::Request> object against the corresponding OpenAPI v3.1 specification, returning a
 L<JSON::Schema::Modern::Result> object.
 
 The second argument is a hashref that contains extra information about the request. Possible values include:
@@ -519,7 +522,10 @@ Only certain permutations of OpenAPI specifications and are supported at this ti
 * for path parameters, only C<style: simple> is supported
 * for query parameters, only C<style: form> is supported
 * for header parameters, only C<style: simple> is supported
-* cookie parameters are not checked
+* cookie parameters are not checked at all yet
+* for query and header parameters, only the first value of each name is considered
+* media-type encodings in parameters are not yet supported
+* responses aren't checked at all yet
 
 =head1 SEE ALSO
 
