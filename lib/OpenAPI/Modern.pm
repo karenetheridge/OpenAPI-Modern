@@ -19,7 +19,7 @@ use Carp 'croak';
 use Safe::Isa;
 use Ref::Util 'is_plain_hashref';
 use Feature::Compat::Try;
-use JSON::Schema::Modern 0.526;
+use JSON::Schema::Modern 0.527;
 use JSON::Schema::Modern::Utilities qw(jsonp canonical_uri E abort);
 use JSON::Schema::Modern::Document::OpenAPI;
 use MooX::HandlesVia;
@@ -298,10 +298,7 @@ sub _validate_body ($self, $state, $body_obj, $message) {
   my $charset = $message->content_charset;
   $decoded_content_ref = \ Encode::decode($charset, $decoded_content_ref->$*, Encode::FB_CROAK);
 
-  # TODO: fix JSM for utf8 decoding.
-  my $media_type_decoder = $content_type eq 'application/json'
-    ? sub { \ JSON::MaybeXS->new(allow_nonref => 1, canonical => 1, utf8 => 0)->decode($_[0]->$*) }
-    : $self->get_media_type($content_type);
+  my $media_type_decoder = $self->get_media_type($content_type);
   abort({ %$state, keyword => 'content', _schema_path_suffix => $content_type },
       'EXCEPTION: unsupported Content-Type "%s": add support with $openapi->add_media_type(...)', $content_type)
     if not $media_type_decoder;
