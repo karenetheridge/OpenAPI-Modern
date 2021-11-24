@@ -296,7 +296,7 @@ sub _validate_body ($self, $state, $body_obj, $message) {
 
   # decode the charset
   my $charset = $message->content_charset;
-  $decoded_content_ref = \ Encode::decode($charset, $decoded_content_ref->$*, Encode::FB_CROAK);
+  $decoded_content_ref = \ Encode::decode($charset, $decoded_content_ref->$*, Encode::FB_CROAK | Encode::LEAVE_SRC);
 
   my $media_type_decoder = $self->get_media_type($content_type);
   abort({ %$state, keyword => 'content', _schema_path_suffix => $content_type },
