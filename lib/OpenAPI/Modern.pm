@@ -3,7 +3,7 @@ use warnings;
 package OpenAPI::Modern;
 # vim: set ts=8 sts=2 sw=2 tw=100 et :
 # ABSTRACT: Validate HTTP requests and responses against an OpenAPI document
-# KEYWORDS: validation evaluation json schema openapi http request response
+# KEYWORDS: validation evaluation JSON Schema OpenAPI Swagger HTTP request response
 
 our $VERSION = '0.001';
 
@@ -352,23 +352,87 @@ __END__
 
 =head1 SYNOPSIS
 
-  use OpenAPI::Modern;
-
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => 'openapi.yaml',
-    openapi_schema => {
-      openapi => '3.1.0',
-      info => {
-        title => 'Test API',
-        version => '1.2.3',
-      },
-      paths => {},
-    },
+    openapi_schema => YAML::PP->new(boolean => 'JSON::PP')->load_string(<<'YAML'),
+  openapi: 3.1.0
+  info:
+    title: Test API
+    version: 1.2.3
+  paths:
+    /foo/{foo_id}:
+      parameters:
+      - name: foo_id
+        in: path
+        required: true
+        schema:
+          pattern: ^[a-z]+$
+      post:
+        parameters:
+        - name: My-Request-Header
+          in: header
+          required: true
+          schema:
+            pattern: ^[0-9]+$
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hello:
+                    type: string
+                    pattern: ^[0-9]+\$
+        responses:
+          200:
+            description: success
+            headers:
+              My-Response-Header:
+                required: true
+                schema:
+                  pattern: ^[0-9]+$
+            content:
+              application/json:
+                schema:
+                  type: object
+                  required: [ status ]
+                  properties:
+                    status:
+                      const: ok
+  YAML
   );
+
+  say 'request:';
+  my $request = HTTP::Request->new(
+    POST => 'http://example.com/foo/bar',
+    [ 'My-Request-Header' => '123', 'Content-Type' => 'application/json' ],
+    '{"hello": 123}',
+  );
+  say $openapi->validate_request($request, {
+    path_template => '/foo/{foo_id}',
+    path_captures => { foo_id => 'bar' },
+  });
+
+  say 'response:';
+  my $response = HTTP::Response->new(
+    200 => 'OK',
+    [ 'My-Response-Header' => '123' ],
+    '{"status": "ok"}',
+  );
+  say $openapi->validate_response($response, '/foo/{foo_id}');
+
+prints:
+
+  request:
+  '/request/body/hello': wrong type (expected string)
+  '/request/body': not all properties are valid
+  response:
+  valid
+
 
 =head1 DESCRIPTION
 
-... TODO!
 This module provides various tools for working with an OpenAPI Specification document within your application.
 
 =head1 CONSTRUCTOR ARGUMENTS
