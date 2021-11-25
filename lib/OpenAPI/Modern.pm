@@ -95,7 +95,7 @@ sub validate_request ($self, $request, $options) {
 
   $state->{schema_path} = jsonp('/paths', $path_template);
   if (not $path_item) {
-    my $valid = E($state, 'missing path-item');
+    my $valid = E($state, 'missing path-item "%s"', $path_template);
     return $self->_result($state);
   }
 

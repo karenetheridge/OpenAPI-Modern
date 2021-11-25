@@ -54,7 +54,7 @@ YAML
           instanceLocation => '/request',
           keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}'),
           absoluteKeywordLocation => str($doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}'))),
-          error => 'missing path-item',
+          error => 'missing path-item "/foo/{foo_id}/bar/{bar_id}"',
         },
       ],
     },
