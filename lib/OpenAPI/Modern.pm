@@ -380,7 +380,7 @@ __END__
                 properties:
                   hello:
                     type: string
-                    pattern: ^[0-9]+\$
+                    pattern: ^[0-9]+$
         responses:
           200:
             description: success
