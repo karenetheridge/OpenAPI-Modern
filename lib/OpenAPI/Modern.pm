@@ -427,6 +427,9 @@ prints:
   response:
   valid
 
+=for Pod::Coverage BUILDARGS
+
+=for :stopwords schemas jsonSchemaDialect metaschema subschema
 
 =head1 DESCRIPTION
 
