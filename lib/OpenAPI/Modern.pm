@@ -553,4 +553,9 @@ Only certain permutations of OpenAPI specifications and are supported at this ti
 * L<https://oai.github.io/Documentation/>
 * L<https://spec.openapis.org/oas/v3.1.0>
 
+=head1 SUPPORT
+
+You can also find me on the L<JSON Schema Slack server|json-schema.slack.com> and L<OpenAPI Slack
+server|open-api.slack.com>, which are also great resources for finding help.
+
 =cut

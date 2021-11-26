@@ -122,4 +122,9 @@ L<https://spec.openapis.org/oas/v3.1.0#schema-object>.
 This vocabulary is normally made available by using the metaschema
 L<https://spec.openapis.org/oas/3.1/dialect/base>.
 
+=head1 SUPPORT
+
+You can also find me on the L<JSON Schema Slack server|json-schema.slack.com> and L<OpenAPI Slack
+server|open-api.slack.com>, which are also great resources for finding help.
+
 =cut

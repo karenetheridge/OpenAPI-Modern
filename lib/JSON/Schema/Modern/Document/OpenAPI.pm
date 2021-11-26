@@ -235,4 +235,9 @@ not a JSON Schema). Note that you may need to explicitly set that attribute as w
 C<json_schema_dialect>, as the default metaschema used by the default C<metaschema_uri> can no
 longer be assumed.
 
+=head1 SUPPORT
+
+You can also find me on the L<JSON Schema Slack server|json-schema.slack.com> and L<OpenAPI Slack
+server|open-api.slack.com>, which are also great resources for finding help.
+
 =cut
