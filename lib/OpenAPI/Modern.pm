@@ -107,7 +107,7 @@ sub validate_request ($self, $request, $options) {
 
   # PARAMETERS
   try {
-    # { $in => { $name => 1 } }  as we process each one.
+    # { $in => { $name => 'path-item'|$method } }  as we process each one.
     my $request_parameters_processed;
 
     # first, consider parameters at the operation level.
@@ -121,9 +121,12 @@ sub validate_request ($self, $request, $options) {
         $param_obj = $self->_resolve_ref($ref, $state);
       }
 
-      ++$request_parameters_processed->{$param_obj->{in}}{
-        $param_obj->{in} eq 'header' ? fc($param_obj->{name}) : $param_obj->{name}
-      };
+      my $fc_name = $param_obj->{in} eq 'header' ? fc($param_obj->{name}) : $param_obj->{name};
+
+      abort($state, 'duplicate path parameter "%s"', $param_obj->{name})
+        if ($request_parameters_processed->{$param_obj->{in}}{$fc_name} // '') eq $method;
+      $request_parameters_processed->{$param_obj->{in}}{$fc_name} = $method;
+
       $state->{data_path} = jsonp($state->{data_path}, $param_obj->{in}, $param_obj->{name});
       my $valid =
           $param_obj->{in} eq 'path' ? $self->_validate_path_parameter($state, $param_obj, $captures)
@@ -141,9 +144,14 @@ sub validate_request ($self, $request, $options) {
       while (my $ref = $param_obj->{'$ref'}) {
         $param_obj = $self->_resolve_ref($ref, $state);
       }
-      next if $request_parameters_processed->{$param_obj->{in}}{
-        $param_obj->{in} eq 'header' ? fc($param_obj->{name}) : $param_obj->{name}
-      }++;
+
+      my $fc_name = $param_obj->{in} eq 'header' ? fc($param_obj->{name}) : $param_obj->{name};
+
+      abort($state, 'duplicate path parameter "%s"', $param_obj->{name})
+        if ($request_parameters_processed->{$param_obj->{in}}{$fc_name} // '') eq 'path-item';
+      next if exists $request_parameters_processed->{$param_obj->{in}}{$fc_name};
+      $request_parameters_processed->{$param_obj->{in}}{$fc_name} = 'path-item';
+
       $state->{data_path} = jsonp($state->{data_path}, $param_obj->{in}, $param_obj->{name});
       my $valid =
           $param_obj->{in} eq 'path' ? $self->_validate_path_parameter($state, $param_obj, $captures)

@@ -622,4 +622,85 @@ YAML
   );
 };
 
+subtest 'document errors' => sub {
+  my $request = HTTP::Request->new(
+    POST => 'http://example.com/some/path',
+  );
+  my $openapi = OpenAPI::Modern->new(
+    openapi_uri => 'openapi.yaml',
+    openapi_schema => do {
+      YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
+$openapi_preamble
+components:
+  parameters:
+    foo:
+      name: foo_id
+      in: path
+      required: true
+      schema: {}
+paths:
+  /foo/{foo_id}:
+    parameters:
+    - \$ref: '#/components/parameters/foo'
+    - \$ref: '#/components/parameters/foo'
+    post: {}
+YAML
+    },
+  );
+  cmp_deeply(
+    my $result = $openapi->validate_request($request,
+      { path_template => '/foo/{foo_id}', path_captures => { foo_id => 123 }})->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request',
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}', qw(parameters 1 $ref)),
+          absoluteKeywordLocation => str($doc_uri->clone->fragment('/components/parameters/foo')),
+          error => 'duplicate path parameter "foo_id"',
+        },
+      ],
+    },
+    'duplicate path parameters in path-item section',
+  );
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => 'openapi.yaml',
+    openapi_schema => do {
+      YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
+$openapi_preamble
+components:
+  parameters:
+    foo:
+      name: foo_id
+      in: path
+      required: true
+      schema: {}
+paths:
+  /foo/{foo_id}:
+    post:
+      parameters:
+      - \$ref: '#/components/parameters/foo'
+      - \$ref: '#/components/parameters/foo'
+YAML
+    },
+  );
+  cmp_deeply(
+    $result = $openapi->validate_request($request,
+      { path_template => '/foo/{foo_id}', path_captures => { foo_id => 123 }})->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request',
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}', qw(post parameters 1 $ref)),
+          absoluteKeywordLocation => str($doc_uri->clone->fragment('/components/parameters/foo')),
+          error => 'duplicate path parameter "foo_id"',
+        },
+      ],
+    },
+    'duplicate path parameters in path-item section',
+  );
+};
+
 done_testing;
