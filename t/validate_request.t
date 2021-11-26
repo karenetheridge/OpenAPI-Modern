@@ -30,7 +30,7 @@ YAML
 
 my $doc_uri = Mojo::URL->new('openapi.yaml');
 
-subtest 'error handling' => sub {
+subtest 'validation errors' => sub {
   my $request = HTTP::Request->new(
     POST => 'http://example.com/some/path',
   );
