@@ -488,7 +488,7 @@ The L<JSON::Schema::Modern> object to use for all URI resolution and JSON Schema
     $request,
     {
       path_captures => { arg1 => 1, arg2 => 2 },
-      path_spec => '/foo/{arg1}/bar/{arg2}',
+      path_template => '/foo/{arg1}/bar/{arg2}',
     },
   );
 
@@ -507,7 +507,7 @@ The second argument is a hashref that contains extra information about the reque
   $result = $openapi->validate_response(
     $response,
     {
-      path_spec => '/foo/{arg1}/bar/{arg2}',
+      path_template => '/foo/{arg1}/bar/{arg2}',
     },
   );
 
