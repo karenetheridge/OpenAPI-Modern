@@ -99,10 +99,10 @@ sub validate_request ($self, $request, $options) {
     return $self->_result($state);
   }
 
-  my $operation = $path_item->{ $method };
+  my $operation = $path_item->{$method};
   if (not $operation) {
-      my $valid = E({ %$state, _schema_path_suffix => $method }, 'missing operation');
-      return $self->_result($state);
+    my $valid = E({ %$state, _schema_path_suffix => $method }, 'missing operation');
+    return $self->_result($state);
   }
 
   # PARAMETERS
@@ -115,10 +115,7 @@ sub validate_request ($self, $request, $options) {
     #TODO: we can wrap another loop around these two sections because they are so similar.
 
     foreach my $idx (0 .. ($operation->{parameters}//[])->$#*) {
-      my $state = {
-        %$state,
-        schema_path => jsonp($state->{schema_path}, $method, 'parameters', $idx),
-      };
+      my $state = { %$state, schema_path => jsonp($state->{schema_path}, $method, 'parameters', $idx) };
       my $param_obj = $operation->{parameters}[$idx];
       while (my $ref = $param_obj->{'$ref'}) {
         $param_obj = $self->_resolve_ref($ref, $state);
@@ -139,10 +136,7 @@ sub validate_request ($self, $request, $options) {
     # parameters at the path-item level are also considered, if not already seen at the operation level
 
     foreach my $idx (0 .. ($path_item->{parameters}//[])->$#*) {
-      my $state = {
-        %$state,
-        schema_path => jsonp('/paths', $path_template, 'parameters', $idx),
-      };
+      my $state = { %$state, schema_path => jsonp($state->{schema_path}, 'parameters', $idx) };
       my $param_obj = $path_item->{parameters}[$idx];
       while (my $ref = $param_obj->{'$ref'}) {
         $param_obj = $self->_resolve_ref($ref, $state);
@@ -249,7 +243,7 @@ sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
 # validates a header, from either the request or the response
 sub _validate_header_parameter ($self, $state, $param_obj, $headers) {
   return E({ %$state, keyword => 'content' }, 'content not yet supported')
-      if exists $param_obj->{content};
+    if exists $param_obj->{content};
 
   # NOTE: for now, we will only support a single value, as a string.
   my @values = $headers->header($param_obj->{name});

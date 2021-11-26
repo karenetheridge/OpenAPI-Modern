@@ -18,7 +18,6 @@ use constant { true => JSON::PP::true, false => JSON::PP::false };
 use HTTP::Request;
 use YAML::PP;
 
-
 my $path_template = '/foo/{foo_id}/bar/{bar_id}';
 
 my $openapi_preamble = <<'YAML';
@@ -59,12 +58,12 @@ YAML
       ],
     },
     'path template does not exist under /paths',
-);
+  );
 
-$openapi = OpenAPI::Modern->new(
-  openapi_uri => 'openapi.yaml',
-  openapi_schema => do {
-    YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => 'openapi.yaml',
+    openapi_schema => do {
+      YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
 $openapi_preamble
 paths:
   /foo/{foo_id}/bar/{bar_id}: {}
@@ -86,12 +85,12 @@ YAML
       ],
     },
     'operation does not exist under /paths/<path-template>',
-);
+  );
 
-$openapi = OpenAPI::Modern->new(
-  openapi_uri => 'openapi.yaml',
-  openapi_schema => do {
-    YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => 'openapi.yaml',
+    openapi_schema => do {
+      YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
 $openapi_preamble
 paths:
   /foo/{foo_id}/bar/{bar_id}:
@@ -360,7 +359,6 @@ YAML
 
   $request->uri('http://example.com/some/path?alpha=hello');
   $request->headers->header('FOO-BAR' => 'header value');    # exactly matches path parameter
-
   cmp_deeply(
     $result = $openapi->validate_request($request,
       { path_template => $path_template, path_captures => { foo_id => 'foo', bar_id => 'bar' } })->TO_JSON,
@@ -531,6 +529,7 @@ YAML
     'request body is missing',
   );
 
+
   $request->content_type('text/plain');
   $request->content('plain text');
   cmp_deeply(
@@ -549,6 +548,7 @@ YAML
     },
     'wrong Content-Type',
   );
+
 
   $request->content_type('text/html');
   $request->content('html text');
@@ -569,6 +569,7 @@ YAML
     'unsupported Content-Type',
   );
 
+
   $request->content_type('application/json; charset=ISO-8859-1');
   $request->content('{"alpha": "123", "beta": "'.chr(0xe9).'clair"}');
   cmp_deeply(
@@ -577,6 +578,7 @@ YAML
     { valid => true },
     'content matches',
   );
+
 
   $request->content_type('application/json; charset=UTF-8');
   $request->content('{"alpha": "foo", "gamma": "o.o"}');
@@ -608,6 +610,7 @@ YAML
     },
     'decoded content does not match the schema',
   );
+
 
   my $disapprove = v224.178.160.95.224.178.160; # utf-8-encoded "ಠ_ಠ"
   $request->content('{"alpha": "123", "gamma": "'.$disapprove.'"}');
