@@ -1,6 +1,6 @@
 Revision history for JSON-Schema-Modern-Document-OpenAPI
 
-{{$NEXT}}
+0.003     2021-11-26 01:01:47Z
           - OpenAPI::Modern is born
 
 0.002     2021-11-17 05:49:29Z
