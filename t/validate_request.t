@@ -299,6 +299,14 @@ YAML
     openapi_schema => do {
       YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
 $openapi_preamble
+components:
+  parameters:
+    foo-header:
+      name: Foo-Bar
+      in: header
+      required: true
+      schema:
+        pattern: ^[0-9]+\$
 paths:
   /foo/{foo_id}/bar/{bar_id}:
     parameters:
@@ -318,11 +326,7 @@ paths:
         required: true
         schema:
           pattern: ^[0-9]+\$
-      - name: Foo-Bar
-        in: header
-        required: true
-        schema:
-          pattern: ^[0-9]+\$
+      - \$ref: '#/components/parameters/foo-header'
       - name: beta
         in: query
         required: false
@@ -351,8 +355,8 @@ YAML
         },
         {
           instanceLocation => '/request/header/Foo-Bar',
-          keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 2 required)),
-          absoluteKeywordLocation => str($doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 2 required)))),
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 2 $ref required)),
+          absoluteKeywordLocation => str($doc_uri->clone->fragment('/components/parameters/foo-header/required')),
           error => 'missing header: Foo-Bar',
         },
       ],
@@ -383,8 +387,8 @@ YAML
         },
         {
           instanceLocation => '/request/header/Foo-Bar',
-          keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 2 schema pattern)),
-          absoluteKeywordLocation => str($doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 2 schema pattern)))),
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 2 $ref schema pattern)),
+          absoluteKeywordLocation => str($doc_uri->clone->fragment('/components/parameters/foo-header/schema/pattern')),
           error => 'pattern does not match',
         },
         {

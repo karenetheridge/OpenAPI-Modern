@@ -321,7 +321,10 @@ sub _evaluate_subschema ($self, $data, $schema, $state) {
 
   my $result = $self->evaluator->evaluate(
     $data, canonical_uri($state),
-    { data_path => $state->{data_path}, traversed_schema_path => $state->{schema_path} },
+    {
+      data_path => $state->{data_path},
+      traversed_schema_path => $state->{traversed_schema_path}.$state->{schema_path},
+    },
   );
   push $state->{errors}->@*, $result->errors;
   push $state->{annotations}->@*, $result->annotations if $self->evaluator->collect_annotations;
