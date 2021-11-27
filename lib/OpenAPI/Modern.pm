@@ -169,7 +169,12 @@ sub validate_request ($self, $request, $options) {
         $body_obj = $self->_resolve_ref($ref, $state);
       }
 
-      my $valid = $self->_validate_body($state, $body_obj, $request);
+      if ($body_obj->{required} and not length($request->content_ref->$*)) {
+        ()= E({ %$state, keyword => 'required' }, 'request body is required but missing');
+      }
+      else {
+        ()= $self->_validate_body_content($state, $body_obj->{content}, $request);
+      }
     }
   }
   catch ($e) {
@@ -254,22 +259,14 @@ sub _validate_cookie_parameter ($self, $state, $param_obj, $request) {
   return E($state, 'cookie parameters not yet supported');
 }
 
-sub _validate_body ($self, $state, $body_obj, $message) {
-  my $content_ref = $message->content_ref;
-  my $type = $message->isa('HTTP::Request') ? 'request'
-    : $message->isa('HTTP::Response') ? 'response'
-    : return E($state, 'unrecognized object type %s', ref($message));
-
-  return E({ %$state, keyword => 'required' }, '%s body is required but missing', $type)
-    if $body_obj->{required} and not length($content_ref->$*);
-
+sub _validate_body_content ($self, $state, $content_obj, $message) {
   my $content_type = $message->content_type;
 
   # TODO: respect wildcard entries in the openapi document
   return E({ %$state, keyword => 'content' }, 'incorrect Content-Type "%s"', $content_type)
-    if not exists $body_obj->{content}{$content_type};
+    if not exists $content_obj->{$content_type};
 
-  die 'found encoding: TODO' if exists $body_obj->{content}{$content_type}{encoding};
+  die 'found encoding: TODO' if exists $content_obj->{$content_type}{encoding};
 
   # undoes the Content-Encoding header
   my $decoded_content_ref = $message->decoded_content(ref => 1);
