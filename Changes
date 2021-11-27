@@ -2,6 +2,9 @@ Revision history for JSON-Schema-Modern-Document-OpenAPI
 
 {{$NEXT}}
           - implemented validate_response()
+          - when validating requests and responses, values that look like
+            numbers, and are evaluated as numbers in schemas, are now coerced
+            to numbers automatically
 
 0.003     2021-11-26 01:01:47Z
           - OpenAPI::Modern is born

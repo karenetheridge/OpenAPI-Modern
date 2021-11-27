@@ -17,11 +17,12 @@ no if "$]" >= 5.033001, feature => 'multidimensional';
 no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 use Carp 'croak';
 use Safe::Isa;
-use Ref::Util 'is_plain_hashref';
+use Ref::Util qw(is_plain_hashref is_plain_arrayref);
 use List::Util 'first';
+use Scalar::Util 'looks_like_number';
 use Feature::Compat::Try;
 use JSON::Schema::Modern 0.527;
-use JSON::Schema::Modern::Utilities qw(jsonp canonical_uri E abort);
+use JSON::Schema::Modern::Utilities qw(jsonp canonical_uri E abort get_type);
 use JSON::Schema::Modern::Document::OpenAPI;
 use MooX::HandlesVia;
 use MooX::TypeTiny 0.002002;
@@ -286,7 +287,7 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
   return E({ %$state, keyword => 'content' }, 'content not yet supported')
     if exists $header_obj->{content};
 
-  # NOTE: for now, we will only support a single value, as a string.
+  # NOTE: for now, we will only support a single value.
   my @values = $headers->header($header_name);
   if (not @values) {
     return E({ %$state, keyword => 'required' }, 'missing header: %s', $header_name)
@@ -295,7 +296,7 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
   }
 
   $state = { %$state, schema_path => jsonp($state->{schema_path}, 'schema') };
-  $self->_evaluate_subschema($values[0], $param_obj->{schema}, $state);
+  $self->_evaluate_subschema($values[0], $header_obj->{schema}, $state);
 }
 
 sub _validate_cookie_parameter ($self, $state, $param_obj, $request) {
@@ -339,7 +340,7 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
   $decoded_content_ref = $media_type_decoder->($decoded_content_ref);
 
   $state = { %$state, schema_path => jsonp($state->{schema_path}, 'content', $content_type, 'schema') };
-  $self->_evaluate_subschema($decoded_content_ref->$*, $body_obj->{content}{$content_type}{schema}, $state);
+  $self->_evaluate_subschema($decoded_content_ref->$*, $content_obj->{$content_type}{schema}, $state);
 }
 
 # wrap a result object around the errors
@@ -372,6 +373,21 @@ sub _resolve_ref ($self, $ref, $state) {
 sub _evaluate_subschema ($self, $data, $schema, $state) {
   return 1 if is_plain_hashref($schema) ? !keys(%$schema) : $schema; # true schema
 
+  # treat numeric-looking data as a string, unless "type" explicitly requests number or integer.
+  my $type = get_type($data);
+  if ((grep $type eq $_, qw(string number)) and looks_like_number($data)) {
+    if (is_plain_hashref($schema) and exists $schema->{type} and not is_plain_arrayref($schema->{type})
+        and grep $schema->{type} eq $_, qw(number integer)) {
+      $data = $data+0;
+    }
+    else {
+      $data = $data.'';
+    }
+  }
+
+  # TODO: also handle multi-valued elements like headers and query parameters, when type=array requested
+  # (and possibly coerce their numeric-looking elements as well)
+
   my $result = $self->evaluator->evaluate(
     $data, canonical_uri($state),
     {
@@ -379,6 +395,7 @@ sub _evaluate_subschema ($self, $data, $schema, $state) {
       traversed_schema_path => $state->{traversed_schema_path}.$state->{schema_path},
     },
   );
+
   push $state->{errors}->@*, $result->errors;
   push $state->{annotations}->@*, $result->annotations if $self->evaluator->collect_annotations;
   return !!$result;
@@ -471,7 +488,7 @@ prints:
 
 =for Pod::Coverage BUILDARGS
 
-=for :stopwords schemas jsonSchemaDialect metaschema subschema
+=for :stopwords schemas jsonSchemaDialect metaschema subschema perlish
 
 =head1 DESCRIPTION
 
@@ -574,6 +591,15 @@ References (with the C<$ref>) keyword may reference any position within the enti
 as such, json pointers are relative to the B<root> of the document, not the root of the subschema
 itself. References to other documents are also permitted, provided those documents have been loaded
 into the evaluator in advance (see L<JSON::Schema::Modern/add_schema>).
+
+Values are generally treated as strings for the purpose of schema evaluation. However, if the top
+level of the schema contains C<"type": "number"> or C<"type": "integer">, then the value will be
+(attempted to be) coerced into a number before being passed to the JSON Schema evaluator.
+Type coercion will B<not> be done if the C<type> keyword is omitted.
+This lets you use numeric keywords such as C<maximum> and C<multipleOf> in your schemas.
+It also resolves inconsistencies that can arise when request and response objects are created
+manually in a test environment (as opposed to being parsed from incoming network traffic) and can
+therefore inadvertently contain perlish numbers rather than strings.
 
 =head1 LIMITATIONS
 

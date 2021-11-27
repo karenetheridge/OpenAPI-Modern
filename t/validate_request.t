@@ -365,7 +365,7 @@ YAML
   );
 
 
-  $request->uri('http://example.com/some/path?alpha=hello&beta=hi');
+  $request->uri('http://example.com/some/path?alpha=hello&beta=3.1415');
   $request->headers->header('FOO-BAR' => 'header value');    # exactly matches path parameter
   cmp_deeply(
     ($result = $openapi->validate_request($request,
@@ -713,6 +713,159 @@ YAML
       ],
     },
     'duplicate path parameters in path-item section',
+  );
+};
+
+subtest 'type handling of values for evaluation' => sub {
+  my $openapi = OpenAPI::Modern->new(
+    openapi_uri => 'openapi.yaml',
+    openapi_schema => do {
+      YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
+$openapi_preamble
+paths:
+  /foo/{foo_id}:
+    parameters:
+    - name: foo_id
+      in: path
+      required: true
+      schema:
+        pattern: ^[a-z]\$
+    post:
+      parameters:
+      - name: bar
+        in: query
+        required: false
+        schema:
+          pattern: ^[a-z]\$
+      - name: Foo-Bar
+        in: header
+        required: false
+        schema:
+          pattern: ^[a-z]\$
+      requestBody:
+        required: true
+        content:
+          text/plain:
+            schema:
+              pattern: ^[a-z]\$
+YAML
+      },
+  );
+
+  my $request = HTTP::Request->new(POST => 'http://example.com/foo/123');
+  $request->uri($request->uri.'?bar=456');
+  $request->header('Foo-Bar' => 789);
+  $request->content_type('text/plain');
+  $request->content(666);
+
+  cmp_deeply(
+    (my $result = $openapi->validate_request($request,
+      { path_template => '/foo/{foo_id}', path_captures => { foo_id => 123 } }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/query/bar',
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}', qw(post parameters 0 schema pattern)),
+          absoluteKeywordLocation => str($doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}', qw(post parameters 0 schema pattern)))),
+          error => 'pattern does not match',
+        },
+        {
+          instanceLocation => '/request/header/Foo-Bar',
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}', qw(post parameters 1 schema pattern)),
+          absoluteKeywordLocation => str($doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}', qw(post parameters 1 schema pattern)))),
+          error => 'pattern does not match',
+        },
+        {
+          instanceLocation => '/request/path/foo_id',
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}', qw(parameters 0 schema pattern)),
+          absoluteKeywordLocation => str($doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}', qw(parameters 0 schema pattern)))),
+          error => 'pattern does not match',
+        },
+        {
+          instanceLocation => '/request/body',
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}', qw(post requestBody content text/plain schema pattern)),
+          absoluteKeywordLocation => str($doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}', qw(post requestBody content text/plain schema pattern)))),
+          error => 'pattern does not match',
+        },
+      ],
+    },
+    'numeric values are treated as strings by default',
+  );
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => 'openapi.yaml',
+    openapi_schema => do {
+      YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
+$openapi_preamble
+paths:
+  /foo/{foo_id}:
+    parameters:
+    - name: foo_id
+      in: path
+      required: true
+      schema:
+        type: number
+        maximum: 10
+    post:
+      parameters:
+      - name: bar
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 10
+      - name: Foo-Bar
+        in: header
+        required: false
+        schema:
+          type: number
+          maximum: 10
+      requestBody:
+        required: true
+        content:
+          text/plain:
+            schema:
+              type: number
+              maximum: 10
+YAML
+      },
+  );
+
+  cmp_deeply(
+    ($result = $openapi->validate_request($request,
+      { path_template => '/foo/{foo_id}', path_captures => { foo_id => 123 } }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/query/bar',
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}', qw(post parameters 0 schema maximum)),
+          absoluteKeywordLocation => str($doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}', qw(post parameters 0 schema maximum)))),
+          error => 'value is larger than 10',
+        },
+        {
+          instanceLocation => '/request/header/Foo-Bar',
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}', qw(post parameters 1 schema maximum)),
+          absoluteKeywordLocation => str($doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}', qw(post parameters 1 schema maximum)))),
+          error => 'value is larger than 10',
+        },
+        {
+          instanceLocation => '/request/path/foo_id',
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}', qw(parameters 0 schema maximum)),
+          absoluteKeywordLocation => str($doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}', qw(parameters 0 schema maximum)))),
+          error => 'value is larger than 10',
+        },
+        {
+          instanceLocation => '/request/body',
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}', qw(post requestBody content text/plain schema maximum)),
+          absoluteKeywordLocation => str($doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}', qw(post requestBody content text/plain schema maximum)))),
+          error => 'value is larger than 10',
+        },
+      ],
+    },
+    'numeric values are treated as numbers when explicitly type-checked as numbers',
   );
 };
 
