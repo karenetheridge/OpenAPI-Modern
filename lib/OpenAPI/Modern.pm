@@ -99,7 +99,8 @@ sub validate_request ($self, $request, $options) {
     abort($state, 'missing path-item "%s"', $path_template) if not $path_item;
 
     my $operation = $path_item->{$method};
-    abort({ %$state, _schema_path_suffix => $method }, 'missing operation') if not $operation;
+    abort({ %$state, _schema_path_suffix => $method }, 'missing entry for HTTP method "%s"', $method)
+      if not $operation;
 
     # PARAMETERS
     # { $in => { $name => 'path-item'|$method } }  as we process each one.

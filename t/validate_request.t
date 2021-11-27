@@ -80,7 +80,7 @@ YAML
           instanceLocation => '/request',
           keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', 'post'),
           absoluteKeywordLocation => str($doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', 'post'))),
-          error => 'missing operation',
+          error => 'missing entry for HTTP method "post"',
         },
       ],
     },
