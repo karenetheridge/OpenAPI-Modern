@@ -125,7 +125,7 @@ sub validate_request ($self, $request, $options) {
       my $valid =
           $param_obj->{in} eq 'path' ? $self->_validate_path_parameter($state, $param_obj, $captures)
         : $param_obj->{in} eq 'query' ? $self->_validate_query_parameter($state, $param_obj, $request->uri)
-        : $param_obj->{in} eq 'header' ? $self->_validate_header_parameter($state, $param_obj, $request->headers)
+        : $param_obj->{in} eq 'header' ? $self->_validate_header_parameter($state, $param_obj->{name}, $param_obj, $request->headers)
         : $param_obj->{in} eq 'cookie' ? $self->_validate_cookie_parameter($state, $param_obj, $request)
         : abort($state, 'unrecognized "in" value "%s"', $param_obj->{in});
     }
@@ -150,7 +150,7 @@ sub validate_request ($self, $request, $options) {
       my $valid =
           $param_obj->{in} eq 'path' ? $self->_validate_path_parameter($state, $param_obj, $captures)
         : $param_obj->{in} eq 'query' ? $self->_validate_query_parameter($state, $param_obj, $request->uri)
-        : $param_obj->{in} eq 'header' ? $self->_validate_header_parameter($state, $param_obj, $request->headers)
+        : $param_obj->{in} eq 'header' ? $self->_validate_header_parameter($state, $param_obj->{name}, $param_obj, $request->headers)
         : $param_obj->{in} eq 'cookie' ? $self->_validate_cookie_parameter($state, $param_obj, $request)
         : abort($state, 'unrecognized "in" value "%s"', $param_obj->{in});
     }
@@ -233,15 +233,15 @@ sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
 }
 
 # validates a header, from either the request or the response
-sub _validate_header_parameter ($self, $state, $param_obj, $headers) {
+sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $headers) {
   return E({ %$state, keyword => 'content' }, 'content not yet supported')
-    if exists $param_obj->{content};
+    if exists $header_obj->{content};
 
   # NOTE: for now, we will only support a single value, as a string.
-  my @values = $headers->header($param_obj->{name});
+  my @values = $headers->header($header_name);
   if (not @values) {
-    return E({ %$state, keyword => 'required' }, 'missing header: %s', $param_obj->{name})
-      if $param_obj->{required};
+    return E({ %$state, keyword => 'required' }, 'missing header: %s', $header_name)
+      if $header_obj->{required};
     return 1;
   }
 
