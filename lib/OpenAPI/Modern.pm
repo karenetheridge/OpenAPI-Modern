@@ -88,25 +88,19 @@ sub validate_request ($self, $request, $options) {
   my $captures = $options->{path_captures};
   croak 'missing parameter path_template' if not length $path_template;
   croak 'missing parameter captures ' if not is_plain_hashref($captures);
-  my $method = lc $request->method;
 
-  my $schema = $self->openapi_document->schema;
-  my $path_item = $schema->{paths}{$path_template};
-
-  $state->{schema_path} = jsonp('/paths', $path_template);
-  if (not $path_item) {
-    my $valid = E($state, 'missing path-item "%s"', $path_template);
-    return $self->_result($state);
-  }
-
-  my $operation = $path_item->{$method};
-  if (not $operation) {
-    my $valid = E({ %$state, _schema_path_suffix => $method }, 'missing operation');
-    return $self->_result($state);
-  }
-
-  # PARAMETERS
   try {
+    my $method = lc $request->method;
+    my $schema = $self->openapi_document->schema;
+    $state->{schema_path} = jsonp('/paths', $path_template);
+
+    my $path_item = $schema->{paths}{$path_template};
+    abort($state, 'missing path-item "%s"', $path_template) if not $path_item;
+
+    my $operation = $path_item->{$method};
+    abort({ %$state, _schema_path_suffix => $method }, 'missing operation') if not $operation;
+
+    # PARAMETERS
     # { $in => { $name => 'path-item'|$method } }  as we process each one.
     my $request_parameters_processed;
 
@@ -266,7 +260,8 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
   return E({ %$state, keyword => 'content' }, 'incorrect Content-Type "%s"', $content_type)
     if not exists $content_obj->{$content_type};
 
-  die 'found encoding: TODO' if exists $content_obj->{$content_type}{encoding};
+  return E({ %$state, keyword => 'encoding' }, 'encoding not yet supported')
+    if exists $content_obj->{$content_type}{encoding};
 
   # undoes the Content-Encoding header
   my $decoded_content_ref = $message->decoded_content(ref => 1);
