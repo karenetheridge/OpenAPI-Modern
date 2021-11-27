@@ -44,8 +44,8 @@ YAML
     },
   );
   cmp_deeply(
-    my $result = $openapi->validate_request($request,
-      { path_template => $path_template, path_captures => {} })->TO_JSON,
+    (my $result = $openapi->validate_request($request,
+      { path_template => $path_template, path_captures => {} }))->TO_JSON,
     {
       valid => false,
       errors => [
@@ -71,8 +71,8 @@ YAML
     },
   );
   cmp_deeply(
-    $result = $openapi->validate_request($request,
-      { path_template => $path_template, path_captures => {}})->TO_JSON,
+    ($result = $openapi->validate_request($request,
+      { path_template => $path_template, path_captures => {}}))->TO_JSON,
     {
       valid => false,
       errors => [
@@ -99,8 +99,8 @@ YAML
     },
   );
   cmp_deeply(
-    $result = $openapi->validate_request($request,
-      { path_template => $path_template, path_captures => {}})->TO_JSON,
+    ($result = $openapi->validate_request($request,
+      { path_template => $path_template, path_captures => {}}))->TO_JSON,
     { valid => true },
     'operation can be empty',
   );
@@ -119,8 +119,8 @@ YAML
     },
   );
   cmp_deeply(
-    $result = $openapi->validate_request($request,
-      { path_template => $path_template, path_captures => {}})->TO_JSON,
+    ($result = $openapi->validate_request($request,
+      { path_template => $path_template, path_captures => {}}))->TO_JSON,
     {
       valid => false,
       errors => [
@@ -149,8 +149,8 @@ YAML
     },
   );
   cmp_deeply(
-    $result = $openapi->validate_request($request,
-      { path_template => $path_template, path_captures => {}})->TO_JSON,
+    ($result = $openapi->validate_request($request,
+      { path_template => $path_template, path_captures => {}}))->TO_JSON,
     {
       valid => false,
       errors => [
@@ -183,8 +183,8 @@ YAML
       },
   );
   cmp_deeply(
-    $result = $openapi->validate_request($request,
-      { path_template => $path_template, path_captures => {}})->TO_JSON,
+    ($result = $openapi->validate_request($request,
+      { path_template => $path_template, path_captures => {}}))->TO_JSON,
     {
       valid => false,
       errors => [
@@ -217,8 +217,8 @@ YAML
     },
   );
   cmp_deeply(
-    $result = $openapi->validate_request($request,
-      { path_template => $path_template, path_captures => {}})->TO_JSON,
+    ($result = $openapi->validate_request($request,
+      { path_template => $path_template, path_captures => {}}))->TO_JSON,
     {
       valid => false,
       errors => [
@@ -266,8 +266,8 @@ YAML
   $request->uri($request->uri . '?query1=value');
   $request->header('Header1' => 'header value');
   cmp_deeply(
-    $result = $openapi->validate_request($request,
-      { path_template => $path_template, path_captures => {}})->TO_JSON,
+    ($result = $openapi->validate_request($request,
+      { path_template => $path_template, path_captures => {}}))->TO_JSON,
     {
       valid => false,
       errors => [
@@ -336,8 +336,8 @@ YAML
     # note that bar_id is not listed as a path parameter
   );
   cmp_deeply(
-    $result = $openapi->validate_request($request,
-      { path_template => $path_template, path_captures => { bar_id => 'bar' } })->TO_JSON,
+    ($result = $openapi->validate_request($request,
+      { path_template => $path_template, path_captures => { bar_id => 'bar' } }))->TO_JSON,
     {
       valid => false,
       errors => [
@@ -368,8 +368,8 @@ YAML
   $request->uri('http://example.com/some/path?alpha=hello&beta=hi');
   $request->headers->header('FOO-BAR' => 'header value');    # exactly matches path parameter
   cmp_deeply(
-    $result = $openapi->validate_request($request,
-      { path_template => $path_template, path_captures => { foo_id => 'foo', bar_id => 'bar' } })->TO_JSON,
+    ($result = $openapi->validate_request($request,
+      { path_template => $path_template, path_captures => { foo_id => 'foo', bar_id => 'bar' } }))->TO_JSON,
     {
       valid => false,
       errors => [
@@ -438,8 +438,8 @@ YAML
   );
 
   cmp_deeply(
-    $result = $openapi->validate_request($request,
-      { path_template => $path_template, path_captures => { foo_id => 'foo', bar_id => 'bar' } })->TO_JSON,
+    ($result = $openapi->validate_request($request,
+      { path_template => $path_template, path_captures => { foo_id => 'foo', bar_id => 'bar' } }))->TO_JSON,
     {
       valid => false,
       errors => [
@@ -476,8 +476,8 @@ YAML
   );
 
   cmp_deeply(
-    $result = $openapi->validate_request($request,
-      { path_template => $path_template, path_captures => {} })->TO_JSON,
+    ($result = $openapi->validate_request($request,
+      { path_template => $path_template, path_captures => {} }))->TO_JSON,
     {
       valid => false,
       errors => [
@@ -527,8 +527,8 @@ YAML
   # TODO: combine this test with an earlier one, e.g. testing required parameters.
   # note: no content!
   cmp_deeply(
-    $result = $openapi->validate_request($request,
-      { path_template => $path_template, path_captures => {} })->TO_JSON,
+    ($result = $openapi->validate_request($request,
+      { path_template => $path_template, path_captures => {} }))->TO_JSON,
     {
       valid => false,
       errors => [
@@ -547,8 +547,8 @@ YAML
   $request->content_type('text/plain');
   $request->content('plain text');
   cmp_deeply(
-    $result = $openapi->validate_request($request,
-      { path_template => $path_template, path_captures => {} })->TO_JSON,
+    ($result = $openapi->validate_request($request,
+      { path_template => $path_template, path_captures => {} }))->TO_JSON,
     {
       valid => false,
       errors => [
@@ -567,8 +567,8 @@ YAML
   $request->content_type('text/html');
   $request->content('html text');
   cmp_deeply(
-    $result = $openapi->validate_request($request,
-      { path_template => $path_template, path_captures => {} })->TO_JSON,
+    ($result = $openapi->validate_request($request,
+      { path_template => $path_template, path_captures => {} }))->TO_JSON,
     {
       valid => false,
       errors => [
@@ -597,8 +597,8 @@ YAML
   $request->content_type('application/json; charset=UTF-8');
   $request->content('{"alpha": "foo", "gamma": "o.o"}');
   cmp_deeply(
-    $result = $openapi->validate_request($request,
-      { path_template => $path_template, path_captures => {} })->TO_JSON,
+    ($result = $openapi->validate_request($request,
+      { path_template => $path_template, path_captures => {} }))->TO_JSON,
     {
       valid => false,
       errors => [
@@ -629,8 +629,8 @@ YAML
   my $disapprove = v224.178.160.95.224.178.160; # utf-8-encoded "ಠ_ಠ"
   $request->content('{"alpha": "123", "gamma": "'.$disapprove.'"}');
   cmp_deeply(
-    $result = $openapi->validate_request($request,
-      { path_template => $path_template, path_captures => {} })->TO_JSON,
+    ($result = $openapi->validate_request($request,
+      { path_template => $path_template, path_captures => {} }))->TO_JSON,
     { valid => true },
     'decoded content matches the schema',
   );
@@ -662,8 +662,8 @@ YAML
     },
   );
   cmp_deeply(
-    my $result = $openapi->validate_request($request,
-      { path_template => '/foo/{foo_id}', path_captures => { foo_id => 123 }})->TO_JSON,
+    (my $result = $openapi->validate_request($request,
+      { path_template => '/foo/{foo_id}', path_captures => { foo_id => 123 }}))->TO_JSON,
     {
       valid => false,
       errors => [
@@ -700,8 +700,8 @@ YAML
     },
   );
   cmp_deeply(
-    $result = $openapi->validate_request($request,
-      { path_template => '/foo/{foo_id}', path_captures => { foo_id => 123 }})->TO_JSON,
+    ($result = $openapi->validate_request($request,
+      { path_template => '/foo/{foo_id}', path_captures => { foo_id => 123 }}))->TO_JSON,
     {
       valid => false,
       errors => [

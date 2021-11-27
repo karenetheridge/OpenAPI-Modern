@@ -93,13 +93,14 @@ sub validate_request ($self, $request, $options) {
   try {
     my $method = lc $request->method;
     my $schema = $self->openapi_document->schema;
-    $state->{schema_path} = jsonp('/paths', $path_template);
 
     my $path_item = $schema->{paths}{$path_template};
-    abort($state, 'missing path-item "%s"', $path_template) if not $path_item;
+    abort({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
+      'missing path-item "%s"', $path_template) if not $path_item;
 
+    $state->{schema_path} = jsonp('/paths', $path_template);
     my $operation = $path_item->{$method};
-    abort({ %$state, _schema_path_suffix => $method }, 'missing entry for HTTP method "%s"', $method)
+    abort({ %$state, keyword => $method }, 'missing entry for HTTP method "%s"', $method)
       if not $operation;
 
     # PARAMETERS
