@@ -122,7 +122,7 @@ sub validate_request ($self, $request, $options) {
       }
 
       ++$request_parameters_processed->{$param_obj->{in}}{
-        $param_obj->{in} eq 'header' ? lc($param_obj->{name}) : $param_obj->{name}
+        $param_obj->{in} eq 'header' ? fc($param_obj->{name}) : $param_obj->{name}
       };
       $state->{data_path} = jsonp($state->{data_path}, $param_obj->{in}, $param_obj->{name});
       my $valid =
@@ -142,7 +142,7 @@ sub validate_request ($self, $request, $options) {
         $param_obj = $self->_resolve_ref($ref, $state);
       }
       next if $request_parameters_processed->{$param_obj->{in}}{
-        $param_obj->{in} eq 'header' ? lc($param_obj->{name}) : $param_obj->{name}
+        $param_obj->{in} eq 'header' ? fc($param_obj->{name}) : $param_obj->{name}
       }++;
       $state->{data_path} = jsonp($state->{data_path}, $param_obj->{in}, $param_obj->{name});
       my $valid =
