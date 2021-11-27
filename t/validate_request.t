@@ -524,7 +524,6 @@ YAML
     },
   );
 
-  # TODO: combine this test with an earlier one, e.g. testing required parameters.
   # note: no content!
   cmp_deeply(
     ($result = $openapi->validate_request($request,
