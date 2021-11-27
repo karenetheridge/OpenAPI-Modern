@@ -107,54 +107,31 @@ sub validate_request ($self, $request, $options) {
     my $request_parameters_processed;
 
     # first, consider parameters at the operation level.
-
-    #TODO: we can wrap another loop around these two sections because they are so similar.
-
-    foreach my $idx (0 .. ($operation->{parameters}//[])->$#*) {
-      my $state = { %$state, schema_path => jsonp($state->{schema_path}, $method, 'parameters', $idx) };
-      my $param_obj = $operation->{parameters}[$idx];
-      while (my $ref = $param_obj->{'$ref'}) {
-        $param_obj = $self->_resolve_ref($ref, $state);
-      }
-
-      my $fc_name = $param_obj->{in} eq 'header' ? fc($param_obj->{name}) : $param_obj->{name};
-
-      abort($state, 'duplicate path parameter "%s"', $param_obj->{name})
-        if ($request_parameters_processed->{$param_obj->{in}}{$fc_name} // '') eq $method;
-      $request_parameters_processed->{$param_obj->{in}}{$fc_name} = $method;
-
-      $state->{data_path} = jsonp($state->{data_path}, $param_obj->{in}, $param_obj->{name});
-      my $valid =
-          $param_obj->{in} eq 'path' ? $self->_validate_path_parameter($state, $param_obj, $captures)
-        : $param_obj->{in} eq 'query' ? $self->_validate_query_parameter($state, $param_obj, $request->uri)
-        : $param_obj->{in} eq 'header' ? $self->_validate_header_parameter($state, $param_obj->{name}, $param_obj, $request->headers)
-        : $param_obj->{in} eq 'cookie' ? $self->_validate_cookie_parameter($state, $param_obj, $request)
-        : abort($state, 'unrecognized "in" value "%s"', $param_obj->{in});
-    }
-
     # parameters at the path-item level are also considered, if not already seen at the operation level
+    foreach my $section ($method, 'path-item') {
+      foreach my $idx (0 .. (($section eq $method ? $operation : $path_item)->{parameters}//[])->$#*) {
+        my $state = { %$state, schema_path => jsonp($state->{schema_path},
+          ($section eq $method ? $method : ()), 'parameters', $idx) };
+        my $param_obj = ($section eq $method ? $operation : $path_item)->{parameters}[$idx];
+        while (my $ref = $param_obj->{'$ref'}) {
+          $param_obj = $self->_resolve_ref($ref, $state);
+        }
 
-    foreach my $idx (0 .. ($path_item->{parameters}//[])->$#*) {
-      my $state = { %$state, schema_path => jsonp($state->{schema_path}, 'parameters', $idx) };
-      my $param_obj = $path_item->{parameters}[$idx];
-      while (my $ref = $param_obj->{'$ref'}) {
-        $param_obj = $self->_resolve_ref($ref, $state);
+        my $fc_name = $param_obj->{in} eq 'header' ? fc($param_obj->{name}) : $param_obj->{name};
+
+        abort($state, 'duplicate path parameter "%s"', $param_obj->{name})
+          if ($request_parameters_processed->{$param_obj->{in}}{$fc_name} // '') eq $section;
+        next if exists $request_parameters_processed->{$param_obj->{in}}{$fc_name};
+        $request_parameters_processed->{$param_obj->{in}}{$fc_name} = $section;
+
+        $state->{data_path} = jsonp($state->{data_path}, $param_obj->{in}, $param_obj->{name});
+        my $valid =
+            $param_obj->{in} eq 'path' ? $self->_validate_path_parameter($state, $param_obj, $captures)
+          : $param_obj->{in} eq 'query' ? $self->_validate_query_parameter($state, $param_obj, $request->uri)
+          : $param_obj->{in} eq 'header' ? $self->_validate_header_parameter($state, $param_obj->{name}, $param_obj, $request->headers)
+          : $param_obj->{in} eq 'cookie' ? $self->_validate_cookie_parameter($state, $param_obj, $request)
+          : abort($state, 'unrecognized "in" value "%s"', $param_obj->{in});
       }
-
-      my $fc_name = $param_obj->{in} eq 'header' ? fc($param_obj->{name}) : $param_obj->{name};
-
-      abort($state, 'duplicate path parameter "%s"', $param_obj->{name})
-        if ($request_parameters_processed->{$param_obj->{in}}{$fc_name} // '') eq 'path-item';
-      next if exists $request_parameters_processed->{$param_obj->{in}}{$fc_name};
-      $request_parameters_processed->{$param_obj->{in}}{$fc_name} = 'path-item';
-
-      $state->{data_path} = jsonp($state->{data_path}, $param_obj->{in}, $param_obj->{name});
-      my $valid =
-          $param_obj->{in} eq 'path' ? $self->_validate_path_parameter($state, $param_obj, $captures)
-        : $param_obj->{in} eq 'query' ? $self->_validate_query_parameter($state, $param_obj, $request->uri)
-        : $param_obj->{in} eq 'header' ? $self->_validate_header_parameter($state, $param_obj->{name}, $param_obj, $request->headers)
-        : $param_obj->{in} eq 'cookie' ? $self->_validate_cookie_parameter($state, $param_obj, $request)
-        : abort($state, 'unrecognized "in" value "%s"', $param_obj->{in});
     }
 
     if (my $body_obj = $operation->{requestBody}) {
