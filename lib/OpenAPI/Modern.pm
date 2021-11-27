@@ -18,6 +18,7 @@ no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 use Carp 'croak';
 use Safe::Isa;
 use Ref::Util 'is_plain_hashref';
+use List::Util 'first';
 use Feature::Compat::Try;
 use JSON::Schema::Modern 0.527;
 use JSON::Schema::Modern::Utilities qw(jsonp canonical_uri E abort);
@@ -186,11 +187,80 @@ sub validate_request ($self, $request, $options) {
   return $self->_result($state);
 }
 
-sub validate_response ($self, $response, @) {
-  return JSON::Schema::Modern::Result->new(
-    output_format => $self->evaluator->output_format,
-    valid => true,
-  );
+# at the moment, we rely on these values being provided in $options:
+# - path_template
+sub validate_response ($self, $response, $options) {
+  my $state = {
+    data_path => '/response',
+    initial_schema_uri => $self->openapi_uri,   # the canonical URI as of the start or last $id, or the last traversed $ref
+    traversed_schema_path => '',    # the accumulated traversal path as of the start, or last $id, or up to the last traversed $ref
+    schema_path => '',              # the rest of the path, since the last $id or the last traversed $ref
+    errors => [],
+  };
+
+  my $path_template = $options->{path_template};
+  croak 'missing parameter path_template' if not length $path_template;
+
+  try {
+    my $schema = $self->openapi_document->schema;
+    abort({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
+        'missing path-item "%s"', $path_template)
+      if not $schema->{paths}{$path_template};
+
+    $state->{schema_path} = jsonp('/paths', $path_template);
+    my $method = lc $response->request->method;
+    my $operation = $schema->{paths}{$path_template}{$method};
+    abort({ %$state, _schema_path_suffix => $method }, 'missing operation')
+      if not $operation;
+
+    return $self->_result($state) if not exists $operation->{responses};
+
+    $state->{schema_path} = jsonp($state->{schema_path}, $method);
+
+    my $response_property = first { exists $operation->{responses}{$_} }
+      $response->code, substr(sprintf('%03s', $response->code), 0, -2).'XX', 'default';
+
+    if (not $response_property) {
+      ()= E({ %$state, keyword => 'responses' }, 'no response object found for code %s', $response->code);
+      return $self->_result($state);
+    }
+
+    my $response_obj = $operation->{responses}{$response_property};
+    $state->{schema_path} = jsonp($state->{schema_path}, 'responses', $response_property);
+    while (my $ref = $response_obj->{'$ref'}) {
+      $response_obj = $self->_resolve_ref($ref, $state);
+    }
+
+    foreach my $header_name (keys(($response_obj->{headers}//{})->%*)) {
+      next if fc $header_name eq fc 'Content-Type';
+      my $state = { %$state, schema_path => jsonp($state->{schema_path}, 'headers', $header_name) };
+      my $header_obj = $response_obj->{headers}{$header_name};
+      while (my $ref = $header_obj->{'$ref'}) {
+        $header_obj = $self->_resolve_ref($ref, $state);
+      }
+
+      ()= $self->_validate_header_parameter({ %$state,
+          data_path => jsonp($state->{data_path}, 'header', $header_name) },
+        $header_name, $header_obj, $response->headers);
+    }
+
+    ()= $self->_validate_body_content({ %$state, data_path => jsonp($state->{data_path}, 'body') },
+        $response_obj->{content}, $response)
+      if exists $response_obj->{content};
+  }
+  catch ($e) {
+    if ($e->$_isa('JSON::Schema::Modern::Result')) {
+      return $e;
+    }
+    elsif ($e->$_isa('JSON::Schema::Modern::Error')) {
+      push @{$state->{errors}}, $e;
+    }
+    else {
+      E($state, 'EXCEPTION: '.$e);
+    }
+  }
+
+  return $self->_result($state);
 }
 
 ######## NO PUBLIC INTERFACES FOLLOW THIS POINT ########
@@ -492,7 +562,11 @@ The second argument is a hashref that contains extra information about the reque
     },
   );
 
-Not yet implemented.
+The second argument is a hashref that contains extra information about the request. Possible values include:
+
+=for :list
+* C<path_template>: a string representing the request URI, with placeholders in braces (e.g.
+  C</pets/{petId}>); see L<https://spec.openapis.org/oas/v3.1.0#paths-object>.
 
 =head1 ON THE USE OF JSON SCHEMAS
 
@@ -522,7 +596,6 @@ Only certain permutations of OpenAPI specifications and are supported at this ti
 * cookie parameters are not checked at all yet
 * for query and header parameters, only the first value of each name is considered
 * media-type encodings in parameters are not yet supported
-* responses aren't checked at all yet
 
 =head1 SEE ALSO
 
