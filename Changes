@@ -1,6 +1,6 @@
 Revision history for JSON-Schema-Modern-Document-OpenAPI
 
-{{$NEXT}}
+0.004     2021-11-28 22:09:01Z
           - implemented validate_response()
           - when validating requests and responses, values that look like
             numbers, and are evaluated as numbers in schemas, are now coerced
