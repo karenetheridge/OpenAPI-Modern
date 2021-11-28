@@ -21,8 +21,9 @@ use File::ShareDir 'dist_dir';
 use Path::Tiny;
 use List::Util 'any';
 use Ref::Util 'is_plain_hashref';
+use MooX::HandlesVia;
 use MooX::TypeTiny 0.002002;
-use Types::Standard 'InstanceOf';
+use Types::Standard qw(InstanceOf HashRef Str);
 use namespace::clean;
 
 extends 'JSON::Schema::Modern::Document';
@@ -51,6 +52,19 @@ has json_schema_dialect => (
   is => 'rwp',
   isa => InstanceOf['Mojo::URL'],
   coerce => sub { $_[0]->$_isa('Mojo::URL') ? $_[0] : Mojo::URL->new($_[0]) },
+);
+
+# operationId => document path
+has operationIds => (
+  is => 'bare',
+  isa => HashRef[Str],
+   handles_via => 'Hash',
+   handles => {
+     _add_operationId => 'set',
+     get_operationId => 'get',
+  },
+  lazy => 1,
+  default => sub { {} },
 );
 
 sub traverse ($self, $evaluator) {
@@ -106,9 +120,9 @@ sub traverse ($self, $evaluator) {
     $self->_set_json_schema_dialect($json_schema_dialect);
   }
 
-  # evaluate the document against its metaschema to find any errors, and to identify all schema
-  # resources within to add to the global resource index.
-  my @json_schema_paths;
+  # evaluate the document against its metaschema to find any errors, to identify all schema
+  # resources within to add to the global resource index, and to extract all operationIds
+  my (@json_schema_paths, @operation_paths);
   my $result = $self->evaluator->evaluate(
     $self->schema,
     $self->metaschema_uri,
@@ -116,6 +130,10 @@ sub traverse ($self, $evaluator) {
       callbacks => {
         '$dynamicRef' => sub ($, $schema, $state) {
           push @json_schema_paths, $state->{data_path} if $schema->{'$dynamicRef'} eq '#meta';
+        },
+        '$ref' => sub ($data, $schema, $state) {
+          push @operation_paths, [ $data->{operationId} => $state->{data_path} ]
+            if $schema->{'$ref'} eq '#/$defs/operation' and defined $data->{operationId};
         },
       },
     },
@@ -133,6 +151,17 @@ sub traverse ($self, $evaluator) {
 
     unshift @real_json_schema_paths, $path;
     $self->_traverse_schema($self->get($path), { %$state, schema_path => $path });
+  }
+
+  foreach my $pair (@operation_paths) {
+    my ($operation_id, $path) = @$pair;
+    if (my $existing = $self->get_operationId($operation_id)) {
+      ()= E({ %$state, keyword => 'operationId', schema_path => $path },
+        'duplicate operationId (with location %s)', $existing);
+    }
+    else {
+      $self->_add_operationId($operation_id => $path);
+    }
   }
 
   return $state;
@@ -234,6 +263,13 @@ URI describing the entire document (and is not a metaschema in this case, as the
 not a JSON Schema). Note that you may need to explicitly set that attribute as well if you change
 C<json_schema_dialect>, as the default metaschema used by the default C<metaschema_uri> can no
 longer be assumed.
+
+=head1 METHODS
+
+=head2 get_operationId
+
+Returns the json pointer location of the operation containing the provided C<operationId> (suitable
+for passing to C<< $document->get(..) >>), or C<undef> if it is not contained in the document.
 
 =head1 SUPPORT
 
