@@ -250,7 +250,7 @@ sub _validate_path_parameter ($self, $state, $param_obj, $captures) {
   return E({ %$state, keyword => 'content' }, 'content not yet supported')
     if exists $param_obj->{content};
 
-  # 'required' must be true for path parameters
+  # 'required' is always true for path parameters
   return E({ %$state, keyword => 'required' }, 'missing path parameter: %s', $param_obj->{name})
     if not exists $captures->{$param_obj->{name}};
 
