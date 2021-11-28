@@ -323,6 +323,10 @@ paths:
         required: true
         schema:
           pattern: ^[0-9]+\$
+      - name: beta
+        in: query
+        required: false
+        schema: false
 YAML
     },
     # note that bar_id is not listed as a path parameter
@@ -357,7 +361,7 @@ YAML
   );
 
 
-  $request->uri('http://example.com/some/path?alpha=hello');
+  $request->uri('http://example.com/some/path?alpha=hello&beta=hi');
   $request->headers->header('FOO-BAR' => 'header value');    # exactly matches path parameter
   cmp_deeply(
     $result = $openapi->validate_request($request,
@@ -382,6 +386,12 @@ YAML
           keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 2 schema pattern)),
           absoluteKeywordLocation => str($doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 2 schema pattern)))),
           error => 'pattern does not match',
+        },
+        {
+          instanceLocation => '/request/query/beta',
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 3 schema)),
+          absoluteKeywordLocation => str($doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 3 schema)))),
+          error => 'subschema is false',
         },
       ],
     },
