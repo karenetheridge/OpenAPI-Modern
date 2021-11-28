@@ -206,7 +206,7 @@ sub _validate_path_parameter ($self, $state, $param_obj, $captures) {
     if not exists $captures->{$param_obj->{name}};
 
   $state = { %$state, schema_path => jsonp($state->{schema_path}, 'schema') };
-  $self->_evaluate_subschema($captures->{$param_obj->{name}}, $state);
+  $self->_evaluate_subschema($captures->{$param_obj->{name}}, $param_obj->{schema}, $state);
 }
 
 sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
@@ -230,7 +230,7 @@ sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
   # TODO: check 'allowReserved': it cannot be supported if we use proper URL encoding
 
   $state = { %$state, schema_path => jsonp($state->{schema_path}, 'schema') };
-  $self->_evaluate_subschema($query_params->{$param_obj->{name}}, $state);
+  $self->_evaluate_subschema($query_params->{$param_obj->{name}}, $param_obj->{schema}, $state);
 }
 
 # validates a header, from either the request or the response
@@ -247,7 +247,7 @@ sub _validate_header_parameter ($self, $state, $param_obj, $headers) {
   }
 
   $state = { %$state, schema_path => jsonp($state->{schema_path}, 'schema') };
-  $self->_evaluate_subschema($values[0], $state);
+  $self->_evaluate_subschema($values[0], $param_obj->{schema}, $state);
 }
 
 sub _validate_cookie_parameter ($self, $state, $param_obj, $request) {
@@ -286,7 +286,7 @@ sub _validate_body ($self, $state, $body_obj, $message) {
   $decoded_content_ref = $media_type_decoder->($decoded_content_ref);
 
   $state = { %$state, schema_path => jsonp($state->{schema_path}, 'content', $content_type, 'schema') };
-  $self->_evaluate_subschema($decoded_content_ref->$*, $state);
+  $self->_evaluate_subschema($decoded_content_ref->$*, $body_obj->{content}{$content_type}{schema}, $state);
 }
 
 # wrap a result object around the errors
@@ -316,7 +316,9 @@ sub _resolve_ref ($self, $ref, $state) {
 }
 
 # evaluates data against the subschema at the current state location
-sub _evaluate_subschema ($self, $data, $state) {
+sub _evaluate_subschema ($self, $data, $schema, $state) {
+  return 1 if is_plain_hashref($schema) ? !keys(%$schema) : $schema; # true schema
+
   my $result = $self->evaluator->evaluate(
     $data, canonical_uri($state),
     { data_path => $state->{data_path}, traversed_schema_path => $state->{schema_path} },
