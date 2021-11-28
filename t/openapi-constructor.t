@@ -14,6 +14,7 @@ use Test::Deep;
 use Test::Memory::Cycle;
 use if $ENV{AUTHOR_TESTING}, 'Test::Warnings';
 use JSON::Schema::Modern::Document::OpenAPI;
+use Test::File::ShareDir -share => { -dist => { 'JSON-Schema-Modern-Document-OpenAPI' => 'share' } };
 use OpenAPI::Modern;
 
 my $minimal_document = {

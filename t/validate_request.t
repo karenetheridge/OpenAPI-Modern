@@ -14,6 +14,7 @@ use Test::More;
 use Test::Deep;
 use OpenAPI::Modern;
 use JSON::Schema::Modern::Utilities 'jsonp';
+use Test::File::ShareDir -share => { -dist => { 'JSON-Schema-Modern-Document-OpenAPI' => 'share' } };
 use constant { true => JSON::PP::true, false => JSON::PP::false };
 use HTTP::Request;
 use YAML::PP;
