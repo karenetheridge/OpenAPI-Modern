@@ -492,18 +492,13 @@ prints:
 
 =head1 DESCRIPTION
 
-This module provides various tools for working with an OpenAPI Specification v3.1 document within
+This module provides various tools for working with an
+L<OpenAPI Specification v3.1 document|https://spec.openapis.org/oas/v3.1.0#openapi-document> within
 your application. The JSON Schema evaluator is fully specification-compliant; the OpenAPI evaluator
 aims to be but some features are not yet available. My belief is that missing features are better
 than features that seem to work but actually cut corners for simplicity.
 
 =head1 CONSTRUCTOR ARGUMENTS
-
-=head2 openapi_document
-
-The L<JSON::Schema::Modern::Document::OpenAPI> document that holds the OpenAPI information to be
-used for validation. If it is not provided to the constructor, then L</openapi_uri> and
-L</openapi_schema> B<MUST> be provided, and L</evaluator> will also be used if provided.
 
 =head2 openapi_uri
 
@@ -515,17 +510,18 @@ Ignored if L</openapi_document> is provided.
 The data structure describing the OpenAPI v3.1 document (as specified at
 L<https://spec.openapis.org/oas/v3.1.0>). Ignored if L</openapi_document> is provided.
 
-=head2 evaluator
-
-The L<JSON::Schema::Modern> object to use for all URI resolution and JSON Schema evaluation.
-Ignored if L</openapi_document> is provided.
-
-=head1 ACCESSORS
-
 =head2 openapi_document
 
 The L<JSON::Schema::Modern::Document::OpenAPI> document that holds the OpenAPI information to be
-used for validation.
+used for validation. If it is not provided to the constructor, then L</openapi_uri> and
+L</openapi_schema> B<MUST> be provided, and L</evaluator> will also be used if provided.
+
+=head2 evaluator
+
+The L<JSON::Schema::Modern> object to use for all URI resolution and JSON Schema evaluation.
+Ignored if L</openapi_document> is provided. Optional.
+
+=head1 ACCESSORS/METHODS
 
 =head2 openapi_uri
 
@@ -535,11 +531,14 @@ The URI that identifies the OpenAPI document.
 
 The data structure describing the OpenAPI document. See L<the specification/https://spec.openapis.org/oas/v3.1.0>.
 
+=head2 openapi_document
+
+The L<JSON::Schema::Modern::Document::OpenAPI> document that holds the OpenAPI information to be
+used for validation.
+
 =head2 evaluator
 
 The L<JSON::Schema::Modern> object to use for all URI resolution and JSON Schema evaluation.
-
-=head1 METHODS
 
 =head2 validate_request
 
@@ -551,7 +550,7 @@ The L<JSON::Schema::Modern> object to use for all URI resolution and JSON Schema
     },
   );
 
-Validates an L<HTTP::Request> object against the corresponding OpenAPI v3.1 specification, returning a
+Validates an L<HTTP::Request> object against the corresponding OpenAPI v3.1 document, returning a
 L<JSON::Schema::Modern::Result> object.
 
 The second argument is a hashref that contains extra information about the request. Possible values include:
@@ -560,6 +559,8 @@ The second argument is a hashref that contains extra information about the reque
 * C<path_template>: a string representing the request URI, with placeholders in braces (e.g.
   C</pets/{petId}>); see L<https://spec.openapis.org/oas/v3.1.0#paths-object>.
 * C<path_captures>: a hashref mapping placeholders in the path to their actual values in the request URI
+
+More options will be added later, providing more flexible matching of the document to the request.
 
 =head2 validate_response
 
@@ -575,6 +576,8 @@ The second argument is a hashref that contains extra information about the reque
 =for :list
 * C<path_template>: a string representing the request URI, with placeholders in braces (e.g.
   C</pets/{petId}>); see L<https://spec.openapis.org/oas/v3.1.0#paths-object>.
+
+More options will be added later, providing more flexible matching of the document to the request.
 
 =head1 ON THE USE OF JSON SCHEMAS
 
@@ -603,7 +606,7 @@ therefore inadvertently contain perlish numbers rather than strings.
 
 =head1 LIMITATIONS
 
-Only certain permutations of OpenAPI specifications and are supported at this time:
+Only certain permutations of OpenAPI documents are supported at this time:
 
 =for :list
 * for all parameters types, only C<explode: true> is supported
