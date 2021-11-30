@@ -114,7 +114,7 @@ sub traverse ($self, $evaluator) {
     $self->metaschema_uri,
     {
       callbacks => {
-        '$dynamicRef' => sub ($schema, $state) {
+        '$dynamicRef' => sub ($, $schema, $state) {
           push @json_schema_paths, $state->{data_path} if $schema->{'$dynamicRef'} eq '#meta';
         },
       },
