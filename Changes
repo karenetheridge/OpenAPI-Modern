@@ -1,5 +1,7 @@
 Revision history for JSON-Schema-Modern-Document-OpenAPI
 
+{{$NEXT}}
+
 0.005     2021-11-30 06:22:10Z
           - performance improvements when loading and parsing documents
           - extract and cache all operationIds in the document
