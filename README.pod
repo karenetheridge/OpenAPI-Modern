@@ -8,7 +8,7 @@ JSON::Schema::Modern::Document::OpenAPI - One OpenAPI v3.1 document
 
 =head1 VERSION
 
-version 0.004
+version 0.005
 
 =head1 SYNOPSIS
 
@@ -69,6 +69,13 @@ URI describing the entire document (and is not a metaschema in this case, as the
 not a JSON Schema). Note that you may need to explicitly set that attribute as well if you change
 C<json_schema_dialect>, as the default metaschema used by the default C<metaschema_uri> can no
 longer be assumed.
+
+=head1 METHODS
+
+=head2 get_operationId
+
+Returns the json pointer location of the operation containing the provided C<operationId> (suitable
+for passing to C<< $document->get(..) >>), or C<undef> if it is not contained in the document.
 
 =head1 SUPPORT
 
