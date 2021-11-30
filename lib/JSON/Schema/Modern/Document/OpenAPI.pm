@@ -128,9 +128,9 @@ sub traverse ($self, $evaluator) {
   my @real_json_schema_paths;
   foreach my $path (sort @json_schema_paths) {
     # disregard paths that are not the root of each embedded subschema.
-    next if any { $_->subsumes($path) } @real_json_schema_paths;
+    next if any { return $path =~ m{^\Q$_\E(?:/|\z)} } @real_json_schema_paths;
 
-    push @real_json_schema_paths, path($path);
+    unshift @real_json_schema_paths, $path;
     $self->_traverse_schema($self->get($path), { %$state, schema_path => $path });
   }
 

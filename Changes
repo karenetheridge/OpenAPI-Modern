@@ -1,6 +1,7 @@
 Revision history for JSON-Schema-Modern-Document-OpenAPI
 
 {{$NEXT}}
+          - performance improvements when loading and parsing documents
 
 0.004     2021-11-28 22:09:01Z
           - implemented validate_response()
