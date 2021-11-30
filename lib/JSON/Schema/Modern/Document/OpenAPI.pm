@@ -15,11 +15,12 @@ use if "$]" >= 5.022, experimental => 're_strict';
 no if "$]" >= 5.031009, feature => 'indirect';
 no if "$]" >= 5.033001, feature => 'multidimensional';
 no if "$]" >= 5.033006, feature => 'bareword_filehandles';
-use JSON::Schema::Modern::Utilities 0.525 qw(assert_keyword_exists assert_keyword_type E get_type canonical_uri);
+use JSON::Schema::Modern::Utilities 0.525 qw(assert_keyword_exists assert_keyword_type E canonical_uri);
 use Safe::Isa;
 use File::ShareDir 'dist_dir';
 use Path::Tiny;
 use List::Util 'any';
+use Ref::Util 'is_plain_hashref';
 use MooX::TypeTiny 0.002002;
 use Types::Standard 'InstanceOf';
 use namespace::clean;
@@ -154,8 +155,7 @@ sub _add_vocab_and_default_schemas ($self) {
 
 # https://spec.openapis.org/oas/v3.1.0#schema-object
 sub _traverse_schema ($self, $schema, $state) {
-  my $schema_type = get_type($schema);
-  return 1 if $schema_type eq 'boolean' or $schema_type eq 'object' and not keys %$schema;
+  return if not is_plain_hashref($schema) or not keys %$schema;
 
   my $subschema_state = $self->evaluator->traverse($schema, {
     %$state,  # so we don't have to ennumerate everything that may be in config_override
