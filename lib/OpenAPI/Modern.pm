@@ -350,7 +350,7 @@ sub _result ($self, $state) {
     valid => !$state->{errors}->@*,
     !$state->{errors}->@*
       ? ($self->evaluator->collect_annotations
-        ? (annotations => $state->{annotations}) : ())
+        ? (annotations => $state->{annotations}//[]) : ())
       : (errors => $state->{errors}),
   );
 }
