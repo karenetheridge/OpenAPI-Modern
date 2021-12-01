@@ -252,21 +252,14 @@ sub validate_response ($self, $response, $options) {
 
 # for now, we only use captures, rather than parsing the URI directly.
 sub _validate_path_parameter ($self, $state, $param_obj, $captures) {
-  return E({ %$state, keyword => 'content' }, 'content not yet supported')
-    if exists $param_obj->{content};
-
   # 'required' is always true for path parameters
   return E({ %$state, keyword => 'required' }, 'missing path parameter: %s', $param_obj->{name})
     if not exists $captures->{$param_obj->{name}};
 
-  $state = { %$state, schema_path => jsonp($state->{schema_path}, 'schema') };
-  $self->_evaluate_subschema($captures->{$param_obj->{name}}, $param_obj->{schema}, $state);
+  $self->_validate_parameter_content($state, $param_obj, \ $captures->{$param_obj->{name}});
 }
 
 sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
-  return E({ %$state, keyword => 'content' }, 'content not yet supported')
-    if exists $param_obj->{content};
-
   # parse the query parameters out of uri
   my $query_params = { $uri->query_form };
 
@@ -283,15 +276,11 @@ sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
 
   # TODO: check 'allowReserved': it cannot be supported if we use proper URL encoding
 
-  $state = { %$state, schema_path => jsonp($state->{schema_path}, 'schema') };
-  $self->_evaluate_subschema($query_params->{$param_obj->{name}}, $param_obj->{schema}, $state);
+  $self->_validate_parameter_content($state, $param_obj, \ $query_params->{$param_obj->{name}});
 }
 
 # validates a header, from either the request or the response
 sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $headers) {
-  return E({ %$state, keyword => 'content' }, 'content not yet supported')
-    if exists $header_obj->{content};
-
   # NOTE: for now, we will only support a single value.
   my @values = $headers->header($header_name);
   if (not @values) {
@@ -300,12 +289,30 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
     return 1;
   }
 
-  $state = { %$state, schema_path => jsonp($state->{schema_path}, 'schema') };
-  $self->_evaluate_subschema($values[0], $header_obj->{schema}, $state);
+  $self->_validate_parameter_content($state, $header_obj, \ $values[0]);
 }
 
 sub _validate_cookie_parameter ($self, $state, $param_obj, $request) {
   return E($state, 'cookie parameters not yet supported');
+}
+
+sub _validate_parameter_content ($self, $state, $param_obj, $content_ref) {
+  if (exists $param_obj->{content}) {
+    my ($content_type) = keys $param_obj->{content}->%*;
+
+    my $media_type_decoder = $self->get_media_type($content_type);
+    abort({ %$state, keyword => 'content', _schema_path_suffix => $content_type },
+        'EXCEPTION: unsupported Content-Type "%s": add support with $openapi->add_media_type(...)', $content_type)
+      if not $media_type_decoder;
+
+    $content_ref = $media_type_decoder->($content_ref);
+
+    $state = { %$state, schema_path => jsonp($state->{schema_path}, 'content', $content_type, 'schema') };
+    return $self->_evaluate_subschema($content_ref->$*, $param_obj->{content}{$content_type}{schema}, $state);
+  }
+
+  $state = { %$state, schema_path => jsonp($state->{schema_path}, 'schema') };
+  $self->_evaluate_subschema($content_ref->$*, $param_obj->{schema}, $state);
 }
 
 sub _validate_body_content ($self, $state, $content_obj, $message) {
@@ -626,7 +633,6 @@ Only certain permutations of OpenAPI documents are supported at this time:
 * for header parameters, only C<style: simple> is supported
 * cookie parameters are not checked at all yet
 * for query and header parameters, only the first value of each name is considered
-* media-type encodings in parameters are not yet supported
 
 =head1 SEE ALSO
 

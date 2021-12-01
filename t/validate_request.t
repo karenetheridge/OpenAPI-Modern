@@ -239,67 +239,6 @@ YAML
     openapi_schema => do {
       YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
 $openapi_preamble
-paths:
-  /foo/{foo_id}/bar/{bar_id}:
-    post:
-      parameters:
-      - name: foo_id
-        in: path
-        required: true
-        content:
-          application/json:
-            schema: {}
-      - name: query1
-        in: query
-        required: true
-        content:
-          application/json:
-            schema: {}
-      - name: Header1
-        in: header
-        required: true
-        content:
-          application/json:
-            schema: {}
-YAML
-      },
-  );
-  $request->uri($request->uri . '?query1=value');
-  $request->header('Header1' => 'header value');
-  cmp_deeply(
-    ($result = $openapi->validate_request($request,
-      { path_template => $path_template, path_captures => {}}))->TO_JSON,
-    {
-      valid => false,
-      errors => [
-        {
-          instanceLocation => '/request/path/foo_id',
-          keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 0 content)),
-          absoluteKeywordLocation => str($doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 0 content)))),
-          error => 'content not yet supported',
-        },
-        {
-          instanceLocation => '/request/query/query1',
-          keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 1 content)),
-          absoluteKeywordLocation => str($doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 1 content)))),
-          error => 'content not yet supported',
-        },
-        {
-          instanceLocation => '/request/header/Header1',
-          keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 2 content)),
-          absoluteKeywordLocation => str($doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 2 content)))),
-          error => 'content not yet supported',
-        },
-      ],
-    },
-    'parameters contain unsupported "content"',
-  );
-
-  $openapi = OpenAPI::Modern->new(
-    openapi_uri => 'openapi.yaml',
-    openapi_schema => do {
-      YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
-$openapi_preamble
 components:
   parameters:
     foo-header:
@@ -403,6 +342,70 @@ YAML
     'path, query and header parameters are evaluated against their schemas',
   );
 
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => 'openapi.yaml',
+    openapi_schema => do {
+      YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
+$openapi_preamble
+paths:
+  /foo/{foo_id}/bar/{bar_id}:
+    post:
+      parameters:
+      - name: foo_id
+        in: path
+        required: true
+        content:
+          application/json:
+            schema:
+              required: ['key']
+      - name: query1
+        in: query
+        required: true
+        content:
+          application/json:
+            schema:
+              required: ['key']
+      - name: Header1
+        in: header
+        required: true
+        content:
+          application/json:
+            schema:
+              required: ['key']
+YAML
+      },
+  );
+  $request->uri('http://example.com/some/path?query1={"hello":"there"}');
+  $request->header('Header1' => '{"hello":"there"}');
+  cmp_deeply(
+    ($result = $openapi->validate_request($request,
+      { path_template => $path_template, path_captures => { foo_id => '{"hello":"there"}'}}))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/path/foo_id',
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 0 content application/json schema required)),
+          absoluteKeywordLocation => str($doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 0 content application/json schema required)))),
+          error => 'missing property: key',
+        },
+        {
+          instanceLocation => '/request/query/query1',
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 1 content application/json schema required)),
+          absoluteKeywordLocation => str($doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 1 content application/json schema required)))),
+          error => 'missing property: key',
+        },
+        {
+          instanceLocation => '/request/header/Header1',
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 2 content application/json schema required)),
+          absoluteKeywordLocation => str($doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 2 content application/json schema required)))),
+          error => 'missing property: key',
+        },
+      ],
+    },
+    'parameters are decoded using the indicated media type and then validated against the content schema',
+  );
+
 
   $openapi = OpenAPI::Modern->new(
     openapi_uri => 'openapi.yaml',
@@ -438,6 +441,7 @@ YAML
       },
   );
 
+  $request->uri('http://example.com/some/path');
   cmp_deeply(
     ($result = $openapi->validate_request($request,
       { path_template => $path_template, path_captures => { foo_id => 'foo', bar_id => 'bar' } }))->TO_JSON,
