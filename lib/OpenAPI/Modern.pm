@@ -94,7 +94,7 @@ sub validate_request ($self, $request, $options) {
   my $path_template = $options->{path_template};
   my $captures = $options->{path_captures};
   croak 'missing parameter path_template' if not length $path_template;
-  croak 'missing parameter captures ' if not is_plain_hashref($captures);
+  croak 'missing parameter captures' if not is_plain_hashref($captures);
 
   try {
     my $method = lc $request->method;
