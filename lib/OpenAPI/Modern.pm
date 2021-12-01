@@ -18,8 +18,9 @@ no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 use Carp 'croak';
 use Safe::Isa;
 use Ref::Util qw(is_plain_hashref is_plain_arrayref);
-use List::Util 'first';
+use List::Util 1.45 qw(first uniq);
 use Scalar::Util 'looks_like_number';
+use Module::Runtime 'require_module';
 use Feature::Compat::Try;
 use JSON::Schema::Modern 0.527;
 use JSON::Schema::Modern::Utilities qw(jsonp canonical_uri E abort get_type);
@@ -47,6 +48,10 @@ has evaluator => (
   required => 1,
   handles => [ qw(get_media_type add_media_type) ],
 );
+
+sub load_vocabulary_classes ($self) {
+  require_module($_) foreach uniq map $_->{vocabularies}->@*, $self->evaluator->_resource_values;
+}
 
 around BUILDARGS => sub ($orig, $class, @args) {
   my $args = $class->$orig(@args);
@@ -578,6 +583,12 @@ The second argument is a hashref that contains extra information about the reque
   C</pets/{petId}>); see L<https://spec.openapis.org/oas/v3.1.0#paths-object>.
 
 More options will be added later, providing more flexible matching of the document to the request.
+
+=head2 load_vocabulary_classes
+
+Loads all vocabulary classes found within the resource index of the JSON Schema evaluator.
+Useful when deserializing an object from disk (where resource data exists in memory but the
+corresponding implementations are no longer loaded.
 
 =head1 ON THE USE OF JSON SCHEMAS
 
