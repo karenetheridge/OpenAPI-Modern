@@ -1,6 +1,6 @@
 Revision history for JSON-Schema-Modern-Document-OpenAPI
 
-{{$NEXT}}
+0.006     2021-12-01 05:22:01Z
           - support media type encodings in parameters
 
 0.005     2021-11-30 06:22:10Z
