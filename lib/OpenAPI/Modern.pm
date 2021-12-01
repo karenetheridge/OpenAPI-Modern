@@ -305,7 +305,13 @@ sub _validate_parameter_content ($self, $state, $param_obj, $content_ref) {
         'EXCEPTION: unsupported Content-Type "%s": add support with $openapi->add_media_type(...)', $content_type)
       if not $media_type_decoder;
 
-    $content_ref = $media_type_decoder->($content_ref);
+    try {
+      $content_ref = $media_type_decoder->($content_ref);
+    }
+    catch ($e) {
+      return E({ %$state, keyword => 'content', _schema_path_suffix => $content_type },
+        'could not decode content as %s', $content_type);
+    }
 
     $state = { %$state, schema_path => jsonp($state->{schema_path}, 'content', $content_type, 'schema') };
     return $self->_evaluate_subschema($content_ref->$*, $param_obj->{content}{$content_type}{schema}, $state);
@@ -342,14 +348,27 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
 
   # decode the charset
   my $charset = $message->content_charset;
-  $decoded_content_ref = \ Encode::decode($charset, $decoded_content_ref->$*, Encode::FB_CROAK | Encode::LEAVE_SRC);
+  try {
+    $decoded_content_ref =
+      \ Encode::decode($charset, $decoded_content_ref->$*, Encode::FB_CROAK | Encode::LEAVE_SRC);
+  }
+  catch ($e) {
+    return E({ %$state, keyword => 'content', _schema_path_suffix => $content_type },
+      'could not decode content as %s', $charset);
+  }
 
   my $media_type_decoder = $self->get_media_type($content_type);
   abort({ %$state, keyword => 'content', _schema_path_suffix => $content_type },
       'EXCEPTION: unsupported Content-Type "%s": add support with $openapi->add_media_type(...)', $content_type)
     if not $media_type_decoder;
 
-  $decoded_content_ref = $media_type_decoder->($decoded_content_ref);
+  try {
+    $decoded_content_ref = $media_type_decoder->($decoded_content_ref);
+  }
+  catch ($e) {
+    return E({ %$state, keyword => 'content', _schema_path_suffix => $content_type },
+      'could not decode content as %s', $content_type);
+  }
 
   $state = { %$state, schema_path => jsonp($state->{schema_path}, 'content', $content_type, 'schema') };
   $self->_evaluate_subschema($decoded_content_ref->$*, $content_obj->{$content_type}{schema}, $state);

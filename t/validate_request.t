@@ -375,6 +375,39 @@ paths:
 YAML
       },
   );
+
+  $request->uri('http://example.com/some/path?query1={corrupt json');
+  $request->header('Header1' => '{corrupt json');
+  cmp_deeply(
+    $result = $openapi->validate_request($request,
+      { path_template => $path_template, path_captures => { foo_id => '{corrupt json' } })->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/path/foo_id',
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 0 content application/json)),
+          absoluteKeywordLocation => str($doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 0 content application/json)))),
+          error => 'could not decode content as application/json',
+        },
+        {
+          instanceLocation => '/request/query/query1',
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 1 content application/json)),
+          absoluteKeywordLocation => str($doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 1 content application/json)))),
+          error => 'could not decode content as application/json',
+        },
+        {
+          instanceLocation => '/request/header/Header1',
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 2 content application/json)),
+          absoluteKeywordLocation => str($doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 2 content application/json)))),
+          error => 'could not decode content as application/json',
+        },
+      ],
+    },
+    'errors during media-type decoding are detected',
+  );
+
+
   $request->uri('http://example.com/some/path?query1={"hello":"there"}');
   $request->header('Header1' => '{"hello":"there"}');
   cmp_deeply(
@@ -585,6 +618,45 @@ YAML
       ],
     },
     'unsupported Content-Type',
+  );
+
+
+  $request->content_type('application/json; charset=UTF-8');
+  $request->content('{"alpha": "123", "beta": "'.chr(0xe9).'clair"}');
+  cmp_deeply(
+    $result = $openapi->validate_request($request,
+      { path_template => $path_template, path_captures => {} })->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/body',
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post requestBody content application/json)),
+          absoluteKeywordLocation => str($doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post requestBody content application/json)))),
+          error => 'could not decode content as UTF-8',
+        },
+      ],
+    },
+    'errors during charset decoding are detected',
+  );
+
+
+  $request->content('{corrupt json');
+  cmp_deeply(
+    $result = $openapi->validate_request($request,
+      { path_template => $path_template, path_captures => {} })->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/body',
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post requestBody content application/json)),
+          absoluteKeywordLocation => str($doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post requestBody content application/json)))),
+          error => 'could not decode content as application/json',
+        },
+      ],
+    },
+    'errors during media-type decoding are detected',
   );
 
 
