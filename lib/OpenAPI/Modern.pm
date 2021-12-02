@@ -324,6 +324,10 @@ sub _validate_parameter_content ($self, $state, $param_obj, $content_ref) {
 sub _validate_body_content ($self, $state, $content_obj, $message) {
   my $content_type = $message->content_type;
 
+  return E({ %$state, data_path => $state->{data_path} =~ s{body}{header/Content-Type}r, keyword => 'content' },
+      'missing header: Content-Type')
+    if not length $content_type;
+
   # TODO: respect wildcard entries in the openapi document
   return E({ %$state, keyword => 'content' }, 'incorrect Content-Type "%s"', $content_type)
     if not exists $content_obj->{$content_type};
@@ -347,14 +351,15 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
   my $decoded_content_ref = $message->decoded_content(ref => 1);
 
   # decode the charset
-  my $charset = $message->content_charset;
-  try {
-    $decoded_content_ref =
-      \ Encode::decode($charset, $decoded_content_ref->$*, Encode::FB_CROAK | Encode::LEAVE_SRC);
-  }
-  catch ($e) {
-    return E({ %$state, keyword => 'content', _schema_path_suffix => $content_type },
-      'could not decode content as %s', $charset);
+  if (my $charset = $message->content_charset) {
+    try {
+      $decoded_content_ref =
+        \ Encode::decode($charset, $decoded_content_ref->$*, Encode::FB_CROAK | Encode::LEAVE_SRC);
+    }
+    catch ($e) {
+      return E({ %$state, keyword => 'content', _schema_path_suffix => $content_type },
+        'could not decode content as %s', $charset);
+    }
   }
 
   my $media_type_decoder = $self->get_media_type($content_type);

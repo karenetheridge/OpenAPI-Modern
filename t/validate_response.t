@@ -356,6 +356,63 @@ YAML
     { valid => true },
     'decoded content matches the schema',
   );
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => 'openapi.yaml',
+    openapi_schema => do {
+      YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
+$openapi_preamble
+paths:
+  /foo/{foo_id}:
+    post:
+      responses:
+        default:
+          description: default
+          content:
+            text/plain:
+              schema:
+                minLength: 10
+YAML
+      },
+  );
+  $response = HTTP::Response->new(POST => 'http://example.com/foo/123');
+  $response->request($request = HTTP::Request->new(POST => 'http://example.com/some/path'));
+  cmp_deeply(
+    ($result = $openapi->validate_response($response,
+      { path_template => '/foo/{foo_id}', path_captures => { foo_id => 123 } }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/response/header/Content-Type',
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}', qw(post responses default content)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}', qw(post responses default content)))->to_string,
+          error => 'missing header: Content-Type',
+        },
+      ],
+    },
+    'missing Content-Type does not cause an exception',
+  );
+
+
+  $response->content_type('text/plain');
+  cmp_deeply(
+    ($result = $openapi->validate_response($response,
+      { path_template => '/foo/{foo_id}', path_captures => { foo_id => 123 } }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/response/body',
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}', qw(post responses default content text/plain schema minLength)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}', qw(post responses default content text/plain schema minLength)))->to_string,
+          error => 'length is less than 10',
+        },
+      ],
+    },
+    'missing body does not cause an exception',
+  );
 };
 
 done_testing;

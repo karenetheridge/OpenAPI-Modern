@@ -944,6 +944,61 @@ YAML
     },
     'numeric values are treated as numbers when explicitly type-checked as numbers',
   );
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => 'openapi.yaml',
+    openapi_schema => do {
+      YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
+$openapi_preamble
+paths:
+  /foo/{foo_id}:
+    post:
+      requestBody:
+        required: false
+        content:
+          text/plain:
+            schema:
+              minLength: 10
+YAML
+      },
+  );
+  $request = HTTP::Request->new(POST => 'http://example.com/some/path');
+  cmp_deeply(
+    ($result = $openapi->validate_request($request,
+      { path_template => '/foo/{foo_id}', path_captures => { foo_id => 123 } }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/header/Content-Type',
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}', qw(post requestBody content)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}', qw(post requestBody content)))->to_string,
+          error => 'missing header: Content-Type',
+        },
+      ],
+    },
+    'missing Content-Type does not cause an exception',
+  );
+
+
+  $request->content_type('text/plain');
+  cmp_deeply(
+    ($result = $openapi->validate_request($request,
+      { path_template => '/foo/{foo_id}', path_captures => { foo_id => 123 } }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/body',
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}', qw(post requestBody content text/plain schema minLength)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}', qw(post requestBody content text/plain schema minLength)))->to_string,
+          error => 'length is less than 10',
+        },
+      ],
+    },
+    'missing body does not cause an exception',
+  );
 };
 
 done_testing;
