@@ -53,7 +53,7 @@ YAML
         {
           instanceLocation => '/response',
           keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}'),
-          absoluteKeywordLocation => str($doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}'))),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}'))->to_string,
           error => 'missing path-item "/foo/{foo_id}/bar/{bar_id}"',
         },
       ],
@@ -79,7 +79,7 @@ YAML
         {
           instanceLocation => '/response',
           keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', 'post'),
-          absoluteKeywordLocation => str($doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', 'post'))),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', 'post'))->to_string,
           error => 'missing operation',
         },
       ],
@@ -128,7 +128,7 @@ YAML
         {
           instanceLocation => '/response',
           keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post responses)),
-          absoluteKeywordLocation => str($doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post responses)))),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post responses)))->to_string,
           error => 'no response object found for code 404',
         },
       ],
@@ -194,7 +194,7 @@ YAML
         {
           instanceLocation => '/response',
           keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post responses 303 $ref $ref)),
-          absoluteKeywordLocation => str($doc_uri->clone->fragment('/components/responses/foo/$ref')),
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/responses/foo/$ref')->to_string,
           error => 'EXCEPTION: unable to find resource openapi.yaml#/i_do_not_exist',
         },
       ],
@@ -211,7 +211,7 @@ YAML
         {
           instanceLocation => '/response/header/Foo-Bar',
           keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post responses default $ref headers Foo-Bar $ref required)),
-          absoluteKeywordLocation => str($doc_uri->clone->fragment('/components/headers/foo-header/required')),
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/headers/foo-header/required')->to_string,
           error => 'missing header: Foo-Bar',
         },
       ],
@@ -228,7 +228,7 @@ YAML
         {
           instanceLocation => '/response/header/Foo-Bar',
           keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post responses default $ref headers Foo-Bar $ref schema pattern)),
-          absoluteKeywordLocation => str($doc_uri->clone->fragment('/components/headers/foo-header/schema/pattern')),
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/headers/foo-header/schema/pattern')->to_string,
           error => 'pattern does not match',
         },
       ],
@@ -284,7 +284,7 @@ YAML
         {
           instanceLocation => '/response/body',
           keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post responses default $ref content)),
-          absoluteKeywordLocation => str($doc_uri->clone->fragment('/components/responses/default/content')),
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/responses/default/content')->to_string,
           error => 'incorrect Content-Type "text/plain"',
         },
       ],
@@ -302,7 +302,7 @@ YAML
         {
           instanceLocation => '/response/body',
           keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post responses default $ref content text/html)),
-          absoluteKeywordLocation => str($doc_uri->clone->fragment(jsonp('/components/responses/default/content', 'text/html'))),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/components/responses/default/content', 'text/html'))->to_string,
           error => 'EXCEPTION: unsupported Content-Type "text/html": add support with $openapi->add_media_type(...)',
         },
       ],
@@ -328,19 +328,19 @@ YAML
         {
           instanceLocation => '/response/body/alpha',
           keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post responses default $ref content application/json schema properties alpha pattern)),
-          absoluteKeywordLocation => str($doc_uri->clone->fragment(jsonp('/components/responses/default/content', qw(application/json schema properties alpha pattern)))),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/components/responses/default/content', qw(application/json schema properties alpha pattern)))->to_string,
           error => 'pattern does not match',
         },
         {
           instanceLocation => '/response/body/gamma',
           keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post responses default $ref content application/json schema properties gamma const)),
-          absoluteKeywordLocation => str($doc_uri->clone->fragment(jsonp('/components/responses/default/content', qw(application/json schema properties gamma const)))),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/components/responses/default/content', qw(application/json schema properties gamma const)))->to_string,
           error => 'value does not match',
         },
         {
           instanceLocation => '/response/body',
           keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post responses default $ref content application/json schema properties)),
-          absoluteKeywordLocation => str($doc_uri->clone->fragment(jsonp('/components/responses/default/content', qw(application/json schema properties)))),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/components/responses/default/content', qw(application/json schema properties)))->to_string,
           error => 'not all properties are valid',
         },
       ],
