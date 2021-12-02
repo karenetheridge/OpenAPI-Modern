@@ -1,5 +1,7 @@
 Revision history for JSON-Schema-Modern-Document-OpenAPI
 
+{{$NEXT}}
+
 0.007     2021-12-02 05:43:34Z
           - properly handle missing message bodies, with possibly a mising
             Content-Type header as well
