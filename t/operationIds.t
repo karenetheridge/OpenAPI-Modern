@@ -91,7 +91,7 @@ YAML
     [ map +{
         instanceLocation => '',
         keywordLocation => $_.'/operationId',
-        absoluteKeywordLocation => str(Mojo::URL->new('http://localhost:1234/api')->fragment($_.'/operationId')),
+        absoluteKeywordLocation => Mojo::URL->new('http://localhost:1234/api')->fragment($_.'/operationId')->to_string,
         error => 'duplicate operationId (with location /components/callbacks/callback_a/$url_a/patch/callbacks/callback_z/$url_z/delete)',
       },
       (
