@@ -1023,4 +1023,44 @@ YAML
   );
 };
 
+subtest 'max_depth' => sub {
+  my $openapi = OpenAPI::Modern->new(
+    openapi_uri => 'openapi.yaml',
+    evaluator => JSON::Schema::Modern->new(max_traversal_depth => 15),
+    openapi_schema => do {
+      YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
+$openapi_preamble
+components:
+  parameters:
+    foo:
+      \$ref: '#/components/parameters/bar'
+    bar:
+      \$ref: '#/components/parameters/foo'
+paths:
+  /foo/{foo_id}/bar/{bar_id}:
+    post:
+      parameters:
+      - \$ref: '#/components/parameters/foo'
+YAML
+    },
+  );
+  my $request = HTTP::Request->new(POST => 'http://example.com/some/path');
+  cmp_deeply(
+    (my $result = $openapi->validate_request($request,
+      { path_template => $path_template, path_captures => {}}))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request',
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 0), ('$ref')x16),
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/parameters/bar')->to_string,
+          error => 'EXCEPTION: maximum evaluation depth exceeded',
+        },
+      ],
+    },
+    'bad $ref in operation parameters',
+  );
+};
+
 done_testing;

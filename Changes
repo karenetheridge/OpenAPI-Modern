@@ -4,6 +4,7 @@ Revision history for JSON-Schema-Modern-Document-OpenAPI
           - properly handle missing message bodies, with possibly a mising
             Content-Type header as well
           - better type handling for numeric strings and stringy numbers
+          - detect and handle infinite recursion while evaluating
 
 0.006     2021-12-01 05:22:01Z
           - support media type encodings in parameters

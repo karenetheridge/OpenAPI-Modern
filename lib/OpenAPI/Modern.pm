@@ -397,7 +397,9 @@ sub _resolve_ref ($self, $ref, $state) {
   abort({ %$state, keyword => '$ref' }, 'EXCEPTION: unable to find resource %s', $uri)
     if not $schema_info;
 
-  ++$state->{depth};
+  abort($state, 'EXCEPTION: maximum evaluation depth exceeded')
+    if $state->{depth}++ > $self->evaluator->max_traversal_depth;
+
   $state->{initial_schema_uri} = $schema_info->{canonical_uri};
   $state->{traversed_schema_path} = $state->{traversed_schema_path}.$state->{schema_path}.jsonp('/$ref');
   $state->{schema_path} = '';
