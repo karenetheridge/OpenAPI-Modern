@@ -216,7 +216,7 @@ sub validate_response ($self, $response, $options) {
       $response_obj = $self->_resolve_ref($ref, $state);
     }
 
-    foreach my $header_name (keys(($response_obj->{headers}//{})->%*)) {
+    foreach my $header_name (sort keys(($response_obj->{headers}//{})->%*)) {
       next if fc $header_name eq fc 'Content-Type';
       my $state = { %$state, schema_path => jsonp($state->{schema_path}, 'headers', $header_name) };
       my $header_obj = $response_obj->{headers}{$header_name};
@@ -335,7 +335,7 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
   if (exists $content_obj->{$content_type}{encoding}) {
     my $state = { %$state, schema_path => jsonp($state->{schema_path}, 'content', $content_type) };
     # "The key, being the property name, MUST exist in the schema as a property."
-    foreach my $property (keys $content_obj->{$content_type}{encoding}->%*) {
+    foreach my $property (sort keys $content_obj->{$content_type}{encoding}->%*) {
       ()= E({ $state, schema_path => jsonp($state->{schema_path}, 'schema', 'properties', $property) },
           'encoding property "%s" requires a matching property definition in the schema')
         if not exists(($content_obj->{$content_type}{schema}{properties}//{})->{$property});
