@@ -946,6 +946,28 @@ YAML
   );
 
 
+  $request = HTTP::Request->new(POST => 'http://example.com/foo/9');
+  $request->content_type('text/plain');
+  my $val = 20; my $str = sprintf("%s\n", $val);
+  $request->content($val);
+  cmp_deeply(
+    ($result = $openapi->validate_request($request,
+      { path_template => '/foo/{foo_id}', path_captures => { foo_id => 9 } }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/body',
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}', qw(post requestBody content text/plain schema maximum)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}', qw(post requestBody content text/plain schema maximum)))->to_string,
+          error => 'value is larger than 10',
+        },
+      ],
+    },
+    'ambiguously-typed numbers are still handled gracefully',
+  );
+
+
   $openapi = OpenAPI::Modern->new(
     openapi_uri => 'openapi.yaml',
     openapi_schema => do {

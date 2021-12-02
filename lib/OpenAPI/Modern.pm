@@ -17,13 +17,13 @@ no if "$]" >= 5.033001, feature => 'multidimensional';
 no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 use Carp 'croak';
 use Safe::Isa;
-use Ref::Util qw(is_plain_hashref is_plain_arrayref);
+use Ref::Util qw(is_plain_hashref is_plain_arrayref is_ref);
 use List::Util 1.45 qw(first uniq);
 use Scalar::Util 'looks_like_number';
 use Module::Runtime 'require_module';
 use Feature::Compat::Try;
 use JSON::Schema::Modern 0.527;
-use JSON::Schema::Modern::Utilities qw(jsonp canonical_uri E abort get_type);
+use JSON::Schema::Modern::Utilities qw(jsonp canonical_uri E abort);
 use JSON::Schema::Modern::Document::OpenAPI;
 use MooX::HandlesVia;
 use MooX::TypeTiny 0.002002;
@@ -410,15 +410,12 @@ sub _evaluate_subschema ($self, $data, $schema, $state) {
   return 1 if is_plain_hashref($schema) ? !keys(%$schema) : $schema; # true schema
 
   # treat numeric-looking data as a string, unless "type" explicitly requests number or integer.
-  my $type = get_type($data);
-  if ((grep $type eq $_, qw(string number)) and looks_like_number($data)) {
-    if (is_plain_hashref($schema) and exists $schema->{type} and not is_plain_arrayref($schema->{type})
-        and grep $schema->{type} eq $_, qw(number integer)) {
-      $data = $data+0;
-    }
-    else {
-      $data = $data.'';
-    }
+  if (is_plain_hashref($schema) and exists $schema->{type} and not is_plain_arrayref($schema->{type})
+      and grep $schema->{type} eq $_, qw(number integer) and looks_like_number($data)) {
+    $data = $data+0;
+  }
+  elsif (defined $data and not is_ref($data)) {
+    $data = $data.'';
   }
 
   # TODO: also handle multi-valued elements like headers and query parameters, when type=array requested
