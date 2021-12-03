@@ -1,6 +1,6 @@
 Revision history for JSON-Schema-Modern-Document-OpenAPI
 
-{{$NEXT}}
+0.008     2021-12-03 05:33:29Z
           - process response headers in canonical order
 
 0.007     2021-12-02 05:43:34Z
