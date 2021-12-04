@@ -1,6 +1,8 @@
 Revision history for JSON-Schema-Modern-Document-OpenAPI
 
 {{$NEXT}}
+          - validation no longer errors on a missing media type if the
+            corresponding schema is empty (true)
 
 0.008     2021-12-03 05:33:29Z
           - process response headers in canonical order

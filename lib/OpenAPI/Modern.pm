@@ -295,10 +295,16 @@ sub _validate_parameter_content ($self, $state, $param_obj, $content_ref) {
   if (exists $param_obj->{content}) {
     my ($content_type) = keys $param_obj->{content}->%*;
 
+    my $schema = $param_obj->{content}{$content_type}{schema};
+
     my $media_type_decoder = $self->get_media_type($content_type);
-    abort({ %$state, keyword => 'content', _schema_path_suffix => $content_type },
+    if (not $media_type_decoder) {
+      # don't fail if the schema would pass on any input
+      return if is_plain_hashref($schema) ? !keys %$schema : $schema;
+
+      abort({ %$state, keyword => 'content', _schema_path_suffix => $content_type },
         'EXCEPTION: unsupported Content-Type "%s": add support with $openapi->add_media_type(...)', $content_type)
-      if not $media_type_decoder;
+    }
 
     try {
       $content_ref = $media_type_decoder->($content_ref);
@@ -309,7 +315,7 @@ sub _validate_parameter_content ($self, $state, $param_obj, $content_ref) {
     }
 
     $state = { %$state, schema_path => jsonp($state->{schema_path}, 'content', $content_type, 'schema') };
-    return $self->_evaluate_subschema($content_ref->$*, $param_obj->{content}{$content_type}{schema}, $state);
+    return $self->_evaluate_subschema($content_ref->$*, $schema, $state);
   }
 
   $state = { %$state, schema_path => jsonp($state->{schema_path}, 'schema') };
@@ -357,10 +363,16 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
     }
   }
 
+  my $schema = $content_obj->{$content_type}{schema};
+
   my $media_type_decoder = $self->get_media_type($content_type);
-  abort({ %$state, keyword => 'content', _schema_path_suffix => $content_type },
+  if (not $media_type_decoder) {
+    # don't fail if the schema would pass on any input
+    return if is_plain_hashref($schema) ? !keys %$schema : $schema;
+
+    abort({ %$state, keyword => 'content', _schema_path_suffix => $content_type },
       'EXCEPTION: unsupported Content-Type "%s": add support with $openapi->add_media_type(...)', $content_type)
-    if not $media_type_decoder;
+  }
 
   try {
     $decoded_content_ref = $media_type_decoder->($decoded_content_ref);
@@ -371,7 +383,7 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
   }
 
   $state = { %$state, schema_path => jsonp($state->{schema_path}, 'content', $content_type, 'schema') };
-  $self->_evaluate_subschema($decoded_content_ref->$*, $content_obj->{$content_type}{schema}, $state);
+  $self->_evaluate_subschema($decoded_content_ref->$*, $schema, $state);
 }
 
 # wrap a result object around the errors

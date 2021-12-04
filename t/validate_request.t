@@ -253,7 +253,7 @@ paths:
     - name: FOO-BAR   # different case, but should still be overridden by the operation parameter
       in: header
       required: true
-      schema: false
+      schema: true
     post:
       parameters:
       - name: foo_id
@@ -271,6 +271,18 @@ paths:
         in: query
         required: false
         schema: false
+      - name: gamma
+        in: query
+        required: false
+        content:
+          unknown/encodingtype:
+            schema: true
+      - name: delta
+        in: query
+        required: false
+        content:
+          unknown/encodingtype:
+            schema: false
 YAML
     },
     # note that bar_id is not listed as a path parameter
@@ -302,6 +314,26 @@ YAML
       ],
     },
     'path, query and header parameters are missing; header names are case-insensitive',
+  );
+
+
+  $request->uri($request->uri.'?alpha=1&gamma=foo&delta=bar');
+  $request->header('Foo-Bar' => 1);
+  cmp_deeply(
+    ($result = $openapi->validate_request($request,
+      { path_template => $path_template, path_captures => { foo_id => '1' } }))->TO_JSON, # string, treated as int
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/query/delta',
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 5 content unknown/encodingtype)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 5 content unknown/encodingtype)))->to_string,
+          error => 'EXCEPTION: unsupported Content-Type "unknown/encodingtype": add support with $openapi->add_media_type(...)',
+        },
+      ],
+    },
+    'a missing media-type is not an error if the schema is a no-op true schema',
   );
 
 
