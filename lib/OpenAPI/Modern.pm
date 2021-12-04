@@ -518,7 +518,7 @@ __END__
     [ 'My-Response-Header' => '123' ],
     '{"status": "ok"}',
   );
-  say $openapi->validate_response($response, '/foo/{foo_id}');
+  say $openapi->validate_response($response, { path_template => '/foo/{foo_id}' });
 
 prints:
 
@@ -587,8 +587,8 @@ The L<JSON::Schema::Modern> object to use for all URI resolution and JSON Schema
   $result = $openapi->validate_request(
     $request,
     {
-      path_captures => { arg1 => 1, arg2 => 2 },
       path_template => '/foo/{arg1}/bar/{arg2}',
+      path_captures => { arg1 => 1, arg2 => 2 },
     },
   );
 
@@ -603,6 +603,8 @@ The second argument is a hashref that contains extra information about the reque
 * C<path_captures>: a hashref mapping placeholders in the path to their actual values in the request URI
 
 More options will be added later, providing more flexible matching of the document to the request.
+C<path_template> is required.
+C<path_captures> is required.
 
 =head2 validate_response
 
@@ -620,6 +622,23 @@ The second argument is a hashref that contains extra information about the reque
   C</pets/{petId}>); see L<https://spec.openapis.org/oas/v3.1.0#paths-object>.
 
 More options will be added later, providing more flexible matching of the document to the request.
+C<path_template> is required.
+
+=head2 canonical_uri
+
+An accessor that delegates to L<JSON::Schema::Modern::Document/canonical_uri>.
+
+-head2 schema
+
+An accessor that delegates to L<JSON::Schema::Modern::Document/schema>.
+
+=head2 get_media_type
+
+An accessor that delegates to L<JSON::Schema::Modern/get_media_type>.
+
+=head2 add_media_type
+
+A setter that delegates to L<JSON::Schema::Modern/add_media_type>.
 
 =head1 ON THE USE OF JSON SCHEMAS
 
@@ -654,7 +673,6 @@ Only certain permutations of OpenAPI documents are supported at this time:
 * for all parameters types, only C<explode: true> is supported
 * for path parameters, only C<style: simple> is supported
 * for query parameters, only C<style: form> is supported
-* for header parameters, only C<style: simple> is supported
 * cookie parameters are not checked at all yet
 * for query and header parameters, only the first value of each name is considered
 
