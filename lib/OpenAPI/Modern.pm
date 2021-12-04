@@ -160,7 +160,7 @@ sub validate_request ($self, $request, $options) {
       push @{$state->{errors}}, $e;
     }
     else {
-      E($state, 'EXCEPTION: '.$e);
+      ()= E($state, 'EXCEPTION: '.$e);
     }
   }
 
@@ -236,7 +236,7 @@ sub validate_response ($self, $response, $options) {
       push @{$state->{errors}}, $e;
     }
     else {
-      E($state, 'EXCEPTION: '.$e);
+      ()= E($state, 'EXCEPTION: '.$e);
     }
   }
 
