@@ -157,7 +157,7 @@ sub traverse ($self, $evaluator) {
     my ($operation_id, $path) = @$pair;
     if (my $existing = $self->get_operationId($operation_id)) {
       ()= E({ %$state, keyword => 'operationId', schema_path => $path },
-        'duplicate operationId (with location %s)', $existing);
+        'duplicate of operationId at %s', $existing);
     }
     else {
       $self->_add_operationId($operation_id => $path);
