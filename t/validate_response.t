@@ -41,15 +41,26 @@ subtest 'validation errors' => sub {
     openapi_schema => do {
       YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
 $openapi_preamble
-paths: {}
+paths:
+  /foo/{foo_id}:
+    post:
+      operationId: my-post-path
+  /foo/bar:
+    get:
+      operationId: my-get-path
+webhooks:
+  my_hook:
+    description: I like webhooks
+    post:
+      operationId: hooky
 YAML
     },
   );
 
   like(
     exception { $openapi->validate_response($response, {}) },
-    qr/^missing option path_template at /,
-    'path_template is required',
+    qr/^missing option path_template or operation_id at /,
+    'path_template or operation_id is required',
   );
 
   cmp_deeply(
@@ -68,6 +79,85 @@ YAML
     },
     'path template does not exist under /paths',
   );
+
+  cmp_deeply(
+    ($result = $openapi->validate_response($response,
+      { operation_id => 'bloop', path_captures => {} }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/response',
+          keywordLocation => jsonp('/paths'),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths'))->to_string,
+          error => 'unknown operation_id "bloop"',
+        },
+      ],
+    },
+    'path template does not exist under /paths',
+  );
+
+  cmp_deeply(
+    ($result = $openapi->validate_response($response,
+      { operation_id => 'hooky', path_captures => {} }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/response',
+          keywordLocation => '/webhooks/my_hook/post/operationId',
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/webhooks/my_hook/post/operationId'))->to_string,
+          error => 'operation id does not have an associated path',
+        },
+      ],
+    },
+    'path template does not exist under /paths',
+  );
+
+
+  cmp_deeply(
+    ($result = $openapi->validate_response($response,
+      { path_template => '/foo/{foo_id}', operation_id => 'my-get-path', path_captures => {} }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/response',
+          keywordLocation => '/paths/~1foo~1bar',
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', qw(/foo/bar)))->to_string,
+          error => 'operation does not match provided path_template',
+        },
+      ],
+    },
+    'path_template and operation_id are inconsistent',
+  );
+
+
+  cmp_deeply(
+    ($result = $openapi->validate_response($response,
+      { operation_id => 'my-get-path', path_captures => {} }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/response',
+          keywordLocation => '/paths/~1foo~1bar/get',
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', qw(/foo/bar get)))->to_string,
+          error => 'wrong HTTP method POST',
+        },
+      ],
+    },
+    'request HTTP method does not match operation',
+  );
+
+
+  cmp_deeply(
+    ($result = $openapi->validate_response($response,
+      { path_template => '/foo/{foo_id}', operation_id => 'my-post-path', path_captures => {} }))->TO_JSON,
+    { valid => true },
+    'path_template and operation_id can both be passed, if consistent',
+  );
+
 
   $openapi = OpenAPI::Modern->new(
     openapi_uri => 'openapi.yaml',

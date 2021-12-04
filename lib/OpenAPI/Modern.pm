@@ -22,7 +22,7 @@ use List::Util 'first';
 use Scalar::Util 'looks_like_number';
 use Feature::Compat::Try;
 use JSON::Schema::Modern 0.527;
-use JSON::Schema::Modern::Utilities qw(jsonp canonical_uri E abort);
+use JSON::Schema::Modern::Utilities 0.531 qw(jsonp unjsonp canonical_uri E abort);
 use JSON::Schema::Modern::Document::OpenAPI;
 use MooX::HandlesVia;
 use MooX::TypeTiny 0.002002;
@@ -75,7 +75,7 @@ around BUILDARGS => sub ($orig, $class, @args) {
 };
 
 # at the moment, we rely on these values being provided in $options:
-# - path_template
+# - path_template OR operationId
 # - path_captures
 sub validate_request ($self, $request, $options) {
   my $state = {
@@ -86,7 +86,8 @@ sub validate_request ($self, $request, $options) {
     errors => [],
   };
 
-  croak 'missing option path_template' if not length $options->{path_template};
+  croak 'missing option path_template or operation_id'
+    if not exists $options->{path_template} and not exists $options->{operation_id};
 
   my $path_captures = $options->{path_captures};
   croak 'missing option path_captures' if not is_plain_hashref($path_captures);
@@ -163,7 +164,7 @@ sub validate_request ($self, $request, $options) {
 }
 
 # at the moment, we rely on these values being provided in $options:
-# - path_template
+# - path_template OR operationId
 sub validate_response ($self, $response, $options) {
   my $state = {
     data_path => '/response',
@@ -173,7 +174,8 @@ sub validate_response ($self, $response, $options) {
     errors => [],
   };
 
-  croak 'missing option path_template' if not length $options->{path_template};
+  croak 'missing option path_template or operation_id'
+    if not exists $options->{path_template} and not exists $options->{operation_id};
 
   try {
     my $path_template = $self->_find_path($state, $response->request, $options);
@@ -233,20 +235,45 @@ sub validate_response ($self, $response, $options) {
 ######## NO PUBLIC INTERFACES FOLLOW THIS POINT ########
 
 # at the moment, we rely on these values being provided in $options:
-# - path_template OR operationId
+# - path_template OR operation_id
 # return: path_template.  caller can get method out of $request.
 # in the future, we will parse the request URI and can extract path_captures as well.
 sub _find_path ($self, $state, $request, $options) {
-  my $path_template = $options->{path_template};
+  my $path_template;
 
-  my $path_item = $self->openapi_document->schema->{paths}{$path_template};
-  abort({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
-    'missing path-item "%s"', $path_template) if not $path_item;
+  # path_template from options, method from request
+  if (exists $options->{path_template}) {
+    $path_template = $options->{path_template};
 
-  my $method = lc $request->method;
-  abort({ %$state, schema_path => jsonp('/paths', $path_template), keyword => $method },
-      'missing entry for HTTP method "%s"', $method)
-    if not $path_item->{$method};
+    my $path_item = $self->openapi_document->schema->{paths}{$path_template};
+    abort({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
+      'missing path-item "%s"', $path_template) if not $path_item;
+
+    my $method = lc $request->method;
+    abort({ %$state, schema_path => jsonp('/paths', $path_template), keyword => $method },
+        'missing entry for HTTP method "%s"', $method)
+      if not $path_item->{$method};
+  }
+
+  # path_template and method from operationId from options
+  if (exists $options->{operation_id}) {
+    my $operation_path = $self->openapi_document->get_operationId($options->{operation_id});
+    abort({ %$state, keyword => 'paths' }, 'unknown operation_id "%s"', $options->{operation_id})
+      if not $operation_path;
+    abort({ %$state, schema_path => $operation_path, keyword => 'operationId' },
+      'operation id does not have an associated path') if $operation_path !~ m{^/paths/};
+    (undef, undef, $path_template, my $method) = unjsonp($operation_path);
+
+    abort({ %$state, schema_path => jsonp('/paths', $path_template) },
+        'operation does not match provided path_template')
+      if exists $options->{path_template} and $options->{path_template} ne $path_template;
+
+    abort({ %$state, schema_path => $operation_path }, 'wrong HTTP method %s', $request->method)
+      if lc $request->method ne $method;
+  }
+
+  # TODO: alternatively, look up $path_template and $path_captures from $request->uri,
+  # OR verify that $path_template matches $request->uri
 
   return $path_template;
 }
@@ -472,6 +499,7 @@ __END__
         schema:
           pattern: ^[a-z]+$
       post:
+        operationId: my_foo_request
         parameters:
         - name: My-Request-Header
           in: header
@@ -524,7 +552,7 @@ __END__
     [ 'My-Response-Header' => '123' ],
     '{"status": "ok"}',
   );
-  say $openapi->validate_response($response, { path_template => '/foo/{foo_id}' });
+  say $openapi->validate_response($response, { operation_id => 'my_foo_request' });
 
 prints:
 
@@ -596,6 +624,11 @@ The L<JSON::Schema::Modern> object to use for all URI resolution and JSON Schema
       path_template => '/foo/{arg1}/bar/{arg2}',
       path_captures => { arg1 => 1, arg2 => 2 },
     },
+    # OR:
+    # {
+    #   operation_id => 'my_operation_id',
+    #   path_captures => { arg1 => 1, arg2 => 2 },
+    # },
   );
 
 Validates an L<HTTP::Request> object against the corresponding OpenAPI v3.1 document, returning a
@@ -606,10 +639,12 @@ The second argument is a hashref that contains extra information about the reque
 =for :list
 * C<path_template>: a string representing the request URI, with placeholders in braces (e.g.
   C</pets/{petId}>); see L<https://spec.openapis.org/oas/v3.1.0#paths-object>.
+* C<operation_id>: a string corresponding to the C<operationId> at a particular path-template and HTTP location
+  under C</paths>
 * C<path_captures>: a hashref mapping placeholders in the path to their actual values in the request URI
 
 More options will be added later, providing more flexible matching of the document to the request.
-C<path_template> is required.
+C<path_template> OR C<operation_id> is required.
 C<path_captures> is required.
 
 =head2 validate_response
@@ -628,7 +663,7 @@ The second argument is a hashref that contains extra information about the reque
   C</pets/{petId}>); see L<https://spec.openapis.org/oas/v3.1.0#paths-object>.
 
 More options will be added later, providing more flexible matching of the document to the request.
-C<path_template> is required.
+C<path_template> OR C<operation_id> is required.
 
 =head2 canonical_uri
 
