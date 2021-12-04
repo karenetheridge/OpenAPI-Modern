@@ -12,6 +12,7 @@ use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 
 use Test::More;
 use Test::Deep;
+use Test::Fatal;
 use OpenAPI::Modern;
 use JSON::Schema::Modern::Utilities 'jsonp';
 use Test::File::ShareDir -share => { -dist => { 'JSON-Schema-Modern-Document-OpenAPI' => 'share' } };
@@ -44,6 +45,19 @@ paths: {}
 YAML
     },
   );
+
+  like(
+    exception { $openapi->validate_request($request, {}) },
+    qr/^missing option path_template at /,
+    'path_template is required',
+  );
+
+  like(
+    exception { $openapi->validate_request($request, { path_template => $path_template }) },
+    qr/^missing option path_captures at /,
+    'path_captures is required',
+  );
+
   cmp_deeply(
     (my $result = $openapi->validate_request($request,
       { path_template => $path_template, path_captures => {} }))->TO_JSON,
