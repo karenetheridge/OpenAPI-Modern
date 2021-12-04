@@ -87,9 +87,10 @@ sub validate_request ($self, $request, $options) {
   };
 
   my $path_template = $options->{path_template};
-  my $captures = $options->{path_captures};
   croak 'missing option path_template' if not length $path_template;
-  croak 'missing option path_captures' if not is_plain_hashref($captures);
+
+  my $path_captures = $options->{path_captures};
+  croak 'missing option path_captures' if not is_plain_hashref($path_captures);
 
   try {
     my $schema = $self->openapi_document->schema;
@@ -128,7 +129,7 @@ sub validate_request ($self, $request, $options) {
 
         $state->{data_path} = jsonp($state->{data_path}, $param_obj->{in}, $param_obj->{name});
         my $valid =
-            $param_obj->{in} eq 'path' ? $self->_validate_path_parameter($state, $param_obj, $captures)
+            $param_obj->{in} eq 'path' ? $self->_validate_path_parameter($state, $param_obj, $path_captures)
           : $param_obj->{in} eq 'query' ? $self->_validate_query_parameter($state, $param_obj, $request->uri)
           : $param_obj->{in} eq 'header' ? $self->_validate_header_parameter($state, $param_obj->{name}, $param_obj, $request->headers)
           : $param_obj->{in} eq 'cookie' ? $self->_validate_cookie_parameter($state, $param_obj, $request)
@@ -246,12 +247,12 @@ sub validate_response ($self, $response, $options) {
 ######## NO PUBLIC INTERFACES FOLLOW THIS POINT ########
 
 # for now, we only use captures, rather than parsing the URI directly.
-sub _validate_path_parameter ($self, $state, $param_obj, $captures) {
+sub _validate_path_parameter ($self, $state, $param_obj, $path_captures) {
   # 'required' is always true for path parameters
   return E({ %$state, keyword => 'required' }, 'missing path parameter: %s', $param_obj->{name})
-    if not exists $captures->{$param_obj->{name}};
+    if not exists $path_captures->{$param_obj->{name}};
 
-  $self->_validate_parameter_content($state, $param_obj, \ $captures->{$param_obj->{name}});
+  $self->_validate_parameter_content($state, $param_obj, \ $path_captures->{$param_obj->{name}});
 }
 
 sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
