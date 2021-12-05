@@ -326,6 +326,8 @@ sub _validate_cookie_parameter ($self, $state, $param_obj, $request) {
 
 sub _validate_parameter_content ($self, $state, $param_obj, $content_ref) {
   if (exists $param_obj->{content}) {
+    abort({ %$state, keyword => 'content' }, 'more than one media type entry present')
+      if keys $param_obj->{content}->%* > 1;  # TODO: remove, when the spec schema is updated
     my ($media_type) = keys $param_obj->{content}->%*;  # there can only be one key
     my $schema = $param_obj->{content}{$media_type}{schema};
 
