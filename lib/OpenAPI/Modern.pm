@@ -86,24 +86,18 @@ sub validate_request ($self, $request, $options) {
     errors => [],
   };
 
-  my $path_template = $options->{path_template};
-  croak 'missing option path_template' if not length $path_template;
+  croak 'missing option path_template' if not length $options->{path_template};
 
   my $path_captures = $options->{path_captures};
   croak 'missing option path_captures' if not is_plain_hashref($path_captures);
 
   try {
-    my $schema = $self->openapi_document->schema;
-
-    my $path_item = $schema->{paths}{$path_template};
-    abort({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
-      'missing path-item "%s"', $path_template) if not $path_item;
-
-    $state->{schema_path} = jsonp('/paths', $path_template);
+    my $path_template = $self->_find_path($state, $request, $options);
+    my $path_item = $self->openapi_document->schema->{paths}{$path_template};
     my $method = lc $request->method;
     my $operation = $path_item->{$method};
-    abort({ %$state, keyword => $method }, 'missing entry for HTTP method "%s"', $method)
-      if not $operation;
+
+    $state->{schema_path} = jsonp('/paths', $path_template);
 
     # PARAMETERS
     # { $in => { $name => 'path-item'|$method } }  as we process each one.
@@ -179,24 +173,16 @@ sub validate_response ($self, $response, $options) {
     errors => [],
   };
 
-  my $path_template = $options->{path_template};
-  croak 'missing option path_template' if not length $path_template;
+  croak 'missing option path_template' if not length $options->{path_template};
 
   try {
-    my $schema = $self->openapi_document->schema;
-    abort({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
-        'missing path-item "%s"', $path_template)
-      if not $schema->{paths}{$path_template};
-
-    $state->{schema_path} = jsonp('/paths', $path_template);
+    my $path_template = $self->_find_path($state, $response->request, $options);
     my $method = lc $response->request->method;
-    my $operation = $schema->{paths}{$path_template}{$method};
-    abort({ %$state, keyword => $method }, 'missing entry for HTTP method "%s"', $method)
-      if not $operation;
+    my $operation = $self->openapi_document->schema->{paths}{$path_template}{$method};
 
     return $self->_result($state) if not exists $operation->{responses};
 
-    $state->{schema_path} = jsonp($state->{schema_path}, $method);
+    $state->{schema_path} = jsonp('/paths', $path_template, $method);
 
     my $response_property = first { exists $operation->{responses}{$_} }
       $response->code, substr(sprintf('%03s', $response->code), 0, -2).'XX', 'default';
@@ -245,6 +231,25 @@ sub validate_response ($self, $response, $options) {
 }
 
 ######## NO PUBLIC INTERFACES FOLLOW THIS POINT ########
+
+# at the moment, we rely on these values being provided in $options:
+# - path_template OR operationId
+# return: path_template.  caller can get method out of $request.
+# in the future, we will parse the request URI and can extract path_captures as well.
+sub _find_path ($self, $state, $request, $options) {
+  my $path_template = $options->{path_template};
+
+  my $path_item = $self->openapi_document->schema->{paths}{$path_template};
+  abort({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
+    'missing path-item "%s"', $path_template) if not $path_item;
+
+  my $method = lc $request->method;
+  abort({ %$state, schema_path => jsonp('/paths', $path_template), keyword => $method },
+      'missing entry for HTTP method "%s"', $method)
+    if not $path_item->{$method};
+
+  return $path_template;
+}
 
 # for now, we only use captures, rather than parsing the URI directly.
 sub _validate_path_parameter ($self, $state, $param_obj, $path_captures) {
