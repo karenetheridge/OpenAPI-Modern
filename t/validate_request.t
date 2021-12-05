@@ -393,6 +393,12 @@ paths:
         content:
           apPlicATion/jsON:
             schema: false
+      - name: zeta
+        in: query
+        required: false
+        content:
+          iMAgE/*:
+            schema: false
 YAML
     },
     # note that bar_id is not listed as a path parameter
@@ -447,6 +453,26 @@ YAML
   );
 
 
+  $openapi->add_media_type('unknown/*' => sub ($value) { $value });
+
+  cmp_deeply(
+    ($result = $openapi->validate_request($request,
+      { path_template => $path_template, path_captures => { foo_id => '1' } }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/query/delta',
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 5 content unknown/encodingtype schema)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 5 content unknown/encodingtype schema)))->to_string,
+          error => 'subschema is false',
+        },
+      ],
+    },
+    'after adding wildcard support, this parameter can be parsed',
+  );
+
+
   $request->uri('http://example.com/some/path?alpha=1&epsilon={"foo":42}');
   cmp_deeply(
     ($result = $openapi->validate_request($request,
@@ -463,6 +489,27 @@ YAML
       ],
     },
     'media-types in the openapi document are looked up case-insensitively',
+  );
+
+
+  $openapi->add_media_type('image/*' => sub ($value) { $value });
+
+  $request->uri('http://example.com/some/path?alpha=1&zeta=binary');
+  cmp_deeply(
+    ($result = $openapi->validate_request($request,
+      { path_template => $path_template, path_captures => { foo_id => '1' } }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/query/zeta',
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 7 content iMAgE/* schema)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 7 content iMAgE/* schema)))->to_string,
+          error => 'subschema is false',
+        },
+      ],
+    },
+    'wildcard media-types in the openapi document are looked up case-insensitively too',
   );
 
 
@@ -720,6 +767,8 @@ paths:
               additionalProperties: false
           tEXt/HTml:
             schema: false
+          unknown/encodingtype:
+            schema: false
 YAML
     },
   );
@@ -801,6 +850,28 @@ YAML
       ],
     },
     'Content-Type looked up case-insensitively and matched in the document case-insensitively too',
+  );
+
+
+  $openapi->add_media_type('unknown/*' => sub ($value) { $value });
+
+  $request->content_type('unknown/encodingtype');
+  $request->content('binary');
+  cmp_deeply(
+    ($result = $openapi->validate_request($request,
+      { path_template => $path_template, path_captures => { foo_id => '1' } }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/body',
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post requestBody content unknown/encodingtype schema)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post requestBody content unknown/encodingtype schema)))->to_string,
+          error => 'subschema is false',
+        },
+      ],
+    },
+    'wildcard support in the media type registry is used to handle an otherwise-unknown content type',
   );
 
 

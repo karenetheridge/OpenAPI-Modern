@@ -331,7 +331,7 @@ sub _validate_parameter_content ($self, $state, $param_obj, $content_ref) {
     my ($media_type) = keys $param_obj->{content}->%*;  # there can only be one key
     my $schema = $param_obj->{content}{$media_type}{schema};
 
-    my $media_type_decoder = $self->get_media_type($media_type);  # case-insensitive lookup
+    my $media_type_decoder = $self->get_media_type($media_type);  # case-insensitive, wildcard lookup
     if (not $media_type_decoder) {
       # don't fail if the schema would pass on any input
       return if is_plain_hashref($schema) ? !keys %$schema : $schema;
@@ -400,7 +400,7 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
 
   my $schema = $content_obj->{$media_type}{schema};
 
-  my $media_type_decoder = $self->get_media_type($content_type);  # case-insensitive lookup
+  my $media_type_decoder = $self->get_media_type($content_type);  # case-insensitive, wildcard lookup
   if (not $media_type_decoder) {
     # don't fail if the schema would pass on any input
     return if is_plain_hashref($schema) ? !keys %$schema : $schema;
