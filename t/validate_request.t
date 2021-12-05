@@ -374,6 +374,7 @@ YAML
     'path, query and header parameters are evaluated against their schemas',
   );
 
+
   $openapi = OpenAPI::Modern->new(
     openapi_uri => 'openapi.yaml',
     openapi_schema => do {
