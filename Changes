@@ -6,6 +6,8 @@ Revision history for JSON-Schema-Modern-Document-OpenAPI
           - validate_request and validate_response now accept an operation_id
             instead of a path_template for looking up the endpoint
             specification in the openapi document
+          - treat Content-Type headers and media-type entries in openapi
+            documents case-insensitively
 
 0.008     2021-12-03 05:33:29Z
           - process response headers in canonical order

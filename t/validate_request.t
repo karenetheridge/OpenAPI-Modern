@@ -387,6 +387,12 @@ paths:
         content:
           unknown/encodingtype:
             schema: false
+      - name: epsilon
+        in: query
+        required: false
+        content:
+          apPlicATion/jsON:
+            schema: false
 YAML
     },
     # note that bar_id is not listed as a path parameter
@@ -438,6 +444,25 @@ YAML
       ],
     },
     'a missing media-type is not an error if the schema is a no-op true schema',
+  );
+
+
+  $request->uri('http://example.com/some/path?alpha=1&epsilon={"foo":42}');
+  cmp_deeply(
+    ($result = $openapi->validate_request($request,
+      { path_template => $path_template, path_captures => { foo_id => '1' } }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/query/epsilon',
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 6 content apPlicATion/jsON schema)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 6 content apPlicATion/jsON schema)))->to_string,
+          error => 'subschema is false',
+        },
+      ],
+    },
+    'media-types in the openapi document are looked up case-insensitively',
   );
 
 
@@ -693,7 +718,7 @@ paths:
                   type: string
                   const: ಠ_ಠ
               additionalProperties: false
-          text/html:
+          tEXt/HTml:
             schema: false
 YAML
     },
@@ -738,7 +763,7 @@ YAML
   );
 
 
-  $request->content_type('text/html');
+  $request->content_type('TEXT/HTML');
   $request->content('html text');
   cmp_deeply(
     ($result = $openapi->validate_request($request,
@@ -748,13 +773,34 @@ YAML
       errors => [
         {
           instanceLocation => '/request/body',
-          keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post requestBody content text/html)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post requestBody content text/html)))->to_string,
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post requestBody content tEXt/HTml)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post requestBody content tEXt/HTml)))->to_string,
           error => 'EXCEPTION: unsupported Content-Type "text/html": add support with $openapi->add_media_type(...)',
         },
       ],
     },
-    'unsupported Content-Type',
+    'unsupported Content-Type - but matched against the document case-insensitively',
+  );
+
+
+  # we have to add media-types in foldcased format
+  $openapi->add_media_type('text/html' => sub ($content_ref) { $content_ref });
+
+  cmp_deeply(
+    ($result = $openapi->validate_request($request,
+      { path_template => $path_template, path_captures => { foo_id => '1' } }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/body',
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post requestBody content tEXt/HTml schema)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post requestBody content tEXt/HTml schema)))->to_string,
+          error => 'subschema is false',
+        },
+      ],
+    },
+    'Content-Type looked up case-insensitively and matched in the document case-insensitively too',
   );
 
 
