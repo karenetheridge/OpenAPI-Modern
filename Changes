@@ -7,7 +7,8 @@ Revision history for JSON-Schema-Modern-Document-OpenAPI
             instead of a path_template for looking up the endpoint
             specification in the openapi document
           - treat Content-Type headers and media-type entries in openapi
-            documents case-insensitively
+            documents case-insensitively, and also match wildcards
+            (image/jpg falls back to image/* or */*)
 
 0.008     2021-12-03 05:33:29Z
           - process response headers in canonical order

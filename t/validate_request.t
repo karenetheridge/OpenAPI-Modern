@@ -769,6 +769,8 @@ paths:
             schema: false
           unknown/encodingtype:
             schema: false
+          iMAgE/*:
+            schema: false
 YAML
     },
   );
@@ -872,6 +874,28 @@ YAML
       ],
     },
     'wildcard support in the media type registry is used to handle an otherwise-unknown content type',
+  );
+
+
+  # this will match against the document at image/*
+  # but we have no media-type registry for image/*, only image/jpeg
+  $openapi->add_media_type('image/jpeg' => sub ($value) { $value });
+  $request->content_type('image/jpeg');
+  cmp_deeply(
+    ($result = $openapi->validate_request($request,
+      { path_template => $path_template, path_captures => {} }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/body',
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post requestBody content iMAgE/* schema)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post requestBody content iMAgE/* schema)))->to_string,
+          error => 'subschema is false',
+        },
+      ],
+    },
+    'Content-Type header is matched to a wildcard entry in the document, then matched to a media-type implementation',
   );
 
 

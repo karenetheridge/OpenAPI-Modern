@@ -363,8 +363,12 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
       'missing header: Content-Type')
     if not length $content_type;
 
-  # TODO: respect wildcard entries in the openapi document
-  my $media_type = first { $content_type eq fc } keys $content_obj->%*;
+  # TODO: support Content-Type: application/schema+json matching entry of application/json
+
+  # we don't support */* here because what is the point? if you want to test string length,
+  # check the Content-Length header.
+  my $media_type = (first { $content_type eq fc } keys $content_obj->%*)
+    // (first { m{([^/]+)/\*$} && fc($content_type) =~ m{^\F$1/[^/]+$} } keys $content_obj->%*);
   return E({ %$state, keyword => 'content' }, 'incorrect Content-Type "%s"', $content_type)
     if not $media_type;
 
@@ -400,6 +404,7 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
 
   my $schema = $content_obj->{$media_type}{schema};
 
+  # use the original Content-Type, NOT the possibly wildcard media type from the document
   my $media_type_decoder = $self->get_media_type($content_type);  # case-insensitive, wildcard lookup
   if (not $media_type_decoder) {
     # don't fail if the schema would pass on any input
