@@ -439,7 +439,7 @@ YAML
           instanceLocation => '/request/query/delta',
           keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 5 content unknown/encodingtype)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post parameters 5 content unknown/encodingtype)))->to_string,
-          error => 'EXCEPTION: unsupported Content-Type "unknown/encodingtype": add support with $openapi->add_media_type(...)',
+          error => 'EXCEPTION: unsupported media type "unknown/encodingtype": add support with $openapi->add_media_type(...)',
         },
       ],
     },

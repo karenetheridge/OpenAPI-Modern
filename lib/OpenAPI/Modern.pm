@@ -326,7 +326,7 @@ sub _validate_cookie_parameter ($self, $state, $param_obj, $request) {
 
 sub _validate_parameter_content ($self, $state, $param_obj, $content_ref) {
   if (exists $param_obj->{content}) {
-    my ($media_type) = keys $param_obj->{content}->%*;
+    my ($media_type) = keys $param_obj->{content}->%*;  # there can only be one key
     my $schema = $param_obj->{content}{$media_type}{schema};
 
     my $media_type_decoder = $self->get_media_type($media_type);  # case-insensitive lookup
@@ -335,7 +335,7 @@ sub _validate_parameter_content ($self, $state, $param_obj, $content_ref) {
       return if is_plain_hashref($schema) ? !keys %$schema : $schema;
 
       abort({ %$state, keyword => 'content', _schema_path_suffix => $media_type},
-        'EXCEPTION: unsupported Content-Type "%s": add support with $openapi->add_media_type(...)', $media_type)
+        'EXCEPTION: unsupported media type "%s": add support with $openapi->add_media_type(...)', $media_type)
     }
 
     try {
