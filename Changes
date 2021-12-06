@@ -1,6 +1,6 @@
 Revision history for JSON-Schema-Modern-Document-OpenAPI
 
-{{$NEXT}}
+0.009     2021-12-06 05:55:01Z
           - validation no longer errors on a missing media type if the
             corresponding schema is empty (true)
           - validate_request and validate_response now accept an operation_id
