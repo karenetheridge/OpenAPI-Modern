@@ -345,7 +345,7 @@ sub _validate_parameter_content ($self, $state, $param_obj, $content_ref) {
     }
     catch ($e) {
       return E({ %$state, keyword => 'content', _schema_path_suffix => $media_type },
-        'could not decode content as %s', $media_type);
+        'could not decode content as %s: %s', $media_type, $e =~ s/^(.*)\n/$1/r);
     }
 
     $state = { %$state, schema_path => jsonp($state->{schema_path}, 'content', $media_type, 'schema') };
@@ -398,7 +398,7 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
     }
     catch ($e) {
       return E({ %$state, keyword => 'content', _schema_path_suffix => $media_type },
-        'could not decode content as %s', $charset);
+        'could not decode content as %s: %s', $charset, $e =~ s/^(.*)\n/$1/r);
     }
   }
 
@@ -419,7 +419,7 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
   }
   catch ($e) {
     return E({ %$state, keyword => 'content', _schema_path_suffix => $media_type },
-      'could not decode content as %s', $media_type );
+      'could not decode content as %s: %s', $media_type, $e =~ s/^(.*)\n/$1/r);
   }
 
   $state = { %$state, schema_path => jsonp($state->{schema_path}, 'content', $media_type, 'schema') };
