@@ -4,6 +4,7 @@ Revision history for JSON-Schema-Modern-Document-OpenAPI
           - OpenAPI metaschemas are now also available via URIs ending in
             .../latest
           - improved error messaging when a media-type or charset decoder fails
+          - improved handling of HTTP headers
 
 0.009     2021-12-06 05:55:01Z
           - validation no longer errors on a missing media type if the

@@ -45,6 +45,7 @@ subtest 'header parameters' => sub {
     { args => [ 'Accept', { schema => false }, [ 'application/json' ] ], content => undef, errors => [] },
     { args => [ 'Content-Type', { schema => false }, [ 'application/json' ] ], content => undef, errors => [] },
     { args => [ 'Authorization', { schema => false }, [ 'Basic whargarbl' ] ], content => undef, errors => [] },
+    { args => [ 'Spaces', { schema => false }, [ " i have spaces  \t " ] ], content => 'i have spaces', errors => [] },
   );
 
   foreach my $test (@tests) {

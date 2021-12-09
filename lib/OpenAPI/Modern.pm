@@ -312,6 +312,8 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
   return 1 if grep fc $header_name eq fc $_, qw(Accept Content-Type Authorization);
 
   # NOTE: for now, we will only support a single header value.
+  @$headers = map s/^\s*//r =~ s/\s*$//r, @$headers;
+
   if (not @$headers) {
     return E({ %$state, keyword => 'required' }, 'missing header: %s', $header_name)
       if $header_obj->{required};
