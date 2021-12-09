@@ -302,7 +302,9 @@ sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
     return 1;
   }
 
-  # TODO: check 'allowReserved': it cannot be supported if we use proper URL encoding
+  # TODO: check 'allowReserved': if true, do not use percent-decoding
+    return E({ %$state, keyword => 'allowReserved' }, 'allowReserved: true is not yet supported')
+      if $param_obj->{allowReserved} // 0;
 
   $self->_validate_parameter_content($state, $param_obj, \ $query_params->{$param_obj->{name}});
 }
