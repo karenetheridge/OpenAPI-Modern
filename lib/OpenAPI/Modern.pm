@@ -309,6 +309,8 @@ sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
 
 # validates a header, from either the request or the response
 sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $headers) {
+  return 1 if grep fc $header_name eq fc $_, qw(Accept Content-Type Authorization);
+
   # NOTE: for now, we will only support a single header value.
   if (not @$headers) {
     return E({ %$state, keyword => 'required' }, 'missing header: %s', $header_name)
