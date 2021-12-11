@@ -363,8 +363,6 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
       'missing header: Content-Type')
     if not length $content_type;
 
-  # TODO: support Content-Type: application/schema+json matching entry of application/json
-
   # we don't support */* here because what is the point? if you want to test string length,
   # check the Content-Length header.
   my $media_type = (first { $content_type eq fc } keys $content_obj->%*)
