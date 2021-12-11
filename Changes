@@ -1,5 +1,7 @@
 Revision history for JSON-Schema-Modern-Document-OpenAPI
 
+{{$NEXT}}
+
 0.010     2021-12-11 23:11:43Z
           - OpenAPI metaschemas are now also available via URIs ending in
             .../latest
