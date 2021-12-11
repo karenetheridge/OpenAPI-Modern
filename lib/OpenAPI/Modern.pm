@@ -126,7 +126,7 @@ sub validate_request ($self, $request, $options) {
         my $valid =
             $param_obj->{in} eq 'path' ? $self->_validate_path_parameter($state, $param_obj, $path_captures)
           : $param_obj->{in} eq 'query' ? $self->_validate_query_parameter($state, $param_obj, $request->uri)
-          : $param_obj->{in} eq 'header' ? $self->_validate_header_parameter($state, $param_obj->{name}, $param_obj, $request->headers)
+          : $param_obj->{in} eq 'header' ? $self->_validate_header_parameter($state, $param_obj->{name}, $param_obj, [ $request->header($param_obj->{name}) ])
           : $param_obj->{in} eq 'cookie' ? $self->_validate_cookie_parameter($state, $param_obj, $request)
           : abort($state, 'unrecognized "in" value "%s"', $param_obj->{in});
       }
@@ -210,7 +210,7 @@ sub validate_response ($self, $response, $options) {
 
       ()= $self->_validate_header_parameter({ %$state,
           data_path => jsonp($state->{data_path}, 'header', $header_name) },
-        $header_name, $header_obj, $response->headers);
+        $header_name, $header_obj, [ $response->header($header_name) ]);
     }
 
     ()= $self->_validate_body_content({ %$state, data_path => jsonp($state->{data_path}, 'body') },
@@ -309,15 +309,14 @@ sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
 
 # validates a header, from either the request or the response
 sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $headers) {
-  # NOTE: for now, we will only support a single value.
-  my @values = $headers->header($header_name);
-  if (not @values) {
+  # NOTE: for now, we will only support a single header value.
+  if (not @$headers) {
     return E({ %$state, keyword => 'required' }, 'missing header: %s', $header_name)
       if $header_obj->{required};
     return 1;
   }
 
-  $self->_validate_parameter_content($state, $header_obj, \ $values[0]);
+  $self->_validate_parameter_content($state, $header_obj, \ $headers->[0]);
 }
 
 sub _validate_cookie_parameter ($self, $state, $param_obj, $request) {
