@@ -546,11 +546,10 @@ __END__
   );
 
   say 'request:';
-  my $request = HTTP::Request->new(
-    POST => 'http://example.com/foo/bar',
+  use HTTP::Request::Common;
+  my $request = POST 'http://example.com/foo/bar',
     [ 'My-Request-Header' => '123', 'Content-Type' => 'application/json' ],
-    '{"hello": 123}',
-  );
+    '{"hello": 123}';
   say $openapi->validate_request($request, {
     path_template => '/foo/{foo_id}',
     path_captures => { foo_id => 'bar' },

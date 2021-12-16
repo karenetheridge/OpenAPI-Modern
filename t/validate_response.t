@@ -17,7 +17,7 @@ use OpenAPI::Modern;
 use JSON::Schema::Modern::Utilities 'jsonp';
 use Test::File::ShareDir -share => { -dist => { 'JSON-Schema-Modern-Document-OpenAPI' => 'share' } };
 use constant { true => JSON::PP::true, false => JSON::PP::false };
-use HTTP::Request;
+use HTTP::Request::Common;
 use HTTP::Response;
 use YAML::PP;
 
@@ -35,7 +35,7 @@ my $doc_uri = Mojo::URL->new('openapi.yaml');
 
 subtest 'validation errors' => sub {
   my $response = HTTP::Response->new(404);
-  $response->request(my $request = HTTP::Request->new(POST => 'http://example.com/some/path'));
+  $response->request(my $request = POST 'http://example.com/some/path');
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => 'openapi.yaml',
     openapi_schema => do {
@@ -475,7 +475,7 @@ YAML
       },
   );
   $response = HTTP::Response->new(POST => 'http://example.com/foo/123');
-  $response->request($request = HTTP::Request->new(POST => 'http://example.com/some/path'));
+  $response->request($request = POST 'http://example.com/some/path');
   cmp_deeply(
     ($result = $openapi->validate_response($response,
       { path_template => '/foo/{foo_id}', path_captures => { foo_id => 123 } }))->TO_JSON,
