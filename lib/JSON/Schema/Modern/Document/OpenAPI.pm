@@ -273,7 +273,7 @@ for passing to C<< $document->get(..) >>), or C<undef> if it is not contained in
 
 =head1 SUPPORT
 
-You can also find me on the L<JSON Schema Slack server|json-schema.slack.com> and L<OpenAPI Slack
-server|open-api.slack.com>, which are also great resources for finding help.
+You can also find me on the L<JSON Schema Slack server|https://json-schema.slack.com> and L<OpenAPI Slack
+server|https://open-api.slack.com>, which are also great resources for finding help.
 
 =cut
