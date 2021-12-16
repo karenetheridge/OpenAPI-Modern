@@ -21,6 +21,7 @@ use Ref::Util qw(is_plain_hashref is_plain_arrayref is_ref);
 use List::Util 'first';
 use Scalar::Util 'looks_like_number';
 use Feature::Compat::Try;
+use Encode 2.89;
 use JSON::Schema::Modern 0.531;
 use JSON::Schema::Modern::Utilities 0.531 qw(jsonp unjsonp canonical_uri E abort);
 use JSON::Schema::Modern::Document::OpenAPI;
