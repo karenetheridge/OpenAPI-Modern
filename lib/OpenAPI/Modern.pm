@@ -140,11 +140,11 @@ sub validate_request ($self, $request, $options) {
         $body_obj = $self->_resolve_ref($ref, $state);
       }
 
-      if ($body_obj->{required} and not length($request->content_ref->$*)) {
-        ()= E({ %$state, keyword => 'required' }, 'request body is required but missing');
-      }
-      else {
+      if ($request->content_length) {
         ()= $self->_validate_body_content($state, $body_obj->{content}, $request);
+      }
+      elsif ($body_obj->{required}) {
+        ()= E({ %$state, keyword => 'required' }, 'request body is required but missing');
       }
     }
   }

@@ -1254,7 +1254,7 @@ YAML
   );
 
   # bypass auto-initialization of Content-Length, Content-Type
-  $request = HTTP::Request->new(POST => 'http://example.com/some/path');
+  $request = HTTP::Request->new(POST => 'http://example.com/some/path', [ 'Content-Length' => 1 ], '!');
   cmp_deeply(
     ($result = $openapi->validate_request($request,
       { path_template => '/foo/{foo_id}', path_captures => { foo_id => 123 } }))->TO_JSON,
@@ -1277,18 +1277,8 @@ YAML
   cmp_deeply(
     ($result = $openapi->validate_request($request,
       { path_template => '/foo/{foo_id}', path_captures => { foo_id => 123 } }))->TO_JSON,
-    {
-      valid => false,
-      errors => [
-        {
-          instanceLocation => '/request/body',
-          keywordLocation => jsonp('/paths', '/foo/{foo_id}', qw(post requestBody content text/plain schema minLength)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}', qw(post requestBody content text/plain schema minLength)))->to_string,
-          error => 'length is less than 10',
-        },
-      ],
-    },
-    'missing body does not cause an exception',
+    { valid => true },
+    'request body is missing but not required',
   );
 };
 
