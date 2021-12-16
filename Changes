@@ -1,5 +1,7 @@
 Revision history for JSON-Schema-Modern-Document-OpenAPI
 
+{{$NEXT}}
+
 0.011     2021-12-16 06:17:57Z
           - spurious validation errors fixed when request body is empty,
             yet not required
