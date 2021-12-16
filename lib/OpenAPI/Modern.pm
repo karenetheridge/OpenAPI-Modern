@@ -679,7 +679,7 @@ C<path_template> OR C<operation_id> is required.
 
 An accessor that delegates to L<JSON::Schema::Modern::Document/canonical_uri>.
 
--head2 schema
+=head2 schema
 
 An accessor that delegates to L<JSON::Schema::Modern::Document/schema>.
 
