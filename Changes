@@ -1,5 +1,7 @@
 Revision history for JSON-Schema-Modern-Document-OpenAPI
 
+{{$NEXT}}
+
 0.012     2021-12-17 06:39:38Z
           - properly handle a missing Content-Length header alongside a
             non-zero-length body payload
