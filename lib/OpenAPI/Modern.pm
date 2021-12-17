@@ -141,7 +141,7 @@ sub validate_request ($self, $request, $options) {
         $body_obj = $self->_resolve_ref($ref, $state);
       }
 
-      if ($request->content_length) {
+      if ($request->content_length // length $request->content_ref->$*) {
         ()= $self->_validate_body_content($state, $body_obj->{content}, $request);
       }
       elsif ($body_obj->{required}) {
@@ -216,7 +216,7 @@ sub validate_response ($self, $response, $options) {
 
     ()= $self->_validate_body_content({ %$state, data_path => jsonp($state->{data_path}, 'body') },
         $response_obj->{content}, $response)
-      if exists $response_obj->{content};
+      if exists $response_obj->{content} and ($response->content_length // length $response->content_ref->$*);
   }
   catch ($e) {
     if ($e->$_isa('JSON::Schema::Modern::Result')) {

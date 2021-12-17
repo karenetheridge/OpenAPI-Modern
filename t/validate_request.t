@@ -1272,6 +1272,25 @@ YAML
     'missing Content-Type does not cause an exception',
   );
 
+  # bypass auto-initialization of Content-Length, Content-Type; leave Content-Length empty
+  $request = HTTP::Request->new(POST => 'http://example.com/some/path', [ 'Content-Type' => 'text/plain' ], '!');
+  cmp_deeply(
+    ($result = $openapi->validate_request($request,
+      { path_template => '/foo/{foo_id}', path_captures => { foo_id => 123 } }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/body',
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}', qw(post requestBody content text/plain schema minLength)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}', qw(post requestBody content text/plain schema minLength)))->to_string,
+          error => 'length is less than 10',
+        },
+      ],
+    },
+    'missing Content-Length does not prevent the request body from being checked',
+  );
+
 
   $request = POST 'http://example.com/some/path', 'Content-Type' => 'text/plain';
   cmp_deeply(

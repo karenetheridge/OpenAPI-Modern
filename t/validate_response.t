@@ -372,8 +372,37 @@ YAML
     },
   );
 
-  $response->content_type('text/plain');
-  $response->content('plain text');
+  # response has no content-type, content-length or body.
+  $response = HTTP::Response->new(200, 'ok');
+  $response->request($request = POST 'http://example.com/some/path');
+  cmp_deeply(
+    $result = $openapi->validate_response($response, { path_template => $path_template })->TO_JSON,
+    { valid => true },
+    'missing Content-Type does not cause an exception',
+  );
+
+
+  $response->content_type('application/json');
+  $response->content('null');
+  cmp_deeply(
+    $result = $openapi->validate_response($response, { path_template => $path_template })->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/response/body',
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post responses default $ref content application/json schema type)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/responses/default/content/application~1json/schema/type')->to_string,
+          error => 'wrong type (expected object)',
+        },
+      ],
+    },
+    'missing Content-Length does not prevent the response body from being checked',
+  );
+
+
+  $response = HTTP::Response->new(200, 'ok', [ 'Content-Type' => 'text/plain' ], 'plain text');
+  $response->request($request = POST 'http://example.com/some/path');
   cmp_deeply(
     $result = $openapi->validate_response($response, { path_template => $path_template })->TO_JSON,
     {
@@ -467,6 +496,12 @@ paths:
       responses:
         default:
           description: default
+          headers:
+            Content-Length:
+              required: true
+              schema:
+                type: integer
+                minimum: 1
           content:
             text/plain:
               schema:
@@ -474,7 +509,7 @@ paths:
 YAML
       },
   );
-  $response = HTTP::Response->new(POST => 'http://example.com/foo/123');
+  $response = HTTP::Response->new(POST => 'http://example.com/foo/123', [ 'Content-Length' => 10 ], 'plain text');
   $response->request($request = POST 'http://example.com/some/path');
   cmp_deeply(
     ($result = $openapi->validate_response($response,
@@ -494,7 +529,9 @@ YAML
   );
 
 
-  $response->content_type('text/plain');
+  $response = HTTP::Response->new(POST => 'http://example.com/foo/123',
+    [ 'Content-Length' => 1, 'Content-Type' => 'text/plain' ], ''); # Content-Length lies!
+  $response->request($request = POST 'http://example.com/some/path');
   cmp_deeply(
     ($result = $openapi->validate_response($response,
       { path_template => '/foo/{foo_id}', path_captures => { foo_id => 123 } }))->TO_JSON,
@@ -509,7 +546,27 @@ YAML
         },
       ],
     },
-    'missing body does not cause an exception',
+    'missing body (with a lying Content-Length) does not cause an exception, but is detectable',
+  );
+
+  # no Content-Length
+  $response = HTTP::Response->new(POST => 'http://example.com/foo/123', [ 'Content-Type' => 'text/plain' ]);
+  $response->request($request = POST 'http://example.com/some/path');
+  cmp_deeply(
+    ($result = $openapi->validate_response($response,
+      { path_template => '/foo/{foo_id}', path_captures => { foo_id => 123 } }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/response/header/Content-Length',
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}', qw(post responses default headers Content-Length required)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}', qw(post responses default headers Content-Length required)))->to_string,
+          error => 'missing header: Content-Length',
+        },
+      ],
+    },
+    'missing body and no Content-Length does not cause an exception, but is still detectable',
   );
 };
 
