@@ -490,10 +490,30 @@ YAML
     openapi_schema => do {
       YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
 $openapi_preamble
+components:
+  headers:
+    no_content_permitted:
+      description: when used with the Content-Length or Content-Type headers, indicates that, if present, the header value must be 0 or empty
+      required: false
+      schema:
+        type: string
+        enum: ['', '0']
 paths:
   /foo/{foo_id}:
     post:
       responses:
+        '204':
+          description: no content permitted
+          headers:
+            Content-Length:
+              \$ref: '#/components/headers/no_content_permitted'
+            Content-Type:
+              \$ref: '#/components/headers/no_content_permitted'
+          content:
+            text/plain: # TODO: support */* and then this would be guaranteed
+              schema:
+                type: string
+                maxLength: 0
         default:
           description: default
           headers:
@@ -567,6 +587,33 @@ YAML
       ],
     },
     'missing body and no Content-Length does not cause an exception, but is still detectable',
+  );
+
+
+  $response->code(204);
+  $response->content_length('20');
+  $response->content('I should not have content');
+  cmp_deeply(
+    ($result = $openapi->validate_response($response,
+      { path_template => '/foo/{foo_id}', path_captures => { foo_id => 123 } }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/response/header/Content-Length',
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}', qw(post responses 204 headers Content-Length $ref schema enum)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/headers/no_content_permitted/schema/enum')->to_string,
+          error => 'value does not match',
+        },
+        {
+          instanceLocation => '/response/body',
+          keywordLocation => jsonp('/paths', '/foo/{foo_id}', qw(post responses 204 content text/plain schema maxLength)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}', qw(post responses 204 content text/plain schema maxLength)))->to_string,
+          error => 'length is greater than 0',
+        },
+      ],
+    },
+    'an undesired response body is detectable',
   );
 };
 
