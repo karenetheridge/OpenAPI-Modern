@@ -1,6 +1,9 @@
 Revision history for JSON-Schema-Modern-Document-OpenAPI
 
 {{$NEXT}}
+          - support */* as a media-type in a content specification, to
+            indicate valiation checks that can be performed on any content
+            type (e.g. length)
 
 0.012     2021-12-17 06:39:38Z
           - properly handle a missing Content-Length header alongside a

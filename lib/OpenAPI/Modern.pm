@@ -369,12 +369,11 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
       'missing header: Content-Type')
     if not length $content_type;
 
-  # we don't support */* here because what is the point? if you want to test string length,
-  # check the Content-Length header.
   my $media_type = (first { $content_type eq fc } keys $content_obj->%*)
-    // (first { m{([^/]+)/\*$} && fc($content_type) =~ m{^\F$1/[^/]+$} } keys $content_obj->%*);
+    // (first { m{([^/]+)/\*$} && fc($content_type) =~ m{^\F\Q$1\E/[^/]+$} } keys $content_obj->%*);
+  $media_type = '*/*' if not defined $media_type and exists $content_obj->{'*/*'};
   return E({ %$state, keyword => 'content' }, 'incorrect Content-Type "%s"', $content_type)
-    if not $media_type;
+    if not defined $media_type;
 
   if (exists $content_obj->{$media_type}{encoding}) {
     my $state = { %$state, schema_path => jsonp($state->{schema_path}, 'content', $media_type) };
@@ -410,6 +409,7 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
 
   # use the original Content-Type, NOT the possibly wildcard media type from the document
   my $media_type_decoder = $self->get_media_type($content_type);  # case-insensitive, wildcard lookup
+  $media_type_decoder = sub ($content_ref) { $content_ref } if $media_type eq '*/*';
   if (not $media_type_decoder) {
     # don't fail if the schema would pass on any input
     return if is_plain_hashref($schema) ? !keys %$schema : $schema;
