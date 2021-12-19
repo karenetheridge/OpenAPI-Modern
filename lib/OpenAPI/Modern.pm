@@ -412,7 +412,7 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
   $media_type_decoder = sub ($content_ref) { $content_ref } if $media_type eq '*/*';
   if (not $media_type_decoder) {
     # don't fail if the schema would pass on any input
-    return if is_plain_hashref($schema) ? !keys %$schema : $schema;
+    return if not defined $schema or is_plain_hashref($schema) ? !keys %$schema : $schema;
 
     abort({ %$state, keyword => 'content', _schema_path_suffix => $media_type },
       'EXCEPTION: unsupported Content-Type "%s": add support with $openapi->add_media_type(...)', $content_type)
@@ -425,6 +425,8 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
     return E({ %$state, keyword => 'content', _schema_path_suffix => $media_type },
       'could not decode content as %s: %s', $media_type, $e =~ s/^(.*)\n/$1/r);
   }
+
+  return 1 if not defined $schema;
 
   $state = { %$state, schema_path => jsonp($state->{schema_path}, 'content', $media_type, 'schema') };
   $self->_evaluate_subschema($decoded_content_ref->$*, $schema, $state);
