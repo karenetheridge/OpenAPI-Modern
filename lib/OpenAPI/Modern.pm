@@ -187,16 +187,16 @@ sub validate_response ($self, $response, $options) {
 
     $state->{schema_path} = jsonp('/paths', $path_template, $method);
 
-    my $response_property = first { exists $operation->{responses}{$_} }
+    my $response_name = first { exists $operation->{responses}{$_} }
       $response->code, substr(sprintf('%03s', $response->code), 0, -2).'XX', 'default';
 
-    if (not $response_property) {
+    if (not $response_name) {
       ()= E({ %$state, keyword => 'responses' }, 'no response object found for code %s', $response->code);
       return $self->_result($state);
     }
 
-    my $response_obj = $operation->{responses}{$response_property};
-    $state->{schema_path} = jsonp($state->{schema_path}, 'responses', $response_property);
+    my $response_obj = $operation->{responses}{$response_name};
+    $state->{schema_path} = jsonp($state->{schema_path}, 'responses', $response_name);
     while (my $ref = $response_obj->{'$ref'}) {
       $response_obj = $self->_resolve_ref($ref, $state);
     }
