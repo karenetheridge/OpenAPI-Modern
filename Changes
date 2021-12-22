@@ -1,5 +1,7 @@
 Revision history for JSON-Schema-Modern-Document-OpenAPI
 
+{{$NEXT}}
+
 0.013     2021-12-22 19:23:30Z
           - support */* as a media-type in a content specification, to
             indicate valiation checks that can be performed on any content
