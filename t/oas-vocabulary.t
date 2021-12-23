@@ -66,4 +66,7 @@ $accepter->acceptance(
   @ARGV ? (tests => { file => \@ARGV }) : (),
 );
 
+path('t/results/oas-vocabulary.txt')->spew_utf8($accepter->results_text)
+  if -d '.git' or $ENV{AUTHOR_TESTING} or $ENV{RELEASE_TESTING};
+
 done_testing;
