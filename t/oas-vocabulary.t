@@ -23,7 +23,7 @@ my $accepter = Test::JSON::Schema::Acceptance->new(
   test_schemas => -d '.git' || $ENV{AUTHOR_TESTING},
   specification => 'draft2020-12',
   include_optional => 0,
-  test_dir => 't/oas-invalid-schemas',
+  test_dir => 't/oas-vocabulary',
 );
 
 my $js = JSON::Schema::Modern->new(
