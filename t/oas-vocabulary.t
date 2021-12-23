@@ -14,6 +14,7 @@ use Test::JSON::Schema::Acceptance;
 use Test::File::ShareDir -share => { -dist => { 'JSON-Schema-Modern-Document-OpenAPI' => 'share' } };
 use File::ShareDir 'dist_dir';
 use Path::Tiny;
+use Config;
 use JSON::Schema::Modern;
 use JSON::Schema::Modern::Document::OpenAPI;
 
@@ -47,7 +48,17 @@ my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
 $accepter->acceptance(
   $ENV{NO_TODO} ? () : ( todo_tests => [
     # requires bigint/bignum support in JSON::Schema::Modern
-    { file => 'formats.json', group_description => 'int64 format', test_description => [ 'too small', 'upper boundary', 'too large' ] }
+    { file => 'formats.json', group_description => 'type checks', test_description => [
+        'beyond int64 lower boundary',
+        $Config{ivsize} < 8
+          ? ('int64 lower boundary', 'beyond int32 lower boundary',·
+            'beyond int32 upper boundary', 'upper int64 boundary') : (),
+        'beyond int64 upper boundary',
+      ] },
+    $Config{ivsize} < 8 ? { file => 'formats.json', group_description => 'int32 format',
+      test_description => [ 'beyond lower boundary', 'beyond upper boundary' ] } : (),
+    { file => 'formats.json', group_description => 'int64 format',
+      test_description => [ 'beyond lower boundary', 'upper boundary', 'beyond upper boundary' ] },
   ] ),
   validate_data => sub ($schema, $instance_data) {
     my $result = $js->evaluate($instance_data, $schema);
