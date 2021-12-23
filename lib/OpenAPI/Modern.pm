@@ -247,8 +247,7 @@ sub _find_path ($self, $state, $request, $options) {
     $path_template = $options->{path_template};
 
     my $path_item = $self->openapi_document->schema->{paths}{$path_template};
-    abort({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
-      'missing path-item "%s"', $path_template) if not $path_item;
+    abort({ %$state, keyword => 'paths' }, 'missing path-item "%s"', $path_template) if not $path_item;
 
     my $method = lc $request->method;
     abort({ %$state, schema_path => jsonp('/paths', $path_template), keyword => $method },
