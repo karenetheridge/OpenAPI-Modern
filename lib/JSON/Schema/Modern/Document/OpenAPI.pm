@@ -173,10 +173,9 @@ sub _add_vocab_and_default_schemas ($self) {
   my $js = $self->evaluator;
   $js->add_vocabulary('JSON::Schema::Modern::Vocabulary::OpenAPI');
 
-  # note: proper support for int64 requires bigint support in JSM
   $js->add_format_validation(
-    int32 => +{ type => 'integer', sub => sub ($x) { $x >= -2**31 && $x < 2**31 } },
-    int64 => +{ type => 'integer', sub => sub ($x) { $x >= -2**63 && $x < 2**63 } },
+    int32 => +{ type => 'integer', sub => sub ($x) { $x = Math::BigInt->new($x); my $bound = Math::BigInt->new(2) ** 31; $x >= -$bound && $x < $bound } },
+    int64 => +{ type => 'integer', sub => sub ($x) { $x = Math::BigInt->new($x); my $bound = Math::BigInt->new(2) ** 63; $x >= -$bound && $x < $bound } },
     float => +{ type => 'number', sub => sub ($) { 1 } },
     double => +{ type => 'number', sub => sub ($) { 1 } },
     password => +{ type => 'string', sub => sub ($) { 1 } },

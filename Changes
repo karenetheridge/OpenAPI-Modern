@@ -1,6 +1,8 @@
 Revision history for JSON-Schema-Modern-Document-OpenAPI
 
 {{$NEXT}}
+          - use bignums in JSON::Schema::Modern to properly support int32,
+            int64 numeric formats
 
 0.013     2021-12-22 19:23:30Z
           - support */* as a media-type in a content specification, to
