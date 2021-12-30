@@ -5,7 +5,7 @@ package OpenAPI::Modern;
 # ABSTRACT: Validate HTTP requests and responses against an OpenAPI document
 # KEYWORDS: validation evaluation JSON Schema OpenAPI Swagger HTTP request response
 
-our $VERSION = '0.014';
+our $VERSION = '0.015';
 
 use 5.020;  # for fc, unicode_strings features
 use Moo;
