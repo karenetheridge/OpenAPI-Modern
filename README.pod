@@ -8,7 +8,7 @@ JSON::Schema::Modern::Document::OpenAPI - One OpenAPI v3.1 document
 
 =head1 VERSION
 
-version 0.013
+version 0.014
 
 =head1 SYNOPSIS
 
