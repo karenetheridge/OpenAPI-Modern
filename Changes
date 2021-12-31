@@ -1,6 +1,7 @@
 Revision history for JSON-Schema-Modern-Document-OpenAPI
 
 {{$NEXT}}
+          - load Math::BigInt before attempting to use it
 
 0.014     2021-12-30 05:38:03Z
           - use bignums in JSON::Schema::Modern to properly support int32,

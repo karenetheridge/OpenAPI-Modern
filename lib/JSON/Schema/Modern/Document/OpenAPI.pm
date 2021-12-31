@@ -174,8 +174,18 @@ sub _add_vocab_and_default_schemas ($self) {
   $js->add_vocabulary('JSON::Schema::Modern::Vocabulary::OpenAPI');
 
   $js->add_format_validation(
-    int32 => +{ type => 'integer', sub => sub ($x) { $x = Math::BigInt->new($x); my $bound = Math::BigInt->new(2) ** 31; $x >= -$bound && $x < $bound } },
-    int64 => +{ type => 'integer', sub => sub ($x) { $x = Math::BigInt->new($x); my $bound = Math::BigInt->new(2) ** 63; $x >= -$bound && $x < $bound } },
+    int32 => +{ type => 'integer', sub => sub ($x) {
+      require Math::BigInt;
+      $x = Math::BigInt->new($x);
+      my $bound = Math::BigInt->new(2) ** 31;
+      $x >= -$bound && $x < $bound;
+    } },
+    int64 => +{ type => 'integer', sub => sub ($x) {
+      require Math::BigInt;
+      $x = Math::BigInt->new($x);
+      my $bound = Math::BigInt->new(2) ** 63;
+      $x >= -$bound && $x < $bound;
+    } },
     float => +{ type => 'number', sub => sub ($) { 1 } },
     double => +{ type => 'number', sub => sub ($) { 1 } },
     password => +{ type => 'string', sub => sub ($) { 1 } },
