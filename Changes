@@ -1,6 +1,6 @@
 Revision history for JSON-Schema-Modern-Document-OpenAPI
 
-{{$NEXT}}
+0.015     2021-12-31 21:17:11Z
           - load Math::BigInt before attempting to use it
 
 0.014     2021-12-30 05:38:03Z
