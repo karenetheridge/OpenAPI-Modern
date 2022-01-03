@@ -19,7 +19,7 @@ use Test::File::ShareDir -share => { -dist => { 'JSON-Schema-Modern-Document-Ope
 use constant { true => JSON::PP::true, false => JSON::PP::false };
 use HTTP::Request::Common;
 use HTTP::Response;
-use YAML::PP;
+use YAML::PP 0.005;
 
 my $path_template = '/foo/{foo_id}/bar/{bar_id}';
 
