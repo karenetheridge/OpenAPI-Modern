@@ -393,7 +393,7 @@ YAML
           instanceLocation => '/response/body',
           keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(post responses default $ref content application/json schema type)),
           absoluteKeywordLocation => $doc_uri->clone->fragment('/components/responses/default/content/application~1json/schema/type')->to_string,
-          error => 'wrong type (expected object)',
+          error => 'got null, not object',
         },
       ],
     },
