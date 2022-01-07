@@ -14,7 +14,7 @@ use if "$]" >= 5.022, experimental => 're_strict';
 no if "$]" >= 5.031009, feature => 'indirect';
 no if "$]" >= 5.033001, feature => 'multidimensional';
 no if "$]" >= 5.033006, feature => 'bareword_filehandles';
-use JSON::Schema::Modern::Utilities 0.524 qw(assert_keyword_type annotate_self E is_type is_uri_reference jsonp);
+use JSON::Schema::Modern::Utilities 0.524 qw(assert_keyword_type annotate_self E is_type jsonp);
 use namespace::clean;
 
 with 'JSON::Schema::Modern::Vocabulary';
@@ -44,7 +44,6 @@ sub _traverse_keyword_discriminator ($self, $schema, $state) {
     foreach my $mapping_key (sort keys $schema->{discriminator}{mapping}->%*) {
       my $uri = $schema->{discriminator}{mapping}{$mapping_key};
       $valid = E({ %$state, _schema_path_suffix => [ 'mapping', $mapping_key ] }, 'discriminator mapping value for "%s" is not a string', $mapping_key), next if not is_type('string', $uri);
-      $valid = E({ %$state, _schema_path_suffix => [ 'mapping', $mapping_key ] }, 'discriminator mapping value for "%s" is not a uri-reference', $mapping_key), next if not is_uri_reference($uri);
     }
   }
 

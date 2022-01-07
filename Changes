@@ -1,6 +1,7 @@
 Revision history for JSON-Schema-Modern-Document-OpenAPI
 
 {{$NEXT}}
+          - remove erroneous logic when checking the "discriminator" keyword
 
 0.016     2022-01-06 04:22:20Z
           - fix the prereq specification for YAML::PP
