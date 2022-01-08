@@ -15,7 +15,7 @@ use if "$]" >= 5.022, experimental => 're_strict';
 no if "$]" >= 5.031009, feature => 'indirect';
 no if "$]" >= 5.033001, feature => 'multidimensional';
 no if "$]" >= 5.033006, feature => 'bareword_filehandles';
-use JSON::Schema::Modern::Utilities 0.525 qw(assert_keyword_exists assert_keyword_type E canonical_uri);
+use JSON::Schema::Modern::Utilities 0.525 qw(assert_keyword_exists assert_keyword_type E canonical_uri get_type);
 use Safe::Isa;
 use File::ShareDir 'dist_dir';
 use Path::Tiny;
@@ -83,6 +83,11 @@ sub traverse ($self, $evaluator) {
     spec_version => $evaluator->SPECIFICATION_VERSION_DEFAULT,
     vocabularies => [],
   };
+
+  if ((my $type = get_type($schema)) ne 'object') {
+    ()= E($state, 'invalid document type: %s', $type);
+    return $state;
+  }
 
   # /openapi: https://spec.openapis.org/oas/v3.1.0#openapi-object
   return $state if not assert_keyword_exists({ %$state, keyword => 'openapi' }, $schema)
