@@ -376,15 +376,15 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
 
   if (exists $content_obj->{$media_type}{encoding}) {
     my $state = { %$state, schema_path => jsonp($state->{schema_path}, 'content', $media_type) };
-    # "The key, being the property name, MUST exist in the schema as a property."
+    # 4.8.14.1 "The key, being the property name, MUST exist in the schema as a property."
     foreach my $property (sort keys $content_obj->{$media_type}{encoding}->%*) {
       ()= E({ $state, schema_path => jsonp($state->{schema_path}, 'schema', 'properties', $property) },
           'encoding property "%s" requires a matching property definition in the schema')
         if not exists(($content_obj->{$media_type}{schema}{properties}//{})->{$property});
     }
 
-    # "The encoding object SHALL only apply to requestBody objects when the media type is multipart or
-    # application/x-www-form-urlencoded."
+    # 4.8.14.1 "The encoding object SHALL only apply to requestBody objects when the media type is
+    # multipart or application/x-www-form-urlencoded."
     return E({ %$state, keyword => 'encoding' }, 'encoding not yet supported')
       if $content_type =~ m{^multipart/} or $content_type eq 'application/x-www-form-urlencoded';
   }
