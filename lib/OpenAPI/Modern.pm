@@ -23,7 +23,7 @@ use Scalar::Util 'looks_like_number';
 use Feature::Compat::Try;
 use Encode 2.89;
 use JSON::Schema::Modern 0.531;
-use JSON::Schema::Modern::Utilities 0.531 qw(jsonp unjsonp canonical_uri E abort);
+use JSON::Schema::Modern::Utilities 0.531 qw(jsonp unjsonp canonical_uri E abort is_equal);
 use JSON::Schema::Modern::Document::OpenAPI;
 use MooX::HandlesVia;
 use MooX::TypeTiny 0.002002;
@@ -131,6 +131,13 @@ sub validate_request ($self, $request, $options) {
           : $param_obj->{in} eq 'cookie' ? $self->_validate_cookie_parameter($state, $param_obj, $request)
           : abort($state, 'unrecognized "in" value "%s"', $param_obj->{in});
       }
+    }
+
+    # 3.2 "Each template expression in the path MUST correspond to a path parameter that is included in
+    # the Path Item itself and/or in each of the Path Item’s Operations."
+    foreach my $path_name (sort keys $path_captures->%*) {
+      abort($state, 'missing path parameter specification for "%s"', $path_name)
+        if not exists $request_parameters_processed->{path}{$path_name};
     }
 
     if (my $body_obj = $operation->{requestBody}) {
@@ -272,8 +279,15 @@ sub _find_path ($self, $state, $request, $options) {
       if lc $request->method ne $method;
   }
 
-  # TODO: alternatively, look up $path_template and $path_captures from $request->uri,
-  # OR verify that $path_template matches $request->uri
+  if (not $path_template) {
+    # TODO: look up $path_template and $path_captures from $request->uri
+    abort({ %$state, keyword => 'paths' }, 'failed to look up path_template');  # this is impossible, for now
+  }
+
+  my @capture_names = ($path_template =~ m!\{([^/?#}]+)\}!g);
+  abort({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
+      'provided path_captures names do not match path template "%s"', $path_template)
+    if not is_equal([ sort keys $options->{path_captures}->%*], [ sort @capture_names ]);
 
   return $path_template;
 }

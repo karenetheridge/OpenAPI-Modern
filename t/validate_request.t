@@ -147,6 +147,22 @@ YAML
     'request HTTP method does not match operation',
   );
 
+  cmp_deeply(
+    ($result = $openapi->validate_request(POST('http://example.com/foo/bar'),
+        { path_template => '/foo/{foo_id}', path_captures => {} }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request',
+          keywordLocation => '/paths/~1foo~1{foo_id}',
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
+          error => 'provided path_captures names do not match path template "/foo/{foo_id}"',
+        },
+      ],
+    },
+    'path template does not match path captures',
+  );
 
   cmp_deeply(
     ($result = $openapi->validate_request(GET('http://example.com/foo/bar'),
@@ -348,6 +364,36 @@ YAML
       ],
     },
     'path parameters: operation overshadows path-item',
+  );
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => 'openapi.yaml',
+    openapi_schema => do {
+      YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
+$openapi_preamble
+paths:
+  /foo/{foo_id}:
+    get: {}
+YAML
+      },
+  );
+
+  $request = GET 'http://example.com/foo/foo';
+  cmp_deeply(
+    ($result = $openapi->validate_request($request,
+      { path_template => '/foo/{foo_id}', path_captures => { foo_id => 'foo' } }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id})),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
+          error => 'missing path parameter specification for "foo_id"',
+        },
+      ],
+    },
+    'a specification must exist for every templated path value',
   );
 };
 
