@@ -512,7 +512,7 @@ paths:
                 minLength: 10
 YAML
 
-  $response = HTTP::Response->new(POST => 'http://example.com/foo/123', [ 'Content-Length' => 10 ], 'plain text');
+  $response = HTTP::Response->new(400, 'generic error', [ 'Content-Length' => 10 ], 'plain text');
   $response->request($request = POST 'http://example.com/foo');
   cmp_deeply(
     ($result = $openapi->validate_response($response, { path_template => '/foo' }))->TO_JSON,
@@ -531,7 +531,7 @@ YAML
   );
 
 
-  $response = HTTP::Response->new(POST => 'http://example.com/foo/123',
+  $response = HTTP::Response->new(400, 'generic error',
     [ 'Content-Length' => 1, 'Content-Type' => 'text/plain' ], ''); # Content-Length lies!
   $response->request($request = POST 'http://example.com/foo');
   cmp_deeply(
@@ -551,7 +551,7 @@ YAML
   );
 
   # no Content-Length
-  $response = HTTP::Response->new(POST => 'http://example.com/foo/123', [ 'Content-Type' => 'text/plain' ]);
+  $response = HTTP::Response->new(400, 'generic error', [ 'Content-Type' => 'text/plain' ]);
   $response->request($request = POST 'http://example.com/foo');
   cmp_deeply(
     ($result = $openapi->validate_response($response, { path_template => '/foo' }))->TO_JSON,
@@ -612,7 +612,7 @@ paths:
                 maxLength: 0
 YAML
 
-  $response = HTTP::Response->new(POST => 'http://example.com/foo/123',
+  $response = HTTP::Response->new(400, 'generic error',
     [ 'Content-Length' => 1, 'Content-Type' => 'unknown/unknown' ], '!!!');
   $response->request(POST 'http://example.com/foo');
   cmp_deeply(
