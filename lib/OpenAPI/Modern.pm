@@ -118,7 +118,7 @@ sub validate_request ($self, $request, $options) {
 
         my $fc_name = $param_obj->{in} eq 'header' ? fc($param_obj->{name}) : $param_obj->{name};
 
-        abort($state, 'duplicate path parameter "%s"', $param_obj->{name})
+        abort($state, 'duplicate %s parameter "%s"', $param_obj->{in}, $param_obj->{name})
           if ($request_parameters_processed->{$param_obj->{in}}{$fc_name} // '') eq $section;
         next if exists $request_parameters_processed->{$param_obj->{in}}{$fc_name};
         $request_parameters_processed->{$param_obj->{in}}{$fc_name} = $section;
