@@ -31,13 +31,13 @@ info:
 YAML
 
 my $doc_uri = Mojo::URL->new('openapi.yaml');
+my $yamlpp = YAML::PP->new(boolean => 'JSON::PP');
 
 subtest 'validation errors' => sub {
   my $request = POST 'http://example.com/some/path';
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => 'openapi.yaml',
-    openapi_schema => do {
-      YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
+    openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
   /foo/{foo_id}:
@@ -52,8 +52,6 @@ webhooks:
     post:
       operationId: hooky
 YAML
-    },
-  );
 
   like(
     exception { $openapi->validate_request($request, {}) },
@@ -165,14 +163,12 @@ YAML
 
   $openapi = OpenAPI::Modern->new(
     openapi_uri => 'openapi.yaml',
-    openapi_schema => do {
-      YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
+    openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
   /foo/{foo_id}/bar/{bar_id}: {}
 YAML
-    },
-  );
+
   cmp_deeply(
     ($result = $openapi->validate_request($request,
       { path_template => $path_template, path_captures => {}}))->TO_JSON,
@@ -192,15 +188,13 @@ YAML
 
   $openapi = OpenAPI::Modern->new(
     openapi_uri => 'openapi.yaml',
-    openapi_schema => do {
-      YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
+    openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
   /foo/{foo_id}/bar/{bar_id}:
     post: {}
 YAML
-    },
-  );
+
   cmp_deeply(
     ($result = $openapi->validate_request($request,
       { path_template => $path_template, path_captures => {}}))->TO_JSON,
@@ -210,8 +204,7 @@ YAML
 
   $openapi = OpenAPI::Modern->new(
     openapi_uri => 'openapi.yaml',
-    openapi_schema => do {
-      YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
+    openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
   /foo/{foo_id}/bar/{bar_id}:
@@ -219,8 +212,7 @@ paths:
       parameters:
       - \$ref: '#/i_do_not_exist'
 YAML
-    },
-  );
+
   cmp_deeply(
     ($result = $openapi->validate_request($request,
       { path_template => $path_template, path_captures => {}}))->TO_JSON,
@@ -240,8 +232,7 @@ YAML
 
   $openapi = OpenAPI::Modern->new(
     openapi_uri => 'openapi.yaml',
-    openapi_schema => do {
-      YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
+    openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
   /foo/{foo_id}/bar/{bar_id}:
@@ -249,8 +240,7 @@ paths:
     - \$ref: '#/i_do_not_exist'
     post: {}
 YAML
-    },
-  );
+
   cmp_deeply(
     ($result = $openapi->validate_request($request,
       { path_template => $path_template, path_captures => {}}))->TO_JSON,
@@ -270,8 +260,7 @@ YAML
 
   $openapi = OpenAPI::Modern->new(
     openapi_uri => 'openapi.yaml',
-    openapi_schema => do {
-      YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
+    openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 components:
   parameters:
@@ -283,8 +272,7 @@ paths:
       parameters:
       - \$ref: '#/components/parameters/foo'
 YAML
-      },
-  );
+
   cmp_deeply(
     ($result = $openapi->validate_request($request,
       { path_template => $path_template, path_captures => {}}))->TO_JSON,
@@ -304,8 +292,7 @@ YAML
 
   $openapi = OpenAPI::Modern->new(
     openapi_uri => 'openapi.yaml',
-    openapi_schema => do {
-      YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
+    openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
   /foo/{foo_id}/bar/{bar_id}:
@@ -317,8 +304,7 @@ paths:
         schema:
           type: string
 YAML
-    },
-  );
+
   cmp_deeply(
     ($result = $openapi->validate_request($request,
       { path_template => $path_template, path_captures => {}}))->TO_JSON,
@@ -338,8 +324,7 @@ YAML
 
   $openapi = OpenAPI::Modern->new(
     openapi_uri => 'openapi.yaml',
-    openapi_schema => do {
-      YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
+    openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 components:
   parameters:
@@ -398,9 +383,8 @@ paths:
           iMAgE/*:
             schema: false
 YAML
-    },
-    # note that bar_id is not listed as a path parameter
-  );
+  # note that bar_id is not listed as a path parameter
+
   cmp_deeply(
     ($result = $openapi->validate_request($request,
       { path_template => $path_template, path_captures => { bar_id => 'bar' } }))->TO_JSON,
@@ -550,8 +534,7 @@ YAML
 
   $openapi = OpenAPI::Modern->new(
     openapi_uri => 'openapi.yaml',
-    openapi_schema => do {
-      YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
+    openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
   /foo/{foo_id}/bar/{bar_id}:
@@ -579,8 +562,6 @@ paths:
             schema:
               required: ['key']
 YAML
-      },
-  );
 
   $request = POST 'http://example.com/some/path?query1={corrupt json',
     'Header1' => '{corrupt json';
@@ -648,8 +629,7 @@ YAML
 
   $openapi = OpenAPI::Modern->new(
     openapi_uri => 'openapi.yaml',
-    openapi_schema => do {
-      YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
+    openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
   /foo/{foo_id}/bar/{bar_id}:
@@ -677,8 +657,6 @@ paths:
         schema:
           maxLength: 1
 YAML
-      },
-  );
 
   $request->uri('http://example.com/some/path');
   cmp_deeply(
@@ -707,8 +685,7 @@ YAML
 
   $openapi = OpenAPI::Modern->new(
     openapi_uri => 'openapi.yaml',
-    openapi_schema => do {
-      YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
+    openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
   /foo/{foo_id}/bar/{bar_id}:
@@ -716,8 +693,6 @@ paths:
       requestBody:
         \$ref: '#/i_do_not_exist'
 YAML
-    },
-  );
 
   cmp_deeply(
     ($result = $openapi->validate_request($request,
@@ -739,8 +714,7 @@ YAML
 
   $openapi = OpenAPI::Modern->new(
     openapi_uri => 'openapi.yaml',
-    openapi_schema => do {
-      YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
+    openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
   /foo/{foo_id}/bar/{bar_id}:
@@ -769,8 +743,6 @@ paths:
           iMAgE/*:
             schema: false
 YAML
-    },
-  );
 
   # note: no content!
   cmp_deeply(
@@ -988,8 +960,7 @@ YAML
 
   $openapi = OpenAPI::Modern->new(
     openapi_uri => 'openapi.yaml',
-    openapi_schema => do {
-      YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
+    openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
   /foo/{foo_id}/bar/{bar_id}:
@@ -1001,8 +972,7 @@ paths:
             schema:
               minLength: 10
 YAML
-    },
-  );
+
   $request = POST 'http://example.com/some/path', 'Content-Type' => 'unsupported/unsupported', Content => '!!!';
   cmp_deeply(
     ($result = $openapi->validate_request($request,
@@ -1024,8 +994,7 @@ YAML
 
   $openapi = OpenAPI::Modern->new(
     openapi_uri => 'openapi.yaml',
-    openapi_schema => do {
-      YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
+    openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
   /foo/{foo_id}/bar/{bar_id}:
@@ -1035,8 +1004,7 @@ paths:
         content:
           text/plain: {}
 YAML
-    },
-  );
+
   $request = POST 'http://example.com/some/path', 'Content-Type' => 'text/plain', Content => '!!!';
   cmp_deeply(
     ($result = $openapi->validate_request($request,
@@ -1050,8 +1018,7 @@ subtest 'document errors' => sub {
   my $request = POST 'http://example.com/some/path';
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => 'openapi.yaml',
-    openapi_schema => do {
-      YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
+    openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 components:
   parameters:
@@ -1067,8 +1034,7 @@ paths:
     - \$ref: '#/components/parameters/foo'
     post: {}
 YAML
-    },
-  );
+
   cmp_deeply(
     (my $result = $openapi->validate_request($request,
       { path_template => '/foo/{foo_id}', path_captures => { foo_id => 123 }}))->TO_JSON,
@@ -1088,8 +1054,7 @@ YAML
 
   $openapi = OpenAPI::Modern->new(
     openapi_uri => 'openapi.yaml',
-    openapi_schema => do {
-      YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
+    openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 components:
   parameters:
@@ -1105,8 +1070,7 @@ paths:
       - \$ref: '#/components/parameters/foo'
       - \$ref: '#/components/parameters/foo'
 YAML
-    },
-  );
+
   cmp_deeply(
     ($result = $openapi->validate_request($request,
       { path_template => '/foo/{foo_id}', path_captures => { foo_id => 123 }}))->TO_JSON,
@@ -1128,8 +1092,7 @@ YAML
 subtest 'type handling of values for evaluation' => sub {
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => 'openapi.yaml',
-    openapi_schema => do {
-      YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
+    openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
   /foo/{foo_id}:
@@ -1158,8 +1121,6 @@ paths:
             schema:
               pattern: ^[a-z]\$
 YAML
-      },
-  );
 
   my $request = POST 'http://example.com/foo/123?bar=456', 'Foo-Bar' => 789, 'Content-Type' => 'text/plain',
     Content => 666;
@@ -1201,8 +1162,7 @@ YAML
 
   $openapi = OpenAPI::Modern->new(
     openapi_uri => 'openapi.yaml',
-    openapi_schema => do {
-      YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
+    openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
   /foo/{foo_id}:
@@ -1235,8 +1195,6 @@ paths:
               type: number
               maximum: 10
 YAML
-      },
-  );
 
   cmp_deeply(
     ($result = $openapi->validate_request($request,
@@ -1297,8 +1255,7 @@ YAML
 
   $openapi = OpenAPI::Modern->new(
     openapi_uri => 'openapi.yaml',
-    openapi_schema => do {
-      YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
+    openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
   /foo/{foo_id}:
@@ -1310,8 +1267,6 @@ paths:
             schema:
               minLength: 10
 YAML
-      },
-  );
 
   # bypass auto-initialization of Content-Length, Content-Type
   $request = HTTP::Request->new(POST => 'http://example.com/some/path', [ 'Content-Length' => 1 ], '!');
@@ -1365,8 +1320,7 @@ subtest 'max_depth' => sub {
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => 'openapi.yaml',
     evaluator => JSON::Schema::Modern->new(max_traversal_depth => 15),
-    openapi_schema => do {
-      YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
+    openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 components:
   parameters:
@@ -1380,8 +1334,7 @@ paths:
       parameters:
       - \$ref: '#/components/parameters/foo'
 YAML
-    },
-  );
+
   my $request = POST 'http://example.com/some/path';
   cmp_deeply(
     (my $result = $openapi->validate_request($request,
