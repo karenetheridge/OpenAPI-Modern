@@ -171,6 +171,57 @@ YAML
     'path_template and operation_id can both be passed, if consistent',
   );
 
+  cmp_deeply(
+    ($result = $openapi->validate_request(GET('http://example.com/something/else'),
+      { path_template => '/foo/bar', path_captures => {} }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request',
+          keywordLocation => jsonp(qw(/paths /foo/bar)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
+          error => 'provided path_template does not match request URI',
+        },
+      ],
+    },
+    'path_template is not consistent with request URI, with no captures',
+  );
+
+  cmp_deeply(
+    ($result = $openapi->validate_request(POST('http://example.com/something/else'),
+      { path_template => '/foo/{foo_id}', path_captures => { foo_id => 123 } }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id})),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
+          error => 'provided path_template does not match request URI',
+        },
+      ],
+    },
+    'path_template is not consistent with request URI, with captures',
+  );
+
+  cmp_deeply(
+    ($result = $openapi->validate_request(GET('http://example.com/something/else'),
+      { operation_id => 'my-get-path', path_captures => {} }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request',
+          keywordLocation => jsonp(qw(/paths /foo/bar)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
+          error => 'provided operation_id does not match request URI',
+        },
+      ],
+    },
+    'operation_id is not consistent with request URI',
+  );
+
 
   $openapi = OpenAPI::Modern->new(
     openapi_uri => 'openapi.yaml',

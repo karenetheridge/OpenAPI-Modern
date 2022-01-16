@@ -284,10 +284,18 @@ sub _find_path ($self, $state, $request, $options) {
     abort({ %$state, keyword => 'paths' }, 'failed to look up path_template');  # this is impossible, for now
   }
 
+  # note: we aren't doing anything special with escaped braces. this bit of the spec is hazy.
   my @capture_names = ($path_template =~ m!\{([^/?#}]+)\}!g);
   abort({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
       'provided path_captures names do not match path template "%s"', $path_template)
     if not is_equal([ sort keys $options->{path_captures}->%*], [ sort @capture_names ]);
+
+  my $path_pattern = $path_template =~ s!\{[^/?#}]+\}!([^/]*)!gr;
+  my $uri_path = $request->uri->path;
+
+  abort({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
+      'provided %s does not match request URI', exists $options->{path_template} ? 'path_template' : 'operation_id')
+    if $uri_path !~ m/^$path_pattern$/;
 
   return $path_template;
 }
