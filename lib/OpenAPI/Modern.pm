@@ -320,7 +320,6 @@ sub _find_path ($self, $state, $request, $options) {
   return ($path_template, \%path_captures);
 }
 
-# for now, we only use captures, rather than parsing the URI directly.
 sub _validate_path_parameter ($self, $state, $param_obj, $path_captures) {
   # 'required' is always true for path parameters
   return E({ %$state, keyword => 'required' }, 'missing path parameter: %s', $param_obj->{name})
