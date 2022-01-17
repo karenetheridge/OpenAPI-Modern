@@ -1,5 +1,7 @@
 Revision history for JSON-Schema-Modern-Document-OpenAPI
 
+{{$NEXT}}
+
 0.018     2022-01-17 23:37:05Z
           - fix parsing of escaped characters in URI paths and capture values
 
