@@ -22,6 +22,7 @@ use List::Util 'first';
 use Scalar::Util 'looks_like_number';
 use Feature::Compat::Try;
 use Encode 2.89;
+use URI::Escape ();
 use JSON::Schema::Modern 0.531;
 use JSON::Schema::Modern::Utilities 0.531 qw(jsonp unjsonp canonical_uri E abort is_equal);
 use JSON::Schema::Modern::Document::OpenAPI;
@@ -291,11 +292,17 @@ sub _find_path ($self, $state, $request, $options) {
     if not is_equal([ sort keys $options->{path_captures}->%*], [ sort @capture_names ]);
 
   my $path_pattern = $path_template =~ s!\{[^/?#}]+\}!([^/]*)!gr;
-  my $uri_path = $request->uri->path;
+  my $uri_path = URI::Escape::uri_unescape($request->uri->path);
 
   abort({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
       'provided %s does not match request URI', exists $options->{path_template} ? 'path_template' : 'operation_id')
     if $uri_path !~ m/^$path_pattern$/;
+
+  # perldoc perlvar, @-: $n coincides with "substr $_, $-[n], $+[n] - $-[n]" if "$-[n]" is defined
+  my @capture_values = map substr($uri_path, $-[$_], $+[$_]-$-[$_]), 1 .. $#-;
+  abort({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
+      'provided path_captures values do not match request URI')
+    if not is_equal([ map $_.'', $options->{path_captures}->@{@capture_names} ], \@capture_values);
 
   return $path_template;
 }
@@ -679,6 +686,7 @@ The second argument is a hashref that contains extra information about the reque
 More options will be added later, providing more flexible matching of the document to the request.
 C<path_template> OR C<operation_id> is required.
 C<path_captures> is required.
+All passed-in values MUST be consistent with each other and the request URI.
 
 =head2 validate_response
 

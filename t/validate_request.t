@@ -222,6 +222,22 @@ YAML
     'operation_id is not consistent with request URI',
   );
 
+  cmp_deeply(
+    ($result = $openapi->validate_request(POST('http://example.com/foo/hello'),
+      { operation_id => 'my-post-path', path_captures => { foo_id => 'goodbye' } }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id})),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
+          error => 'provided path_captures values do not match request URI',
+        },
+      ],
+    },
+    'path_captures values are not consistent with request URI',
+  );
 
   $openapi = OpenAPI::Modern->new(
     openapi_uri => 'openapi.yaml',
@@ -329,8 +345,8 @@ paths:
 YAML
 
   cmp_deeply(
-    $result = $openapi->validate_request($request,
-      { path_template => '/foo/{foo_id}', path_captures => { foo_id => '{corrupt json' } })->TO_JSON,
+    $result = $openapi->validate_request(GET('http://example.com/foo/corrupt_json'),
+      { path_template => '/foo/{foo_id}', path_captures => { foo_id => 'corrupt_json' } })->TO_JSON,
     {
       valid => false,
       errors => [
@@ -338,7 +354,7 @@ YAML
           instanceLocation => '/request/path/foo_id',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id} get parameters 0 content application/json)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get parameters 0 content application/json)))->to_string,
-          error => re(qr/^could not decode content as application\/json: \'"\' expected, at character offset 1/),
+          error => re(qr/^could not decode content as application\/json: malformed JSON string/),
         },
       ],
     },
@@ -346,7 +362,7 @@ YAML
   );
 
   cmp_deeply(
-    ($result = $openapi->validate_request($request,
+    ($result = $openapi->validate_request(GET('http://example.com/foo/{"hello":"there"}'),
       { path_template => '/foo/{foo_id}', path_captures => { foo_id => '{"hello":"there"}'}}))->TO_JSON,
     {
       valid => false,
