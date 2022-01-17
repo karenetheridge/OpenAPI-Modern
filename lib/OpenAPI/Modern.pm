@@ -667,14 +667,7 @@ C<path_captures> is required.
     },
   );
 
-The second argument is a hashref that contains extra information about the request. Possible values include:
-
-=for :list
-* C<path_template>: a string representing the request URI, with placeholders in braces (e.g.
-  C</pets/{petId}>); see L<https://spec.openapis.org/oas/v3.1.0#paths-object>.
-
-More options will be added later, providing more flexible matching of the document to the request.
-C<path_template> OR C<operation_id> is required.
+The second argument is a hashref that contains extra information about the request, as in L</validate_request>.
 
 =head2 canonical_uri
 
