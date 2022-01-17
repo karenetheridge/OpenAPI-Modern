@@ -51,12 +51,6 @@ webhooks:
       operationId: hooky
 YAML
 
-  like(
-    exception { $openapi->validate_request($request, {}) },
-    qr/^missing option path_template or operation_id at /,
-    'path_template or operation_id is required',
-  );
-
   cmp_deeply(
     (my $result = $openapi->validate_request($request, { path_template => '/foo/baz', path_captures => {} }))->TO_JSON,
     {
@@ -324,6 +318,38 @@ YAML
       ],
     },
     'path capture values are extracted from the operation id and request uri',
+  );
+
+  cmp_deeply(
+    ($result = $openapi->validate_request(GET('http://example.com/foo/hi')))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/path/foo_id',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id} parameters 0 schema pattern)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} parameters 0 schema pattern)))->to_string,
+          error => 'pattern does not match',
+        },
+      ],
+    },
+    'path template and capture values are extracted from the request uri',
+  );
+
+  cmp_deeply(
+    ($result = $openapi->validate_request(GET('http://example.com/bloop/blah')))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/path',
+          keywordLocation => jsonp('/paths'),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths'))->to_string,
+          error => 'no match found for URI path "/bloop/blah"',
+        },
+      ],
+    },
+    'failure to extract path template and capture values from the request uri',
   );
 
 

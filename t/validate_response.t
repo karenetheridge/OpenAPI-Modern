@@ -53,12 +53,6 @@ webhooks:
       operationId: hooky
 YAML
 
-  like(
-    exception { $openapi->validate_response($response, {}) },
-    qr/^missing option path_template or operation_id at /,
-    'path_template or operation_id is required',
-  );
-
   cmp_deeply(
     (my $result = $openapi->validate_response($response, { path_template => '/foo/baz' }))->TO_JSON,
     {
