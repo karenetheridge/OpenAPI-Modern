@@ -352,6 +352,41 @@ YAML
     'failure to extract path template and capture values from the request uri',
   );
 
+  my $uri = URI->new('http://example.com');
+  $uri->path_segments('', 'foo', 'hello // there ಠ_ಠ!');
+  cmp_deeply(
+    ($result = $openapi->validate_request(GET($uri),
+      { path_template => '/foo/{foo_id}', path_captures => { foo_id => 'hello // there ಠ_ಠ!' } }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/path/foo_id',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id} parameters 0 schema pattern)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} parameters 0 schema pattern)))->to_string,
+          error => 'pattern does not match',
+        },
+      ],
+    },
+    'path capture variables are found to be consistent with the URI when some values are url-escaped',
+  );
+
+  cmp_deeply(
+    ($result = $openapi->validate_request(GET($uri)))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/path/foo_id',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id} parameters 0 schema pattern)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} parameters 0 schema pattern)))->to_string,
+          error => 'pattern does not match',
+        },
+      ],
+    },
+    'path captures can be properly extracted from the URI when some values are url-escaped',
+  );
+
 
   $openapi = OpenAPI::Modern->new(
     openapi_uri => 'openapi.yaml',

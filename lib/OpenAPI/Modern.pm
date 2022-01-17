@@ -271,20 +271,22 @@ sub _find_path ($self, $state, $request, $options) {
       if lc $request->method ne $method;
   }
 
-  my $uri_path = URI::Escape::uri_unescape($request->uri->path);
+  my $uri_path = $request->uri->path;
 
   if (not $path_template) {
     my $schema = $self->openapi_document->schema;
     croak 'servers not yet supported when matching request URIs'
       if exists $schema->{servers} and $schema->{servers}->@*;
+
     foreach $path_template (sort keys $schema->{paths}->%*) {
-      my $path_pattern = $path_template =~ s!\{[^/?#}]+\}!([^/]*)!gr;
+      my $path_pattern = $path_template =~ s!\{[^/}]+\}!([^/?#]*)!gr;
       next if $uri_path !~ m/^$path_pattern$/;
 
       # perldoc perlvar, @-: $n coincides with "substr $_, $-[n], $+[n] - $-[n]" if "$-[n]" is defined
-      my @capture_values = map substr($uri_path, $-[$_], $+[$_]-$-[$_]), 1 .. $#-;
+      my @capture_values = map
+        Encode::decode('UTF-8', URI::Escape::uri_unescape(substr($uri_path, $-[$_], $+[$_]-$-[$_]))), 1 .. $#-;
       my @capture_names = ($path_template =~ m!\{([^/?#}]+)\}!g);
-      my %path_captures; @path_captures{@capture_names} = @capture_values;
+      my %path_captures; @path_captures{@capture_names} = map URI::Escape::uri_unescape($_), @capture_values;
       return ($path_template, \%path_captures);
     }
 
@@ -292,20 +294,23 @@ sub _find_path ($self, $state, $request, $options) {
       'no match found for URI path "%s"', $uri_path);
   }
 
-  # note: we aren't doing anything special with escaped braces. this bit of the spec is hazy.
-  my @capture_names = ($path_template =~ m!\{([^/?#}]+)\}!g);
+  # note: we aren't doing anything special with escaped slashes. this bit of the spec is hazy.
+  my @capture_names = ($path_template =~ m!\{([^/}]+)\}!g);
   abort({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
       'provided path_captures names do not match path template "%s"', $path_template)
     if exists $options->{path_captures}
       and not is_equal([ sort keys $options->{path_captures}->%*], [ sort @capture_names ]);
 
-  my $path_pattern = $path_template =~ s!\{[^/?#}]+\}!([^/]*)!gr;
+  # 3.2: "The value for these path parameters MUST NOT contain any unescaped “generic syntax”
+  # characters described by [RFC3986]: forward slashes (/), question marks (?), or hashes (#)."
+  my $path_pattern = $path_template =~ s!\{[^/}]+\}!([^/?#]*)!gr;
   abort({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
       'provided %s does not match request URI', exists $options->{path_template} ? 'path_template' : 'operation_id')
     if $uri_path !~ m/^$path_pattern$/;
 
   # perldoc perlvar, @-: $n coincides with "substr $_, $-[n], $+[n] - $-[n]" if "$-[n]" is defined
-  my @capture_values = map substr($uri_path, $-[$_], $+[$_]-$-[$_]), 1 .. $#-;
+  my @capture_values = map
+    Encode::decode('UTF-8', URI::Escape::uri_unescape(substr($uri_path, $-[$_], $+[$_]-$-[$_]))), 1 .. $#-;
   abort({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
       'provided path_captures values do not match request URI')
     if exists $options->{path_captures}
