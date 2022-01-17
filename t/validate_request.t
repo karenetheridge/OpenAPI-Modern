@@ -57,12 +57,6 @@ YAML
     'path_template or operation_id is required',
   );
 
-  like(
-    exception { $openapi->validate_request($request, { path_template => '/foo/bar' }) },
-    qr/^missing option path_captures at /,
-    'path_captures is required',
-  );
-
   cmp_deeply(
     (my $result = $openapi->validate_request($request, { path_template => '/foo/baz', path_captures => {} }))->TO_JSON,
     {
@@ -206,6 +200,23 @@ YAML
   );
 
   cmp_deeply(
+    ($result = $openapi->validate_request(POST('http://example.com/something/else'),
+      { path_template => '/foo/{foo_id}' }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id})),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
+          error => 'provided path_template does not match request URI',
+        },
+      ],
+    },
+    'path_template is not consistent with request URI, captures not provided',
+  );
+
+  cmp_deeply(
     ($result = $openapi->validate_request(GET('http://example.com/something/else'),
       { operation_id => 'my-get-path', path_captures => {} }))->TO_JSON,
     {
@@ -262,6 +273,57 @@ YAML
       ],
     },
     'operation does not exist under /paths/<path-template>',
+  );
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => 'openapi.yaml',
+    openapi_schema => $yamlpp->load_string(<<YAML));
+$openapi_preamble
+paths:
+  /foo/{foo_id}:
+    parameters:
+    - name: foo_id
+      in: path
+      required: true
+      schema:
+        pattern: ^[0-9]+\$
+    get:
+      operationId: my-get-path
+YAML
+
+  cmp_deeply(
+    ($result = $openapi->validate_request(GET('http://example.com/foo/hi'),
+      { path_template => '/foo/{foo_id}' }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/path/foo_id',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id} parameters 0 schema pattern)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} parameters 0 schema pattern)))->to_string,
+          error => 'pattern does not match',
+        },
+      ],
+    },
+    'path capture values are extracted from the path template and request uri',
+  );
+
+  cmp_deeply(
+    ($result = $openapi->validate_request(GET('http://example.com/foo/hi'),
+      { operation_id => 'my-get-path' }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/path/foo_id',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id} parameters 0 schema pattern)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} parameters 0 schema pattern)))->to_string,
+          error => 'pattern does not match',
+        },
+      ],
+    },
+    'path capture values are extracted from the operation id and request uri',
   );
 
 

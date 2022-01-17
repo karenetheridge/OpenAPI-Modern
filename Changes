@@ -4,6 +4,7 @@ Revision history for JSON-Schema-Modern-Document-OpenAPI
           - remove erroneous logic when checking the "discriminator" keyword
           - user-provided path_template, path_captures and operation_id are
             all verified against the request URI
+          - path_captures is no longer a required argument for validate_request
 
 0.016     2022-01-06 04:22:20Z
           - fix the prereq specification for YAML::PP

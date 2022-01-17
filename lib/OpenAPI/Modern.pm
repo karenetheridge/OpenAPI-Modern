@@ -91,11 +91,8 @@ sub validate_request ($self, $request, $options) {
   croak 'missing option path_template or operation_id'
     if not exists $options->{path_template} and not exists $options->{operation_id};
 
-  my $path_captures = $options->{path_captures};
-  croak 'missing option path_captures' if not is_plain_hashref($path_captures);
-
   try {
-    my $path_template = $self->_find_path($state, $request, $options);
+    my ($path_template, $path_captures) = $self->_find_path($state, $request, $options);
     my $path_item = $self->openapi_document->schema->{paths}{$path_template};
     my $method = lc $request->method;
     my $operation = $path_item->{$method};
@@ -187,7 +184,7 @@ sub validate_response ($self, $response, $options) {
     if not exists $options->{path_template} and not exists $options->{operation_id};
 
   try {
-    my $path_template = $self->_find_path($state, $response->request, $options);
+    my ($path_template, $path_captures) = $self->_find_path($state, $response->request, $options);
     my $method = lc $response->request->method;
     my $operation = $self->openapi_document->schema->{paths}{$path_template}{$method};
 
@@ -289,7 +286,8 @@ sub _find_path ($self, $state, $request, $options) {
   my @capture_names = ($path_template =~ m!\{([^/?#}]+)\}!g);
   abort({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
       'provided path_captures names do not match path template "%s"', $path_template)
-    if not is_equal([ sort keys $options->{path_captures}->%*], [ sort @capture_names ]);
+    if exists $options->{path_captures}
+      and not is_equal([ sort keys $options->{path_captures}->%*], [ sort @capture_names ]);
 
   my $path_pattern = $path_template =~ s!\{[^/?#}]+\}!([^/]*)!gr;
   my $uri_path = URI::Escape::uri_unescape($request->uri->path);
@@ -302,9 +300,11 @@ sub _find_path ($self, $state, $request, $options) {
   my @capture_values = map substr($uri_path, $-[$_], $+[$_]-$-[$_]), 1 .. $#-;
   abort({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
       'provided path_captures values do not match request URI')
-    if not is_equal([ map $_.'', $options->{path_captures}->@{@capture_names} ], \@capture_values);
+    if exists $options->{path_captures}
+      and not is_equal([ map $_.'', $options->{path_captures}->@{@capture_names} ], \@capture_values);
 
-  return $path_template;
+  my %path_captures; @path_captures{@capture_names} = @capture_values;
+  return ($path_template, \%path_captures);
 }
 
 # for now, we only use captures, rather than parsing the URI directly.
@@ -683,9 +683,8 @@ The second argument is a hashref that contains extra information about the reque
   under C</paths>
 * C<path_captures>: a hashref mapping placeholders in the path to their actual values in the request URI
 
-More options will be added later, providing more flexible matching of the document to the request.
+More options may be added later, providing more flexible matching of the document to the request.
 C<path_template> OR C<operation_id> is required.
-C<path_captures> is required.
 All passed-in values MUST be consistent with each other and the request URI.
 
 =head2 validate_response
