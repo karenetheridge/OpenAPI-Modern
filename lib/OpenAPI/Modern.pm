@@ -76,9 +76,6 @@ around BUILDARGS => sub ($orig, $class, @args) {
   return $args;
 };
 
-# at the moment, we rely on these values being provided in $options:
-# - path_template OR operationId
-# - path_captures
 sub validate_request ($self, $request, $options = {}) {
   my $state = {
     data_path => '/request',
@@ -166,8 +163,6 @@ sub validate_request ($self, $request, $options = {}) {
   return $self->_result($state);
 }
 
-# at the moment, we rely on these values being provided in $options:
-# - path_template OR operationId
 sub validate_response ($self, $response, $options = {}) {
   my $state = {
     data_path => '/response',
@@ -234,10 +229,8 @@ sub validate_response ($self, $response, $options = {}) {
 
 ######## NO PUBLIC INTERFACES FOLLOW THIS POINT ########
 
-# at the moment, we rely on these values being provided in $options:
-# - path_template OR operation_id
-# return: path_template.  caller can get method out of $request.
-# in the future, we will parse the request URI and can extract path_captures as well.
+# we use these values if they are provided in $options: path_template, operation_id, path_captures
+# return: path_template, path_captures.  caller can get method out of $request.
 sub _find_path ($self, $state, $request, $options) {
   my $path_template;
 
