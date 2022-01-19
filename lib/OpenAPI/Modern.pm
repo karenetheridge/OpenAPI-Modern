@@ -279,7 +279,7 @@ sub _find_path ($self, $state, $request, $options) {
       my @capture_values = map
         Encode::decode('UTF-8', URI::Escape::uri_unescape(substr($uri_path, $-[$_], $+[$_]-$-[$_]))), 1 .. $#-;
       my @capture_names = ($path_template =~ m!\{([^/?#}]+)\}!g);
-      my %path_captures; @path_captures{@capture_names} = map URI::Escape::uri_unescape($_), @capture_values;
+      my %path_captures; @path_captures{@capture_names} = @capture_values;
       return ($path_template, \%path_captures);
     }
 
