@@ -1,6 +1,9 @@
 Revision history for JSON-Schema-Modern-Document-OpenAPI
 
 {{$NEXT}}
+          - some instanceLocations in errors from validate_request and
+            validate_response have changed to be more specific regarding the
+            source of the error
 
 0.018     2022-01-17 23:37:05Z
           - fix parsing of escaped characters in URI paths and capture values

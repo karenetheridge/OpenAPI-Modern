@@ -57,7 +57,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request',
+          instanceLocation => '/request/uri/path',
           keywordLocation => '/paths',
           absoluteKeywordLocation => $doc_uri->clone->fragment('/paths')->to_string,
           error => 'missing path-item "/foo/baz"',
@@ -73,7 +73,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request',
+          instanceLocation => '/request/uri/path',
           keywordLocation => jsonp('/paths'),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths'))->to_string,
           error => 'unknown operation_id "bloop"',
@@ -89,7 +89,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request',
+          instanceLocation => '/request/uri/path',
           keywordLocation => '/webhooks/my_hook/post/operationId',
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/webhooks/my_hook/post/operationId'))->to_string,
           error => 'operation id does not have an associated path',
@@ -107,7 +107,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request',
+          instanceLocation => '/request/uri/path',
           keywordLocation => '/paths/~1foo~1bar',
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', qw(/foo/bar)))->to_string,
           error => 'operation does not match provided path_template',
@@ -125,7 +125,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request',
+          instanceLocation => '/request/method',
           keywordLocation => '/paths/~1foo~1bar/get',
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', qw(/foo/bar get)))->to_string,
           error => 'wrong HTTP method POST',
@@ -142,7 +142,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request',
+          instanceLocation => '/request/uri/path',
           keywordLocation => '/paths/~1foo~1{foo_id}',
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
           error => 'provided path_captures names do not match path template "/foo/{foo_id}"',
@@ -166,7 +166,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request',
+          instanceLocation => '/request/uri/path',
           keywordLocation => jsonp(qw(/paths /foo/bar)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
           error => 'provided path_template does not match request URI',
@@ -183,7 +183,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request',
+          instanceLocation => '/request/uri/path',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id})),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
           error => 'provided path_template does not match request URI',
@@ -200,7 +200,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request',
+          instanceLocation => '/request/uri/path',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id})),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
           error => 'provided path_template does not match request URI',
@@ -217,7 +217,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request',
+          instanceLocation => '/request/uri/path',
           keywordLocation => jsonp(qw(/paths /foo/bar)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
           error => 'provided operation_id does not match request URI',
@@ -234,7 +234,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request',
+          instanceLocation => '/request/uri/path',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id})),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
           error => 'provided path_captures values do not match request URI',
@@ -259,7 +259,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request',
+          instanceLocation => '/request/method',
           keywordLocation => jsonp(qw(/paths /foo post)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post)))->to_string,
           error => 'missing entry for HTTP method "post"',
@@ -293,7 +293,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/path/foo_id',
+          instanceLocation => '/request/uri/path/foo_id',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id} parameters 0 schema pattern)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} parameters 0 schema pattern)))->to_string,
           error => 'pattern does not match',
@@ -310,7 +310,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/path/foo_id',
+          instanceLocation => '/request/uri/path/foo_id',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id} parameters 0 schema pattern)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} parameters 0 schema pattern)))->to_string,
           error => 'pattern does not match',
@@ -326,7 +326,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/path/foo_id',
+          instanceLocation => '/request/uri/path/foo_id',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id} parameters 0 schema pattern)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} parameters 0 schema pattern)))->to_string,
           error => 'pattern does not match',
@@ -342,7 +342,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/path',
+          instanceLocation => '/request/uri/path',
           keywordLocation => jsonp('/paths'),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths'))->to_string,
           error => 'no match found for URI path "/bloop/blah"',
@@ -361,7 +361,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/path/foo_id',
+          instanceLocation => '/request/uri/path/foo_id',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id} parameters 0 schema pattern)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} parameters 0 schema pattern)))->to_string,
           error => 'pattern does not match',
@@ -377,7 +377,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/path/foo_id',
+          instanceLocation => '/request/uri/path/foo_id',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id} parameters 0 schema pattern)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} parameters 0 schema pattern)))->to_string,
           error => 'pattern does not match',
@@ -409,7 +409,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/path/foo_id',
+          instanceLocation => '/request/uri/path/foo_id',
           keywordLocation => jsonp(qw(/paths /foo get parameters 0 required)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo get parameters 0 required)))->to_string,
           error => 'missing path parameter: foo_id',
@@ -440,7 +440,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/path/foo_id',
+          instanceLocation => '/request/uri/path/foo_id',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id} get parameters 0 schema pattern)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get parameters 0 schema pattern)))->to_string,
           error => 'pattern does not match',
@@ -474,7 +474,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/path/foo_id',
+          instanceLocation => '/request/uri/path/foo_id',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id} get parameters 0 content application/json)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get parameters 0 content application/json)))->to_string,
           error => re(qr/^could not decode content as application\/json: malformed JSON string/),
@@ -491,7 +491,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/path/foo_id',
+          instanceLocation => '/request/uri/path/foo_id',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id} get parameters 0 content application/json schema required)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get parameters 0 content application/json schema required)))->to_string,
           error => 'missing property: key',
@@ -540,13 +540,13 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/path/foo_id',
+          instanceLocation => '/request/uri/path/foo_id',
           keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(get parameters 0 schema maxLength)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(get parameters 0 schema maxLength)))->to_string,
           error => 'length is greater than 1',
         },
         {
-          instanceLocation => '/request/path/bar_id',
+          instanceLocation => '/request/uri/path/bar_id',
           keywordLocation => jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(parameters 1 schema pattern)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}/bar/{bar_id}', qw(parameters 1 schema pattern)))->to_string,
           error => 'pattern does not match',
@@ -576,7 +576,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request',
+          instanceLocation => '/request/uri/path/foo_id',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id})),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
           error => 'missing path parameter specification for "foo_id"',
@@ -786,7 +786,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/query/alpha',
+          instanceLocation => '/request/uri/query/alpha',
           keywordLocation => jsonp(qw(/paths /foo post parameters 0 required)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post parameters 0 required)))->to_string,
           error => 'missing query parameter: alpha',
@@ -810,7 +810,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/query/delta',
+          instanceLocation => '/request/uri/query/delta',
           keywordLocation => jsonp(qw(/paths /foo post parameters 4 content unknown/encodingtype)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post parameters 4 content unknown/encodingtype)))->to_string,
           error => 'EXCEPTION: unsupported media type "unknown/encodingtype": add support with $openapi->add_media_type(...)',
@@ -828,7 +828,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/query/delta',
+          instanceLocation => '/request/uri/query/delta',
           keywordLocation => jsonp(qw(/paths /foo post parameters 4 content unknown/encodingtype schema)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post parameters 4 content unknown/encodingtype schema)))->to_string,
           error => 'subschema is false',
@@ -846,7 +846,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/query/epsilon',
+          instanceLocation => '/request/uri/query/epsilon',
           keywordLocation => jsonp(qw(/paths /foo post parameters 5 content apPlicATion/jsON schema)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post parameters 5 content apPlicATion/jsON schema)))->to_string,
           error => 'subschema is false',
@@ -866,7 +866,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/query/zeta',
+          instanceLocation => '/request/uri/query/zeta',
           keywordLocation => jsonp(qw(/paths /foo post parameters 6 content iMAgE/* schema)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post parameters 6 content iMAgE/* schema)))->to_string,
           error => 'subschema is false',
@@ -885,7 +885,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/query/alpha',
+          instanceLocation => '/request/uri/query/alpha',
           keywordLocation => jsonp(qw(/paths /foo post parameters 0 schema pattern)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post parameters 0 schema pattern)))->to_string,
           error => 'pattern does not match',
@@ -897,7 +897,7 @@ YAML
           error => 'pattern does not match',
         },
         {
-          instanceLocation => '/request/query/beta',
+          instanceLocation => '/request/uri/query/beta',
           keywordLocation => jsonp(qw(/paths /foo post parameters 2 schema)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post parameters 2 schema)))->to_string,
           error => 'subschema is false',
@@ -940,7 +940,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/query/query1',
+          instanceLocation => '/request/uri/query/query1',
           keywordLocation => jsonp(qw(/paths /foo get parameters 0 content application/json)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo get parameters 0 content application/json)))->to_string,
           error => re(qr/^could not decode content as application\/json: \'"\' expected, at character offset 1/),
@@ -964,7 +964,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/query/query1',
+          instanceLocation => '/request/uri/query/query1',
           keywordLocation => jsonp(qw(/paths /foo get parameters 0 content application/json schema required)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo get parameters 0 content application/json schema required)))->to_string,
           error => 'missing property: key',
@@ -1029,7 +1029,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/query/alpha',
+          instanceLocation => '/request/uri/query/alpha',
           keywordLocation => jsonp(qw(/paths /foo get parameters 0 schema maxLength)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo get parameters 0 schema maxLength)))->to_string,
           error => 'length is greater than 1',
@@ -1041,7 +1041,7 @@ YAML
           error => 'length is greater than 1',
         },
         {
-          instanceLocation => '/request/query/beta',
+          instanceLocation => '/request/uri/query/beta',
           keywordLocation => jsonp(qw(/paths /foo parameters 1 schema pattern)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo parameters 1 schema pattern)))->to_string,
           error => 'pattern does not match',
@@ -1491,7 +1491,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/query/bar',
+          instanceLocation => '/request/uri/query/bar',
           keywordLocation => jsonp('/paths', '/foo/{foo_id}', qw(post parameters 0 schema pattern)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}', qw(post parameters 0 schema pattern)))->to_string,
           error => 'pattern does not match',
@@ -1503,7 +1503,7 @@ YAML
           error => 'pattern does not match',
         },
         {
-          instanceLocation => '/request/path/foo_id',
+          instanceLocation => '/request/uri/path/foo_id',
           keywordLocation => jsonp('/paths', '/foo/{foo_id}', qw(parameters 0 schema pattern)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}', qw(parameters 0 schema pattern)))->to_string,
           error => 'pattern does not match',
@@ -1563,7 +1563,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/query/bar',
+          instanceLocation => '/request/uri/query/bar',
           keywordLocation => jsonp('/paths', '/foo/{foo_id}', qw(post parameters 0 schema maximum)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}', qw(post parameters 0 schema maximum)))->to_string,
           error => 'value is larger than 10',
@@ -1575,7 +1575,7 @@ YAML
           error => 'value is larger than 10',
         },
         {
-          instanceLocation => '/request/path/foo_id',
+          instanceLocation => '/request/uri/path/foo_id',
           keywordLocation => jsonp('/paths', '/foo/{foo_id}', qw(parameters 0 schema maximum)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}', qw(parameters 0 schema maximum)))->to_string,
           error => 'value is larger than 10',

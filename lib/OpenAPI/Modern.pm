@@ -115,7 +115,9 @@ sub validate_request ($self, $request, $options = {}) {
         next if exists $request_parameters_processed->{$param_obj->{in}}{$fc_name};
         $request_parameters_processed->{$param_obj->{in}}{$fc_name} = $section;
 
-        $state->{data_path} = jsonp($state->{data_path}, $param_obj->{in}, $param_obj->{name});
+        $state->{data_path} = jsonp($state->{data_path},
+          ((grep $param_obj->{in} eq $_, qw(path query)) ? 'uri' : ()), $param_obj->{in},
+          $param_obj->{name});
         my $valid =
             $param_obj->{in} eq 'path' ? $self->_validate_path_parameter($state, $param_obj, $path_captures)
           : $param_obj->{in} eq 'query' ? $self->_validate_query_parameter($state, $param_obj, $request->uri)
@@ -128,7 +130,8 @@ sub validate_request ($self, $request, $options = {}) {
     # 3.2 "Each template expression in the path MUST correspond to a path parameter that is included in
     # the Path Item itself and/or in each of the Path Item’s Operations."
     foreach my $path_name (sort keys $path_captures->%*) {
-      abort($state, 'missing path parameter specification for "%s"', $path_name)
+      abort({ %$state, data_path => jsonp($state->{data_path}, qw(uri path), $path_name) },
+          'missing path parameter specification for "%s"', $path_name)
         if not exists $request_parameters_processed->{path}{$path_name};
     }
 
@@ -234,6 +237,8 @@ sub validate_response ($self, $response, $options = {}) {
 sub _find_path ($self, $state, $request, $options) {
   my $path_template;
 
+  $state = { %$state, data_path => '/request/uri/path' };
+
   # path_template from options, method from request
   if (exists $options->{path_template}) {
     $path_template = $options->{path_template};
@@ -242,7 +247,7 @@ sub _find_path ($self, $state, $request, $options) {
     abort({ %$state, keyword => 'paths' }, 'missing path-item "%s"', $path_template) if not $path_item;
 
     my $method = lc $request->method;
-    abort({ %$state, schema_path => jsonp('/paths', $path_template), keyword => $method },
+    abort({ %$state, data_path => '/request/method', schema_path => jsonp('/paths', $path_template), keyword => $method },
         'missing entry for HTTP method "%s"', $method)
       if not $path_item->{$method};
   }
@@ -260,7 +265,8 @@ sub _find_path ($self, $state, $request, $options) {
         'operation does not match provided path_template')
       if exists $options->{path_template} and $options->{path_template} ne $path_template;
 
-    abort({ %$state, schema_path => $operation_path }, 'wrong HTTP method %s', $request->method)
+    abort({ %$state, data_path => '/request/method', schema_path => $operation_path },
+        'wrong HTTP method %s', $request->method)
       if lc $request->method ne $method;
   }
 
@@ -283,8 +289,7 @@ sub _find_path ($self, $state, $request, $options) {
       return ($path_template, \%path_captures);
     }
 
-    abort({ %$state, keyword => 'paths', data_path => jsonp($state->{data_path}, 'path') },
-      'no match found for URI path "%s"', $uri_path);
+    abort({ %$state, keyword => 'paths' }, 'no match found for URI path "%s"', $uri_path);
   }
 
   # note: we aren't doing anything special with escaped slashes. this bit of the spec is hazy.

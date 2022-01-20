@@ -59,7 +59,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/response',
+          instanceLocation => '/request/uri/path',
           keywordLocation => '/paths',
           absoluteKeywordLocation => $doc_uri->clone->fragment('/paths')->to_string,
           error => 'missing path-item "/foo/baz"',
@@ -75,7 +75,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/response',
+          instanceLocation => '/request/uri/path',
           keywordLocation => jsonp('/paths'),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths'))->to_string,
           error => 'unknown operation_id "bloop"',
@@ -91,7 +91,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/response',
+          instanceLocation => '/request/uri/path',
           keywordLocation => '/webhooks/my_hook/post/operationId',
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/webhooks/my_hook/post/operationId'))->to_string,
           error => 'operation id does not have an associated path',
@@ -109,7 +109,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/response',
+          instanceLocation => '/request/uri/path',
           keywordLocation => '/paths/~1foo~1bar',
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', qw(/foo/bar)))->to_string,
           error => 'operation does not match provided path_template',
@@ -126,7 +126,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/response',
+          instanceLocation => '/request/method',
           keywordLocation => '/paths/~1foo~1bar/get',
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', qw(/foo/bar get)))->to_string,
           error => 'wrong HTTP method POST',
@@ -159,7 +159,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/response',
+          instanceLocation => '/request/method',
           keywordLocation => jsonp(qw(/paths /foo post)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post)))->to_string,
           error => 'missing entry for HTTP method "post"',
