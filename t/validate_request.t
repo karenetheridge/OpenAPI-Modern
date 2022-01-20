@@ -52,11 +52,11 @@ webhooks:
 YAML
 
   cmp_deeply(
-    (my $result = $openapi->validate_request($request, { path_template => '/foo/baz', path_captures => {} }))->TO_JSON,
+    (my $result = $openapi->validate_request($request, my $options = { path_template => '/foo/baz', path_captures => {} }))->TO_JSON,
     {
       valid => false,
       errors => [
-        {
+        my $error = {
           instanceLocation => '/request/uri/path',
           keywordLocation => '/paths',
           absoluteKeywordLocation => $doc_uri->clone->fragment('/paths')->to_string,
@@ -65,6 +65,15 @@ YAML
       ],
     },
     'path template does not exist under /paths',
+  );
+  cmp_deeply(
+    $options,
+    {
+      path_template => '/foo/baz',
+      path_captures => {},
+      errors => [ methods(TO_JSON => $error) ],
+    },
+    'unsuccessful path extraction results in the error being returned in the options hash',
   );
 
   cmp_deeply(
@@ -287,53 +296,51 @@ paths:
 YAML
 
   cmp_deeply(
-    ($result = $openapi->validate_request(GET('http://example.com/foo/hi'),
-      { path_template => '/foo/{foo_id}' }))->TO_JSON,
+    ($result = $openapi->validate_request(GET('http://example.com/foo/123'),
+      $options = { path_template => '/foo/{foo_id}' }))->TO_JSON,
+    { valid => true },
+    'find_path returns successfully',
+  );
+  cmp_deeply(
+    $options,
     {
-      valid => false,
-      errors => [
-        {
-          instanceLocation => '/request/uri/path/foo_id',
-          keywordLocation => jsonp(qw(/paths /foo/{foo_id} parameters 0 schema pattern)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} parameters 0 schema pattern)))->to_string,
-          error => 'pattern does not match',
-        },
-      ],
+      path_template => '/foo/{foo_id}',
+      path_captures => { foo_id => '123' },
+      errors => [],
     },
     'path capture values are extracted from the path template and request uri',
   );
 
   cmp_deeply(
-    ($result = $openapi->validate_request(GET('http://example.com/foo/hi'),
-      { operation_id => 'my-get-path' }))->TO_JSON,
+    ($result = $openapi->validate_request(GET('http://example.com/foo/123'),
+      $options = { operation_id => 'my-get-path' }))->TO_JSON,
+    { valid => true },
+    'find_path returns successfully',
+  );
+  cmp_deeply(
+    $options,
     {
-      valid => false,
-      errors => [
-        {
-          instanceLocation => '/request/uri/path/foo_id',
-          keywordLocation => jsonp(qw(/paths /foo/{foo_id} parameters 0 schema pattern)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} parameters 0 schema pattern)))->to_string,
-          error => 'pattern does not match',
-        },
-      ],
+      operation_id => 'my-get-path',
+      path_template => '/foo/{foo_id}',
+      path_captures => { foo_id => '123' },
+      errors => [],
     },
     'path capture values are extracted from the operation id and request uri',
   );
 
   cmp_deeply(
-    ($result = $openapi->validate_request(GET('http://example.com/foo/hi')))->TO_JSON,
+    ($result = $openapi->validate_request(GET('http://example.com/foo/123'), $options = {}))->TO_JSON,
+    { valid => true },
+    'path_item and path_capture variables are successfully extracted from the request uri and returned',
+  );
+  cmp_deeply(
+    $options,
     {
-      valid => false,
-      errors => [
-        {
-          instanceLocation => '/request/uri/path/foo_id',
-          keywordLocation => jsonp(qw(/paths /foo/{foo_id} parameters 0 schema pattern)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} parameters 0 schema pattern)))->to_string,
-          error => 'pattern does not match',
-        },
-      ],
+      path_template => '/foo/{foo_id}',
+      path_captures => { foo_id => '123' },
+      errors => [],
     },
-    'path template and capture values are extracted from the request uri',
+    'path_item and path_capture variables are returned in the provided options hash',
   );
 
   cmp_deeply(
@@ -372,7 +379,7 @@ YAML
   );
 
   cmp_deeply(
-    ($result = $openapi->validate_request(GET($uri)))->TO_JSON,
+    ($result = $openapi->validate_request(GET($uri), $options = {}))->TO_JSON,
     {
       valid => false,
       errors => [

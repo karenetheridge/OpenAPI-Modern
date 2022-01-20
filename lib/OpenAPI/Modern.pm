@@ -82,11 +82,13 @@ sub validate_request ($self, $request, $options = {}) {
     initial_schema_uri => $self->openapi_uri,   # the canonical URI as of the start or last $id, or the last traversed $ref
     traversed_schema_path => '',    # the accumulated traversal path as of the start, or last $id, or up to the last traversed $ref
     schema_path => '',              # the rest of the path, since the last $id or the last traversed $ref
-    errors => [],
+    errors => $options->{errors} //= [],
   };
 
   try {
-    my ($path_template, $path_captures) = $self->_find_path($state, $request, $options);
+    die pop $options->{errors}->@* if not $self->find_path($request, $options);
+
+    my ($path_template, $path_captures) = $options->@{qw(path_template path_captures)};
     my $path_item = $self->openapi_document->schema->{paths}{$path_template};
     my $method = lc $request->method;
     my $operation = $path_item->{$method};
@@ -163,6 +165,7 @@ sub validate_request ($self, $request, $options = {}) {
     }
   }
 
+  $options->{errors} = $state->{errors};
   return $self->_result($state);
 }
 
@@ -172,11 +175,13 @@ sub validate_response ($self, $response, $options = {}) {
     initial_schema_uri => $self->openapi_uri,   # the canonical URI as of the start or last $id, or the last traversed $ref
     traversed_schema_path => '',    # the accumulated traversal path as of the start, or last $id, or up to the last traversed $ref
     schema_path => '',              # the rest of the path, since the last $id or the last traversed $ref
-    errors => [],
+    errors => $options->{errors} //= [],
   };
 
   try {
-    my ($path_template, $path_captures) = $self->_find_path($state, $response->request, $options);
+    die pop $options->{errors}->@* if not $self->find_path($response->request, $options);
+
+    my ($path_template, $path_captures) = $options->@{qw(path_template path_captures)};
     my $method = lc $response->request->method;
     my $operation = $self->openapi_document->schema->{paths}{$path_template}{$method};
 
@@ -227,27 +232,30 @@ sub validate_response ($self, $response, $options = {}) {
     }
   }
 
+  $options->{errors} = $state->{errors};
   return $self->_result($state);
 }
 
-######## NO PUBLIC INTERFACES FOLLOW THIS POINT ########
-
-# we use these values if they are provided in $options: path_template, operation_id, path_captures
-# return: path_template, path_captures.  caller can get method out of $request.
-sub _find_path ($self, $state, $request, $options) {
+sub find_path ($self, $request, $options) {
   my $path_template;
 
-  $state = { %$state, data_path => '/request/uri/path' };
+  my $state = {
+    data_path => '/request/uri/path',
+    initial_schema_uri => $self->openapi_uri,   # the canonical URI as of the start or last $id, or the last traversed $ref
+    traversed_schema_path => '',    # the accumulated traversal path as of the start, or last $id, or up to the last traversed $ref
+    schema_path => '',              # the rest of the path, since the last $id or the last traversed $ref
+    errors => $options->{errors} //= [],
+  };
 
   # path_template from options, method from request
   if (exists $options->{path_template}) {
     $path_template = $options->{path_template};
 
     my $path_item = $self->openapi_document->schema->{paths}{$path_template};
-    abort({ %$state, keyword => 'paths' }, 'missing path-item "%s"', $path_template) if not $path_item;
+    return E({ %$state, keyword => 'paths' }, 'missing path-item "%s"', $path_template) if not $path_item;
 
     my $method = lc $request->method;
-    abort({ %$state, data_path => '/request/method', schema_path => jsonp('/paths', $path_template), keyword => $method },
+    return E({ %$state, data_path => '/request/method', schema_path => jsonp('/paths', $path_template), keyword => $method },
         'missing entry for HTTP method "%s"', $method)
       if not $path_item->{$method};
   }
@@ -255,17 +263,17 @@ sub _find_path ($self, $state, $request, $options) {
   # path_template and method from operationId from options
   if (exists $options->{operation_id}) {
     my $operation_path = $self->openapi_document->get_operationId($options->{operation_id});
-    abort({ %$state, keyword => 'paths' }, 'unknown operation_id "%s"', $options->{operation_id})
+    return E({ %$state, keyword => 'paths' }, 'unknown operation_id "%s"', $options->{operation_id})
       if not $operation_path;
-    abort({ %$state, schema_path => $operation_path, keyword => 'operationId' },
+    return E({ %$state, schema_path => $operation_path, keyword => 'operationId' },
       'operation id does not have an associated path') if $operation_path !~ m{^/paths/};
     (undef, undef, $path_template, my $method) = unjsonp($operation_path);
 
-    abort({ %$state, schema_path => jsonp('/paths', $path_template) },
+    return E({ %$state, schema_path => jsonp('/paths', $path_template) },
         'operation does not match provided path_template')
       if exists $options->{path_template} and $options->{path_template} ne $path_template;
 
-    abort({ %$state, data_path => '/request/method', schema_path => $operation_path },
+    return E({ %$state, data_path => '/request/method', schema_path => $operation_path },
         'wrong HTTP method %s', $request->method)
       if lc $request->method ne $method;
   }
@@ -286,15 +294,16 @@ sub _find_path ($self, $state, $request, $options) {
         Encode::decode('UTF-8', URI::Escape::uri_unescape(substr($uri_path, $-[$_], $+[$_]-$-[$_]))), 1 .. $#-;
       my @capture_names = ($path_template =~ m!\{([^/?#}]+)\}!g);
       my %path_captures; @path_captures{@capture_names} = @capture_values;
-      return ($path_template, \%path_captures);
+      $options->@{qw(path_template path_captures)} = ($path_template, \%path_captures);
+      return 1;
     }
 
-    abort({ %$state, keyword => 'paths' }, 'no match found for URI path "%s"', $uri_path);
+    return E({ %$state, keyword => 'paths' }, 'no match found for URI path "%s"', $uri_path);
   }
 
   # note: we aren't doing anything special with escaped slashes. this bit of the spec is hazy.
   my @capture_names = ($path_template =~ m!\{([^/}]+)\}!g);
-  abort({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
+  return E({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
       'provided path_captures names do not match path template "%s"', $path_template)
     if exists $options->{path_captures}
       and not is_equal([ sort keys $options->{path_captures}->%*], [ sort @capture_names ]);
@@ -302,21 +311,24 @@ sub _find_path ($self, $state, $request, $options) {
   # 3.2: "The value for these path parameters MUST NOT contain any unescaped “generic syntax”
   # characters described by [RFC3986]: forward slashes (/), question marks (?), or hashes (#)."
   my $path_pattern = $path_template =~ s!\{[^/}]+\}!([^/?#]*)!gr;
-  abort({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
+  return E({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
       'provided %s does not match request URI', exists $options->{path_template} ? 'path_template' : 'operation_id')
     if $uri_path !~ m/^$path_pattern$/;
 
   # perldoc perlvar, @-: $n coincides with "substr $_, $-[n], $+[n] - $-[n]" if "$-[n]" is defined
   my @capture_values = map
     Encode::decode('UTF-8', URI::Escape::uri_unescape(substr($uri_path, $-[$_], $+[$_]-$-[$_]))), 1 .. $#-;
-  abort({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
+  return E({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
       'provided path_captures values do not match request URI')
     if exists $options->{path_captures}
       and not is_equal([ map $_.'', $options->{path_captures}->@{@capture_names} ], \@capture_values);
 
   my %path_captures; @path_captures{@capture_names} = @capture_values;
-  return ($path_template, \%path_captures);
+  $options->@{qw(path_template path_captures)} = ($path_template, \%path_captures);
+  return 1;
 }
+
+######## NO PUBLIC INTERFACES FOLLOW THIS POINT ########
 
 sub _validate_path_parameter ($self, $state, $param_obj, $path_captures) {
   # 'required' is always true for path parameters
@@ -677,6 +689,26 @@ The L<JSON::Schema::Modern> object to use for all URI resolution and JSON Schema
 Validates an L<HTTP::Request> object against the corresponding OpenAPI v3.1 document, returning a
 L<JSON::Schema::Modern::Result> object.
 
+The second argument is a hashref that contains extra information about the request, corresponding to
+the values expected by L</find_path> below. It is populated with some information about the request:
+pass it to a later L</validate_response> to improve performance.
+
+=head2 validate_response
+
+  $result = $openapi->validate_response(
+    $response,
+    {
+      path_template => '/foo/{arg1}/bar/{arg2}',
+    },
+  );
+
+The second argument is a hashref that contains extra information about the request, as in L</find_path>.
+
+=head2 find_path
+
+  $result = $self->find_path($request, $options);
+
+Uses information in the request to determine the relevant parts of the OpenAPI specification
 The second argument is a hashref that contains extra information about the request. Possible values include:
 
 =for :list
@@ -690,20 +722,14 @@ All of these values are optional, and will be derived from the request URI as ne
 efficiently than if they were provided). All passed-in values MUST be consistent with each other and
 the request URI.
 
+When successful, the options hash will be populated with keys C<path_template> and C<path_captures>
+and the return value is true.
+When not successful, the options hash will be populated with key C<errors>, an arrayref containing
+a L<JSON::Schema::Modern::Error> object, and the return value is false.
+
 Note that the L<C</servers>|https://spec.openapis.org/oas/v3.1.0#server-object> section of the
 OpenAPI document is not used for path matching at this time, for either scheme and host matching nor
 path prefixes.
-
-=head2 validate_response
-
-  $result = $openapi->validate_response(
-    $response,
-    {
-      path_template => '/foo/{arg1}/bar/{arg2}',
-    },
-  );
-
-The second argument is a hashref that contains extra information about the request, as in L</validate_request>.
 
 =head2 canonical_uri
 
