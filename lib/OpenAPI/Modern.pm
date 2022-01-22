@@ -536,7 +536,7 @@ __END__
 
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => 'openapi.yaml',
-    openapi_schema => YAML::PP->new(boolean => 'JSON::PP')->load_string(<<'YAML'),
+    openapi_schema => YAML::PP->new(boolean => 'JSON::PP')->load_string(<<'YAML'));
   openapi: 3.1.0
   info:
     title: Test API
@@ -584,17 +584,13 @@ __END__
                     status:
                       const: ok
   YAML
-  );
 
   say 'request:';
   use HTTP::Request::Common;
   my $request = POST 'http://example.com/foo/bar',
     [ 'My-Request-Header' => '123', 'Content-Type' => 'application/json' ],
     '{"hello": 123}';
-  say $openapi->validate_request($request, {
-    path_template => '/foo/{foo_id}',
-    path_captures => { foo_id => 'bar' },
-  });
+  say $openapi->validate_request($request);
 
   say 'response:';
   my $response = HTTP::Response->new(
@@ -602,7 +598,7 @@ __END__
     [ 'My-Response-Header' => '123' ],
     '{"status": "ok"}',
   );
-  say $openapi->validate_response($response, { operation_id => 'my_foo_request' });
+  say $openapi->validate_response($response);
 
 prints:
 
