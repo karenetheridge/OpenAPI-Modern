@@ -1,5 +1,7 @@
 Revision history for JSON-Schema-Modern-Document-OpenAPI
 
+{{$NEXT}}
+
 0.019     2022-01-23 08:17:30Z
           - some instanceLocations in errors from validate_request and
             validate_response have changed to be more specific regarding the
