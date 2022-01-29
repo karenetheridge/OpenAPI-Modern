@@ -16,8 +16,10 @@ use OpenAPI::Modern;
 use JSON::Schema::Modern::Utilities 'jsonp';
 use Test::File::ShareDir -share => { -dist => { 'JSON-Schema-Modern-Document-OpenAPI' => 'share' } };
 use constant { true => JSON::PP::true, false => JSON::PP::false };
-use HTTP::Request::Common;
 use YAML::PP 0.005;
+
+use lib 't/lib';
+use Helper;
 
 my $openapi_preamble = <<'YAML';
 ---
@@ -30,8 +32,14 @@ YAML
 my $doc_uri = Mojo::URL->new('openapi.yaml');
 my $yamlpp = YAML::PP->new(boolean => 'JSON::PP');
 
+my $type_index = 0;
+
+START:
+$::TYPE = $::TYPES[$type_index];
+note 'REQUEST/RESPONSE TYPE: '.$::TYPE;
+
 subtest 'find_path' => sub {
-  my $request = GET 'http://example.com/foo/bar';
+  my $request = request('GET', 'http://example.com/foo/bar');
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => 'openapi.yaml',
     openapi_schema => $yamlpp->load_string(<<YAML));
@@ -72,7 +80,7 @@ YAML
 };
 
 subtest 'request is parsed to get path information' => sub {
-  my $request = GET 'http://example.com/foo/bar';
+  my $request = request('GET', 'http://example.com/foo/bar');
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => 'openapi.yaml',
     openapi_schema => $yamlpp->load_string(<<YAML));
@@ -148,9 +156,8 @@ YAML
     'path template does not exist under /paths',
   );
 
-
   cmp_deeply(
-    ($result = $openapi->validate_request(POST('http://example.com/foo/bar'),
+    ($result = $openapi->validate_request(request('POST', 'http://example.com/foo/bar'),
       { path_template => '/foo/{foo_id}', operation_id => 'my-get-path', path_captures => {} }))->TO_JSON,
     {
       valid => false,
@@ -168,7 +175,7 @@ YAML
 
 
   cmp_deeply(
-    ($result = $openapi->validate_request(POST('http://example.com/foo/bar'),
+    ($result = $openapi->validate_request(request('POST', 'http://example.com/foo/bar'),
       { operation_id => 'my-get-path', path_captures => {} }))->TO_JSON,
     {
       valid => false,
@@ -185,7 +192,7 @@ YAML
   );
 
   cmp_deeply(
-    ($result = $openapi->validate_request(POST('http://example.com/foo/bar'),
+    ($result = $openapi->validate_request(request('POST', 'http://example.com/foo/bar'),
         { path_template => '/foo/{foo_id}', path_captures => {} }))->TO_JSON,
     {
       valid => false,
@@ -202,14 +209,14 @@ YAML
   );
 
   cmp_deeply(
-    ($result = $openapi->validate_request(GET('http://example.com/foo/bar'),
+    ($result = $openapi->validate_request(request('GET', 'http://example.com/foo/bar'),
       { path_template => '/foo/bar', operation_id => 'my-get-path', path_captures => {} }))->TO_JSON,
     { valid => true },
     'path_template and operation_id can both be passed, if consistent',
   );
 
   cmp_deeply(
-    ($result = $openapi->validate_request(GET('http://example.com/something/else'),
+    ($result = $openapi->validate_request(request('GET', 'http://example.com/something/else'),
       { path_template => '/foo/bar', path_captures => {} }))->TO_JSON,
     {
       valid => false,
@@ -226,7 +233,7 @@ YAML
   );
 
   cmp_deeply(
-    ($result = $openapi->validate_request(POST('http://example.com/something/else'),
+    ($result = $openapi->validate_request(request('POST', 'http://example.com/something/else'),
       { path_template => '/foo/{foo_id}', path_captures => { foo_id => 123 } }))->TO_JSON,
     {
       valid => false,
@@ -243,7 +250,7 @@ YAML
   );
 
   cmp_deeply(
-    ($result = $openapi->validate_request(POST('http://example.com/something/else'),
+    ($result = $openapi->validate_request(request('POST', 'http://example.com/something/else'),
       { path_template => '/foo/{foo_id}' }))->TO_JSON,
     {
       valid => false,
@@ -260,7 +267,7 @@ YAML
   );
 
   cmp_deeply(
-    ($result = $openapi->validate_request(GET('http://example.com/something/else'),
+    ($result = $openapi->validate_request(request('GET', 'http://example.com/something/else'),
       { operation_id => 'my-get-path', path_captures => {} }))->TO_JSON,
     {
       valid => false,
@@ -277,7 +284,7 @@ YAML
   );
 
   cmp_deeply(
-    ($result = $openapi->validate_request(POST('http://example.com/foo/hello'),
+    ($result = $openapi->validate_request(request('POST', 'http://example.com/foo/hello'),
       { operation_id => 'my-post-path', path_captures => { foo_id => 'goodbye' } }))->TO_JSON,
     {
       valid => false,
@@ -302,7 +309,7 @@ paths:
 YAML
 
   cmp_deeply(
-    ($result = $openapi->validate_request(POST('http://example.com/foo/bar'),
+    ($result = $openapi->validate_request(request('POST', 'http://example.com/foo/bar'),
       { path_template => '/foo', path_captures => {} }))->TO_JSON,
     {
       valid => false,
@@ -336,7 +343,7 @@ paths:
 YAML
 
   cmp_deeply(
-    ($result = $openapi->validate_request(GET('http://example.com/foo/123'),
+    ($result = $openapi->validate_request(request('GET', 'http://example.com/foo/123'),
       $options = { path_template => '/foo/{foo_id}' }))->TO_JSON,
     { valid => true },
     'find_path returns successfully',
@@ -352,7 +359,7 @@ YAML
   );
 
   cmp_deeply(
-    ($result = $openapi->validate_request(GET('http://example.com/foo/123'),
+    ($result = $openapi->validate_request(request('GET', 'http://example.com/foo/123'),
       $options = { operation_id => 'my-get-path' }))->TO_JSON,
     { valid => true },
     'find_path returns successfully',
@@ -369,7 +376,7 @@ YAML
   );
 
   cmp_deeply(
-    ($result = $openapi->validate_request(GET('http://example.com/foo/123'), $options = {}))->TO_JSON,
+    ($result = $openapi->validate_request(request('GET', 'http://example.com/foo/123'), $options = {}))->TO_JSON,
     { valid => true },
     'path_item and path_capture variables are successfully extracted from the request uri and returned',
   );
@@ -384,7 +391,7 @@ YAML
   );
 
   cmp_deeply(
-    ($result = $openapi->validate_request(GET('http://example.com/bloop/blah')))->TO_JSON,
+    ($result = $openapi->validate_request(request('GET', 'http://example.com/bloop/blah')))->TO_JSON,
     {
       valid => false,
       errors => [
@@ -402,7 +409,7 @@ YAML
   my $uri = URI->new('http://example.com');
   $uri->path_segments('', 'foo', 'hello // there ಠ_ಠ!');
   cmp_deeply(
-    ($result = $openapi->validate_request(GET($uri),
+    ($result = $openapi->validate_request(request('GET', $uri),
       { path_template => '/foo/{foo_id}', path_captures => { foo_id => 'hello // there ಠ_ಠ!' } }))->TO_JSON,
     {
       valid => false,
@@ -419,7 +426,7 @@ YAML
   );
 
   cmp_deeply(
-    ($result = $openapi->validate_request(GET($uri), $options = {}))->TO_JSON,
+    ($result = $openapi->validate_request(request('GET', $uri), $options = {}))->TO_JSON,
     {
       valid => false,
       errors => [
@@ -434,5 +441,7 @@ YAML
     'path captures can be properly extracted from the URI when some values are url-escaped',
   );
 };
+
+goto START if ++$type_index < @::TYPES;
 
 done_testing;

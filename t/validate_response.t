@@ -16,9 +16,10 @@ use OpenAPI::Modern;
 use JSON::Schema::Modern::Utilities 'jsonp';
 use Test::File::ShareDir -share => { -dist => { 'JSON-Schema-Modern-Document-OpenAPI' => 'share' } };
 use constant { true => JSON::PP::true, false => JSON::PP::false };
-use HTTP::Request::Common;
-use HTTP::Response;
 use YAML::PP 0.005;
+
+use lib 't/lib';
+use Helper;
 
 my $openapi_preamble = <<'YAML';
 ---
@@ -31,6 +32,12 @@ YAML
 my $doc_uri = Mojo::URL->new('openapi.yaml');
 my $yamlpp = YAML::PP->new(boolean => 'JSON::PP');
 
+my $type_index = 0;
+
+START:
+$::TYPE = $::TYPES[$type_index];
+note 'REQUEST/RESPONSE TYPE: '.$::TYPE;
+
 subtest 'validation errors in responses' => sub {
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => 'openapi.yaml',
@@ -41,8 +48,8 @@ paths:
     post: {}
 YAML
 
-  my $response = HTTP::Response->new(404);
-  $response->request(my $request = POST 'http://example.com/foo');
+  my $response = response(404);
+  $response->request(my $request = request('POST', 'http://example.com/foo'));
   cmp_deeply(
     (my $result = $openapi->validate_response($response, { path_template => '/foo' }))->TO_JSON,
     { valid => true },
@@ -213,8 +220,8 @@ paths:
 YAML
 
   # response has no content-type, content-length or body.
-  $response = HTTP::Response->new(200, 'ok');
-  $response->request($request = POST 'http://example.com/foo');
+  $response = response(200);
+  $response->request($request = request('POST', 'http://example.com/foo'));
   cmp_deeply(
     ($result = $openapi->validate_response($response, { path_template => '/foo' }))->TO_JSON,
     { valid => true },
@@ -241,8 +248,8 @@ YAML
   );
 
 
-  $response = HTTP::Response->new(200, 'ok', [ 'Content-Type' => 'text/plain' ], 'plain text');
-  $response->request($request = POST 'http://example.com/foo');
+  $response = response(200, [ 'Content-Type' => 'text/plain' ], 'plain text');
+  $response->request($request = request('POST', 'http://example.com/foo'));
   cmp_deeply(
     ($result = $openapi->validate_response($response, { path_template => '/foo' }))->TO_JSON,
     {
@@ -367,8 +374,8 @@ paths:
                 minLength: 10
 YAML
 
-  $response = HTTP::Response->new(400, 'generic error', [ 'Content-Length' => 10 ], 'plain text');
-  $response->request($request = POST 'http://example.com/foo');
+  $response = response(400, [ 'Content-Length' => 10 ], 'plain text');
+  $response->request($request = request('POST', 'http://example.com/foo'));
   cmp_deeply(
     ($result = $openapi->validate_response($response, { path_template => '/foo' }))->TO_JSON,
     {
@@ -386,9 +393,8 @@ YAML
   );
 
 
-  $response = HTTP::Response->new(400, 'generic error',
-    [ 'Content-Length' => 1, 'Content-Type' => 'text/plain' ], ''); # Content-Length lies!
-  $response->request($request = POST 'http://example.com/foo');
+  $response = response(400, [ 'Content-Length' => 1, 'Content-Type' => 'text/plain' ], ''); # Content-Length lies!
+  $response->request($request = request('POST', 'http://example.com/foo'));
   cmp_deeply(
     ($result = $openapi->validate_response($response, { path_template => '/foo' }))->TO_JSON,
     {
@@ -406,8 +412,8 @@ YAML
   );
 
   # no Content-Length
-  $response = HTTP::Response->new(400, 'generic error', [ 'Content-Type' => 'text/plain' ]);
-  $response->request($request = POST 'http://example.com/foo');
+  $response = response(400, [ 'Content-Type' => 'text/plain' ]);
+  $response->request($request = request('POST', 'http://example.com/foo'));
   cmp_deeply(
     ($result = $openapi->validate_response($response, { path_template => '/foo' }))->TO_JSON,
     {
@@ -467,9 +473,8 @@ paths:
                 maxLength: 0
 YAML
 
-  $response = HTTP::Response->new(400, 'generic error',
-    [ 'Content-Length' => 1, 'Content-Type' => 'unknown/unknown' ], '!!!');
-  $response->request(POST 'http://example.com/foo');
+  $response = response(400, [ 'Content-Length' => 1, 'Content-Type' => 'unknown/unknown' ], '!!!');
+  $response->request(request('POST', 'http://example.com/foo'));
   cmp_deeply(
     ($result = $openapi->validate_response($response, { path_template => '/foo' }))->TO_JSON,
     {
@@ -486,5 +491,7 @@ YAML
     'demonstrate recipe for guaranteeing that there is no response body',
   );
 };
+
+goto START if ++$type_index < @::TYPES;
 
 done_testing;
