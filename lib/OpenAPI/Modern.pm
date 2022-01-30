@@ -354,8 +354,8 @@ sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
   }
 
   # TODO: check 'allowReserved': if true, do not use percent-decoding
-    return E({ %$state, keyword => 'allowReserved' }, 'allowReserved: true is not yet supported')
-      if $param_obj->{allowReserved} // 0;
+  return E({ %$state, keyword => 'allowReserved' }, 'allowReserved: true is not yet supported')
+    if $param_obj->{allowReserved} // 0;
 
   $self->_validate_parameter_content($state, $param_obj, \ $query_params->{$param_obj->{name}});
 }
