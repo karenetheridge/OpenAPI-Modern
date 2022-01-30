@@ -444,7 +444,7 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
   my $content_ref = $message->content_ref;
 
   # decode the charset
-  if (my $charset = $message->content_charset) {
+  if (my $charset = $message->content_type_charset) {
     try {
       $content_ref = \ Encode::decode($charset, $content_ref->$*, Encode::FB_CROAK | Encode::LEAVE_SRC);
     }
