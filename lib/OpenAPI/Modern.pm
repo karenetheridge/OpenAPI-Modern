@@ -440,14 +440,13 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
       if $content_type =~ m{^multipart/} or $content_type eq 'application/x-www-form-urlencoded';
   }
 
-  # undoes the Content-Encoding header
-  my $decoded_content_ref = $message->decoded_content(ref => 1);
+  # TODO: handle Content-Encoding header; https://github.com/OAI/OpenAPI-Specification/issues/2868
+  my $content_ref = $message->content_ref;
 
   # decode the charset
   if (my $charset = $message->content_charset) {
     try {
-      $decoded_content_ref =
-        \ Encode::decode($charset, $decoded_content_ref->$*, Encode::FB_CROAK | Encode::LEAVE_SRC);
+      $content_ref = \ Encode::decode($charset, $content_ref->$*, Encode::FB_CROAK | Encode::LEAVE_SRC);
     }
     catch ($e) {
       return E({ %$state, keyword => 'content', _schema_path_suffix => $media_type },
@@ -469,7 +468,7 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
   }
 
   try {
-    $decoded_content_ref = $media_type_decoder->($decoded_content_ref);
+    $content_ref = $media_type_decoder->($content_ref);
   }
   catch ($e) {
     return E({ %$state, keyword => 'content', _schema_path_suffix => $media_type },
@@ -479,7 +478,7 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
   return 1 if not defined $schema;
 
   $state = { %$state, schema_path => jsonp($state->{schema_path}, 'content', $media_type, 'schema') };
-  $self->_evaluate_subschema($decoded_content_ref->$*, $schema, $state);
+  $self->_evaluate_subschema($content_ref->$*, $schema, $state);
 }
 
 # wrap a result object around the errors
