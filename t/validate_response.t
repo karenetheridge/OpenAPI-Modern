@@ -48,16 +48,18 @@ paths:
     post: {}
 YAML
 
-  my $response = response(404);
-  $response->request(request('POST', 'http://example.com/foo'));
-  cmp_deeply(
-    (my $result = $openapi->validate_response($response))->TO_JSON,
-    { valid => true },
-    'operation is successfully found using the request on the response',
-  );
+  if ($::TYPE eq 'lwp') {
+    my $response = response(404);
+    $response->request(request('POST', 'http://example.com/foo'));
+    cmp_deeply(
+      (my $result = $openapi->validate_response($response))->TO_JSON,
+      { valid => true },
+      'operation is successfully found using the request on the response',
+    );
+  }
 
   cmp_deeply(
-    ($result = $openapi->validate_response(response(404),
+    (my $result = $openapi->validate_response(response(404),
       { path_template => '/foo', request => request('POST', 'http://example.com/foo') }))->TO_JSON,
     { valid => true },
     'operation is successfully found using the request in options',

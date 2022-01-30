@@ -122,8 +122,8 @@ sub validate_request ($self, $request, $options = {}) {
           $param_obj->{name});
         my $valid =
             $param_obj->{in} eq 'path' ? $self->_validate_path_parameter($state, $param_obj, $path_captures)
-          : $param_obj->{in} eq 'query' ? $self->_validate_query_parameter($state, $param_obj, $request->uri)
-          : $param_obj->{in} eq 'header' ? $self->_validate_header_parameter($state, $param_obj->{name}, $param_obj, [ $request->header($param_obj->{name}) ])
+          : $param_obj->{in} eq 'query' ? $self->_validate_query_parameter($state, $param_obj, _request_uri($request))
+          : $param_obj->{in} eq 'header' ? $self->_validate_header_parameter($state, $param_obj->{name}, $param_obj, [ _header($request, $param_obj->{name}) ])
           : $param_obj->{in} eq 'cookie' ? $self->_validate_cookie_parameter($state, $param_obj, $request)
           : abort($state, 'unrecognized "in" value "%s"', $param_obj->{in});
       }
@@ -145,7 +145,7 @@ sub validate_request ($self, $request, $options = {}) {
         $body_obj = $self->_resolve_ref($ref, $state);
       }
 
-      if ($request->content_length // length $request->content_ref->$*) {
+      if (_body_size($request)) {
         ()= $self->_validate_body_content($state, $body_obj->{content}, $request);
       }
       elsif ($body_obj->{required}) {
@@ -179,10 +179,11 @@ sub validate_response ($self, $response, $options = {}) {
   };
 
   try {
-    die pop $options->{errors}->@* if not $self->find_path($response->request // $options->{request}, $options);
+    die pop $options->{errors}->@*
+      if not $self->find_path($response->$_call_if_can('request') // $options->{request}, $options);
 
     my ($path_template, $path_captures) = $options->@{qw(path_template path_captures)};
-    my $method = lc ($response->request ? $response->request->method : $options->{method});
+    my $method = lc $options->{method};
     my $operation = $self->openapi_document->schema->{paths}{$path_template}{$method};
 
     return $self->_result($state) if not exists $operation->{responses};
@@ -213,12 +214,12 @@ sub validate_response ($self, $response, $options = {}) {
 
       ()= $self->_validate_header_parameter({ %$state,
           data_path => jsonp($state->{data_path}, 'header', $header_name) },
-        $header_name, $header_obj, [ $response->header($header_name) ]);
+        $header_name, $header_obj, [ _header($response, $header_name) ]);
     }
 
     ()= $self->_validate_body_content({ %$state, data_path => jsonp($state->{data_path}, 'body') },
         $response_obj->{content}, $response)
-      if exists $response_obj->{content} and ($response->content_length // length $response->content_ref->$*);
+      if exists $response_obj->{content} and _body_size($response);
   }
   catch ($e) {
     if ($e->$_isa('JSON::Schema::Modern::Result')) {
@@ -295,7 +296,7 @@ sub find_path ($self, $request, $options) {
   }
 
   # path_template from request URI
-  if (not $path_template and $request and my $uri_path = $request->uri->path) {
+  if (not $path_template and $request and my $uri_path = _request_uri($request)->path) {
     my $schema = $self->openapi_document->schema;
     croak 'servers not yet supported when matching request URIs'
       if exists $schema->{servers} and $schema->{servers}->@*;
@@ -337,7 +338,7 @@ sub find_path ($self, $request, $options) {
 
   # if we're still here, we were passed path_template in options or we calculated it from
   # operation_id, and now we verify it against path_captures and the request URI.
-  my $uri_path = $request->uri->path;
+  my $uri_path = _request_uri($request)->path;
 
   # 3.2: "The value for these path parameters MUST NOT contain any unescaped “generic syntax”
   # characters described by [RFC3986]: forward slashes (/), question marks (?), or hashes (#)."
@@ -371,7 +372,7 @@ sub _validate_path_parameter ($self, $state, $param_obj, $path_captures) {
 
 sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
   # parse the query parameters out of uri
-  my $query_params = { $uri->query_form };
+  my $query_params = { _query_pairs($uri) };
 
   # TODO: support different styles.
   # for now, we only support style=form and do not allow for multiple values per
@@ -444,7 +445,7 @@ sub _validate_parameter_content ($self, $state, $param_obj, $content_ref) {
 }
 
 sub _validate_body_content ($self, $state, $content_obj, $message) {
-  my $content_type = fc $message->content_type;
+  my $content_type = _content_type($message);
 
   return E({ %$state, data_path => $state->{data_path} =~ s{body}{header/Content-Type}r, keyword => 'content' },
       'missing header: Content-Type')
@@ -472,10 +473,10 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
   }
 
   # TODO: handle Content-Encoding header; https://github.com/OAI/OpenAPI-Specification/issues/2868
-  my $content_ref = $message->content_ref;
+  my $content_ref = _content_ref($message);
 
   # decode the charset
-  if (my $charset = $message->content_type_charset) {
+  if (my $charset = _content_charset($message)) {
     try {
       $content_ref = \ Encode::decode($charset, $content_ref->$*, Encode::FB_CROAK | Encode::LEAVE_SRC);
     }
@@ -569,6 +570,58 @@ sub _evaluate_subschema ($self, $data, $schema, $state) {
   return !!$result;
 }
 
+# returned object supports ->path
+sub _request_uri ($request) {
+    $request->isa('HTTP::Request') ? $request->uri
+  : $request->isa('Mojo::Message::Request') ? $request->url
+  : croak 'unknown type '.ref($request);
+}
+
+# returns a list of key-value pairs (beware of treating as a hash!)
+sub _query_pairs ($uri) {
+    $uri->isa('URI') ? $uri->query_form
+  : $uri->isa('Mojo::URL') ? $uri->query->pairs->@*
+  : croak 'unknown type '.ref($uri);
+}
+
+# note: this assumes that the header values were already normalized on creation,
+# as sanitizing on read is bypassed
+sub _header ($message, $header_name) {
+    $message->isa('HTTP::Message') ? $message->headers->header($header_name)
+  : $message->isa('Mojo::Message') ? $message->content->headers->header($header_name) // ()
+  : croak 'unknown type '.ref($message);
+}
+
+# normalized, with extensions stripped
+sub _content_type ($message) {
+    $message->isa('HTTP::Message') ? fc $message->headers->content_type
+  : $message->isa('Mojo::Message') ? fc((split(/;/, $message->headers->content_type//'', 2))[0] // '')
+  : croak 'unknown type '.ref($message);
+}
+
+sub _content_charset ($message) {
+    $message->isa('HTTP::Message') ? $message->headers->content_type_charset
+  : $message->isa('Mojo::Message') ? $message->content->charset
+  : croak 'unknown type '.ref($message);
+}
+
+sub _body_size ($message) {
+    $message->isa('HTTP::Message') ? $message->headers->content_length // length $message->content_ref->$*
+  : $message->isa('Mojo::Message') ? $message->headers->content_length // $message->body_size
+  : croak 'unknown type '.ref($message);
+}
+
+sub _content_ref ($message) {
+    $message->isa('HTTP::Message') ? $message->content_ref
+  : $message->isa('Mojo::Message') ? \$message->body
+  : croak 'unknown type '.ref($message);
+}
+
+# wrappers that aren't needed (yet), because they are the same across all supported classes:
+# $request->method
+# $response->code
+# $uri->path
+
 1;
 __END__
 
@@ -629,13 +682,14 @@ __END__
 
   say 'request:';
   use HTTP::Request::Common;
+  use Mojo::Message::Response;
   my $request = POST 'http://example.com/foo/bar',
     [ 'My-Request-Header' => '123', 'Content-Type' => 'application/json' ],
     '{"hello": 123}';
   say $openapi->validate_request($request);
 
   say 'response:';
-  my $response = HTTP::Response->new(
+  my $response = Mojo::Message::Response->new(
     200 => 'OK',
     [ 'My-Response-Header' => '123' ],
     '{"status": "ok"}',
@@ -717,7 +771,8 @@ The L<JSON::Schema::Modern> object to use for all URI resolution and JSON Schema
     },
   );
 
-Validates an L<HTTP::Request> object against the corresponding OpenAPI v3.1 document, returning a
+Validates an L<HTTP::Request> or L<Mojo::Message::Request>
+object against the corresponding OpenAPI v3.1 document, returning a
 L<JSON::Schema::Modern::Result> object.
 
 The second argument is a hashref that contains extra information about the request, corresponding to
@@ -734,7 +789,8 @@ pass it to a later L</validate_response> to improve performance.
     },
   );
 
-Validates an L<HTTP::Response> object against the corresponding OpenAPI v3.1 document, returning a
+Validates an L<HTTP::Response> or L<Mojo::Message::Response>
+object against the corresponding OpenAPI v3.1 document, returning a
 L<JSON::Schema::Modern::Result> object.
 
 The second argument is a hashref that contains extra information about the request corresponding to
