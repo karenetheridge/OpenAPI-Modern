@@ -12,7 +12,6 @@ use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 
 use Test::More;
 use Test::Deep;
-use Test::Fatal;
 use OpenAPI::Modern;
 use JSON::Schema::Modern::Utilities 'jsonp';
 use Test::File::ShareDir -share => { -dist => { 'JSON-Schema-Modern-Document-OpenAPI' => 'share' } };
