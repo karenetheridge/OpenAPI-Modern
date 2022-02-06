@@ -192,6 +192,22 @@ YAML
   );
 
   cmp_deeply(
+    ($result = $openapi->validate_request(request('POST', 'http://example.com/foo/bar'), { method => 'GET'}))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/method',
+          keywordLocation => '',
+          absoluteKeywordLocation => $doc_uri->clone->to_string,
+          error => 'wrong HTTP method POST',
+        },
+      ],
+    },
+    'request HTTP method does not match method option',
+  );
+
+  cmp_deeply(
     ($result = $openapi->validate_request(request('POST', 'http://example.com/foo/bar'),
         { path_template => '/foo/{foo_id}', path_captures => { bloop => 'bar' } }))->TO_JSON,
     {
@@ -353,9 +369,10 @@ YAML
     {
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => '123' },
+      method => 'get',
       errors => [],
     },
-    'path capture values are extracted from the path template and request uri',
+    'path capture values and method are extracted from the path template and request uri',
   );
 
   cmp_deeply(
@@ -370,6 +387,7 @@ YAML
       operation_id => 'my-get-path',
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => '123' },
+      method => 'get',
       errors => [],
     },
     'path capture values are extracted from the operation id and request uri',
@@ -385,6 +403,7 @@ YAML
     {
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => '123' },
+      method => 'get',
       errors => [],
     },
     'path_item and path_capture variables are returned in the provided options hash',

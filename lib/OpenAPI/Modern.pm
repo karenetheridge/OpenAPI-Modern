@@ -237,7 +237,7 @@ sub validate_response ($self, $response, $options = {}) {
 }
 
 sub find_path ($self, $request, $options) {
-  my $path_template;
+  my ($path_template, $method);
 
   my $state = {
     data_path => '/request/uri/path',
@@ -247,14 +247,23 @@ sub find_path ($self, $request, $options) {
     errors => $options->{errors} //= [],
   };
 
-  # path_template from options, method from request
+  # method from options
+  if (exists $options->{method}) {
+    $method = lc $options->{method};
+    return E({ %$state, data_path => '/request/method' }, 'wrong HTTP method %s', $request->method)
+      if lc $request->method ne $method;
+  }
+  else {
+    $method = lc $request->method;
+  }
+
+  # path_template from options
   if (exists $options->{path_template}) {
     $path_template = $options->{path_template};
 
     my $path_item = $self->openapi_document->schema->{paths}{$path_template};
     return E({ %$state, keyword => 'paths' }, 'missing path-item "%s"', $path_template) if not $path_item;
 
-    my $method = lc $request->method;
     return E({ %$state, data_path => '/request/method', schema_path => jsonp('/paths', $path_template), keyword => $method },
         'missing entry for HTTP method "%s"', $method)
       if not $path_item->{$method};
@@ -267,7 +276,7 @@ sub find_path ($self, $request, $options) {
       if not $operation_path;
     return E({ %$state, schema_path => $operation_path, keyword => 'operationId' },
       'operation id does not have an associated path') if $operation_path !~ m{^/paths/};
-    (undef, undef, $path_template, my $method) = unjsonp($operation_path);
+    (undef, undef, $path_template, $method) = unjsonp($operation_path);
 
     return E({ %$state, schema_path => jsonp('/paths', $path_template) },
         'operation does not match provided path_template')
@@ -275,7 +284,8 @@ sub find_path ($self, $request, $options) {
 
     return E({ %$state, data_path => '/request/method', schema_path => $operation_path },
         'wrong HTTP method %s', $request->method)
-      if lc $request->method ne $method;
+      if ($options->{method} and lc $options->{method} ne $method)
+        or lc $request->method ne $method;
   }
 
   my $uri_path = $request->uri->path;
@@ -298,7 +308,7 @@ sub find_path ($self, $request, $options) {
       return E({ %$state, keyword => 'paths' }, 'provided path_captures values do not match request URI')
         if $options->{path_captures} and not is_equal($options->{path_captures}, \%path_captures);
 
-      $options->@{qw(path_template path_captures)} = ($path_template, \%path_captures);
+      $options->@{qw(path_template path_captures method)} = ($path_template, \%path_captures, $method);
       return 1;
     }
 
@@ -328,7 +338,7 @@ sub find_path ($self, $request, $options) {
       and not is_equal([ map $_.'', $options->{path_captures}->@{@capture_names} ], \@capture_values);
 
   my %path_captures; @path_captures{@capture_names} = @capture_values;
-  $options->@{qw(path_template path_captures)} = ($path_template, \%path_captures);
+  $options->@{qw(path_template path_captures method)} = ($path_template, \%path_captures, $method);
   return 1;
 }
 
@@ -686,6 +696,7 @@ The L<JSON::Schema::Modern> object to use for all URI resolution and JSON Schema
       path_template => '/foo/{arg1}/bar/{arg2}',
       operation_id => 'my_operation_id',
       path_captures => { arg1 => 1, arg2 => 2 },
+      method => 'get',
     },
   );
 
@@ -724,12 +735,14 @@ The second argument is a hashref that contains extra information about the reque
 * C<operation_id>: a string corresponding to the C<operationId> at a particular path-template and HTTP location
   under C</paths>
 * C<path_captures>: a hashref mapping placeholders in the path to their actual values in the request URI
+* C<method>: the HTTP method used by the request (used case-insensitively)
 
 All of these values are optional, and will be derived from the request URI as needed (albeit less
 efficiently than if they were provided). All passed-in values MUST be consistent with each other and
 the request URI.
 
-When successful, the options hash will be populated with keys C<path_template> and C<path_captures>
+When successful, the options hash will be populated with keys C<path_template>, C<path_captures>
+and C<method>,
 and the return value is true.
 When not successful, the options hash will be populated with key C<errors>, an arrayref containing
 a L<JSON::Schema::Modern::Error> object, and the return value is false.
