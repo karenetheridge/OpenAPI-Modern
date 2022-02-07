@@ -12,6 +12,7 @@ use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 
 use Test::More;
 use Test::Deep;
+use Test::Fatal;
 use OpenAPI::Modern;
 use JSON::Schema::Modern::Utilities 'jsonp';
 use Test::File::ShareDir -share => { -dist => { 'JSON-Schema-Modern-Document-OpenAPI' => 'share' } };
@@ -477,6 +478,88 @@ YAML
   );
 };
 
+subtest 'no request is provided: options are relied on as the sole source of truth' => sub {
+  my $openapi = OpenAPI::Modern->new(
+    openapi_uri => 'openapi.yaml',
+    openapi_schema => $yamlpp->load_string(<<YAML));
+$openapi_preamble
+paths:
+  /foo/{foo_id}:
+    parameters:
+    - name: foo_id
+      in: path
+      required: true
+      schema:
+        pattern: ^[0-9]+\$
+    get:
+      operationId: my-get-path
+YAML
+
+  like(
+    exception { ()= $openapi->find_path(undef, my $options = { path_captures => {} }) },
+    qr/^at least one of request, \$options->\{method\} and \$options->\{operation_id\} must be provided/,
+    'method can only be derived from request or operation_id',
+  );
+
+  ok(!$openapi->find_path(undef, my $options = { operation_id => 'my-get-path', method => 'POST', path_captures => {} }),
+    'find_path returns false');
+
+  cmp_deeply(
+    $options,
+    {
+      operation_id => 'my-get-path',
+      method => 'POST',
+      path_captures => {},
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '/request/method',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id} get)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', qw(/foo/{foo_id} get)))->to_string,
+          error => 'wrong HTTP method POST',
+        }),
+      ],
+    },
+    'no request provided; operation method does not match method option',
+  );
+
+  like(
+    exception { ()= $openapi->find_path(undef, $options = { method => 'get', path_captures => {} }) },
+    qr/^at least one of request, \$options->\{path_template\} and \$options->\{operation_id\} must be provided/,
+    'path_template can only be derived from request or operation_id',
+  );
+
+  ok(!$openapi->find_path(undef, $options = { path_template => '/foo/{foo_id}', path_captures => {}, method => 'get' }), 'find_path failed');
+  cmp_deeply(
+    $options,
+    {
+      path_template => '/foo/{foo_id}',
+      path_captures => {},
+      method => 'get',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '/request/uri/path',
+          keywordLocation => '/paths/~1foo~1{foo_id}',
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
+          error => 'provided path_captures names do not match path template "/foo/{foo_id}"',
+        }),
+      ],
+    },
+    'no request provided; path template does not match path captures',
+  );
+
+  ok($openapi->find_path(undef, $options = { operation_id => 'my-get-path', path_captures => { foo_id => 'a' } }), 'find_path succeeded');
+  cmp_deeply(
+    $options,
+    {
+      operation_id => 'my-get-path',
+      path_captures => { foo_id => 'a' },
+      path_template => '/foo/{foo_id}',
+      method => 'get',
+      errors => [],
+    },
+    'no request provided; path_template and method are extracted from operation_id and path_captures',
+  );
+};
 goto START if ++$type_index < @::TYPES;
 
 done_testing;
