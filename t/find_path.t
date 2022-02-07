@@ -193,7 +193,7 @@ YAML
 
   cmp_deeply(
     ($result = $openapi->validate_request(request('POST', 'http://example.com/foo/bar'),
-        { path_template => '/foo/{foo_id}', path_captures => {} }))->TO_JSON,
+        { path_template => '/foo/{foo_id}', path_captures => { bloop => 'bar' } }))->TO_JSON,
     {
       valid => false,
       errors => [
