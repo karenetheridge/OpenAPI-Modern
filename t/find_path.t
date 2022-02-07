@@ -391,6 +391,22 @@ YAML
   );
 
   cmp_deeply(
+    ($result = $openapi->validate_request(request('GET', 'http://example.com/foo/123'), $options = { path_captures => { foo_id => 'a' } }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/uri/path',
+          keywordLocation => jsonp('/paths'),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths'))->to_string,
+          error => 'provided path_captures values do not match request URI',
+        },
+      ],
+    },
+    'request URI is inconsistent with provided path captures',
+  );
+
+  cmp_deeply(
     ($result = $openapi->validate_request(request('GET', 'http://example.com/bloop/blah')))->TO_JSON,
     {
       valid => false,
