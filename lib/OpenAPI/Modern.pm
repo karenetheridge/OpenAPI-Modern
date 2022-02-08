@@ -179,10 +179,10 @@ sub validate_response ($self, $response, $options = {}) {
   };
 
   try {
-    die pop $options->{errors}->@* if not $self->find_path($response->request, $options);
+    die pop $options->{errors}->@* if not $self->find_path($response->request // $options->{request}, $options);
 
     my ($path_template, $path_captures) = $options->@{qw(path_template path_captures)};
-    my $method = lc $response->request->method;
+    my $method = lc ($response->request ? $response->request->method : $options->{method});
     my $operation = $self->openapi_document->schema->{paths}{$path_template}{$method};
 
     return $self->_result($state) if not exists $operation->{responses};
@@ -730,6 +730,7 @@ pass it to a later L</validate_response> to improve performance.
     $response,
     {
       path_template => '/foo/{arg1}/bar/{arg2}',
+      request => $request,
     },
   );
 
@@ -738,6 +739,9 @@ L<JSON::Schema::Modern::Result> object.
 
 The second argument is a hashref that contains extra information about the request corresponding to
 the response, as in L</find_path>.
+
+C<request> is also accepted as a key in the hashref, representing the original request object that
+corresponds to this response.
 
 =head2 find_path
 
