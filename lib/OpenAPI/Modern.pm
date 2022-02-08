@@ -705,7 +705,11 @@ pass it to a later L</validate_response> to improve performance.
     },
   );
 
-The second argument is a hashref that contains extra information about the request, as in L</find_path>.
+Validates an L<HTTP::Response> object against the corresponding OpenAPI v3.1 document, returning a
+L<JSON::Schema::Modern::Result> object.
+
+The second argument is a hashref that contains extra information about the request corresponding to
+the response, as in L</find_path>.
 
 =head2 find_path
 
