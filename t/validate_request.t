@@ -488,7 +488,7 @@ YAML
   );
 
 
-  $request->uri('http://example.com/foo?alpha=1&epsilon={"foo":42}');
+  $request = request('POST', 'http://example.com/foo?alpha=1&epsilon={"foo":42}', [ Alpha => 1 ]);
   cmp_deeply(
     ($result = $openapi->validate_request($request, { path_template => '/foo', path_captures => {} }))->TO_JSON,
     {
@@ -508,7 +508,7 @@ YAML
 
   $openapi->add_media_type('image/*' => sub ($value) { $value });
 
-  $request->uri('http://example.com/foo?alpha=1&zeta=binary');
+  $request = request('POST', 'http://example.com/foo?alpha=1&zeta=binary', [ Alpha => 1 ]);
   cmp_deeply(
     ($result = $openapi->validate_request($request, { path_template => '/foo', path_captures => {} }))->TO_JSON,
     {
@@ -865,7 +865,7 @@ YAML
   # this will match against the document at image/*
   # but we have no media-type registry for image/*, only image/jpeg
   $openapi->add_media_type('image/jpeg' => sub ($value) { $value });
-  $request->content_type('image/jpeg');
+  $request = request('GET', 'http://example.com/foo', [ 'Content-Type' => 'image/jpeg' ], 'binary');
   cmp_deeply(
     ($result = $openapi->validate_request($request, { path_template => '/foo', path_captures => {} }))->TO_JSON,
     {
@@ -1241,9 +1241,8 @@ YAML
   );
 
 
-  $request = request('POST', 'http://example.com/foo/9', [ 'Content-Type' => 'text/plain' ], '99');
   my $val = 20; my $str = sprintf("%s\n", $val);
-  $request->content($val);
+  $request = request('POST', 'http://example.com/foo/9', [ 'Content-Type' => 'text/plain' ], $val);
   cmp_deeply(
     ($result = $openapi->validate_request($request,
       { path_template => '/foo/{foo_id}', path_captures => { foo_id => 9 } }))->TO_JSON,
