@@ -680,27 +680,27 @@ __END__
                       const: ok
   YAML
 
-  say 'request:';
   use HTTP::Request::Common;
   use Mojo::Message::Response;
+  say 'request:';
   my $request = POST 'http://example.com/foo/bar',
-    [ 'My-Request-Header' => '123', 'Content-Type' => 'application/json' ],
-    '{"hello": 123}';
+    'My-Request-Header' => '123', 'Content-Type' => 'application/json',
+    Content => '{"hello": 123}';
   say $openapi->validate_request($request);
 
   say 'response:';
-  my $response = Mojo::Message::Response->new(
-    200 => 'OK',
-    [ 'My-Response-Header' => '123' ],
-    '{"status": "ok"}',
-  );
-  say $openapi->validate_response($response);
+  my $response = Mojo::Message::Response->new(code => 200, message => 'OK');
+  $response->headers->header('Content-Type', 'application/json');
+  $response->headers->header('My-Response-Header', '123');
+  $response->body('{"status": "ok"}');
+  say $openapi->validate_response($response, { request => $request });
 
 prints:
 
   request:
-  '/request/body/hello': wrong type (expected string)
-  '/request/body': not all properties are valid
+  at '/request/body/hello': got integer, not string
+  at '/request/body': not all properties are valid
+
   response:
   valid
 
