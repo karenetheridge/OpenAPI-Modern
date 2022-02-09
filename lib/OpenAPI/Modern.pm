@@ -686,14 +686,19 @@ __END__
   my $request = POST 'http://example.com/foo/bar',
     'My-Request-Header' => '123', 'Content-Type' => 'application/json',
     Content => '{"hello": 123}';
-  say $openapi->validate_request($request);
+  my $results = $openapi->validate_request($request);
+  say $results;
+  say ''; # newline
+  say JSON::MaybeXS->new(convert_blessed => 1, canonical => 1, pretty => 1, indent_length => 2)->encode($results);
 
   say 'response:';
   my $response = Mojo::Message::Response->new(code => 200, message => 'OK');
   $response->headers->header('Content-Type', 'application/json');
   $response->headers->header('My-Response-Header', '123');
   $response->body('{"status": "ok"}');
-  say $openapi->validate_response($response, { request => $request });
+  say $results;
+  say ''; # newline
+  say JSON::MaybeXS->new(convert_blessed => 1, canonical => 1, pretty => 1, indent_length => 2)->encode($results);
 
 prints:
 
@@ -701,8 +706,30 @@ prints:
   at '/request/body/hello': got integer, not string
   at '/request/body': not all properties are valid
 
+  {
+    "errors" : [
+      {
+        "absoluteKeywordLocation" : "openapi.yaml#/paths/~1foo~1%7Bfoo_id%7D/post/requestBody/content/application~1json/schema/properties/hello/type",
+        "error" : "got integer, not string",
+        "instanceLocation" : "/request/body/hello",
+        "keywordLocation" : "/paths/~1foo~1{foo_id}/post/requestBody/content/application~1json/schema/properties/hello/type"
+      },
+      {
+        "absoluteKeywordLocation" : "openapi.yaml#/paths/~1foo~1%7Bfoo_id%7D/post/requestBody/content/application~1json/schema/properties",
+        "error" : "not all properties are valid",
+        "instanceLocation" : "/request/body",
+        "keywordLocation" : "/paths/~1foo~1{foo_id}/post/requestBody/content/application~1json/schema/properties"
+      }
+    ],
+    "valid" : false
+  }
+
   response:
   valid
+
+  {
+    "valid" : true
+  }
 
 =for Pod::Coverage BUILDARGS
 
