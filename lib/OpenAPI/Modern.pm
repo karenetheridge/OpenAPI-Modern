@@ -680,8 +680,6 @@ __END__
                       const: ok
   YAML
 
-  use HTTP::Request::Common;
-  use Mojo::Message::Response;
   say 'request:';
   my $request = POST 'http://example.com/foo/bar',
     'My-Request-Header' => '123', 'Content-Type' => 'application/json',
@@ -696,6 +694,7 @@ __END__
   $response->headers->header('Content-Type', 'application/json');
   $response->headers->header('My-Response-Header', '123');
   $response->body('{"status": "ok"}');
+  $results = $openapi->validate_response($response, { request => $request });
   say $results;
   say ''; # newline
   say JSON::MaybeXS->new(convert_blessed => 1, canonical => 1, pretty => 1, indent_length => 2)->encode($results);
