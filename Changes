@@ -1,5 +1,7 @@
 Revision history for JSON-Schema-Modern-Document-OpenAPI
 
+{{$NEXT}}
+
 0.020     2022-02-10 02:56:46Z
           - validation methods and find_path now also accept the HTTP request
             method as an option
