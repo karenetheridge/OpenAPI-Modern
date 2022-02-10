@@ -3,13 +3,13 @@ use warnings;
 use 5.020;
 
 use OpenAPI::Modern;
-use HTTP::Request;
-use HTTP::Response;
+use HTTP::Request::Common;
+use Mojo::Message::Response;
 use YAML::PP;
 
 my $openapi = OpenAPI::Modern->new(
   openapi_uri => 'openapi.yaml',
-  openapi_schema => YAML::PP->new(boolean => 'JSON::PP')->load_string(<<'YAML'),
+  openapi_schema => YAML::PP->new(boolean => 'JSON::PP')->load_string(<<'YAML'));
 openapi: 3.1.0
 info:
   title: Test API
@@ -23,6 +23,7 @@ paths:
       schema:
         pattern: ^[a-z]+$
     post:
+      operationId: my_foo_request
       parameters:
       - name: My-Request-Header
         in: header
@@ -56,24 +57,22 @@ paths:
                   status:
                     const: ok
 YAML
-);
 
 say 'request:';
-my $request = HTTP::Request->new(
-  POST => 'http://example.com/foo/bar',
-  [ 'My-Request-Header' => '123', 'Content-Type' => 'application/json' ],
-  '{"hello": 123}',
-);
-say $openapi->validate_request($request, {
-  path_template => '/foo/{foo_id}',
-  path_captures => { foo_id => 'bar' },
-});
+my $request = POST 'http://example.com/foo/bar',
+  'My-Request-Header' => '123', 'Content-Type' => 'application/json',
+  Content => '{"hello": 123}';
+my $results = $openapi->validate_request($request);
+say $results;
+say ''; # newline
+say JSON::MaybeXS->new(convert_blessed => 1, canonical => 1, pretty => 1, indent_length => 2)->encode($results);
 
 say 'response:';
-my $response = HTTP::Response->new(
-  200 => 'OK',
-  [ 'My-Response-Header' => '123' ],
-  '{"status": "ok"}',
-);
-say $openapi->validate_response($response, '/foo/{foo_id}');
-
+my $response = Mojo::Message::Response->new(code => 200, message => 'OK');
+$response->headers->header('Content-Type', 'application/json');
+$response->headers->header('My-Response-Header', '123');
+$response->body('{"status": "ok"}');
+$results = $openapi->validate_response($response, { request => $request });
+say $results;
+say ''; # newline
+say JSON::MaybeXS->new(convert_blessed => 1, canonical => 1, pretty => 1, indent_length => 2)->encode($results);
