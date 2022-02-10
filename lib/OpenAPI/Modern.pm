@@ -23,7 +23,7 @@ use Scalar::Util 'looks_like_number';
 use Feature::Compat::Try;
 use Encode 2.89;
 use URI::Escape ();
-use JSON::Schema::Modern 0.531;
+use JSON::Schema::Modern 0.543;
 use JSON::Schema::Modern::Utilities 0.531 qw(jsonp unjsonp canonical_uri E abort is_equal);
 use JSON::Schema::Modern::Document::OpenAPI;
 use MooX::HandlesVia;
@@ -83,6 +83,7 @@ sub validate_request ($self, $request, $options = {}) {
     traversed_schema_path => '',    # the accumulated traversal path as of the start, or last $id, or up to the last traversed $ref
     schema_path => '',              # the rest of the path, since the last $id or the last traversed $ref
     errors => $options->{errors} //= [],
+    effective_base_uri => Mojo::URL->new->host(scalar _header($request, 'Host'))->scheme('https'),
   };
 
   try {
@@ -182,6 +183,8 @@ sub validate_response ($self, $response, $options = {}) {
     die pop $options->{errors}->@*
       if not $self->find_path($response->$_call_if_can('request') // $options->{request}, $options);
 
+    $state->{effective_base_uri} = Mojo::URL->new->host(scalar _header($options->{request}, 'Host'))->scheme('https')
+      if $options->{request};
     my ($path_template, $path_captures) = $options->@{qw(path_template path_captures)};
     my $method = lc $options->{method};
     my $operation = $self->openapi_document->schema->{paths}{$path_template}{$method};
@@ -246,6 +249,7 @@ sub find_path ($self, $request, $options) {
     traversed_schema_path => '',    # the accumulated traversal path as of the start, or last $id, or up to the last traversed $ref
     schema_path => '',              # the rest of the path, since the last $id or the last traversed $ref
     errors => $options->{errors} //= [],
+    $request ? ( effective_base_uri => Mojo::URL->new->host(scalar _header($request, 'Host'))->scheme('https') ) : (),
   };
 
   # method from options
@@ -564,6 +568,7 @@ sub _evaluate_subschema ($self, $data, $schema, $state) {
     {
       data_path => $state->{data_path},
       traversed_schema_path => $state->{traversed_schema_path}.$state->{schema_path},
+      effective_base_uri => $state->{effective_base_uri},
     },
   );
 
@@ -588,6 +593,7 @@ sub _query_pairs ($uri) {
 
 # note: this assumes that the header values were already normalized on creation,
 # as sanitizing on read is bypassed
+# beware: the lwp version is list/scalar-context-sensitive
 sub _header ($message, $header_name) {
     $message->isa('HTTP::Message') ? $message->headers->header($header_name)
   : $message->isa('Mojo::Message') ? $message->content->headers->header($header_name) // ()
@@ -632,7 +638,7 @@ __END__
 =head1 SYNOPSIS
 
   my $openapi = OpenAPI::Modern->new(
-    openapi_uri => 'openapi.yaml',
+    openapi_uri => '/api',
     openapi_schema => YAML::PP->new(boolean => 'JSON::PP')->load_string(<<'YAML'));
   openapi: 3.1.0
   info:
@@ -683,8 +689,8 @@ __END__
   YAML
 
   say 'request:';
-  my $request = POST 'http://example.com/foo/bar',
-    'My-Request-Header' => '123', 'Content-Type' => 'application/json',
+  my $request = POST '/foo/bar',
+    'My-Request-Header' => '123', 'Content-Type' => 'application/json', Host => 'example.com',
     Content => '{"hello": 123}';
   my $results = $openapi->validate_request($request);
   say $results;
@@ -710,13 +716,13 @@ prints:
   {
     "errors" : [
       {
-        "absoluteKeywordLocation" : "openapi.yaml#/paths/~1foo~1%7Bfoo_id%7D/post/requestBody/content/application~1json/schema/properties/hello/type",
+        "absoluteKeywordLocation" : "https://example.com/api#/paths/~1foo~1%7Bfoo_id%7D/post/requestBody/content/application~1json/schema/properties/hello/type",
         "error" : "got integer, not string",
         "instanceLocation" : "/request/body/hello",
         "keywordLocation" : "/paths/~1foo~1{foo_id}/post/requestBody/content/application~1json/schema/properties/hello/type"
       },
       {
-        "absoluteKeywordLocation" : "openapi.yaml#/paths/~1foo~1%7Bfoo_id%7D/post/requestBody/content/application~1json/schema/properties",
+        "absoluteKeywordLocation" : "https://example.com/api#/paths/~1foo~1%7Bfoo_id%7D/post/requestBody/content/application~1json/schema/properties",
         "error" : "not all properties are valid",
         "instanceLocation" : "/request/body",
         "keywordLocation" : "/paths/~1foo~1{foo_id}/post/requestBody/content/application~1json/schema/properties"
@@ -750,6 +756,9 @@ than features that seem to work but actually cut corners for simplicity.
 
 The URI that identifies the OpenAPI document.
 Ignored if L</openapi_document> is provided.
+
+If it is not absolute, it is resolved at runtime against the request's C<Host> header (when available)
+and the https scheme is assumed.
 
 =head2 openapi_schema
 

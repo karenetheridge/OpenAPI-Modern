@@ -29,7 +29,8 @@ info:
   version: 1.2.3
 YAML
 
-my $doc_uri = Mojo::URL->new('openapi.yaml');
+my $doc_uri_rel = Mojo::URL->new('/api');
+my $doc_uri = $doc_uri_rel->to_abs(Mojo::URL->new('https://example.com'));
 my $yamlpp = YAML::PP->new(boolean => 'JSON::PP');
 
 my $type_index = 0;
@@ -40,7 +41,7 @@ note 'REQUEST/RESPONSE TYPE: '.$::TYPE;
 
 subtest 'validation errors in responses' => sub {
   my $openapi = OpenAPI::Modern->new(
-    openapi_uri => 'openapi.yaml',
+    openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
@@ -79,7 +80,7 @@ YAML
 
 
   $openapi = OpenAPI::Modern->new(
-    openapi_uri => 'openapi.yaml',
+    openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
@@ -100,7 +101,7 @@ YAML
         {
           instanceLocation => '/response',
           keywordLocation => jsonp(qw(/paths /foo post responses)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post responses)))->to_string,
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo post responses)))->to_string,
           error => 'no response object found for code 404',
         },
       ],
@@ -122,7 +123,7 @@ YAML
 
 
   $openapi = OpenAPI::Modern->new(
-    openapi_uri => 'openapi.yaml',
+    openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 components:
@@ -161,8 +162,8 @@ YAML
         {
           instanceLocation => '/response',
           keywordLocation => jsonp(qw(/paths /foo post responses 303 $ref $ref)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/responses/foo/$ref')->to_string,
-          error => 'EXCEPTION: unable to find resource openapi.yaml#/i_do_not_exist',
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment('/components/responses/foo/$ref')->to_string,
+          error => 'EXCEPTION: unable to find resource /api#/i_do_not_exist',
         },
       ],
     },
@@ -177,7 +178,7 @@ YAML
         {
           instanceLocation => '/response/header/Foo-Bar',
           keywordLocation => jsonp(qw(/paths /foo post responses default $ref headers Foo-Bar $ref required)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/headers/foo-header/required')->to_string,
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment('/components/headers/foo-header/required')->to_string,
           error => 'missing header: Foo-Bar',
         },
       ],
@@ -193,7 +194,7 @@ YAML
         {
           instanceLocation => '/response/header/Foo-Bar',
           keywordLocation => jsonp(qw(/paths /foo post responses default $ref headers Foo-Bar $ref schema pattern)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/headers/foo-header/schema/pattern')->to_string,
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment('/components/headers/foo-header/schema/pattern')->to_string,
           error => 'pattern does not match',
         },
       ],
@@ -202,7 +203,7 @@ YAML
   );
 
   $openapi = OpenAPI::Modern->new(
-    openapi_uri => 'openapi.yaml',
+    openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 components:
@@ -253,7 +254,7 @@ YAML
         {
           instanceLocation => '/response/body',
           keywordLocation => jsonp(qw(/paths /foo post responses default $ref content application/json schema type)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/responses/default/content/application~1json/schema/type')->to_string,
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment('/components/responses/default/content/application~1json/schema/type')->to_string,
           error => 'got null, not object',
         },
       ],
@@ -270,7 +271,7 @@ YAML
         {
           instanceLocation => '/response/body',
           keywordLocation => jsonp(qw(/paths /foo post responses default $ref content)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/responses/default/content')->to_string,
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment('/components/responses/default/content')->to_string,
           error => 'incorrect Content-Type "text/plain"',
         },
       ],
@@ -287,7 +288,7 @@ YAML
         {
           instanceLocation => '/response/body',
           keywordLocation => jsonp(qw(/paths /foo post responses default $ref content text/html)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/components/responses/default/content', 'text/html'))->to_string,
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp('/components/responses/default/content', 'text/html'))->to_string,
           error => 'EXCEPTION: unsupported Content-Type "text/html": add support with $openapi->add_media_type(...)',
         },
       ],
@@ -313,19 +314,19 @@ YAML
         {
           instanceLocation => '/response/body/alpha',
           keywordLocation => jsonp(qw(/paths /foo post responses default $ref content application/json schema properties alpha pattern)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/components/responses/default/content', qw(application/json schema properties alpha pattern)))->to_string,
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp('/components/responses/default/content', qw(application/json schema properties alpha pattern)))->to_string,
           error => 'pattern does not match',
         },
         {
           instanceLocation => '/response/body/gamma',
           keywordLocation => jsonp(qw(/paths /foo post responses default $ref content application/json schema properties gamma const)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/components/responses/default/content', qw(application/json schema properties gamma const)))->to_string,
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp('/components/responses/default/content', qw(application/json schema properties gamma const)))->to_string,
           error => 'value does not match',
         },
         {
           instanceLocation => '/response/body',
           keywordLocation => jsonp(qw(/paths /foo post responses default $ref content application/json schema properties)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/components/responses/default/content', qw(application/json schema properties)))->to_string,
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp('/components/responses/default/content', qw(application/json schema properties)))->to_string,
           error => 'not all properties are valid',
         },
       ],
@@ -345,7 +346,7 @@ YAML
 
 
   $openapi = OpenAPI::Modern->new(
-    openapi_uri => 'openapi.yaml',
+    openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 components:
@@ -396,7 +397,7 @@ YAML
         {
           instanceLocation => '/response/header/Content-Type',
           keywordLocation => jsonp(qw(/paths /foo post responses default content)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post responses default content)))->to_string,
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo post responses default content)))->to_string,
           error => 'missing header: Content-Type',
         },
       ],
@@ -415,7 +416,7 @@ YAML
         {
           instanceLocation => '/response/body',
           keywordLocation => jsonp(qw(/paths /foo post responses default content text/plain schema minLength)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post responses default content text/plain schema minLength)))->to_string,
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo post responses default content text/plain schema minLength)))->to_string,
           error => 'length is less than 10',
         },
       ],
@@ -433,7 +434,7 @@ YAML
         {
           instanceLocation => '/response/header/Content-Length',
           keywordLocation => jsonp(qw(/paths /foo post responses default headers Content-Length required)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post responses default headers Content-Length required)))->to_string,
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo post responses default headers Content-Length required)))->to_string,
           error => 'missing header: Content-Length',
         },
       ],
@@ -451,13 +452,13 @@ YAML
         {
           instanceLocation => '/response/header/Content-Length',
           keywordLocation => jsonp(qw(/paths /foo post responses 204 headers Content-Length $ref schema enum)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/headers/no_content_permitted/schema/enum')->to_string,
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment('/components/headers/no_content_permitted/schema/enum')->to_string,
           error => 'value does not match',
         },
         {
           instanceLocation => '/response/body',
           keywordLocation => jsonp(qw(/paths /foo post responses 204 content text/plain schema maxLength)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post responses 204 content text/plain schema maxLength)))->to_string,
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo post responses 204 content text/plain schema maxLength)))->to_string,
           error => 'length is greater than 0',
         },
       ],
@@ -467,7 +468,7 @@ YAML
 
 
   $openapi = OpenAPI::Modern->new(
-    openapi_uri => 'openapi.yaml',
+    openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
@@ -492,7 +493,7 @@ YAML
         {
           instanceLocation => '/response/body',
           keywordLocation => jsonp(qw(/paths /foo post responses default content */* schema maxLength)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post responses default content */* schema maxLength)))->to_string,
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo post responses default content */* schema maxLength)))->to_string,
           error => 'length is greater than 0',
         },
       ],

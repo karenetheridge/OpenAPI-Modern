@@ -8,7 +8,7 @@ use Mojo::Message::Response;
 use YAML::PP;
 
 my $openapi = OpenAPI::Modern->new(
-  openapi_uri => 'openapi.yaml',
+  openapi_uri => '/api',
   openapi_schema => YAML::PP->new(boolean => 'JSON::PP')->load_string(<<'YAML'));
 openapi: 3.1.0
 info:
@@ -59,8 +59,8 @@ paths:
 YAML
 
 say 'request:';
-my $request = POST 'http://example.com/foo/bar',
-  'My-Request-Header' => '123', 'Content-Type' => 'application/json',
+my $request = POST '/foo/bar',
+  'My-Request-Header' => '123', 'Content-Type' => 'application/json', Host => 'example.com',
   Content => '{"hello": 123}';
 my $results = $openapi->validate_request($request);
 say $results;

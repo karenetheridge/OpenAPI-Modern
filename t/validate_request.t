@@ -29,7 +29,7 @@ info:
   version: 1.2.3
 YAML
 
-my $doc_uri = Mojo::URL->new('openapi.yaml');
+my $doc_uri = Mojo::URL->new('https://example.com/api');
 my $yamlpp = YAML::PP->new(boolean => 'JSON::PP');
 
 my $type_index = 0;
@@ -40,7 +40,7 @@ note 'REQUEST/RESPONSE TYPE: '.$::TYPE;
 
 subtest 'validation errors, request uri paths' => sub {
   my $openapi = OpenAPI::Modern->new(
-    openapi_uri => 'openapi.yaml',
+    openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
@@ -71,7 +71,7 @@ YAML
   );
 
   $openapi = OpenAPI::Modern->new(
-    openapi_uri => 'openapi.yaml',
+    openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
@@ -102,7 +102,7 @@ YAML
   );
 
   $openapi = OpenAPI::Modern->new(
-    openapi_uri => 'openapi.yaml',
+    openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
@@ -153,7 +153,7 @@ YAML
   );
 
   $openapi = OpenAPI::Modern->new(
-    openapi_uri => 'openapi.yaml',
+    openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
@@ -207,7 +207,7 @@ YAML
   );
 
   $openapi = OpenAPI::Modern->new(
-    openapi_uri => 'openapi.yaml',
+    openapi_uri => '/api',
     openapi_schema => do {
       YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
 $openapi_preamble
@@ -239,7 +239,7 @@ YAML
 subtest 'validation errors in requests' => sub {
   my $request = request('POST', 'http://example.com/foo');
   my $openapi = OpenAPI::Modern->new(
-    openapi_uri => 'openapi.yaml',
+    openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
@@ -254,7 +254,7 @@ YAML
   );
 
   $openapi = OpenAPI::Modern->new(
-    openapi_uri => 'openapi.yaml',
+    openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
@@ -273,7 +273,7 @@ YAML
           instanceLocation => '/request',
           keywordLocation => jsonp(qw(/paths /foo post parameters 0 $ref)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post parameters 0 $ref)))->to_string,
-          error => 'EXCEPTION: unable to find resource openapi.yaml#/i_do_not_exist',
+          error => 'EXCEPTION: unable to find resource /api#/i_do_not_exist',
         },
       ],
     },
@@ -282,7 +282,7 @@ YAML
 
 
   $openapi = OpenAPI::Modern->new(
-    openapi_uri => 'openapi.yaml',
+    openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
@@ -301,7 +301,7 @@ YAML
           instanceLocation => '/request',
           keywordLocation => jsonp(qw(/paths /foo parameters 0 $ref)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo parameters 0 $ref)))->to_string,
-          error => 'EXCEPTION: unable to find resource openapi.yaml#/i_do_not_exist',
+          error => 'EXCEPTION: unable to find resource /api#/i_do_not_exist',
         },
       ],
     },
@@ -309,7 +309,7 @@ YAML
   );
 
   $openapi = OpenAPI::Modern->new(
-    openapi_uri => 'openapi.yaml',
+    openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 components:
@@ -332,7 +332,7 @@ YAML
           instanceLocation => '/request',
           keywordLocation => jsonp(qw(/paths /foo post parameters 0 $ref $ref)),
           absoluteKeywordLocation => $doc_uri->clone->fragment('/components/parameters/foo/$ref')->to_string,
-          error => 'EXCEPTION: unable to find resource openapi.yaml#/i_do_not_exist',
+          error => 'EXCEPTION: unable to find resource /api#/i_do_not_exist',
         },
       ],
     },
@@ -341,7 +341,7 @@ YAML
 
 
   $openapi = OpenAPI::Modern->new(
-    openapi_uri => 'openapi.yaml',
+    openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
@@ -372,7 +372,7 @@ YAML
   );
 
   $openapi = OpenAPI::Modern->new(
-    openapi_uri => 'openapi.yaml',
+    openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 components:
@@ -558,7 +558,7 @@ YAML
 
 
   $openapi = OpenAPI::Modern->new(
-    openapi_uri => 'openapi.yaml',
+    openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
@@ -631,7 +631,7 @@ YAML
 
 
   $openapi = OpenAPI::Modern->new(
-    openapi_uri => 'openapi.yaml',
+    openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
@@ -708,7 +708,7 @@ YAML
 
 
   $openapi = OpenAPI::Modern->new(
-    openapi_uri => 'openapi.yaml',
+    openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
@@ -727,7 +727,7 @@ YAML
           instanceLocation => '/request/body',
           keywordLocation => jsonp(qw(/paths /foo get requestBody $ref)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo get requestBody $ref)))->to_string,
-          error => 'EXCEPTION: unable to find resource openapi.yaml#/i_do_not_exist',
+          error => 'EXCEPTION: unable to find resource /api#/i_do_not_exist',
         },
       ],
     },
@@ -736,7 +736,7 @@ YAML
 
 
   $openapi = OpenAPI::Modern->new(
-    openapi_uri => 'openapi.yaml',
+    openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
@@ -972,7 +972,7 @@ YAML
 
 
   $openapi = OpenAPI::Modern->new(
-    openapi_uri => 'openapi.yaml',
+    openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
@@ -1005,7 +1005,7 @@ YAML
 
 
   $openapi = OpenAPI::Modern->new(
-    openapi_uri => 'openapi.yaml',
+    openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
@@ -1028,7 +1028,7 @@ YAML
 subtest 'document errors' => sub {
   my $request = request('GET', 'http://example.com/foo?alpha=1');
   my $openapi = OpenAPI::Modern->new(
-    openapi_uri => 'openapi.yaml',
+    openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 components:
@@ -1063,7 +1063,7 @@ YAML
   );
 
   $openapi = OpenAPI::Modern->new(
-    openapi_uri => 'openapi.yaml',
+    openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 components:
@@ -1100,7 +1100,7 @@ YAML
 
 subtest 'type handling of values for evaluation' => sub {
   my $openapi = OpenAPI::Modern->new(
-    openapi_uri => 'openapi.yaml',
+    openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
@@ -1170,7 +1170,7 @@ YAML
 
 
   $openapi = OpenAPI::Modern->new(
-    openapi_uri => 'openapi.yaml',
+    openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
@@ -1262,7 +1262,7 @@ YAML
 
 
   $openapi = OpenAPI::Modern->new(
-    openapi_uri => 'openapi.yaml',
+    openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
@@ -1323,7 +1323,7 @@ YAML
 
 subtest 'max_depth' => sub {
   my $openapi = OpenAPI::Modern->new(
-    openapi_uri => 'openapi.yaml',
+    openapi_uri => '/api',
     evaluator => JSON::Schema::Modern->new(max_traversal_depth => 15),
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble

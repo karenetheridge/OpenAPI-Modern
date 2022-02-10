@@ -30,7 +30,9 @@ info:
   version: 1.2.3
 YAML
 
-my $doc_uri = Mojo::URL->new('openapi.yaml');
+# the absolute uri we will see in errors
+my $doc_uri_rel = Mojo::URL->new('/api');
+my $doc_uri = $doc_uri_rel->to_abs(Mojo::URL->new('https://example.com'));
 my $yamlpp = YAML::PP->new(boolean => 'JSON::PP');
 
 my $type_index = 0;
@@ -42,7 +44,7 @@ note 'REQUEST/RESPONSE TYPE: '.$::TYPE;
 subtest 'find_path' => sub {
   my $request = request('GET', 'http://example.com/foo/bar');
   my $openapi = OpenAPI::Modern->new(
-    openapi_uri => 'openapi.yaml',
+    openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
@@ -84,7 +86,7 @@ YAML
 subtest 'request is parsed to get path information' => sub {
   my $request = request('GET', 'http://example.com/foo/bar');
   my $openapi = OpenAPI::Modern->new(
-    openapi_uri => 'openapi.yaml',
+    openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
@@ -320,7 +322,7 @@ YAML
   );
 
   $openapi = OpenAPI::Modern->new(
-    openapi_uri => 'openapi.yaml',
+    openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
@@ -346,7 +348,7 @@ YAML
 
 
   $openapi = OpenAPI::Modern->new(
-    openapi_uri => 'openapi.yaml',
+    openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
@@ -485,7 +487,7 @@ YAML
 
 subtest 'no request is provided: options are relied on as the sole source of truth' => sub {
   my $openapi = OpenAPI::Modern->new(
-    openapi_uri => 'openapi.yaml',
+    openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
@@ -519,7 +521,7 @@ YAML
         methods(TO_JSON => {
           instanceLocation => '/request/method',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id} get)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', qw(/foo/{foo_id} get)))->to_string,
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp('/paths', qw(/foo/{foo_id} get)))->to_string,
           error => 'wrong HTTP method POST',
         }),
       ],
@@ -544,7 +546,7 @@ YAML
         methods(TO_JSON => {
           instanceLocation => '/request/uri/path',
           keywordLocation => '/paths/~1foo~1{foo_id}',
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
           error => 'provided path_captures names do not match path template "/foo/{foo_id}"',
         }),
       ],
@@ -565,6 +567,7 @@ YAML
     'no request provided; path_template and method are extracted from operation_id and path_captures',
   );
 };
+
 goto START if ++$type_index < @::TYPES;
 
 done_testing;
