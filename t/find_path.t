@@ -67,6 +67,7 @@ YAML
     {
       path_template => '/foo/baz',
       path_captures => {},
+      request => $request,
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/uri/path',
@@ -120,6 +121,7 @@ YAML
     {
       path_template => '/foo/baz',
       path_captures => {},
+      request => $request,
       errors => [ methods(TO_JSON => $error) ],
     },
     'unsuccessful path extraction results in the error being returned in the options hash',
@@ -371,6 +373,7 @@ YAML
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => '123' },
       method => 'get',
+      request => ignore(),
       errors => [],
     },
     'path capture values and method are extracted from the path template and request uri',
@@ -389,6 +392,7 @@ YAML
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => '123' },
       method => 'get',
+      request => ignore(),
       errors => [],
     },
     'path capture values are extracted from the operation id and request uri',
@@ -405,6 +409,7 @@ YAML
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => '123' },
       method => 'get',
+      request => ignore(),
       errors => [],
     },
     'path_item and path_capture variables are returned in the provided options hash',
