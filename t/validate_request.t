@@ -55,7 +55,23 @@ paths:
 YAML
 
   cmp_deeply(
-    (my $result = $openapi->validate_request(request('GET', 'http://example.com/foo'), { path_template => '/foo', path_captures => {} }))->TO_JSON,
+    (my $result = $openapi->validate_request(request('GET', 'http://example.com/foo/bar'), { path_template => '/foo/baz', path_captures => {} }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/uri/path',
+          keywordLocation => '/paths',
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/paths')->to_string,
+          error => 'missing path-item "/foo/baz"',
+        },
+      ],
+    },
+    'error in find_path',
+  );
+
+  cmp_deeply(
+    ($result = $openapi->validate_request(request('GET', 'http://example.com/foo'), { path_template => '/foo', path_captures => {} }))->TO_JSON,
     {
       valid => false,
       errors => [

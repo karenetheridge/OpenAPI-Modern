@@ -49,6 +49,22 @@ paths:
     post: {}
 YAML
 
+  cmp_deeply(
+    (my $result = $openapi->validate_request(request('GET', 'http://example.com/foo/bar'), { path_template => '/foo/baz', path_captures => {} }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/uri/path',
+          keywordLocation => '/paths',
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/paths')->to_string,
+          error => 'missing path-item "/foo/baz"',
+        },
+      ],
+    },
+    'error in find_path',
+  );
+
   if ($::TYPE eq 'lwp') {
     my $response = response(404);
     $response->request(request('POST', 'http://example.com/foo'));
@@ -60,7 +76,7 @@ YAML
   }
 
   cmp_deeply(
-    (my $result = $openapi->validate_response(response(404),
+    ($result = $openapi->validate_response(response(404),
       { path_template => '/foo', request => request('POST', 'http://example.com/foo') }))->TO_JSON,
     { valid => true },
     'operation is successfully found using the request in options',

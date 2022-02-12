@@ -87,7 +87,7 @@ sub validate_request ($self, $request, $options = {}) {
   };
 
   try {
-    die pop $options->{errors}->@* if not $self->find_path($request, $options);
+    return $self->_result($options, 1) if not $self->find_path($request, $options);
 
     my ($path_template, $path_captures) = $options->@{qw(path_template path_captures)};
     my $path_item = $self->openapi_document->schema->{paths}{$path_template};
@@ -180,7 +180,7 @@ sub validate_response ($self, $response, $options = {}) {
   };
 
   try {
-    die pop $options->{errors}->@*
+    return $self->_result($options, 1)
       if not $self->find_path($response->$_call_if_can('request') // $options->{request}, $options);
 
     $state->{effective_base_uri} = Mojo::URL->new->host(scalar _header($options->{request}, 'Host'))->scheme('https')
@@ -520,10 +520,11 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
 }
 
 # wrap a result object around the errors
-sub _result ($self, $state) {
+sub _result ($self, $state, $exception = 0) {
   return JSON::Schema::Modern::Result->new(
     output_format => $self->evaluator->output_format,
     valid => !$state->{errors}->@*,
+    $exception ? ( exception => 1 ) : (),
     !$state->{errors}->@*
       ? ($self->evaluator->collect_annotations
         ? (annotations => $state->{annotations}//[]) : ())
