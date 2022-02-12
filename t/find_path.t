@@ -41,7 +41,7 @@ START:
 $::TYPE = $::TYPES[$type_index];
 note 'REQUEST/RESPONSE TYPE: '.$::TYPE;
 
-subtest 'find_path' => sub {
+subtest 'request is parsed to get path information' => sub {
   my $request = request('GET', 'http://example.com/foo/bar');
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => '/api',
@@ -81,30 +81,9 @@ YAML
     },
     'unsuccessful path extraction results in the error being returned in the options hash',
   );
-};
-
-subtest 'request is parsed to get path information' => sub {
-  my $request = request('GET', 'http://example.com/foo/bar');
-  my $openapi = OpenAPI::Modern->new(
-    openapi_uri => '/api',
-    openapi_schema => $yamlpp->load_string(<<YAML));
-$openapi_preamble
-paths:
-  /foo/{foo_id}:
-    post:
-      operationId: my-post-path
-  /foo/bar:
-    get:
-      operationId: my-get-path
-webhooks:
-  my_hook:
-    description: I like webhooks
-    post:
-      operationId: hooky
-YAML
 
   cmp_deeply(
-    (my $result = $openapi->validate_request($request, my $options = { path_template => '/foo/baz', path_captures => {} }))->TO_JSON,
+    (my $result = $openapi->validate_request($request, $options = { path_template => '/foo/baz', path_captures => {} }))->TO_JSON,
     {
       valid => false,
       errors => [
