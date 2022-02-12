@@ -15,6 +15,8 @@ use Test::Memory::Cycle;
 use if $ENV{AUTHOR_TESTING}, 'Test::Warnings';
 use JSON::Schema::Modern::Document::OpenAPI;
 use Test::File::ShareDir -share => { -dist => { 'JSON-Schema-Modern-Document-OpenAPI' => 'share' } };
+use constant { true => JSON::PP::true, false => JSON::PP::false };
+use Feature::Compat::Try;
 use OpenAPI::Modern;
 
 my $minimal_document = {
@@ -86,6 +88,36 @@ subtest 'missing arguments' => sub {
     },
     undef,
     'no exception when evaluator is not provided',
+  );
+};
+
+
+subtest 'document errors' => sub {
+  my $result;
+  try {
+    OpenAPI::Modern->new(
+      openapi_uri => '/api',
+      openapi_schema => [ 'this is not a valid openapi document' ],
+    )
+  }
+  catch ($e) {
+    $result = $e;
+  }
+
+  cmp_deeply(
+    $result->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '',
+          keywordLocation => '',
+          absoluteKeywordLocation => '/api',
+          error => 'invalid document type: array',
+        },
+      ],
+    },
+    'bad document causes validation to immediately fail',
   );
 };
 

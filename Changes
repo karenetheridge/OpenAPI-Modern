@@ -1,6 +1,7 @@
 Revision history for JSON-Schema-Modern-Document-OpenAPI
 
 {{$NEXT}}
+          - construction with an invalid document is handled more nicely
 
 0.021     2022-02-11 04:44:05Z
           - absolute locations in errors are now resolved against the

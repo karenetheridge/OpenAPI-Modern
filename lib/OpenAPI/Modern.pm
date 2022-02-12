@@ -23,7 +23,7 @@ use Scalar::Util 'looks_like_number';
 use Feature::Compat::Try;
 use Encode 2.89;
 use URI::Escape ();
-use JSON::Schema::Modern 0.543;
+use JSON::Schema::Modern 0.544;
 use JSON::Schema::Modern::Utilities 0.531 qw(jsonp unjsonp canonical_uri E abort is_equal);
 use JSON::Schema::Modern::Document::OpenAPI;
 use MooX::HandlesVia;
@@ -752,6 +752,11 @@ aims to be but some features are not yet available. My belief is that missing fe
 than features that seem to work but actually cut corners for simplicity.
 
 =head1 CONSTRUCTOR ARGUMENTS
+
+If construction of the object is not successful, for example the document has a syntax error, the
+call to C<new()> will throw an exception. Be careful about examining this exception, for it might be
+a L<JSON::Schema::Modern::Result> object, which has a boolean overload of false when it contains
+errors! But you never do C<if ($@) { ... }>, right?
 
 =head2 openapi_uri
 
