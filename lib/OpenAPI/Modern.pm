@@ -39,6 +39,7 @@ has openapi_document => (
   handles => {
     openapi_uri => 'canonical_uri', # Mojo::URL
     openapi_schema => 'schema',     # hashref
+    document_get => 'get',          # data access using a json pointer
   },
 );
 
