@@ -13,7 +13,7 @@ use if $ENV{AUTHOR_TESTING}, 'Test::Warnings';
 use Test::Deep;
 use JSON::Schema::Modern;
 use JSON::Schema::Modern::Document::OpenAPI;
-use Test::File::ShareDir -share => { -dist => { 'JSON-Schema-Modern-Document-OpenAPI' => 'share' } };
+use Test::File::ShareDir -share => { -dist => { 'OpenAPI-Modern' => 'share' } };
 
 my $preamble = {
   openapi => '3.1.0',

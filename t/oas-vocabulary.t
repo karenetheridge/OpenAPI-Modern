@@ -11,7 +11,7 @@ use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 use Test::More 0.96;
 use if $ENV{AUTHOR_TESTING}, 'Test::Warnings';
 use Test::JSON::Schema::Acceptance 1.014;
-use Test::File::ShareDir -share => { -dist => { 'JSON-Schema-Modern-Document-OpenAPI' => 'share' } };
+use Test::File::ShareDir -share => { -dist => { 'OpenAPI-Modern' => 'share' } };
 use File::ShareDir 'dist_dir';
 use Path::Tiny;
 use Config;

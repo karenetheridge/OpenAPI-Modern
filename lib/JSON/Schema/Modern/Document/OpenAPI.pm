@@ -36,8 +36,8 @@ use constant DEFAULT_SCHEMAS => {
   'oas/meta/base.schema.json' => 'https://spec.openapis.org/oas/3.1/meta/base',  # vocabulary definition
   'oas/schema-base.json' => 'https://spec.openapis.org/oas/3.1/schema-base',  # the main openapi document schema + draft2020-12 jsonSchemaDialect
   'oas/schema.json' => 'https://spec.openapis.org/oas/3.1/schema', # the main openapi document schema + permissive jsonSchemaDialect
-  'strict-schema.json' => 'https://raw.githubusercontent.com/karenetheridge/JSON-Schema-Modern-Document-OpenAPI/master/share/strict-schema.json',
-  'strict-dialect.json' => 'https://raw.githubusercontent.com/karenetheridge/JSON-Schema-Modern-Document-OpenAPI/master/share/strict-dialect.json',
+  'strict-schema.json' => 'https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/strict-schema.json',
+  'strict-dialect.json' => 'https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/strict-dialect.json',
 };
 
 use constant DEFAULT_METASCHEMA => 'https://spec.openapis.org/oas/3.1/schema-base/latest';
@@ -201,7 +201,7 @@ sub _add_vocab_and_default_schemas ($self) {
   foreach my $pairs (pairs DEFAULT_SCHEMAS->%*) {
     my ($filename, $uri) = @$pairs;
     my $document = $js->add_schema($uri,
-      $js->_json_decoder->decode(path(dist_dir('JSON-Schema-Modern-Document-OpenAPI'), $filename)->slurp_raw));
+      $js->_json_decoder->decode(path(dist_dir('OpenAPI-Modern'), $filename)->slurp_raw));
     $js->add_schema($uri.'/latest', $document) if $uri =~ /schema(-base)?$/;
   }
 }

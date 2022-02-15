@@ -10,14 +10,14 @@ use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 
 use Test::More 0.96;
 use if $ENV{AUTHOR_TESTING}, 'Test::Warnings';
-use Test::File::ShareDir -share => { -dist => { 'JSON-Schema-Modern-Document-OpenAPI' => 'share' } };
+use Test::File::ShareDir -share => { -dist => { 'OpenAPI-Modern' => 'share' } };
 use File::ShareDir 'dist_dir';
 use Test::Deep;
 use JSON::Schema::Modern;
 use JSON::Schema::Modern::Document::OpenAPI;
 
-use constant STRICT_DIALECT_URI => 'https://raw.githubusercontent.com/karenetheridge/JSON-Schema-Modern-Document-OpenAPI/master/share/strict-dialect.json';
-use constant STRICT_METASCHEMA_URI => 'https://raw.githubusercontent.com/karenetheridge/JSON-Schema-Modern-Document-OpenAPI/master/share/strict-schema.json';
+use constant STRICT_DIALECT_URI => 'https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/strict-dialect.json';
+use constant STRICT_METASCHEMA_URI => 'https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/strict-schema.json';
 
 my $schema = {
   openapi => '3.1.0',
@@ -53,7 +53,7 @@ subtest 'normal case' => sub {
 
 subtest 'dialect, via metaschema_uri' => sub {
   my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
-    metaschema_uri => 'https://raw.githubusercontent.com/karenetheridge/JSON-Schema-Modern-Document-OpenAPI/master/share/strict-schema.json',
+    metaschema_uri => 'https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/strict-schema.json',
     evaluator => JSON::Schema::Modern->new,
     schema => $schema,
   );
@@ -72,7 +72,7 @@ subtest 'dialect, via metaschema_uri' => sub {
 
 subtest 'dialect, via metaschema_uri and jsonSchemaDialect too' => sub {
   my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
-    metaschema_uri => 'https://raw.githubusercontent.com/karenetheridge/JSON-Schema-Modern-Document-OpenAPI/master/share/strict-schema.json',
+    metaschema_uri => 'https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/strict-schema.json',
     evaluator => JSON::Schema::Modern->new,
     schema => {
       %$schema,

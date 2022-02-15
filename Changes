@@ -1,4 +1,4 @@
-Revision history for JSON-Schema-Modern-Document-OpenAPI
+Revision history for OpenAPI-Modern
 
 {{$NEXT}}
           - construction with an invalid document is handled more nicely
@@ -6,6 +6,8 @@ Revision history for JSON-Schema-Modern-Document-OpenAPI
             available schemas, which prohibits unrecognized keywords
           - added custom LICENSE to schema files copied from
             github.com/OAI/OpenAPI-Specification
+          - distribution is renamed from JSON-Schema-Modern-Document-OpenAPI
+            to OpenAPI-Modern
 
 0.021     2022-02-11 04:44:05Z
           - absolute locations in errors are now resolved against the

@@ -13,7 +13,7 @@ use if $ENV{AUTHOR_TESTING}, 'Test::Warnings';
 use Test::Deep;
 use JSON::Schema::Modern;
 use JSON::Schema::Modern::Document::OpenAPI;
-use Test::File::ShareDir -share => { -dist => { 'JSON-Schema-Modern-Document-OpenAPI' => 'share' } };
+use Test::File::ShareDir -share => { -dist => { 'OpenAPI-Modern' => 'share' } };
 use constant { true => JSON::PP::true, false => JSON::PP::false };
 
 # the document where most constraints are defined

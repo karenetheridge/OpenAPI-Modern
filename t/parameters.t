@@ -13,7 +13,7 @@ use if $ENV{AUTHOR_TESTING}, 'Test::Warnings';
 use Test::Deep;
 use OpenAPI::Modern;
 use URI;
-use Test::File::ShareDir -share => { -dist => { 'JSON-Schema-Modern-Document-OpenAPI' => 'share' } };
+use Test::File::ShareDir -share => { -dist => { 'OpenAPI-Modern' => 'share' } };
 use constant { true => JSON::PP::true, false => JSON::PP::false };
 
 my $openapi = OpenAPI::Modern->new(

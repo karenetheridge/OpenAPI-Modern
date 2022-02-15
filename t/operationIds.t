@@ -15,7 +15,7 @@ use JSON::Schema::Modern;
 use JSON::Schema::Modern::Document::OpenAPI;
 use JSON::Schema::Modern::Utilities 'jsonp';
 use YAML::PP;
-use Test::File::ShareDir -share => { -dist => { 'JSON-Schema-Modern-Document-OpenAPI' => 'share' } };
+use Test::File::ShareDir -share => { -dist => { 'OpenAPI-Modern' => 'share' } };
 
 my $yamlpp = YAML::PP->new(boolean => 'JSON::PP');
 
