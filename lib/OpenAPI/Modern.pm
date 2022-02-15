@@ -806,7 +806,7 @@ The L<JSON::Schema::Modern> object to use for all URI resolution and JSON Schema
   $result = $openapi->validate_request(
     $request,
     # optional second argument can contain any combination of:
-    {
+    my $options = {
       path_template => '/foo/{arg1}/bar/{arg2}',
       operation_id => 'my_operation_id',
       path_captures => { arg1 => 1, arg2 => 2 },
