@@ -262,8 +262,6 @@ sub find_path ($self, $request, $options) {
     $method = lc $request->method;
   }
 
-  $options->{request} = $request if $request;
-
   # path_template and method from operation_id from options
   if (exists $options->{operation_id}) {
     my $operation_path = $self->openapi_document->get_operationId($options->{operation_id});
