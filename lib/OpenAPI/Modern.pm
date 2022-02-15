@@ -7,7 +7,7 @@ package OpenAPI::Modern;
 
 our $VERSION = '0.022';
 
-use 5.020;  # for fc, unicode_strings features
+use 5.020;
 use Moo;
 use strictures 2;
 use experimental qw(signatures postderef);
