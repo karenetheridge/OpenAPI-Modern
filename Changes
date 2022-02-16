@@ -4,6 +4,8 @@ Revision history for JSON-Schema-Modern-Document-OpenAPI
           - construction with an invalid document is handled more nicely
           - added new dialect schema share/strict-schema.json to the list of
             available schemas, which prohibits unrecognized keywords
+          - added custom LICENSE to schema files copied from
+            github.com/OAI/OpenAPI-Specification
 
 0.021     2022-02-11 04:44:05Z
           - absolute locations in errors are now resolved against the

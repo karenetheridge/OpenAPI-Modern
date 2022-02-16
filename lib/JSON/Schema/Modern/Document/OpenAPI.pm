@@ -301,4 +301,8 @@ for passing to C<< $document->get(..) >>), or C<undef> if it is not contained in
 You can also find me on the L<JSON Schema Slack server|https://json-schema.slack.com> and L<OpenAPI Slack
 server|https://open-api.slack.com>, which are also great resources for finding help.
 
+=head1 COPYRIGHT AND LICENCE
+
+Some schema files have their own licence, in share/oas/LICENSE.
+
 =cut

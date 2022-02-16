@@ -22,6 +22,8 @@ my %files = (
   # the main openapi document schema
   #'oas/schema.json' => 'https://spec.openapis.org/oas/3.1/schema',
   'oas/schema.json' => 'https://spec.openapis.org/oas/3.1/schema/latest',
+
+  'oas/LICENSE' => 'https://raw.githubusercontent.com/OAI/OpenAPI-Specification/main/LICENSE',
 );
 
 foreach my $target (keys %files) {
@@ -37,9 +39,10 @@ foreach my $target (keys %files) {
 
 my $yaml = YAML::PP->new(boolean => 'JSON::PP');
 my $js = JSON::Schema::Modern->new(validate_formats => 1);
-$js->add_schema($files{$_} => $yaml->load_file('share/'.$_)) foreach keys %files;
+$js->add_schema($files{$_} => $yaml->load_file('share/'.$_)) foreach grep /json$/, keys %files;
 
 foreach my $uri (values %files) {
+  next if $uri =~ /LICENSE$/;
   print "# validating $uri\n" if $ENV{DEBUG};
 
   my $document = $js->_fetch_from_uri($uri)->{document};
