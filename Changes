@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.022     2022-02-16 06:00:37Z
           - construction with an invalid document is handled more nicely
           - added new dialect schema share/strict-schema.json to the list of
