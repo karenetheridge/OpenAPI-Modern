@@ -209,7 +209,7 @@ sub _traverse_schema ($self, $schema, $state) {
   return if not is_plain_hashref($schema) or not keys %$schema;
 
   my $subschema_state = $self->evaluator->traverse($schema, {
-    %$state,  # so we don't have to ennumerate everything that may be in config_override
+    %$state,  # so we don't have to enumerate everything that may be in config_override
     initial_schema_uri => canonical_uri($state),
     traversed_schema_path => $state->{traversed_schema_path}.$state->{schema_path},
     metaschema_uri => $self->json_schema_dialect,
