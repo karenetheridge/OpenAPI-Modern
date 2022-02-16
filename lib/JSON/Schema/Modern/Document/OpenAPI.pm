@@ -34,8 +34,10 @@ use constant DEFAULT_SCHEMAS => {
   # local filename => identifier to add the schema as
   'oas/dialect/base.schema.json' => 'https://spec.openapis.org/oas/3.1/dialect/base', # metaschema for json schemas contained within openapi documents
   'oas/meta/base.schema.json' => 'https://spec.openapis.org/oas/3.1/meta/base',  # vocabulary definition
-  'oas/schema-base.json' => 'https://spec.openapis.org/oas/3.1/schema-base',  # openapi document schema + custom json schema dialect
-  'oas/schema.json' => 'https://spec.openapis.org/oas/3.1/schema', # the main openapi document schema
+  'oas/schema-base.json' => 'https://spec.openapis.org/oas/3.1/schema-base',  # the main openapi document schema + draft2020-12 jsonSchemaDialect
+  'oas/schema.json' => 'https://spec.openapis.org/oas/3.1/schema', # the main openapi document schema + permissive jsonSchemaDialect
+  'strict-schema.json' => 'https://raw.githubusercontent.com/karenetheridge/JSON-Schema-Modern-Document-OpenAPI/master/share/strict-schema.json',
+  'strict-dialect.json' => 'https://raw.githubusercontent.com/karenetheridge/JSON-Schema-Modern-Document-OpenAPI/master/share/strict-dialect.json',
 };
 
 use constant DEFAULT_METASCHEMA => 'https://spec.openapis.org/oas/3.1/schema-base/latest';
