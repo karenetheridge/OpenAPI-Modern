@@ -1,6 +1,7 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - get_operationId has been renamed to get_operationId_path
 
 0.022     2022-02-16 06:00:37Z
           - construction with an invalid document is handled more nicely

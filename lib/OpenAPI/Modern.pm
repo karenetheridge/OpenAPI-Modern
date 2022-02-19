@@ -265,7 +265,7 @@ sub find_path ($self, $request, $options) {
 
   # path_template and method from operation_id from options
   if (exists $options->{operation_id}) {
-    my $operation_path = $self->openapi_document->get_operationId($options->{operation_id});
+    my $operation_path = $self->openapi_document->get_operationId_path($options->{operation_id});
     return E({ %$state, keyword => 'paths' }, 'unknown operation_id "%s"', $options->{operation_id})
       if not $operation_path;
     return E({ %$state, schema_path => $operation_path, keyword => 'operationId' },

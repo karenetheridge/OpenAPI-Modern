@@ -63,7 +63,7 @@ has operationIds => (
    handles_via => 'Hash',
    handles => {
      _add_operationId => 'set',
-     get_operationId => 'get',
+     get_operationId_path => 'get',
   },
   lazy => 1,
   default => sub { {} },
@@ -162,7 +162,7 @@ sub traverse ($self, $evaluator) {
 
   foreach my $pair (@operation_paths) {
     my ($operation_id, $path) = @$pair;
-    if (my $existing = $self->get_operationId($operation_id)) {
+    if (my $existing = $self->get_operationId_path($operation_id)) {
       ()= E({ %$state, keyword => 'operationId', schema_path => $path },
         'duplicate of operationId at %s', $existing);
     }
@@ -291,10 +291,10 @@ longer be assumed.
 
 =head1 METHODS
 
-=head2 get_operationId
+=head2 get_operationId_path
 
 Returns the json pointer location of the operation containing the provided C<operationId> (suitable
-for passing to C<< $document->get(..) >>), or C<undef> if it is not contained in the document.
+for passing to C<< $document->get(..) >>), or C<undef> if the location does not exist in the document.
 
 =head1 SUPPORT
 
