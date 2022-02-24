@@ -465,6 +465,15 @@ sub _validate_path_parameter ($self, $state, $param_obj, $path_captures) {
   return $self->_validate_parameter_content($state, $param_obj, \ $path_captures->{$param_obj->{name}})
     if exists $param_obj->{content};
 
+  return E({ %$state, keyword => 'style' }, 'only style: simple is supported in path parameters')
+    if ($param_obj->{style}//'simple') ne 'simple';
+
+  my $types = is_plain_hashref($param_obj->{schema}) ? $param_obj->{schema}{type}//[] : [];
+  $types = [ $types ] if not is_plain_arrayref($types);
+  if (grep $_ eq 'array', @$types or grep $_ eq 'object', @$types) {
+    return E($state, 'deserializing to non-primitive types is not yet supported in path parameters');
+  }
+
   $state = { %$state, schema_path => jsonp($state->{schema_path}, 'schema'), stringy_numbers => 1 };
   $self->_evaluate_subschema(\ $path_captures->{$param_obj->{name}}, $param_obj->{schema}, $state);
 }
@@ -491,6 +500,15 @@ sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
   # property (i.e. 'explode' is not checked at all.)
   # (other possible style values: spaceDelimited, pipeDelimited, deepObject)
 
+  return E({ %$state, keyword => 'style' }, 'only style: form is supported in query parameters')
+    if ($param_obj->{style}//'form') ne 'form';
+
+  my $types = is_plain_hashref($param_obj->{schema}) ? $param_obj->{schema}{type}//[] : [];
+  $types = [ $types ] if not is_plain_arrayref($types);
+  if (grep $_ eq 'array', @$types or grep $_ eq 'object', @$types) {
+    return E($state, 'deserializing to non-primitive types is not yet supported in query parameters');
+  }
+
   $state = { %$state, schema_path => jsonp($state->{schema_path}, 'schema'), stringy_numbers => 1 };
   $self->_evaluate_subschema(\ $query_params->{$param_obj->{name}}, $param_obj->{schema}, $state);
 }
@@ -511,6 +529,15 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
 
   return $self->_validate_parameter_content($state, $header_obj, \ $headers->[0])
     if exists $header_obj->{content};
+
+  # TODO: handle multi-valued elements in headers, when type=array
+  # requested, and consider 'explode' settings
+
+  my $types = is_plain_hashref($header_obj->{schema}) ? $header_obj->{schema}{type}//[] : [];
+  $types = [ $types ] if not is_plain_arrayref($types);
+  if (grep $_ eq 'array', @$types or grep $_ eq 'object', @$types) {
+    return E($state, 'deserializing to non-primitive types is not yet supported in headers');
+  }
 
   $state = { %$state, schema_path => jsonp($state->{schema_path}, 'schema'), stringy_numbers => 1 };
   $self->_evaluate_subschema(\ $headers->[0], $header_obj->{schema}, $state);
@@ -1028,11 +1055,12 @@ therefore inadvertently contain perlish numbers rather than strings.
 Only certain permutations of OpenAPI documents are supported at this time:
 
 =for :list
-* for all parameter types, only C<explode: true> is supported
-* for path parameters, only C<style: simple> is supported
-* for query parameters, only C<style: form> is supported
+* for path parameters, only C<style: simple> and C<explode: false> is supported
+* for query parameters, only C<style: form> and C<explode: true> is supported, only the first value
+  of each parameter name is considered, and C<allowEmptyValue> and C<allowReserved> are not checked
+* for header parameters, only C<style: simple> and C<explode: false> is supported and only the first
+  header line is considered
 * cookie parameters are not checked at all yet
-* for query and header parameters, only the first value of each name is considered
 
 =head1 SEE ALSO
 
