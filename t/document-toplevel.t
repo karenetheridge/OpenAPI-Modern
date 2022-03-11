@@ -17,7 +17,7 @@ use Test::File::ShareDir -share => { -dist => { 'OpenAPI-Modern' => 'share' } };
 use constant { true => JSON::PP::true, false => JSON::PP::false };
 
 # the document where most constraints are defined
-use constant SCHEMA => 'https://spec.openapis.org/oas/3.1/schema/2021-09-28';
+use constant SCHEMA => 'https://spec.openapis.org/oas/3.1/schema/2022-02-27';
 
 subtest 'basic construction' => sub {
   my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
