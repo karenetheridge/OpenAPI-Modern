@@ -147,6 +147,7 @@ sub traverse ($self, $evaluator) {
   );
 
   if (not $result) {
+    $_->$_call_if_can('mode', 'evaluate') foreach $result->errors;
     push $state->{errors}->@*, $result->errors;
     return $state;
   }
