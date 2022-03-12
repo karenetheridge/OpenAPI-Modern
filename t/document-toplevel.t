@@ -110,7 +110,6 @@ subtest 'top level document fields' => sub {
         absoluteKeywordLocation => SCHEMA.'#/properties',
         error => 'not all properties are valid',
       },
-      (ignore)x4, # useless unevaluatedProperties errors
     ],
     'missing /info properties',
   );
@@ -243,7 +242,6 @@ subtest 'top level document fields' => sub {
         absoluteKeywordLocation => SCHEMA.'#/properties',
         error => 'not all properties are valid',
       },
-      (ignore)x7, # useless unevaluatedProperties errors
     ],
     'missing paths (etc), and bad types for top level fields',
   );
@@ -275,7 +273,6 @@ subtest 'top level document fields' => sub {
         absoluteKeywordLocation => SCHEMA.'#/properties',
         error => 'not all properties are valid',
       },
-      (ignore)x6, # useless unevaluatedProperties errors
     ],
     'bad types for paths, webhooks, components',
   );
