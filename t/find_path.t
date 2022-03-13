@@ -364,6 +364,7 @@ YAML
   cmp_deeply(
     $options,
     {
+      operation_id => 'my-get-path',
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => '123' },
       method => 'get',
@@ -399,6 +400,7 @@ YAML
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => '123' },
       method => 'get',
+      operation_id => 'my-get-path',
     },
     'path_item and path_capture variables are returned in the provided options hash',
   );
@@ -458,7 +460,7 @@ YAML
     ($result = $openapi->validate_request(request('GET', $uri), $options = {}))->TO_JSON,
     {
       valid => false,
-      errors => [
+      errors => my $errors = [
         {
           instanceLocation => '/request/uri/path/foo_id',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id} parameters 0 schema pattern)),
@@ -468,6 +470,17 @@ YAML
       ],
     },
     'path captures can be properly extracted from the URI when some values are url-escaped',
+  );
+
+  cmp_deeply(
+    $options,
+    {
+      operation_id => 'my-get-path',
+      path_captures => { foo_id => 'hello // there ಠ_ಠ!' },
+      path_template => '/foo/{foo_id}',
+      method => 'get',
+    },
+    'request provided; path_template and method are extracted from request',
   );
 };
 
@@ -551,6 +564,19 @@ YAML
       errors => [],
     },
     'no request provided; path_template and method are extracted from operation_id and path_captures',
+  );
+
+  ok($openapi->find_path(undef, $options = { method => 'get', path_template => '/foo/{foo_id}', path_captures => { foo_id => 'a' } }), 'find_path succeeded');
+  cmp_deeply(
+    $options,
+    {
+      operation_id => 'my-get-path',
+      path_captures => { foo_id => 'a' },
+      path_template => '/foo/{foo_id}',
+      method => 'get',
+      errors => [],
+    },
+    'no request provided; operation_id are extracted from method and path_template',
   );
 };
 

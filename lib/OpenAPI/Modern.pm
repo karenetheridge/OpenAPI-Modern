@@ -322,7 +322,8 @@ sub find_path ($self, $request, $options) {
           'missing operation for HTTP method "%s"', $method)
         if not exists $schema->{paths}{$path_template}{$method};
 
-      $options->@{qw(path_template path_captures method)} = ($path_template, \%path_captures, $method);
+      $options->@{qw(path_template path_captures method operation_id)} =
+        ($path_template, \%path_captures, $method, $self->openapi_document->schema->{paths}{$path_template}{$method}{operationId});
       return 1;
     }
 
@@ -340,7 +341,8 @@ sub find_path ($self, $request, $options) {
       and not is_equal([ sort keys $options->{path_captures}->%*], [ sort @capture_names ]);
 
   if (not $request) {
-    $options->@{qw(path_template method)} = ($path_template, $method);
+    $options->@{qw(path_template method operation_id)} =
+      ($path_template, $method, $self->openapi_document->schema->{paths}{$path_template}{$method}{operationId});
     return 1;
   }
 
@@ -364,7 +366,8 @@ sub find_path ($self, $request, $options) {
       and not is_equal([ map $_.'', $options->{path_captures}->@{@capture_names} ], \@capture_values);
 
   my %path_captures; @path_captures{@capture_names} = @capture_values;
-  $options->@{qw(path_template path_captures method)} = ($path_template, \%path_captures, $method);
+  $options->@{qw(path_template path_captures method operation_id)} =
+    ($path_template, \%path_captures, $method, $self->openapi_document->schema->{paths}{$path_template}{$method}{operationId});
   return 1;
 }
 
@@ -868,8 +871,8 @@ as needed (albeit less
 efficiently than if they were provided). All passed-in values MUST be consistent with each other and
 the request URI.
 
-When successful, the options hash will be populated with keys C<path_template>, C<path_captures>
-and C<method>,
+When successful, the options hash will be populated with keys C<path_template>, C<path_captures>,
+C<method>, and C<operation_id>,
 and the return value is true.
 When not successful, the options hash will be populated with key C<errors>, an arrayref containing
 a L<JSON::Schema::Modern::Error> object, and the return value is false.
