@@ -84,12 +84,13 @@ sub validate_request ($self, $request, $options = {}) {
     initial_schema_uri => $self->openapi_uri,   # the canonical URI as of the start or last $id, or the last traversed $ref
     traversed_schema_path => '',    # the accumulated traversal path as of the start, or last $id, or up to the last traversed $ref
     schema_path => '',              # the rest of the path, since the last $id or the last traversed $ref
-    errors => $options->{errors} //= [],
     effective_base_uri => Mojo::URL->new->host(scalar _header($request, 'Host'))->scheme('https'),
   };
 
   try {
-    return $self->_result($options, 1) if not $self->find_path($request, $options);
+    my $path_ok = $self->find_path($request, $options);
+    $state->{errors} = delete $options->{errors};
+    return $self->_result($state, 1) if not $path_ok;
 
     my ($path_template, $path_captures) = $options->@{qw(path_template path_captures)};
     my $path_item = $self->openapi_document->schema->{paths}{$path_template};
@@ -168,7 +169,6 @@ sub validate_request ($self, $request, $options = {}) {
     }
   }
 
-  $options->{errors} = $state->{errors};
   return $self->_result($state);
 }
 
@@ -178,21 +178,20 @@ sub validate_response ($self, $response, $options = {}) {
     initial_schema_uri => $self->openapi_uri,   # the canonical URI as of the start or last $id, or the last traversed $ref
     traversed_schema_path => '',    # the accumulated traversal path as of the start, or last $id, or up to the last traversed $ref
     schema_path => '',              # the rest of the path, since the last $id or the last traversed $ref
-    errors => $options->{errors} //= [],
   };
 
   try {
-    return $self->_result($options, 1)
-      if not $self->find_path($response->$_call_if_can('request') // $options->{request}, $options);
+    my $path_ok = $self->find_path($response->$_call_if_can('request') // $options->{request}, $options);
+    $state->{errors} = delete $options->{errors};
+    return $self->_result($options, 1) if not $path_ok;
 
-    $state->{effective_base_uri} = Mojo::URL->new->host(scalar _header($options->{request}, 'Host'))->scheme('https')
-      if $options->{request};
     my ($path_template, $path_captures) = $options->@{qw(path_template path_captures)};
     my $method = lc $options->{method};
     my $operation = $self->openapi_document->schema->{paths}{$path_template}{$method};
-
     return $self->_result($state) if not exists $operation->{responses};
 
+    $state->{effective_base_uri} = Mojo::URL->new->host(scalar _header($options->{request}, 'Host'))->scheme('https')
+      if $options->{request};
     $state->{schema_path} = jsonp('/paths', $path_template, $method);
 
     my $response_name = first { exists $operation->{responses}{$_} }
@@ -238,7 +237,6 @@ sub validate_response ($self, $response, $options = {}) {
     }
   }
 
-  $options->{errors} = $state->{errors};
   return $self->_result($state);
 }
 
