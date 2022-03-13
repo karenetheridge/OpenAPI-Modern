@@ -320,6 +320,10 @@ sub find_path ($self, $request, $options) {
       return E({ %$state, keyword => 'paths' }, 'provided path_captures values do not match request URI')
         if $options->{path_captures} and not is_equal($options->{path_captures}, \%path_captures);
 
+      return E({ %$state, data_path => '/request/method', schema_path => jsonp('/paths', $path_template), keyword => $method },
+          'missing entry for HTTP method "%s"', $method)
+        if not exists $schema->{paths}{$path_template}{$method};
+
       $options->@{qw(path_template path_captures method)} = ($path_template, \%path_captures, $method);
       return 1;
     }

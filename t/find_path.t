@@ -139,6 +139,22 @@ YAML
   );
 
   cmp_deeply(
+    ($result = $openapi->validate_request(request('GET', 'http://example.com/foo/bloop')))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/method',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id} get)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get)))->to_string,
+          error => 'missing entry for HTTP method "get"',
+        },
+      ],
+    },
+    'operation does not exist under /paths/<path_template>/<method>',
+  );
+
+  cmp_deeply(
     ($result = $openapi->validate_request(request('POST', 'http://example.com/foo/bar'),
       { path_template => '/foo/{foo_id}', operation_id => 'my-get-path', path_captures => {} }))->TO_JSON,
     {
