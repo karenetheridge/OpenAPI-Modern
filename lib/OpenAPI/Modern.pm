@@ -741,7 +741,7 @@ prints:
 
 =for Pod::Coverage BUILDARGS
 
-=for :stopwords schemas jsonSchemaDialect metaschema subschema perlish
+=for stopwords schemas jsonSchemaDialect metaschema subschema perlish operationId
 
 =head1 DESCRIPTION
 
@@ -855,8 +855,9 @@ The second argument is a hashref that contains extra information about the reque
 =for :list
 * C<path_template>: a string representing the request URI, with placeholders in braces (e.g.
   C</pets/{petId}>); see L<https://spec.openapis.org/oas/v3.1.0#paths-object>.
-* C<operation_id>: a string corresponding to the C<operationId> at a particular path-template and HTTP location
-  under C</paths>
+* C<operation_id>: a string corresponding to the
+  L<operationId|https://swagger.io/docs/specification/paths-and-operations/#operationid>
+  at a particular path-template and HTTP location under C</paths>
 * C<path_captures>: a hashref mapping placeholders in the path to their actual values in the request URI
 * C<method>: the HTTP method used by the request (used case-insensitively)
 
