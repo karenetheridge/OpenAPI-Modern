@@ -69,6 +69,7 @@ YAML
     {
       path_template => '/foo/baz',
       path_captures => {},
+      method => 'get',
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/uri/path',
@@ -101,6 +102,7 @@ YAML
     {
       path_template => '/foo/baz',
       path_captures => {},
+      method => 'get',
     },
     'unsuccessful path extraction results in the error being returned in the options hash',
   );
@@ -181,7 +183,7 @@ YAML
           instanceLocation => '/request/method',
           keywordLocation => '/paths/~1foo~1bar/get',
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', qw(/foo/bar get)))->to_string,
-          error => 'wrong HTTP method POST',
+          error => 'wrong HTTP method post',
         },
       ],
     },
@@ -525,7 +527,7 @@ YAML
         }),
       ],
     },
-    'no request provided; operation method does not match method option',
+    'no request provided; operation method does not match passed-in method',
   );
 
   like(

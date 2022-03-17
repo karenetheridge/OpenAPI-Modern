@@ -183,11 +183,12 @@ sub validate_response ($self, $response, $options = {}) {
   try {
     my $path_ok = $self->find_path($response->$_call_if_can('request') // $options->{request}, $options);
     $state->{errors} = delete $options->{errors};
-    return $self->_result($options, 1) if not $path_ok;
+    return $self->_result($state, 1) if not $path_ok;
 
     my ($path_template, $path_captures) = $options->@{qw(path_template path_captures)};
     my $method = lc $options->{method};
     my $operation = $self->openapi_document->schema->{paths}{$path_template}{$method};
+
     return $self->_result($state) if not exists $operation->{responses};
 
     $state->{effective_base_uri} = Mojo::URL->new->host(scalar _header($options->{request}, 'Host'))->scheme('https')
@@ -241,8 +242,6 @@ sub validate_response ($self, $response, $options = {}) {
 }
 
 sub find_path ($self, $request, $options) {
-  my ($path_template, $method);
-
   my $state = {
     data_path => '/request/uri/path',
     initial_schema_uri => $self->openapi_uri,   # the canonical URI as of the start or last $id, or the last traversed $ref
@@ -252,6 +251,8 @@ sub find_path ($self, $request, $options) {
     $request ? ( effective_base_uri => Mojo::URL->new->host(scalar _header($request, 'Host'))->scheme('https') ) : (),
   };
 
+  my ($method, $path_template);
+
   # method from options
   if (exists $options->{method}) {
     $method = lc $options->{method};
@@ -259,7 +260,7 @@ sub find_path ($self, $request, $options) {
       if $request and lc $request->method ne $method;
   }
   elsif ($request) {
-    $method = lc $request->method;
+    $method = $options->{method} = lc $request->method;
   }
 
   # path_template and method from operation_id from options
@@ -279,9 +280,7 @@ sub find_path ($self, $request, $options) {
         'wrong HTTP method %s', $options->{method})
       if $options->{method} and lc $options->{method} ne $method;
 
-    return E({ %$state, data_path => '/request/method', schema_path => $operation_path },
-        'wrong HTTP method %s', $request->method)
-      if $request and lc $request->method ne $method;
+    $options->{method} = lc $method;
   }
 
   croak 'at least one of request, $options->{method} and $options->{operation_id} must be provided'
@@ -322,8 +321,8 @@ sub find_path ($self, $request, $options) {
           'missing operation for HTTP method "%s"', $method)
         if not exists $schema->{paths}{$path_template}{$method};
 
-      $options->@{qw(path_template path_captures method operation_id)} =
-        ($path_template, \%path_captures, $method, $self->openapi_document->schema->{paths}{$path_template}{$method}{operationId});
+      $options->@{qw(path_template path_captures operation_id)} =
+        ($path_template, \%path_captures, $self->openapi_document->schema->{paths}{$path_template}{$method}{operationId});
       return 1;
     }
 
@@ -341,8 +340,8 @@ sub find_path ($self, $request, $options) {
       and not is_equal([ sort keys $options->{path_captures}->%*], [ sort @capture_names ]);
 
   if (not $request) {
-    $options->@{qw(path_template method operation_id)} =
-      ($path_template, $method, $self->openapi_document->schema->{paths}{$path_template}{$method}{operationId});
+    $options->@{qw(path_template operation_id)} =
+      ($path_template, $self->openapi_document->schema->{paths}{$path_template}{$method}{operationId});
     return 1;
   }
 
@@ -366,8 +365,8 @@ sub find_path ($self, $request, $options) {
       and not is_equal([ map $_.'', $options->{path_captures}->@{@capture_names} ], \@capture_values);
 
   my %path_captures; @path_captures{@capture_names} = @capture_values;
-  $options->@{qw(path_template path_captures method operation_id)} =
-    ($path_template, \%path_captures, $method, $self->openapi_document->schema->{paths}{$path_template}{$method}{operationId});
+  $options->@{qw(path_template path_captures operation_id)} =
+    ($path_template, \%path_captures, $self->openapi_document->schema->{paths}{$path_template}{$method}{operationId});
   return 1;
 }
 

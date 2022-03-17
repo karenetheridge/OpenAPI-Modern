@@ -1,8 +1,8 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
-          - operation_id is now always returned in the options hash in
-            validate_request, validate_response, find_path
+          - operation_id and method are now always returned in the options
+            hash in validate_request, validate_response, find_path
 
 0.023     2022-03-12 00:25:21Z
           - get_operationId has been renamed to get_operationId_path
