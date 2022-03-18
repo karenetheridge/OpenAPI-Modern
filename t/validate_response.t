@@ -49,11 +49,46 @@ paths:
     post: {}
 YAML
 
+  cmp_deeply(
+    (my $result = $openapi->validate_response(response(404),
+      { request => request('GET', 'http://example.com/foo/bar') }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/uri/path',
+          keywordLocation => '/paths',
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/paths')->to_string,
+          error => 'no match found for URI path "/foo/bar"',
+        },
+      ],
+    },
+    'error in find_path when passing request into options',
+  );
+
   if ($::TYPE eq 'lwp') {
     my $response = response(404);
-    $response->request(request('POST', 'http://example.com/foo'));
+    $response->request(request('POST', 'http://example.com/foo/bar'));
+
     cmp_deeply(
       (my $result = $openapi->validate_response($response))->TO_JSON,
+      {
+        valid => false,
+        errors => [
+          {
+            instanceLocation => '/request/uri/path',
+            keywordLocation => '/paths',
+            absoluteKeywordLocation => $doc_uri->clone->fragment('/paths')->to_string,
+            error => 'no match found for URI path "/foo/bar"',
+          },
+        ],
+      },
+      'error in find_path when providing request on response',
+    );
+
+    $response->request(request('POST', 'http://example.com/foo'));
+    cmp_deeply(
+      ($result = $openapi->validate_response($response))->TO_JSON,
       { valid => true },
       'operation is successfully found using the request on the response',
     );
