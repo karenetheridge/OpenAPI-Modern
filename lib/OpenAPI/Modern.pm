@@ -314,15 +314,16 @@ sub find_path ($self, $request, $options) {
       my @capture_names = ($path_template =~ m!\{([^/?#}]+)\}!g);
       my %path_captures; @path_captures{@capture_names} = @capture_values;
 
+      $options->{path_template} = $path_template;
       return E({ %$state, keyword => 'paths' }, 'provided path_captures values do not match request URI')
         if $options->{path_captures} and not is_equal($options->{path_captures}, \%path_captures);
 
+      $options->{path_captures} = \%path_captures;
       return E({ %$state, data_path => '/request/method', schema_path => jsonp('/paths', $path_template), keyword => $method },
           'missing operation for HTTP method "%s"', $method)
         if not exists $schema->{paths}{$path_template}{$method};
 
-      $options->@{qw(path_template path_captures operation_id)} =
-        ($path_template, \%path_captures, $self->openapi_document->schema->{paths}{$path_template}{$method}{operationId});
+      $options->{operation_id} = $self->openapi_document->schema->{paths}{$path_template}{$method}{operationId};
       return 1;
     }
 
