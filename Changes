@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.024     2022-03-25 23:41:04Z
           - operation_id and method are now always returned in the options
             hash in validate_request, validate_response, find_path
 

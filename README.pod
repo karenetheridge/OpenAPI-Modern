@@ -8,7 +8,7 @@ OpenAPI::Modern - Validate HTTP requests and responses against an OpenAPI docume
 
 =head1 VERSION
 
-version 0.023
+version 0.024
 
 =head1 SYNOPSIS
 
@@ -123,7 +123,7 @@ than features that seem to work but actually cut corners for simplicity.
 
 =for Pod::Coverage BUILDARGS
 
-=for :stopwords schemas jsonSchemaDialect metaschema subschema perlish
+=for stopwords schemas jsonSchemaDialect metaschema subschema perlish operationId
 
 =head1 CONSTRUCTOR ARGUMENTS
 
@@ -234,7 +234,7 @@ C<path_template>: a string representing the request URI, with placeholders in br
 
 =item *
 
-C<operation_id>: a string corresponding to the C<operationId> at a particular path-template and HTTP location under C</paths>
+C<operation_id>: a string corresponding to the L<operationId|https://swagger.io/docs/specification/paths-and-operations/#operationid> at a particular path-template and HTTP location under C</paths>
 
 =item *
 
@@ -251,8 +251,8 @@ as needed (albeit less
 efficiently than if they were provided). All passed-in values MUST be consistent with each other and
 the request URI.
 
-When successful, the options hash will be populated with keys C<path_template>, C<path_captures>
-and C<method>,
+When successful, the options hash will be populated with keys C<path_template>, C<path_captures>,
+C<method>, and C<operation_id>,
 and the return value is true.
 When not successful, the options hash will be populated with key C<errors>, an arrayref containing
 a L<JSON::Schema::Modern::Error> object, and the return value is false.
