@@ -1,6 +1,8 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - find_path() no longer returns an undef operation_id when there is
+            no operationId defined in the schema document
 
 0.024     2022-03-25 23:41:04Z
           - operation_id and method are now always returned in the options

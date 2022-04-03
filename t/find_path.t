@@ -516,6 +516,44 @@ YAML
     },
     'path captures can be properly extracted from the URI when some values are url-escaped',
   );
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => '/api',
+    openapi_schema => $yamlpp->load_string(<<YAML));
+$openapi_preamble
+paths:
+  /foo/{foo_id}:
+    get: {}
+YAML
+
+  $request = request('GET', 'http://example.com/foo/bar');
+  ok($openapi->find_path($request, $options = {}),
+    'find_path returns successfully');
+  cmp_deeply(
+    $options,
+    {
+      path_template => '/foo/{foo_id}',
+      path_captures => { foo_id => 'bar' },
+      method => 'get',
+      errors => [],
+    },
+    'no path_template provided; no operation_id is recorded, because one does not exist in the schema document',
+  );
+
+
+  ok($openapi->find_path($request, $options = { path_template => '/foo/{foo_id}' }),
+    'find_path returns successfully');
+  cmp_deeply(
+    $options,
+    {
+      path_template => '/foo/{foo_id}',
+      path_captures => { foo_id => 'bar' },
+      method => 'get',
+      errors => [],
+    },
+    'path_template provided; no operation_id is recorded, because one does not exist in the schema document',
+  );
 };
 
 subtest 'no request is provided: options are relied on as the sole source of truth' => sub {
@@ -605,6 +643,30 @@ YAML
       errors => [],
     },
     'no request provided; operation_id are extracted from method and path_template',
+  );
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => '/api',
+    openapi_schema => $yamlpp->load_string(<<YAML));
+$openapi_preamble
+paths:
+  /foo/{foo_id}:
+    get: {}
+YAML
+
+  ok($openapi->find_path(undef,
+      $options = { method => 'get', path_template => '/foo/{foo_id}', path_captures => { foo_id => 'bar' } }),
+    'find_path succeeded');
+  cmp_deeply(
+    $options,
+    {
+      path_template => '/foo/{foo_id}',
+      path_captures => { foo_id => 'bar' },
+      method => 'get',
+      errors => [],
+    },
+    'no operation_id is recorded, because one does not exist in the schema document',
   );
 };
 
