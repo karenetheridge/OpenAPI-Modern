@@ -42,7 +42,6 @@ $::TYPE = $::TYPES[$type_index];
 note 'REQUEST/RESPONSE TYPE: '.$::TYPE;
 
 subtest 'request is parsed to get path information' => sub {
-  my $request = request('GET', 'http://example.com/foo/bar');
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
@@ -61,6 +60,7 @@ webhooks:
       operationId: hooky
 YAML
 
+  my $request = request('GET', 'http://example.com/foo/bar');
   ok(!$openapi->find_path($request, my $options = { path_template => '/foo/baz', path_captures => {} }),
     'find_path returns false');
 
@@ -82,30 +82,6 @@ YAML
     'unsuccessful path extraction results in the error being returned in the options hash',
   );
 
-  cmp_deeply(
-    (my $result = $openapi->validate_request($request, $options = { path_template => '/foo/baz', path_captures => {} }))->TO_JSON,
-    {
-      valid => false,
-      errors => [
-        my $error = {
-          instanceLocation => '/request/uri/path',
-          keywordLocation => '/paths',
-          absoluteKeywordLocation => $doc_uri->clone->fragment('/paths')->to_string,
-          error => 'missing path-item "/foo/baz"',
-        },
-      ],
-    },
-    'path template does not exist under /paths',
-  );
-  cmp_deeply(
-    $options,
-    {
-      path_template => '/foo/baz',
-      path_captures => {},
-      method => 'get',
-    },
-    'unsuccessful path extraction results in the error being returned in the options hash',
-  );
 
   cmp_deeply(
     ($result = $openapi->validate_request($request, { operation_id => 'bloop', path_captures => {} }))->TO_JSON,
