@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.025     2022-04-03 19:58:27Z
           - find_path() no longer returns an undef operation_id when there is
             no operationId defined in the schema document
