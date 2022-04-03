@@ -26,8 +26,8 @@ my $openapi = OpenAPI::Modern->new(
 
 my $parameter_content;
 no warnings 'redefine';
-*OpenAPI::Modern::_validate_parameter_content = sub ($, $, $, $data_ref) {
-  $parameter_content = $data_ref->$*;
+*OpenAPI::Modern::_evaluate_subschema = sub ($, $dataref, $, $) {
+  $parameter_content = $dataref->$*;
 };
 
 subtest 'query parameters' => sub {
@@ -41,7 +41,7 @@ subtest 'query parameters' => sub {
   my @tests = (
     # param_obj
     # raw query string,
-    # content => extracted data passed to _validate_parameter_content
+    # content => extracted data that was passed to _evaluate_subschema
     # errors => from state
     { param_obj => { name => 'reserved', in => 'query', allowReserved => true, schema => false },
       queries => 'reserved=',
@@ -85,7 +85,7 @@ subtest 'header parameters' => sub {
 
   my @tests = (
     # args => [ header_name, header_obj, headers (values) ]
-    # content => extracted data passed to _validate_parameter_content
+    # content => extracted data that was passed to _evaluate_subschema
     # errors => from state
     { args => [ 'Accept', { schema => false }, [ 'application/json' ] ], content => undef, errors => [] },
     { args => [ 'Content-Type', { schema => false }, [ 'application/json' ] ], content => undef, errors => [] },

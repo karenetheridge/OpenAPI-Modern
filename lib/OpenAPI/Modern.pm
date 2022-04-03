@@ -462,17 +462,16 @@ sub _validate_path_parameter ($self, $state, $param_obj, $path_captures) {
   return E({ %$state, keyword => 'required' }, 'missing path parameter: %s', $param_obj->{name})
     if not exists $path_captures->{$param_obj->{name}};
 
-  $self->_validate_parameter_content($state, $param_obj, \ $path_captures->{$param_obj->{name}});
+  return $self->_validate_parameter_content($state, $param_obj, \ $path_captures->{$param_obj->{name}})
+    if exists $param_obj->{content};
+
+  $state = { %$state, schema_path => jsonp($state->{schema_path}, 'schema'), stringy_numbers => 1 };
+  $self->_evaluate_subschema(\ $path_captures->{$param_obj->{name}}, $param_obj->{schema}, $state);
 }
 
 sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
   # parse the query parameters out of uri
   my $query_params = +{ $uri->query->pairs->@* };
-
-  # TODO: support different styles.
-  # for now, we only support style=form and do not allow for multiple values per
-  # property (i.e. 'explode' is not checked at all.)
-  # (other possible style values: spaceDelimited, pipeDelimited, deepObject)
 
   if (not exists $query_params->{$param_obj->{name}}) {
     return E({ %$state, keyword => 'required' }, 'missing query parameter: %s', $param_obj->{name})
@@ -480,11 +479,20 @@ sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
     return 1;
   }
 
+  return $self->_validate_parameter_content($state, $param_obj, \ $query_params->{$param_obj->{name}})
+    if exists $param_obj->{content};
+
   # TODO: check 'allowReserved': if true, do not use percent-decoding
   return E({ %$state, keyword => 'allowReserved' }, 'allowReserved: true is not yet supported')
     if $param_obj->{allowReserved} // 0;
 
-  $self->_validate_parameter_content($state, $param_obj, \ $query_params->{$param_obj->{name}});
+  # TODO: support different styles.
+  # for now, we only support style=form and do not allow for multiple values per
+  # property (i.e. 'explode' is not checked at all.)
+  # (other possible style values: spaceDelimited, pipeDelimited, deepObject)
+
+  $state = { %$state, schema_path => jsonp($state->{schema_path}, 'schema'), stringy_numbers => 1 };
+  $self->_evaluate_subschema(\ $query_params->{$param_obj->{name}}, $param_obj->{schema}, $state);
 }
 
 # validates a header, from either the request or the response
@@ -501,7 +509,11 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
     return 1;
   }
 
-  $self->_validate_parameter_content($state, $header_obj, \ $headers->[0]);
+  return $self->_validate_parameter_content($state, $header_obj, \ $headers->[0])
+    if exists $header_obj->{content};
+
+  $state = { %$state, schema_path => jsonp($state->{schema_path}, 'schema'), stringy_numbers => 1 };
+  $self->_evaluate_subschema(\ $headers->[0], $header_obj->{schema}, $state);
 }
 
 sub _validate_cookie_parameter ($self, $state, $param_obj, $request) {
@@ -509,38 +521,30 @@ sub _validate_cookie_parameter ($self, $state, $param_obj, $request) {
 }
 
 sub _validate_parameter_content ($self, $state, $param_obj, $content_ref) {
-  if (exists $param_obj->{content}) {
-    abort({ %$state, keyword => 'content' }, 'more than one media type entry present')
-      if keys $param_obj->{content}->%* > 1;  # TODO: remove, when the spec schema is updated
-    my ($media_type) = keys $param_obj->{content}->%*;  # there can only be one key
-    my $schema = $param_obj->{content}{$media_type}{schema};
+  abort({ %$state, keyword => 'content' }, 'more than one media type entry present')
+    if keys $param_obj->{content}->%* > 1;  # TODO: remove, when the spec schema is updated
+  my ($media_type) = keys $param_obj->{content}->%*;  # there can only be one key
+  my $schema = $param_obj->{content}{$media_type}{schema};
 
-    my $media_type_decoder = $self->get_media_type($media_type);  # case-insensitive, wildcard lookup
-    if (not $media_type_decoder) {
-      # don't fail if the schema would pass on any input
-      return if is_plain_hashref($schema) ? !keys %$schema : $schema;
+  my $media_type_decoder = $self->get_media_type($media_type);  # case-insensitive, wildcard lookup
+  if (not $media_type_decoder) {
+    # don't fail if the schema would pass on any input
+    return if is_plain_hashref($schema) ? !keys %$schema : $schema;
 
-      abort({ %$state, keyword => 'content', _schema_path_suffix => $media_type},
-        'EXCEPTION: unsupported media type "%s": add support with $openapi->add_media_type(...)', $media_type)
-    }
-
-    try {
-      $content_ref = $media_type_decoder->($content_ref);
-    }
-    catch ($e) {
-      return E({ %$state, keyword => 'content', _schema_path_suffix => $media_type },
-        'could not decode content as %s: %s', $media_type, $e =~ s/^(.*)\n/$1/r);
-    }
-
-    $state = { %$state, schema_path => jsonp($state->{schema_path}, 'content', $media_type, 'schema') };
-    return $self->_evaluate_subschema($content_ref, $schema, $state);
+    abort({ %$state, keyword => 'content', _schema_path_suffix => $media_type},
+      'EXCEPTION: unsupported media type "%s": add support with $openapi->add_media_type(...)', $media_type);
   }
 
-  # TODO: handle multi-valued elements like headers and query parameters, when type=array
-  # requested, and consider 'style' and 'explode' settings
+  try {
+    $content_ref = $media_type_decoder->($content_ref);
+  }
+  catch ($e) {
+    return E({ %$state, keyword => 'content', _schema_path_suffix => $media_type },
+      'could not decode content as %s: %s', $media_type, $e =~ s/^(.*)\n/$1/r);
+  }
 
-  $state = { %$state, schema_path => jsonp($state->{schema_path}, 'schema'), stringy_numbers => 1 };
-  $self->_evaluate_subschema($content_ref, $param_obj->{schema}, $state);
+  $state = { %$state, schema_path => jsonp($state->{schema_path}, 'content', $media_type, 'schema') };
+  $self->_evaluate_subschema($content_ref, $schema, $state);
 }
 
 sub _validate_body_content ($self, $state, $content_obj, $message) {
