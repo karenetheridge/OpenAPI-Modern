@@ -121,6 +121,18 @@ L<https://spec.openapis.org/oas/v3.1.0#schema-object>.
 This vocabulary is normally made available by using the metaschema
 L<https://spec.openapis.org/oas/3.1/dialect/base>.
 
+=head1 SEE ALSO
+
+=for :list
+* L<Mojolicious::Plugin::OpenAPI::Modern>
+* L<OpenAPI::Modern>
+* L<JSON::Schema::Modern::Document::OpenAPI>
+* L<JSON::Schema::Modern>
+* L<https://json-schema.org>
+* L<https://www.openapis.org/>
+* L<https://oai.github.io/Documentation/>
+* L<https://spec.openapis.org/oas/v3.1.0>
+
 =head1 SUPPORT
 
 You can also find me on the L<JSON Schema Slack server|https://json-schema.slack.com> and L<OpenAPI Slack

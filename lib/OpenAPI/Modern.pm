@@ -939,6 +939,7 @@ Only certain permutations of OpenAPI documents are supported at this time:
 =head1 SEE ALSO
 
 =for :list
+* L<Mojolicious::Plugin::OpenAPI::Modern>
 * L<JSON::Schema::Modern::Document::OpenAPI>
 * L<JSON::Schema::Modern>
 * L<https://json-schema.org>
