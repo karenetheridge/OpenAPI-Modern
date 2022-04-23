@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.026     2022-04-23 16:48:26Z
           - fix installation of sharedir files when fallback installers
             (ExtUtils::MakeMaker or Module::Build) are used
