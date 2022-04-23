@@ -8,7 +8,7 @@ OpenAPI::Modern - Validate HTTP requests and responses against an OpenAPI docume
 
 =head1 VERSION
 
-version 0.025
+version 0.026
 
 =head1 SYNOPSIS
 
@@ -333,6 +333,10 @@ for query and header parameters, only the first value of each name is considered
 =head1 SEE ALSO
 
 =over 4
+
+=item *
+
+L<Mojolicious::Plugin::OpenAPI::Modern>
 
 =item *
 
