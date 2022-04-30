@@ -536,6 +536,76 @@ YAML
   );
 };
 
+subtest 'unevaluatedProperties and annotations' => sub {
+  my $openapi = OpenAPI::Modern->new(
+    openapi_uri => '/api',
+    evaluator => JSON::Schema::Modern->new,
+    openapi_schema => $yamlpp->load_string(<<YAML));
+$openapi_preamble
+paths:
+  /foo:
+    post:
+      responses:
+        200:
+          description: success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bar: true
+                unevaluatedProperties: false
+YAML
+
+  cmp_deeply(
+    (my $result = $openapi->validate_response(
+      response(200, [ 'Content-Type' => 'application/json' ], '{"foo":1}'),
+      { path_template => '/foo', method => 'post' }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/response/body/foo',
+          keywordLocation => jsonp(qw(/paths /foo post responses 200 content application/json schema unevaluatedProperties)),
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo post responses 200 content application/json schema unevaluatedProperties)))->to_string,
+          error => 'additional property not permitted',
+        },
+        {
+          instanceLocation => '/response/body',
+          keywordLocation => jsonp(qw(/paths /foo post responses 200 content application/json schema unevaluatedProperties)),
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo post responses 200 content application/json schema unevaluatedProperties)))->to_string,
+          error => 'not all additional properties are valid',
+        },
+      ],
+    },
+    'unevaluatedProperties can be used in schemas',
+  );
+
+  cmp_deeply(
+    ($result = $openapi->validate_response(
+      response(200, [ 'Content-Type' => 'application/json' ], '{"bar":1}'),
+      { path_template => '/foo', method => 'post' }))->format('basic', 1),
+    {
+      valid => true,
+      annotations => [
+        {
+          instanceLocation => '/response/body',
+          keywordLocation => jsonp(qw(/paths /foo post responses 200 content application/json schema properties)),
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo post responses 200 content application/json schema properties)))->to_string,
+          annotation => ['bar'],
+        },
+        {
+          instanceLocation => '/response/body',
+          keywordLocation => jsonp(qw(/paths /foo post responses 200 content application/json schema unevaluatedProperties)),
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo post responses 200 content application/json schema unevaluatedProperties)))->to_string,
+          annotation => [],
+        },
+      ],
+    },
+    'annotations are collected when evaluating valid response',
+  );
+};
+
 goto START if ++$type_index < @::TYPES;
 
 done_testing;

@@ -1,6 +1,9 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - permit the use of unevaluatedProperties, unevaluatedItems in
+            openapi subschemas, and collect annotations into the evaluation
+            result
 
 0.026     2022-04-23 16:48:26Z
           - fix installation of sharedir files when fallback installers
