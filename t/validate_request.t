@@ -1439,6 +1439,65 @@ YAML
   );
 };
 
+subtest 'readOnly' => sub {
+  my $openapi = OpenAPI::Modern->new(
+    openapi_uri => '/api',
+    evaluator => JSON::Schema::Modern->new,
+    openapi_schema => $yamlpp->load_string(<<YAML));
+$openapi_preamble
+paths:
+  /foo:
+    post:
+      parameters:
+      - name: a
+        in: query
+        schema:
+          readOnly: true
+          writeOnly: true
+      - name: b
+        in: query
+        schema:
+          readOnly: false
+          writeOnly: false
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                c:
+                  readOnly: true
+                  writeOnly: true
+                d:
+                  readOnly: false
+                  writeOnly: false
+YAML
+
+  my $request = request('POST', 'http://example.com/foo?a=1&b=2',
+    [ 'Content-Type' => 'application/json' ], '{"c":1,"d":2}');
+  cmp_deeply(
+    (my $result = $openapi->validate_request($request))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/uri/query/a',
+          keywordLocation => jsonp(qw(/paths /foo post parameters 0 schema readOnly)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post parameters 0 schema readOnly)))->to_string,
+          error => 'read-only value is present',
+        },
+        {
+          instanceLocation => '/request/body/c',
+          keywordLocation => jsonp(qw(/paths /foo post requestBody content application/json schema properties c readOnly)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content application/json schema properties c readOnly)))->to_string,
+          error => 'read-only value is present',
+        },
+      ],
+    },
+    'the request is valid, except for the presence of readOnly values',
+  );
+};
+
 goto START if ++$type_index < @::TYPES;
 
 done_testing;

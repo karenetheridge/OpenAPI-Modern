@@ -606,6 +606,65 @@ YAML
   );
 };
 
+subtest 'writeOnly' => sub {
+  my $openapi = OpenAPI::Modern->new(
+    openapi_uri => '/api',
+    evaluator => JSON::Schema::Modern->new,
+    openapi_schema => $yamlpp->load_string(<<YAML));
+$openapi_preamble
+paths:
+  /foo:
+    post:
+      responses:
+        '200':
+          description: success
+          headers:
+            a:
+              schema:
+                readOnly: true
+                writeOnly: true
+            b:
+              schema:
+                readOnly: false
+                writeOnly: false
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  c:
+                    readOnly: true
+                    writeOnly: true
+                  d:
+                    readOnly: false
+                    writeOnly: false
+YAML
+
+  cmp_deeply(
+    (my $result = $openapi->validate_response(
+      response(200, [ 'Content-Type' => 'application/json', A => 1, B => 2 ], '{"c":1,"d":2}'),
+      { path_template => '/foo', method => 'post' }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/response/header/a',
+          keywordLocation => jsonp(qw(/paths /foo post responses 200 headers a schema writeOnly)),
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo post responses 200 headers a schema writeOnly)))->to_string,
+          error => 'write-only value is present',
+        },
+        {
+          instanceLocation => '/response/body/c',
+          keywordLocation => jsonp(qw(/paths /foo post responses 200 content application/json schema properties c writeOnly)),
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo post responses 200 content application/json schema properties c writeOnly)))->to_string,
+          error => 'write-only value is present',
+        },
+      ],
+    },
+    'the response is valid, except for the presence of writeOnly values',
+  );
+};
+
 goto START if ++$type_index < @::TYPES;
 
 done_testing;

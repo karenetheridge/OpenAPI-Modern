@@ -587,6 +587,16 @@ sub _evaluate_subschema ($self, $data, $schema, $state) {
   push $state->{errors}->@*, $result->errors;
   push $state->{annotations}->@*, $result->annotations;
 
+  my $type = (split('/', $state->{data_path}, 3))[1];
+  my $keyword = $type eq 'request' ? 'readOnly' : $type eq 'response' ? 'writeOnly' : die "unknown type $type";
+
+  foreach my $annotation (grep $_->keyword eq $keyword && $_->annotation, $result->annotations) {
+    push $state->{errors}->@*, JSON::Schema::Modern::Error->new(
+      (map +($_ => $annotation->$_), qw(keyword instance_location keyword_location absolute_keyword_location)),
+      error => ($keyword =~ s/O/-o/r).' value is present',
+    );
+  }
+
   return !!$result;
 }
 

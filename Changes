@@ -4,6 +4,8 @@ Revision history for OpenAPI-Modern
           - permit the use of unevaluatedProperties, unevaluatedItems in
             openapi subschemas, and collect annotations into the evaluation
             result
+          - now checking for readOnly values in requests and writeOnly values
+            in responses
 
 0.026     2022-04-23 16:48:26Z
           - fix installation of sharedir files when fallback installers
