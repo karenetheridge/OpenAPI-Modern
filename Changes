@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.027     2022-05-01 01:41:48Z
           - permit the use of unevaluatedProperties, unevaluatedItems in
             openapi subschemas, and collect annotations into the evaluation
