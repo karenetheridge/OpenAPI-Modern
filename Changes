@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.028     2022-05-14 21:11:50Z
           - now only checking for readOnly values in request bodies and
             writeOnly values in response bodies (not path
             parameters/headers/query parameters).
