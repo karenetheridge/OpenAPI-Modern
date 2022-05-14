@@ -526,7 +526,19 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
   return 1 if not defined $schema;
 
   $state = { %$state, schema_path => jsonp($state->{schema_path}, 'content', $media_type, 'schema') };
-  $self->_evaluate_subschema($content_ref->$*, $schema, $state);
+  my $result = $self->_evaluate_subschema($content_ref->$*, $schema, $state);
+
+  my $type = (split('/', $state->{data_path}, 3))[1];
+  my $keyword = $type eq 'request' ? 'readOnly' : $type eq 'response' ? 'writeOnly' : die "unknown type $type";
+
+  foreach my $annotation (grep $_->keyword eq $keyword && $_->annotation, $result->annotations) {
+    push $state->{errors}->@*, JSON::Schema::Modern::Error->new(
+      (map +($_ => $annotation->$_), qw(keyword instance_location keyword_location absolute_keyword_location)),
+      error => ($keyword =~ s/O/-o/r).' value is present',
+    );
+  }
+
+  return !!$result;
 }
 
 # wrap a result object around the errors
@@ -587,17 +599,7 @@ sub _evaluate_subschema ($self, $data, $schema, $state) {
   push $state->{errors}->@*, $result->errors;
   push $state->{annotations}->@*, $result->annotations;
 
-  my $type = (split('/', $state->{data_path}, 3))[1];
-  my $keyword = $type eq 'request' ? 'readOnly' : $type eq 'response' ? 'writeOnly' : die "unknown type $type";
-
-  foreach my $annotation (grep $_->keyword eq $keyword && $_->annotation, $result->annotations) {
-    push $state->{errors}->@*, JSON::Schema::Modern::Error->new(
-      (map +($_ => $annotation->$_), qw(keyword instance_location keyword_location absolute_keyword_location)),
-      error => ($keyword =~ s/O/-o/r).' value is present',
-    );
-  }
-
-  return !!$result;
+  return $result;
 }
 
 # returned object supports ->path
