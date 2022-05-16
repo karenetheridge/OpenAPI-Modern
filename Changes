@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.029     2022-05-16 04:20:20Z
           - fix missing prereq for result serialization tests
 
