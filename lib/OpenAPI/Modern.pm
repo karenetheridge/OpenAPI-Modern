@@ -142,9 +142,11 @@ sub validate_request ($self, $request, $options = {}) {
         if not exists $request_parameters_processed->{path}{$path_name};
     }
 
+    $state->{data_path} = jsonp($state->{data_path}, 'body');
+    $state->{schema_path} = jsonp($state->{schema_path}, $method);
+
     if (my $body_obj = $operation->{requestBody}) {
-      $state->{schema_path} = jsonp($state->{schema_path}, $method, 'requestBody');
-      $state->{data_path} = jsonp($state->{data_path}, 'body');
+      $state->{schema_path} = jsonp($state->{schema_path}, 'requestBody');
 
       while (my $ref = $body_obj->{'$ref'}) {
         $body_obj = $self->_resolve_ref($ref, $state);
@@ -156,6 +158,10 @@ sub validate_request ($self, $request, $options = {}) {
       elsif ($body_obj->{required}) {
         ()= E({ %$state, keyword => 'required' }, 'request body is required but missing');
       }
+    }
+    else {
+      ()= E($state, 'unspecified body is present in %s request', uc $method)
+        if ($method eq 'get' or $method eq 'head') and _body_size($request);
     }
   }
   catch ($e) {
