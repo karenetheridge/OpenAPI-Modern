@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.030     2022-05-26 05:17:26Z
           - prohibit request bodies for HEAD and GET request unless
             requestBody explicitly specified, as this is a smuggling vector
