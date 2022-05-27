@@ -534,6 +534,8 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
   $state = { %$state, schema_path => jsonp($state->{schema_path}, 'content', $media_type, 'schema') };
   my $result = $self->_evaluate_subschema($content_ref->$*, $schema, $state);
 
+  return 1 if not is_ref($result);  # schema is an empty hash or boolean true
+
   my $type = (split('/', $state->{data_path}, 3))[1];
   my $keyword = $type eq 'request' ? 'readOnly' : $type eq 'response' ? 'writeOnly' : die "unknown type $type";
 

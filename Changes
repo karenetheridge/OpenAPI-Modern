@@ -1,6 +1,8 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - fix error when request or response body schema is empty (since
+            v0.028)
 
 0.030     2022-05-26 05:17:26Z
           - prohibit request bodies for HEAD and GET request unless

@@ -1471,6 +1471,8 @@ paths:
                 d:
                   readOnly: false
                   writeOnly: false
+          text/plain:
+            schema: {}
 YAML
 
   my $request = request('POST', 'http://example.com/foo?a=1&b=2',
@@ -1489,6 +1491,12 @@ YAML
       ],
     },
     'the request is valid, except for the presence of readOnly values',
+  );
+
+  cmp_deeply(
+    ($result = $openapi->validate_request(request('POST', 'http://example.com/foo', [ 'Content-Type' => 'text/plain' ], 'hi')))->TO_JSON,
+    { valid => true },
+    'no errors when processing an empty body schema',
   );
 };
 
