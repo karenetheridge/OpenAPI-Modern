@@ -416,7 +416,8 @@ paths:
       - name: beta
         in: query
         required: false
-        schema: false
+        schema:
+          not: true
       - name: gamma
         in: query
         required: false
@@ -428,19 +429,22 @@ paths:
         required: false
         content:
           unknown/encodingtype:
-            schema: false
+            schema:
+              not: true
       - name: epsilon
         in: query
         required: false
         content:
           apPlicATion/jsON:
-            schema: false
+            schema:
+              not: true
       - name: zeta
         in: query
         required: false
         content:
           iMAgE/*:
-            schema: false
+            schema:
+              not: true
 YAML
   # note that bar_id is not listed as a path parameter
 
@@ -493,9 +497,9 @@ YAML
       errors => [
         {
           instanceLocation => '/request/uri/query/delta',
-          keywordLocation => jsonp(qw(/paths /foo post parameters 4 content unknown/encodingtype schema)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post parameters 4 content unknown/encodingtype schema)))->to_string,
-          error => 'subschema is false',
+          keywordLocation => jsonp(qw(/paths /foo post parameters 4 content unknown/encodingtype schema not)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post parameters 4 content unknown/encodingtype schema not)))->to_string,
+          error => 'subschema is valid',
         },
       ],
     },
@@ -511,9 +515,9 @@ YAML
       errors => [
         {
           instanceLocation => '/request/uri/query/epsilon',
-          keywordLocation => jsonp(qw(/paths /foo post parameters 5 content apPlicATion/jsON schema)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post parameters 5 content apPlicATion/jsON schema)))->to_string,
-          error => 'subschema is false',
+          keywordLocation => jsonp(qw(/paths /foo post parameters 5 content apPlicATion/jsON schema not)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post parameters 5 content apPlicATion/jsON schema not)))->to_string,
+          error => 'subschema is valid',
         },
       ],
     },
@@ -531,9 +535,9 @@ YAML
       errors => [
         {
           instanceLocation => '/request/uri/query/zeta',
-          keywordLocation => jsonp(qw(/paths /foo post parameters 6 content iMAgE/* schema)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post parameters 6 content iMAgE/* schema)))->to_string,
-          error => 'subschema is false',
+          keywordLocation => jsonp(qw(/paths /foo post parameters 6 content iMAgE/* schema not)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post parameters 6 content iMAgE/* schema not)))->to_string,
+          error => 'subschema is valid',
         },
       ],
     },
@@ -562,9 +566,9 @@ YAML
         },
         {
           instanceLocation => '/request/uri/query/beta',
-          keywordLocation => jsonp(qw(/paths /foo post parameters 2 schema)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post parameters 2 schema)))->to_string,
-          error => 'subschema is false',
+          keywordLocation => jsonp(qw(/paths /foo post parameters 2 schema not)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post parameters 2 schema not)))->to_string,
+          error => 'subschema is valid',
         },
       ],
     },
@@ -775,11 +779,14 @@ paths:
                   const: ಠ_ಠ
               additionalProperties: false
           tEXt/HTml:
-            schema: false
+            schema:
+              not: true
           unknown/encodingtype:
-            schema: false
+            schema:
+              not: true
           iMAgE/*:
-            schema: false
+            schema:
+              not: true
 YAML
 
   # note: no content!
@@ -846,9 +853,9 @@ YAML
       errors => [
         {
           instanceLocation => '/request/body',
-          keywordLocation => jsonp(qw(/paths /foo get requestBody content tEXt/HTml schema)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo get requestBody content tEXt/HTml schema)))->to_string,
-          error => 'subschema is false',
+          keywordLocation => jsonp(qw(/paths /foo get requestBody content tEXt/HTml schema not)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo get requestBody content tEXt/HTml schema not)))->to_string,
+          error => 'subschema is valid',
         },
       ],
     },
@@ -866,9 +873,9 @@ YAML
       errors => [
         {
           instanceLocation => '/request/body',
-          keywordLocation => jsonp(qw(/paths /foo get requestBody content unknown/encodingtype schema)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo get requestBody content unknown/encodingtype schema)))->to_string,
-          error => 'subschema is false',
+          keywordLocation => jsonp(qw(/paths /foo get requestBody content unknown/encodingtype schema not)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo get requestBody content unknown/encodingtype schema not)))->to_string,
+          error => 'subschema is valid',
         },
       ],
     },
@@ -888,9 +895,9 @@ YAML
       errors => [
         {
           instanceLocation => '/request/body',
-          keywordLocation => jsonp(qw(/paths /foo get requestBody content iMAgE/* schema)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo get requestBody content iMAgE/* schema)))->to_string,
-          error => 'subschema is false',
+          keywordLocation => jsonp(qw(/paths /foo get requestBody content iMAgE/* schema not)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo get requestBody content iMAgE/* schema not)))->to_string,
+          error => 'subschema is valid',
         },
       ],
     },
