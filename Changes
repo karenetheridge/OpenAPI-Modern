@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.031     2022-06-01 03:59:14Z
           - fix error when request or response body schema is empty (since
             v0.028)
           - use a custom error message with false schemas (to indicate the
