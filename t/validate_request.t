@@ -1566,6 +1566,69 @@ YAML
   );
 };
 
+subtest 'custom error messages for false schemas' => sub {
+  my $openapi = OpenAPI::Modern->new(
+    openapi_uri => '/api',
+    evaluator => JSON::Schema::Modern->new,
+    openapi_schema => $yamlpp->load_string(<<YAML));
+$openapi_preamble
+paths:
+  /foo/{foo_id}:
+    post:
+      parameters:
+      - name: foo_id
+        in: path
+        required: true
+        schema: false
+      - name: Foo
+        in: header
+        schema: false
+      - name: foo
+        in: query
+        schema: false
+      requestBody:
+        content:
+          '*/*':
+            schema: false
+YAML
+
+  cmp_deeply(
+    (my $result = $openapi->validate_request(request('POST', 'http://example.com/foo/1?foo=1',
+          [ Foo => 1, 'Content-Type' => 'text/plain' ], 'hi')))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        # this is paradoxical, but we'll test it anyway
+        {
+          instanceLocation => '/request/uri/path/foo_id',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id} post parameters 0 schema)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} post parameters 0 schema)))->to_string,
+          error => 'path parameter not permitted',
+        },
+        {
+          instanceLocation => '/request/header/Foo',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id} post parameters 1 schema)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} post parameters 1 schema)))->to_string,
+          error => 'request header not permitted',
+        },
+        {
+          instanceLocation => '/request/uri/query/foo',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id} post parameters 2 schema)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} post parameters 2 schema)))->to_string,
+          error => 'query parameter not permitted',
+        },
+        {
+          instanceLocation => '/request/body',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id} post requestBody content */* schema)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} post requestBody content */* schema)))->to_string,
+          error => 'request body not permitted',
+        },
+      ],
+    },
+    'custom error message when the entity is not permitted',
+  );
+};
+
 goto START if ++$type_index < @::TYPES;
 
 done_testing;

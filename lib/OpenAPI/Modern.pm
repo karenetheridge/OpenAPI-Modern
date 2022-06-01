@@ -582,6 +582,23 @@ sub _resolve_ref ($self, $ref, $state) {
 sub _evaluate_subschema ($self, $data, $schema, $state) {
   return 1 if is_plain_hashref($schema) ? !keys(%$schema) : $schema; # true schema
 
+  if (is_plain_hashref($schema)) {
+    return 1 if !keys(%$schema);
+  }
+  else {
+    return 1 if $schema;
+
+    my @location = unjsonp($state->{data_path});
+    my $location =
+        $location[-1] eq 'body' ? join(' ', @location[-2..-1])
+      : $location[-2] eq 'query' ? 'query parameter'
+      : $location[-2] eq 'path' ? 'path parameter'  # this should never happen
+      : $location[-2] eq 'header' ? join(' ', @location[-3..-2])
+      : $location[-2];  # cookie
+    return E($state, '%s not permitted', $location);
+    return E($state, 'thingy not permitted');
+  }
+
   # treat numeric-looking data as a string, unless "type" explicitly requests number or integer.
   if (is_plain_hashref($schema) and exists $schema->{type} and not is_plain_arrayref($schema->{type})
       and grep $schema->{type} eq $_, qw(number integer) and looks_like_number($data)) {
