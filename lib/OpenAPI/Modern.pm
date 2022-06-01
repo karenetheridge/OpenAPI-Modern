@@ -596,7 +596,6 @@ sub _evaluate_subschema ($self, $data, $schema, $state) {
       : $location[-2] eq 'header' ? join(' ', @location[-3..-2])
       : $location[-2];  # cookie
     return E($state, '%s not permitted', $location);
-    return E($state, 'thingy not permitted');
   }
 
   # treat numeric-looking data as a string, unless "type" explicitly requests number or integer.
