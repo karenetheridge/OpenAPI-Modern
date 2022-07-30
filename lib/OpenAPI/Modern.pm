@@ -868,7 +868,8 @@ L<JSON::Schema::Modern::Result> object.
 
 The second argument is an optional hashref that contains extra information about the request, corresponding to
 the values expected by L</find_path> below. It is populated with some information about the request:
-pass it to a later L</validate_response> to improve performance.
+save it and pass it to a later L</validate_response> (corresponding to a response for this request)
+to improve performance.
 
 =head2 validate_response
 
