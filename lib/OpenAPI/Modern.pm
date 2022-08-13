@@ -153,7 +153,7 @@ sub validate_request ($self, $request, $options = {}) {
       }
 
       if (_body_size($request)) {
-        ()= $self->_validate_body_content($state, $body_obj->{content}, $request);
+        $self->_validate_body_content($state, $body_obj->{content}, $request);
       }
       elsif ($body_obj->{required}) {
         ()= E({ %$state, keyword => 'required' }, 'request body is required but missing');
@@ -230,7 +230,7 @@ sub validate_response ($self, $response, $options = {}) {
         $header_name, $header_obj, [ _header($response, $header_name) ]);
     }
 
-    ()= $self->_validate_body_content({ %$state, data_path => jsonp($state->{data_path}, 'body') },
+    $self->_validate_body_content({ %$state, data_path => jsonp($state->{data_path}, 'body') },
         $response_obj->{content}, $response)
       if exists $response_obj->{content} and _body_size($response);
   }
@@ -529,12 +529,12 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
       'could not decode content as %s: %s', $media_type, $e =~ s/^(.*)\n/$1/r);
   }
 
-  return 1 if not defined $schema;
+  return if not defined $schema;
 
   $state = { %$state, schema_path => jsonp($state->{schema_path}, 'content', $media_type, 'schema') };
   my $result = $self->_evaluate_subschema($content_ref->$*, $schema, $state);
 
-  return 1 if not is_ref($result);  # empty + valid result
+  return if not is_ref($result);  # empty + valid result
 
   my $type = (split('/', $state->{data_path}, 3))[1];
   my $keyword = $type eq 'request' ? 'readOnly' : $type eq 'response' ? 'writeOnly' : die "unknown type $type";
@@ -545,8 +545,6 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
       error => ($keyword =~ s/O/-o/r).' value is present',
     );
   }
-
-  return !!$result;
 }
 
 # wrap a result object around the errors
