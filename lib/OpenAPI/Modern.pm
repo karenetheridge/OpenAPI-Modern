@@ -352,7 +352,7 @@ sub find_path ($self, $request, $options) {
   return E({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
       'provided path_captures names do not match path template "%s"', $path_template)
     if exists $options->{path_captures}
-      and not is_equal([ sort keys $options->{path_captures}->%*], [ sort @capture_names ]);
+      and not is_equal([ sort keys $options->{path_captures}->%* ], [ sort @capture_names ]);
 
   if (not $request) {
     $options->@{qw(path_template operation_id)} =
