@@ -534,7 +534,7 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
   $state = { %$state, schema_path => jsonp($state->{schema_path}, 'content', $media_type, 'schema') };
   my $result = $self->_evaluate_subschema($content_ref->$*, $schema, $state);
 
-  return 1 if not is_ref($result);  # schema is an empty hash or boolean true
+  return 1 if not is_ref($result);  # empty + valid result
 
   my $type = (split('/', $state->{data_path}, 3))[1];
   my $keyword = $type eq 'request' ? 'readOnly' : $type eq 'response' ? 'writeOnly' : die "unknown type $type";
@@ -580,12 +580,8 @@ sub _resolve_ref ($self, $ref, $state) {
 
 # evaluates data against the subschema at the current state location
 sub _evaluate_subschema ($self, $data, $schema, $state) {
-  return 1 if is_plain_hashref($schema) ? !keys(%$schema) : $schema; # true schema
-
-  if (is_plain_hashref($schema)) {
-    return 1 if !keys(%$schema);
-  }
-  else {
+  # boolean schema
+  if (not is_plain_hashref($schema)) {
     return 1 if $schema;
 
     my @location = unjsonp($state->{data_path});
@@ -597,6 +593,8 @@ sub _evaluate_subschema ($self, $data, $schema, $state) {
       : $location[-2];  # cookie
     return E($state, '%s not permitted', $location);
   }
+
+  return 1 if !keys(%$schema);  # schema is {}
 
   # treat numeric-looking data as a string, unless "type" explicitly requests number or integer.
   if (is_plain_hashref($schema) and exists $schema->{type} and not is_plain_arrayref($schema->{type})
