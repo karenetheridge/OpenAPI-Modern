@@ -24,7 +24,7 @@ use Feature::Compat::Try;
 use Encode 2.89;
 use URI::Escape ();
 use JSON::Schema::Modern 0.551;
-use JSON::Schema::Modern::Utilities 0.531 qw(jsonp unjsonp canonical_uri E abort is_equal);
+use JSON::Schema::Modern::Utilities 0.531 qw(jsonp unjsonp canonical_uri E abort is_equal is_elements_unique);
 use JSON::Schema::Modern::Document::OpenAPI;
 use MooX::HandlesVia;
 use MooX::TypeTiny 0.002002;
@@ -316,13 +316,18 @@ sub find_path ($self, $request, $options) {
       my $path_pattern = $path_template =~ s!\{[^/}]+\}!([^/?#]*)!gr;
       next if $uri_path !~ m/^$path_pattern$/;
 
+      $options->{path_template} = $path_template;
+
       # perldoc perlvar, @-: $n coincides with "substr $_, $-[n], $+[n] - $-[n]" if "$-[n]" is defined
       my @capture_values = map
         Encode::decode('UTF-8', URI::Escape::uri_unescape(substr($uri_path, $-[$_], $+[$_]-$-[$_]))), 1 .. $#-;
       my @capture_names = ($path_template =~ m!\{([^/?#}]+)\}!g);
       my %path_captures; @path_captures{@capture_names} = @capture_values;
 
-      $options->{path_template} = $path_template;
+      my $indexes = [];
+      return E({ %$state, keyword => 'paths' }, 'duplicate path capture name %s', $capture_names[$indexes->[0]])
+        if not is_elements_unique(\@capture_names, $indexes);
+
       return E({ %$state, keyword => 'paths' }, 'provided path_captures values do not match request URI')
         if $options->{path_captures} and not is_equal($options->{path_captures}, \%path_captures);
 
