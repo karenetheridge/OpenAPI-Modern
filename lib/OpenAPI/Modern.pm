@@ -312,6 +312,8 @@ sub find_path ($self, $request, $options) {
     croak 'servers not yet supported when matching request URIs'
       if exists $schema->{servers} and $schema->{servers}->@*;
 
+    # sorting (ascii-wise) gives us the desired results that concrete path components sort ahead of
+    # templated components, except when the concrete component is a non-ascii character or matches [|}~].
     foreach $path_template (sort keys $schema->{paths}->%*) {
       my $path_pattern = $path_template =~ s!\{[^/}]+\}!([^/?#]*)!gr;
       next if $uri_path !~ m/^$path_pattern$/;
