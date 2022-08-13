@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.032     2022-08-13 23:17:31Z
           - error when a uri path specification contains duplicate capture
             names
 
