@@ -5,7 +5,7 @@ package JSON::Schema::Modern::Document::OpenAPI;
 # ABSTRACT: One OpenAPI v3.1 document
 # KEYWORDS: JSON Schema data validation request response OpenAPI
 
-our $VERSION = '0.032';
+our $VERSION = '0.033';
 
 use 5.020;
 use Moo;
