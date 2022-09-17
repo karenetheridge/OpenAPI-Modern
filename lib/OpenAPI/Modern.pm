@@ -762,8 +762,8 @@ __END__
 prints:
 
   request:
-  at '/request/body/hello': got integer, not string
-  at '/request/body': not all properties are valid
+  '/request/body/hello': got integer, not string
+  '/request/body': not all properties are valid
 
   {
     "errors" : [
