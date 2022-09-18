@@ -974,7 +974,7 @@ therefore inadvertently contain perlish numbers rather than strings.
 Only certain permutations of OpenAPI documents are supported at this time:
 
 =for :list
-* for all parameters types, only C<explode: true> is supported
+* for all parameter types, only C<explode: true> is supported
 * for path parameters, only C<style: simple> is supported
 * for query parameters, only C<style: form> is supported
 * cookie parameters are not checked at all yet
