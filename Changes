@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.033     2022-09-18 23:10:04Z
           - bump dependency on JSON::Schema::Modern, to pick up changes to
             error output when an openapi document is invalid
 

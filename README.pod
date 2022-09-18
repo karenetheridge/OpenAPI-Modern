@@ -8,7 +8,7 @@ OpenAPI::Modern - Validate HTTP requests and responses against an OpenAPI docume
 
 =head1 VERSION
 
-version 0.032
+version 0.033
 
 =head1 SYNOPSIS
 
@@ -85,8 +85,8 @@ version 0.032
 prints:
 
   request:
-  at '/request/body/hello': got integer, not string
-  at '/request/body': not all properties are valid
+  '/request/body/hello': got integer, not string
+  '/request/body': not all properties are valid
 
   {
     "errors" : [
@@ -311,7 +311,7 @@ Only certain permutations of OpenAPI documents are supported at this time:
 
 =item *
 
-for all parameters types, only C<explode: true> is supported
+for all parameter types, only C<explode: true> is supported
 
 =item *
 
