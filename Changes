@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.034     2022-10-15 20:15:34Z
           - removed validation of readOnly properties in request bodies and
             writeOnly values in response bodies
