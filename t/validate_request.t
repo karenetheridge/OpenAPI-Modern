@@ -828,6 +828,23 @@ YAML
   );
 
 
+  $request = request('GET', 'http://example.com/foo', [ 'Content-Type' => 'text/plain; charset=us-ascii' ], 'ascii plain text');
+  cmp_deeply(
+    ($result = $openapi->validate_request($request, { path_template => '/foo', path_captures => {} }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/body',
+          keywordLocation => jsonp(qw(/paths /foo get requestBody content text/plain schema const)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo get requestBody content text/plain schema const)))->to_string,
+          error => 'value does not match',
+        },
+      ],
+    },
+    'us-ascii text can be decoded and matched',
+  );
+
   $request = request('GET', 'http://example.com/foo', [ 'Content-Type' => 'TEXT/HTML' ], 'html text');
   cmp_deeply(
     ($result = $openapi->validate_request($request, { path_template => '/foo', path_captures => {} }))->TO_JSON,
