@@ -1,6 +1,9 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - fixes to media-type parsing: correctly ignore any charset included
+            with non-text Content-Types, and always interpret application/json
+            as charset=utf-8 as per RFC8259 §11
 
 0.034     2022-10-15 20:15:34Z
           - removed validation of readOnly properties in request bodies and
