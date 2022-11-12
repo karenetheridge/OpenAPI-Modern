@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.035     2022-11-12 20:53:54Z
           - fixes to media-type parsing: correctly ignore any charset included
             with non-text Content-Types, and always interpret application/json
             as charset=utf-8 as per RFC8259 §11
