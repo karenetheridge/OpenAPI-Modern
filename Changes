@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.036     2022-11-19 22:30:06Z
           - fix some media-type test cases to accomodate changes in
             JSON::Schema::Modern 0.558
 
