@@ -8,7 +8,7 @@ OpenAPI::Modern - Validate HTTP requests and responses against an OpenAPI docume
 
 =head1 VERSION
 
-version 0.036
+version 0.037
 
 =head1 SYNOPSIS
 
@@ -256,7 +256,13 @@ When successful, the options hash will be populated with keys C<path_template>, 
 C<method>, and C<operation_id>,
 and the return value is true.
 When not successful, the options hash will be populated with key C<errors>, an arrayref containing
-a L<JSON::Schema::Modern::Error> object, and the return value is false.
+a L<JSON::Schema::Modern::Error> object, and the return value is false. Other values may also be
+populated if they can be successfully calculated.
+
+In addition, this value is populated in the options hash (when available):
+
+* C<operation_path>: a json pointer string indicating the document location of the operation that
+  was just evaluated against the request
 
 Note that the L<C</servers>|https://spec.openapis.org/oas/v3.1.0#server-object> section of the
 OpenAPI document is not used for path matching at this time, for either scheme and host matching nor
