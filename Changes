@@ -1,6 +1,8 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - added operation_path to the options hash returned from find_path,
+            validate_response, find_path
 
 0.036     2022-11-19 22:30:06Z
           - fix some media-type test cases to accomodate changes in
