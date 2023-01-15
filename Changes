@@ -1,6 +1,7 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - fix vocabulary tests with TJSA 1.018
 
 0.037     2022-11-27 23:57:29Z
           - added operation_path to the options hash returned from find_path,
