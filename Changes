@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.038     2023-01-15 18:51:02Z
           - fix vocabulary tests with TJSA 1.018
           - fix test for compatibility with JSM 0.561
