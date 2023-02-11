@@ -89,7 +89,10 @@ sub validate_request ($self, $request, $options = {}) {
   };
 
   try {
-    my $path_ok = $self->find_path($request, $options);
+    croak '$request and $options->{request} are inconsistent'
+      if $request and $options->{request} and $request != $options->{request};
+    $options->{request} //= $request;
+    my $path_ok = $self->find_path($options);
     $state->{errors} = delete $options->{errors};
     return $self->_result($state, 1) if not $path_ok;
 
@@ -180,7 +183,12 @@ sub validate_request ($self, $request, $options = {}) {
 }
 
 sub validate_response ($self, $response, $options = {}) {
-  $options->{request} //= $response->$_call_if_can('request');  # HTTP::Response::request
+  # handle the existence of HTTP::Response::request
+  if (my $request = $response->$_call_if_can('request')) {
+    croak '$response->request and $options->{request} are inconsistent'
+      if $request and $options->{request} and $request != $options->{request};
+    $options->{request} //= $request;
+  }
 
   my $state = {
     data_path => '/response',
@@ -191,7 +199,7 @@ sub validate_response ($self, $response, $options = {}) {
   };
 
   try {
-    my $path_ok = $self->find_path($options->{request}, $options);
+    my $path_ok = $self->find_path($options);
     $state->{errors} = delete $options->{errors};
     return $self->_result($state, 1) if not $path_ok;
 
@@ -251,14 +259,14 @@ sub validate_response ($self, $response, $options = {}) {
   return $self->_result($state);
 }
 
-sub find_path ($self, $request, $options) {
+sub find_path ($self, $options) {
   my $state = {
     data_path => '/request/uri/path',
     initial_schema_uri => $self->openapi_uri,   # the canonical URI as of the start or last $id, or the last traversed $ref
     traversed_schema_path => '',    # the accumulated traversal path as of the start, or last $id, or up to the last traversed $ref
     schema_path => '',              # the rest of the path, since the last $id or the last traversed $ref
     errors => $options->{errors} //= [],
-    $request ? ( effective_base_uri => Mojo::URL->new->host(scalar _header($request, 'Host'))->scheme('https') ) : (),
+    $options->{request} ? ( effective_base_uri => Mojo::URL->new->host(scalar _header($options->{request}, 'Host'))->scheme('https') ) : (),
   };
 
   my ($method, $path_template);
@@ -266,11 +274,11 @@ sub find_path ($self, $request, $options) {
   # method from options
   if (exists $options->{method}) {
     $method = lc $options->{method};
-    return E({ %$state, data_path => '/request/method' }, 'wrong HTTP method %s', $request->method)
-      if $request and lc $request->method ne $method;
+    return E({ %$state, data_path => '/request/method' }, 'wrong HTTP method %s', $options->{request}->method)
+      if $options->{request} and lc $options->{request}->method ne $method;
   }
-  elsif ($request) {
-    $method = $options->{method} = lc $request->method;
+  elsif ($options->{request}) {
+    $method = $options->{method} = lc $options->{request}->method;
   }
 
   # path_template and method from operation_id from options
@@ -294,7 +302,7 @@ sub find_path ($self, $request, $options) {
     $options->{method} = lc $method;
   }
 
-  croak 'at least one of request, $options->{method} and $options->{operation_id} must be provided'
+  croak 'at least one of $options->{request}, $options->{method} and $options->{operation_id} must be provided'
     if not $method;
 
   # path_template from options
@@ -310,7 +318,7 @@ sub find_path ($self, $request, $options) {
   }
 
   # path_template from request URI
-  if (not $path_template and $request and my $uri_path = _request_uri($request)->path) {
+  if (not $path_template and $options->{request} and my $uri_path = _request_uri($options->{request})->path) {
     my $schema = $self->openapi_document->schema;
     croak 'servers not yet supported when matching request URIs'
       if exists $schema->{servers} and $schema->{servers}->@*;
@@ -350,7 +358,7 @@ sub find_path ($self, $request, $options) {
     return E({ %$state, keyword => 'paths' }, 'no match found for URI path "%s"', $uri_path);
   }
 
-  croak 'at least one of request, $options->{path_template} and $options->{operation_id} must be provided'
+  croak 'at least one of $options->{request}, $options->{path_template} and $options->{operation_id} must be provided'
     if not $path_template;
 
   $options->{operation_path} = jsonp('/paths', $path_template, $method);
@@ -362,7 +370,7 @@ sub find_path ($self, $request, $options) {
     if exists $options->{path_captures}
       and not is_equal([ sort keys $options->{path_captures}->%* ], [ sort @capture_names ]);
 
-  if (not $request) {
+  if (not $options->{request}) {
     $options->@{qw(path_template operation_id)} =
       ($path_template, $self->openapi_document->schema->{paths}{$path_template}{$method}{operationId});
     delete $options->{operation_id} if not defined $options->{operation_id};
@@ -371,7 +379,7 @@ sub find_path ($self, $request, $options) {
 
   # if we're still here, we were passed path_template in options or we calculated it from
   # operation_id, and now we verify it against path_captures and the request URI.
-  my $uri_path = _request_uri($request)->path;
+  my $uri_path = _request_uri($options->{request})->path;
 
   # 3.2: "The value for these path parameters MUST NOT contain any unescaped “generic syntax”
   # characters described by [RFC3986]: forward slashes (/), question marks (?), or hashes (#)."
@@ -893,16 +901,17 @@ corresponds to this response (as not all HTTP libraries link to the request in t
 
 =head2 find_path
 
-  $result = $self->find_path($request, $options);
+  $result = $self->find_path($options);
 
 Uses information in the request to determine the relevant parts of the OpenAPI specification.
-C<$request> should be provided if available, but data in the second argument can be used instead
+C<request> should be provided if available, but additional data can be used instead
 (which is populated by earlier L</validate_request> or L</find_path> calls to the same request).
 
-The second argument is a hashref that contains extra information about the request. Possible values
+The single argument is a hashref that contains information about the request. Possible values
 include:
 
 =for :list
+* C<request>: the object representing the HTTP request. Should be provided when available.
 * C<path_template>: a string representing the request URI, with placeholders in braces (e.g.
   C</pets/{petId}>); see L<https://spec.openapis.org/oas/v3.1.0#paths-object>.
 * C<operation_id>: a string corresponding to the
@@ -912,7 +921,7 @@ include:
   URI
 * C<method>: the HTTP method used by the request (used case-insensitively)
 
-All of these values are optional (unless C<$request> is omitted), and will be derived from the
+All of these values are optional (unless C<request> is omitted), and will be derived from the
 request URI as needed (albeit less
 efficiently than if they were provided). All passed-in values MUST be consistent with each other and
 the request URI.

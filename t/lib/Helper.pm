@@ -19,6 +19,8 @@ use Mojo::Message::Response;
 # 'mojo': classes of type Mojo::URL, Mojo::Headers, Mojo::Message::Request, Mojo::Message::Response
 our @TYPES = qw(lwp mojo);
 our $TYPE;
+our %REQUEST_CLASS = ( lwp => 'HTTP::Request', mojo => 'Mojo::Message::Request' );
+our %RESPONSE_CLASS = ( lwp => 'HTTP::Response', mojo => 'Mojo::Message::Response' );
 
 sub request ($method, $uri_string, $headers = [], $body_content = undef) {
   die '$TYPE is not set' if not defined $TYPE;

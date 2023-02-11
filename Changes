@@ -1,6 +1,11 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - BREAKING CHANGE: find_path() now takes one argument, not two; the
+            $request object is now passed with the $options hash.
+          - the $options hash populated by find_path(), validate_request() and
+            validate_response() now includes the request object, when
+            available
 
 0.038     2023-01-15 18:51:02Z
           - fix vocabulary tests with TJSA 1.018
