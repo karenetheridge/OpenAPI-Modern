@@ -8,7 +8,7 @@ OpenAPI::Modern - Validate HTTP requests and responses against an OpenAPI docume
 
 =head1 VERSION
 
-version 0.038
+version 0.039
 
 =head1 SYNOPSIS
 
@@ -192,8 +192,9 @@ Validates an L<HTTP::Request> or L<Mojo::Message::Request>
 object against the corresponding OpenAPI v3.1 document, returning a
 L<JSON::Schema::Modern::Result> object.
 
-The second argument is an optional hashref that contains extra information about the request, corresponding to
-the values expected by L</find_path> below. It is populated with some information about the request:
+The second argument is an optional hashref that contains extra information about the request,
+corresponding to the values expected by L</find_path> below. It is populated with some information
+about the request:
 save it and pass it to a later L</validate_response> (corresponding to a response for this request)
 to improve performance.
 
@@ -211,23 +212,28 @@ Validates an L<HTTP::Response> or L<Mojo::Message::Response>
 object against the corresponding OpenAPI v3.1 document, returning a
 L<JSON::Schema::Modern::Result> object.
 
-The second argument is an optional hashref that contains extra information about the request corresponding to
-the response, as in L</find_path>.
+The second argument is an optional hashref that contains extra information about the request
+corresponding to the response, as in L</find_path>.
 
 C<request> is also accepted as a key in the hashref, representing the original request object that
 corresponds to this response (as not all HTTP libraries link to the request in the response object).
 
 =head2 find_path
 
-  $result = $self->find_path($request, $options);
+  $result = $self->find_path($options);
 
 Uses information in the request to determine the relevant parts of the OpenAPI specification.
-C<$request> should be provided if available, but data in the second argument can be used instead
+C<request> should be provided if available, but additional data can be used instead
 (which is populated by earlier L</validate_request> or L</find_path> calls to the same request).
 
-The second argument is a hashref that contains extra information about the request. Possible values include:
+The single argument is a hashref that contains information about the request. Possible values
+include:
 
 =over 4
+
+=item *
+
+C<request>: the object representing the HTTP request. Should be provided when available.
 
 =item *
 
@@ -247,8 +253,8 @@ C<method>: the HTTP method used by the request (used case-insensitively)
 
 =back
 
-All of these values are optional (unless C<$request> is omitted), and will be derived from the request URI
-as needed (albeit less
+All of these values are optional (unless C<request> is omitted), and will be derived from the
+request URI as needed (albeit less
 efficiently than if they were provided). All passed-in values MUST be consistent with each other and
 the request URI.
 
@@ -377,8 +383,8 @@ Bugs may be submitted through L<https://github.com/karenetheridge/OpenAPI-Modern
 
 I am also usually active on irc, as 'ether' at C<irc.perl.org> and C<irc.libera.chat>.
 
-You can also find me on the L<JSON Schema Slack server|https://json-schema.slack.com> and L<OpenAPI Slack
-server|https://open-api.slack.com>, which are also great resources for finding help.
+You can also find me on the L<JSON Schema Slack server|https://json-schema.slack.com> and L<OpenAPI
+Slack server|https://open-api.slack.com>, which are also great resources for finding help.
 
 =head1 AUTHOR
 

@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.039     2023-02-11 23:23:17Z
           - BREAKING CHANGE: find_path() now takes one argument, not two; the
             $request object is now passed with the $options hash.
           - the $options hash populated by find_path(), validate_request() and
