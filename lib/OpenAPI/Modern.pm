@@ -180,6 +180,8 @@ sub validate_request ($self, $request, $options = {}) {
 }
 
 sub validate_response ($self, $response, $options = {}) {
+  $options->{request} //= $response->$_call_if_can('request');  # HTTP::Response::request
+
   my $state = {
     data_path => '/response',
     initial_schema_uri => $self->openapi_uri,   # the canonical URI as of the start or last $id, or the last traversed $ref
@@ -189,7 +191,7 @@ sub validate_response ($self, $response, $options = {}) {
   };
 
   try {
-    my $path_ok = $self->find_path($response->$_call_if_can('request') // $options->{request}, $options);
+    my $path_ok = $self->find_path($options->{request}, $options);
     $state->{errors} = delete $options->{errors};
     return $self->_result($state, 1) if not $path_ok;
 
