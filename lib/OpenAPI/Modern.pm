@@ -863,8 +863,9 @@ Validates an L<HTTP::Request> or L<Mojo::Message::Request>
 object against the corresponding OpenAPI v3.1 document, returning a
 L<JSON::Schema::Modern::Result> object.
 
-The second argument is an optional hashref that contains extra information about the request, corresponding to
-the values expected by L</find_path> below. It is populated with some information about the request:
+The second argument is an optional hashref that contains extra information about the request,
+corresponding to the values expected by L</find_path> below. It is populated with some information
+about the request:
 save it and pass it to a later L</validate_response> (corresponding to a response for this request)
 to improve performance.
 
@@ -882,8 +883,8 @@ Validates an L<HTTP::Response> or L<Mojo::Message::Response>
 object against the corresponding OpenAPI v3.1 document, returning a
 L<JSON::Schema::Modern::Result> object.
 
-The second argument is an optional hashref that contains extra information about the request corresponding to
-the response, as in L</find_path>.
+The second argument is an optional hashref that contains extra information about the request
+corresponding to the response, as in L</find_path>.
 
 C<request> is also accepted as a key in the hashref, representing the original request object that
 corresponds to this response (as not all HTTP libraries link to the request in the response object).
@@ -896,7 +897,8 @@ Uses information in the request to determine the relevant parts of the OpenAPI s
 C<$request> should be provided if available, but data in the second argument can be used instead
 (which is populated by earlier L</validate_request> or L</find_path> calls to the same request).
 
-The second argument is a hashref that contains extra information about the request. Possible values include:
+The second argument is a hashref that contains extra information about the request. Possible values
+include:
 
 =for :list
 * C<path_template>: a string representing the request URI, with placeholders in braces (e.g.
@@ -904,11 +906,12 @@ The second argument is a hashref that contains extra information about the reque
 * C<operation_id>: a string corresponding to the
   L<operationId|https://swagger.io/docs/specification/paths-and-operations/#operationid>
   at a particular path-template and HTTP location under C</paths>
-* C<path_captures>: a hashref mapping placeholders in the path to their actual values in the request URI
+* C<path_captures>: a hashref mapping placeholders in the path to their actual values in the request
+  URI
 * C<method>: the HTTP method used by the request (used case-insensitively)
 
-All of these values are optional (unless C<$request> is omitted), and will be derived from the request URI
-as needed (albeit less
+All of these values are optional (unless C<$request> is omitted), and will be derived from the
+request URI as needed (albeit less
 efficiently than if they were provided). All passed-in values MUST be consistent with each other and
 the request URI.
 
@@ -993,8 +996,8 @@ Only certain permutations of OpenAPI documents are supported at this time:
 
 =head1 SUPPORT
 
-You can also find me on the L<JSON Schema Slack server|https://json-schema.slack.com> and L<OpenAPI Slack
-server|https://open-api.slack.com>, which are also great resources for finding help.
+You can also find me on the L<JSON Schema Slack server|https://json-schema.slack.com> and L<OpenAPI
+Slack server|https://open-api.slack.com>, which are also great resources for finding help.
 
 =head1 COPYRIGHT AND LICENCE
 

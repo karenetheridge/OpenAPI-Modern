@@ -135,8 +135,8 @@ L<https://spec.openapis.org/oas/3.1/dialect/base>.
 
 =head1 SUPPORT
 
-You can also find me on the L<JSON Schema Slack server|https://json-schema.slack.com> and L<OpenAPI Slack
-server|https://open-api.slack.com>, which are also great resources for finding help.
+You can also find me on the L<JSON Schema Slack server|https://json-schema.slack.com> and L<OpenAPI
+Slack server|https://open-api.slack.com>, which are also great resources for finding help.
 
 =head1 COPYRIGHT AND LICENCE
 
