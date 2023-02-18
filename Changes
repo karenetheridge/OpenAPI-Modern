@@ -1,6 +1,10 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - all request and response validation are now done with
+            Mojo::Message::Request and ::Response objects, converting from
+            HTTP::Request and HTTP::Response as needed; the $options hash is
+            now populated with the mojo request
 
 0.039     2023-02-11 23:23:17Z
           - BREAKING CHANGE: find_path now takes one argument, not two; the

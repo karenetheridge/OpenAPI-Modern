@@ -84,7 +84,7 @@ sub validate_request ($self, $request, $options = {}) {
     initial_schema_uri => $self->openapi_uri,   # the canonical URI as of the start or last $id, or the last traversed $ref
     traversed_schema_path => '',    # the accumulated traversal path as of the start, or last $id, or up to the last traversed $ref
     schema_path => '',              # the rest of the path, since the last $id or the last traversed $ref
-    effective_base_uri => Mojo::URL->new->host(scalar _header($request, 'Host'))->scheme('https'),
+    effective_base_uri => Mojo::URL->new->scheme('https')->host($request->headers->header('Host')),
     annotations => [],
   };
 
@@ -93,6 +93,7 @@ sub validate_request ($self, $request, $options = {}) {
       if $request and $options->{request} and $request != $options->{request};
     $options->{request} //= $request;
     my $path_ok = $self->find_path($options);
+    $request = $options->{request};   # now guaranteed to be a Mojo::Message::Request
     $state->{errors} = delete $options->{errors};
     return $self->_result($state, 1) if not $path_ok;
 
@@ -130,8 +131,8 @@ sub validate_request ($self, $request, $options = {}) {
           $param_obj->{name});
         my $valid =
             $param_obj->{in} eq 'path' ? $self->_validate_path_parameter($state, $param_obj, $path_captures)
-          : $param_obj->{in} eq 'query' ? $self->_validate_query_parameter($state, $param_obj, _request_uri($request))
-          : $param_obj->{in} eq 'header' ? $self->_validate_header_parameter($state, $param_obj->{name}, $param_obj, [ _header($request, $param_obj->{name}) ])
+          : $param_obj->{in} eq 'query' ? $self->_validate_query_parameter($state, $param_obj, $request->url)
+          : $param_obj->{in} eq 'header' ? $self->_validate_header_parameter($state, $param_obj->{name}, $param_obj, [ $request->headers->header($param_obj->{name}) // () ])
           : $param_obj->{in} eq 'cookie' ? $self->_validate_cookie_parameter($state, $param_obj, $request)
           : abort($state, 'unrecognized "in" value "%s"', $param_obj->{in});
       }
@@ -155,7 +156,7 @@ sub validate_request ($self, $request, $options = {}) {
         $body_obj = $self->_resolve_ref($ref, $state);
       }
 
-      if (_body_size($request)) {
+      if ($request->headers->content_length // $request->body_size) {
         $self->_validate_body_content($state, $body_obj->{content}, $request);
       }
       elsif ($body_obj->{required}) {
@@ -164,7 +165,8 @@ sub validate_request ($self, $request, $options = {}) {
     }
     else {
       ()= E($state, 'unspecified body is present in %s request', uc $method)
-        if ($method eq 'get' or $method eq 'head') and _body_size($request);
+        if ($method eq 'get' or $method eq 'head')
+          and $request->headers->content_length // $request->body_size;
     }
   }
   catch ($e) {
@@ -198,6 +200,8 @@ sub validate_response ($self, $response, $options = {}) {
     annotations => [],
   };
 
+  $response = _convert_response($response);   # now guaranteed to be a Mojo::Message::Response
+
   try {
     my $path_ok = $self->find_path($options);
     $state->{errors} = delete $options->{errors};
@@ -209,7 +213,7 @@ sub validate_response ($self, $response, $options = {}) {
 
     return $self->_result($state) if not exists $operation->{responses};
 
-    $state->{effective_base_uri} = Mojo::URL->new->host(scalar _header($options->{request}, 'Host'))->scheme('https')
+    $state->{effective_base_uri} = Mojo::URL->new->scheme('https')->host($options->{request}->headers->host)
       if $options->{request};
     $state->{schema_path} = jsonp('/paths', $path_template, $method);
 
@@ -237,12 +241,12 @@ sub validate_response ($self, $response, $options = {}) {
 
       ()= $self->_validate_header_parameter({ %$state,
           data_path => jsonp($state->{data_path}, 'header', $header_name) },
-        $header_name, $header_obj, [ _header($response, $header_name) ]);
+        $header_name, $header_obj, [ $response->headers->header($header_name) // () ]);
     }
 
     $self->_validate_body_content({ %$state, data_path => jsonp($state->{data_path}, 'body') },
         $response_obj->{content}, $response)
-      if exists $response_obj->{content} and _body_size($response);
+      if exists $response_obj->{content} and $response->headers->content_length // $response->body_size;
   }
   catch ($e) {
     if ($e->$_isa('JSON::Schema::Modern::Result')) {
@@ -260,13 +264,16 @@ sub validate_response ($self, $response, $options = {}) {
 }
 
 sub find_path ($self, $options) {
+  # now guaranteed to be a Mojo::Message::Request
+  $options->{request} = _convert_request($options->{request}) if $options->{request};
+
   my $state = {
     data_path => '/request/uri/path',
     initial_schema_uri => $self->openapi_uri,   # the canonical URI as of the start or last $id, or the last traversed $ref
     traversed_schema_path => '',    # the accumulated traversal path as of the start, or last $id, or up to the last traversed $ref
     schema_path => '',              # the rest of the path, since the last $id or the last traversed $ref
     errors => $options->{errors} //= [],
-    $options->{request} ? ( effective_base_uri => Mojo::URL->new->host(scalar _header($options->{request}, 'Host'))->scheme('https') ) : (),
+    $options->{request} ? ( effective_base_uri => Mojo::URL->new->scheme('https')->host($options->{request}->headers->host) ) : (),
   };
 
   my ($method, $path_template);
@@ -318,7 +325,7 @@ sub find_path ($self, $options) {
   }
 
   # path_template from request URI
-  if (not $path_template and $options->{request} and my $uri_path = _request_uri($options->{request})->path) {
+  if (not $path_template and $options->{request} and my $uri_path = $options->{request}->url->path) {
     my $schema = $self->openapi_document->schema;
     croak 'servers not yet supported when matching request URIs'
       if exists $schema->{servers} and $schema->{servers}->@*;
@@ -379,7 +386,7 @@ sub find_path ($self, $options) {
 
   # if we're still here, we were passed path_template in options or we calculated it from
   # operation_id, and now we verify it against path_captures and the request URI.
-  my $uri_path = _request_uri($options->{request})->path;
+  my $uri_path = $options->{request}->url->path;
 
   # 3.2: "The value for these path parameters MUST NOT contain any unescaped “generic syntax”
   # characters described by [RFC3986]: forward slashes (/), question marks (?), or hashes (#)."
@@ -416,7 +423,7 @@ sub _validate_path_parameter ($self, $state, $param_obj, $path_captures) {
 
 sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
   # parse the query parameters out of uri
-  my $query_params = { _query_pairs($uri) };
+  my $query_params = +{ $uri->query->pairs->@* };
 
   # TODO: support different styles.
   # for now, we only support style=form and do not allow for multiple values per
@@ -489,7 +496,8 @@ sub _validate_parameter_content ($self, $state, $param_obj, $content_ref) {
 }
 
 sub _validate_body_content ($self, $state, $content_obj, $message) {
-  my $content_type = _content_type($message); # does not include charset
+  # does not include charset
+  my $content_type = fc((split(/;/, $message->headers->content_type//'', 2))[0] // '');
 
   return E({ %$state, data_path => $state->{data_path} =~ s{body}{header/Content-Type}r, keyword => 'content' },
       'missing header: Content-Type')
@@ -517,10 +525,10 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
   }
 
   # TODO: handle Content-Encoding header; https://github.com/OAI/OpenAPI-Specification/issues/2868
-  my $content_ref = _content_ref($message);
+  my $content_ref = \ $message->body;
 
   # decode the charset, for text content
-  if ($content_type =~ m{^text/} and my $charset = _content_charset($message)) {
+  if ($content_type =~ m{^text/} and my $charset = $message->content->charset) {
     try {
       $content_ref = \ Encode::decode($charset, $content_ref->$*, Encode::FB_CROAK | Encode::LEAVE_SRC);
     }
@@ -633,58 +641,35 @@ sub _evaluate_subschema ($self, $data, $schema, $state) {
   return $result;
 }
 
-# returned object supports ->path
-sub _request_uri ($request) {
-    $request->isa('HTTP::Request') ? $request->uri
-  : $request->isa('Mojo::Message::Request') ? $request->url
-  : croak 'unknown type '.ref($request);
+# results may be unsatisfactory if not a valid HTTP request.
+sub _convert_request ($request) {
+  return $request if $request->isa('Mojo::Message::Request');
+  if ($request->isa('HTTP::Request')) {
+    my $req = Mojo::Message::Request->new;
+    if (not defined $request->headers->content_length) {
+      my $length = length $request->content_ref->$*;
+      $req->headers->content_length($length) if $length;
+    }
+    $req->parse($request->as_string);
+    return $req;
+  }
+  croak 'unknown type '.ref($request);
 }
 
-# returns a list of key-value pairs (beware of treating as a hash!)
-sub _query_pairs ($uri) {
-    $uri->isa('URI') ? $uri->query_form
-  : $uri->isa('Mojo::URL') ? $uri->query->pairs->@*
-  : croak 'unknown type '.ref($uri);
+# results may be unsatisfactory if not a valid HTTP response.
+sub _convert_response ($response) {
+  return $response if $response->isa('Mojo::Message::Response');
+  if ($response->isa('HTTP::Response')) {
+    my $res = Mojo::Message::Response->new;
+    if (not defined $response->headers->content_length) {
+      my $length = length $response->content_ref->$*;
+      $res->headers->content_length($length) if $length;
+    }
+    $res->parse($response->as_string);
+    return $res;
+  }
+  croak 'unknown type '.ref($response);
 }
-
-# note: this assumes that the header values were already normalized on creation,
-# as sanitizing on read is bypassed
-# beware: the lwp version is list/scalar-context-sensitive
-sub _header ($message, $header_name) {
-    $message->isa('HTTP::Message') ? $message->headers->header($header_name)
-  : $message->isa('Mojo::Message') ? $message->content->headers->header($header_name) // ()
-  : croak 'unknown type '.ref($message);
-}
-
-# normalized, with extensions stripped
-sub _content_type ($message) {
-    $message->isa('HTTP::Message') ? fc $message->headers->content_type
-  : $message->isa('Mojo::Message') ? fc((split(/;/, $message->headers->content_type//'', 2))[0] // '')
-  : croak 'unknown type '.ref($message);
-}
-
-sub _content_charset ($message) {
-    $message->isa('HTTP::Message') ? $message->headers->content_type_charset
-  : $message->isa('Mojo::Message') ? $message->content->charset
-  : croak 'unknown type '.ref($message);
-}
-
-sub _body_size ($message) {
-    $message->isa('HTTP::Message') ? $message->headers->content_length // length $message->content_ref->$*
-  : $message->isa('Mojo::Message') ? $message->headers->content_length // $message->body_size
-  : croak 'unknown type '.ref($message);
-}
-
-sub _content_ref ($message) {
-    $message->isa('HTTP::Message') ? $message->content_ref
-  : $message->isa('Mojo::Message') ? \$message->body
-  : croak 'unknown type '.ref($message);
-}
-
-# wrappers that aren't needed (yet), because they are the same across all supported classes:
-# $request->method
-# $response->code
-# $uri->path
 
 1;
 __END__
@@ -755,7 +740,7 @@ __END__
 
   say 'response:';
   my $response = Mojo::Message::Response->new(code => 200, message => 'OK');
-  $response->headers->header('Content-Type', 'application/json');
+  $response->headers->content_type('application/json');
   $response->headers->header('My-Response-Header', '123');
   $response->body('{"status": "ok"}');
   $results = $openapi->validate_response($response, { request => $request });
@@ -937,6 +922,7 @@ In addition, this value is populated in the options hash (when available):
 
 * C<operation_path>: a json pointer string indicating the document location of the operation that
   was just evaluated against the request
+* C<request> (not necessarily what was passed in: this is always a L<Mojo::Message::Request>)
 
 Note that the L<C</servers>|https://spec.openapis.org/oas/v3.1.0#server-object> section of the
 OpenAPI document is not used for path matching at this time, for either scheme and host matching nor

@@ -65,7 +65,7 @@ YAML
   cmp_deeply(
     $options,
     {
-      request => isa($::REQUEST_CLASS{$::TYPE}),
+      request => isa('Mojo::Message::Request'),
       path_template => '/foo/baz',
       path_captures => {},
       method => 'get',
@@ -87,7 +87,7 @@ YAML
   cmp_deeply(
     $options,
     {
-      request => isa($::REQUEST_CLASS{$::TYPE}),
+      request => isa('Mojo::Message::Request'),
       method => 'get',
       path_captures => {},
       operation_id => 'bloop',
@@ -109,7 +109,7 @@ YAML
   cmp_deeply(
     $options,
     {
-      request => isa($::REQUEST_CLASS{$::TYPE}),
+      request => isa('Mojo::Message::Request'),
       method => 'get',
       path_captures => {},
       operation_id => 'hooky',
@@ -131,7 +131,7 @@ YAML
   cmp_deeply(
     $options,
     {
-      request => isa($::REQUEST_CLASS{$::TYPE}),
+      request => isa('Mojo::Message::Request'),
       method => 'get',
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => 'bloop' },
@@ -154,7 +154,7 @@ YAML
   cmp_deeply(
     $options,
     {
-      request => isa($::REQUEST_CLASS{$::TYPE}),
+      request => isa('Mojo::Message::Request'),
       method => 'post',
       path_template => '/foo/{foo_id}',
       path_captures => {},
@@ -178,7 +178,7 @@ YAML
   cmp_deeply(
     $options,
     {
-      request => isa($::REQUEST_CLASS{$::TYPE}),
+      request => isa('Mojo::Message::Request'),
       method => 'post',
       path_captures => {},
       operation_id => 'my-get-path',
@@ -200,7 +200,7 @@ YAML
   cmp_deeply(
     $options,
     {
-      request => isa($::REQUEST_CLASS{$::TYPE}),
+      request => isa('Mojo::Message::Request'),
       method => 'GET',
       errors => [
         methods(TO_JSON => {
@@ -221,7 +221,7 @@ YAML
   cmp_deeply(
     $options,
     {
-      request => isa($::REQUEST_CLASS{$::TYPE}),
+      request => isa('Mojo::Message::Request'),
       method => 'post',
       path_template => '/foo/{foo_id}',
       path_captures => { bloop => 'bar' },
@@ -245,7 +245,7 @@ YAML
   cmp_deeply(
     $options,
     {
-      request => isa($::REQUEST_CLASS{$::TYPE}),
+      request => isa('Mojo::Message::Request'),
       method => 'get',
       path_template => '/foo/bar',
       path_captures => {},
@@ -263,7 +263,7 @@ YAML
   cmp_deeply(
     $options,
     {
-      request => isa($::REQUEST_CLASS{$::TYPE}),
+      request => isa('Mojo::Message::Request'),
       method => 'get',
       path_template => '/foo/bar',
       path_captures => {},
@@ -287,7 +287,7 @@ YAML
   cmp_deeply(
     $options,
     {
-      request => isa($::REQUEST_CLASS{$::TYPE}),
+      request => isa('Mojo::Message::Request'),
       method => 'post',
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => 123 },
@@ -311,7 +311,7 @@ YAML
   cmp_deeply(
     $options,
     {
-      request => isa($::REQUEST_CLASS{$::TYPE}),
+      request => isa('Mojo::Message::Request'),
       method => 'post',
       path_template => '/foo/{foo_id}',
       operation_path => '/paths/~1foo~1{foo_id}/post',
@@ -334,7 +334,7 @@ YAML
   cmp_deeply(
     $options,
     {
-      request => isa($::REQUEST_CLASS{$::TYPE}),
+      request => isa('Mojo::Message::Request'),
       method => 'get',
       path_captures => {},
       operation_id => 'my-get-path',
@@ -358,7 +358,7 @@ YAML
   cmp_deeply(
     $options,
     {
-      request => isa($::REQUEST_CLASS{$::TYPE}),
+      request => isa('Mojo::Message::Request'),
       method => 'post',
       path_captures => { foo_id => 'goodbye' },
       operation_id => 'my-post-path',
@@ -390,7 +390,7 @@ YAML
   cmp_deeply(
     $options,
     {
-      request => isa($::REQUEST_CLASS{$::TYPE}),
+      request => isa('Mojo::Message::Request'),
       method => 'post',
       path_template => '/foo',
       path_captures => {},
@@ -424,7 +424,7 @@ YAML
   cmp_deeply(
     $options,
     {
-      request => isa($::REQUEST_CLASS{$::TYPE}),
+      request => isa('Mojo::Message::Request'),
       operation_id => 'my-get-path',
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => '123' },
@@ -443,7 +443,7 @@ YAML
   cmp_deeply(
     $options,
     {
-      request => isa($::REQUEST_CLASS{$::TYPE}),
+      request => isa('Mojo::Message::Request'),
       operation_id => 'my-get-path',
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => '123' },
@@ -460,7 +460,7 @@ YAML
   cmp_deeply(
     $options,
     {
-      request => isa($::REQUEST_CLASS{$::TYPE}),
+      request => isa('Mojo::Message::Request'),
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => '123' },
       method => 'get',
@@ -478,7 +478,7 @@ YAML
   cmp_deeply(
     $options,
     {
-      request => isa($::REQUEST_CLASS{$::TYPE}),
+      request => isa('Mojo::Message::Request'),
       method => 'get',
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => 'a' },
@@ -500,7 +500,7 @@ YAML
   cmp_deeply(
     $options,
     {
-      request => isa($::REQUEST_CLASS{$::TYPE}),
+      request => isa('Mojo::Message::Request'),
       method => 'get',
       errors => [
         methods(TO_JSON => {
@@ -522,7 +522,7 @@ YAML
   cmp_deeply(
     $options,
     {
-      request => isa($::REQUEST_CLASS{$::TYPE}),
+      request => isa('Mojo::Message::Request'),
       method => 'get',
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => 'hello // there ಠ_ಠ!' },
@@ -538,7 +538,7 @@ YAML
   cmp_deeply(
     $options,
     {
-      request => isa($::REQUEST_CLASS{$::TYPE}),
+      request => isa('Mojo::Message::Request'),
       operation_id => 'my-get-path',
       path_captures => { foo_id => 'hello // there ಠ_ಠ!' },
       path_template => '/foo/{foo_id}',
@@ -566,7 +566,7 @@ YAML
   cmp_deeply(
     $options,
     {
-      request => isa($::REQUEST_CLASS{$::TYPE}),
+      request => isa('Mojo::Message::Request'),
       method => 'get',
       path_template => '/foo/{foo_id}/bar/{foo_id}',
       errors => [
@@ -597,7 +597,7 @@ YAML
   cmp_deeply(
     $options,
     {
-      request => isa($::REQUEST_CLASS{$::TYPE}),
+      request => isa('Mojo::Message::Request'),
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => 'bar' },
       method => 'get',
@@ -613,7 +613,7 @@ YAML
   cmp_deeply(
     $options,
     {
-      request => isa($::REQUEST_CLASS{$::TYPE}),
+      request => isa('Mojo::Message::Request'),
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => 'bar' },
       method => 'get',
