@@ -8,7 +8,7 @@ OpenAPI::Modern - Validate HTTP requests and responses against an OpenAPI docume
 
 =head1 VERSION
 
-version 0.039
+version 0.040
 
 =head1 SYNOPSIS
 
@@ -74,7 +74,7 @@ version 0.039
 
   say 'response:';
   my $response = Mojo::Message::Response->new(code => 200, message => 'OK');
-  $response->headers->header('Content-Type', 'application/json');
+  $response->headers->content_type('application/json');
   $response->headers->header('My-Response-Header', '123');
   $response->body('{"status": "ok"}');
   $results = $openapi->validate_response($response, { request => $request });
@@ -269,6 +269,7 @@ In addition, this value is populated in the options hash (when available):
 
 * C<operation_path>: a json pointer string indicating the document location of the operation that
   was just evaluated against the request
+* C<request> (not necessarily what was passed in: this is always a L<Mojo::Message::Request>)
 
 Note that the L<C</servers>|https://spec.openapis.org/oas/v3.1.0#server-object> section of the
 OpenAPI document is not used for path matching at this time, for either scheme and host matching nor
