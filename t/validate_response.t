@@ -406,7 +406,7 @@ paths:
             Content-Type:
               \$ref: '#/components/headers/no_content_permitted'
           content:
-            text/plain: # TODO: support */* and then this would be guaranteed
+            '*/*':
               schema:
                 type: string
                 maxLength: 0
@@ -494,8 +494,8 @@ YAML
         },
         {
           instanceLocation => '/response/body',
-          keywordLocation => jsonp(qw(/paths /foo post responses 204 content text/plain schema maxLength)),
-          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo post responses 204 content text/plain schema maxLength)))->to_string,
+          keywordLocation => jsonp(qw(/paths /foo post responses 204 content */* schema maxLength)),
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo post responses 204 content */* schema maxLength)))->to_string,
           error => 'length is greater than 0',
         },
       ],
