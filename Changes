@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.040     2023-02-18 23:43:50Z
           - all request and response validation are now done with
             Mojo::Message::Request and ::Response objects, converting from
