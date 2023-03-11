@@ -15,7 +15,7 @@ use if "$]" >= 5.022, experimental => 're_strict';
 no if "$]" >= 5.031009, feature => 'indirect';
 no if "$]" >= 5.033001, feature => 'multidimensional';
 no if "$]" >= 5.033006, feature => 'bareword_filehandles';
-use JSON::Schema::Modern::Utilities 0.525 qw(assert_keyword_exists assert_keyword_type E canonical_uri get_type);
+use JSON::Schema::Modern::Utilities 0.525 qw(assert_keyword_exists assert_keyword_type E canonical_uri get_type jsonp);
 use Safe::Isa;
 use File::ShareDir 'dist_dir';
 use Path::Tiny;
@@ -151,6 +151,16 @@ sub traverse ($self, $evaluator) {
     push $state->{errors}->@*, $result->errors;
     return $state;
   }
+
+  # "Templated paths with the same hierarchy but different templated names MUST NOT exist as they
+  # are identical."
+  my %seen_path;
+  foreach my $path (sort keys $schema->{paths}->%*) {
+    my $normalized = $path =~ s/\{[^}]+\}/\x00/r;
+    ()= E({ %$state, data_path => jsonp('/paths', $path) },
+      'duplicate templated path %s', $path) if ++$seen_path{$normalized} > 1;
+  }
+  return $state if $state->{errors}->@*;
 
   my @real_json_schema_paths;
   foreach my $path (sort @json_schema_paths) {
