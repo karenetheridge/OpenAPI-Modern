@@ -18,6 +18,9 @@ use JSON::Schema::Modern::Utilities 'jsonp';
 use YAML::PP;
 use Test::File::ShareDir -share => { -dist => { 'OpenAPI-Modern' => 'share' } };
 
+# the document where most constraints are defined
+use constant SCHEMA => 'https://spec.openapis.org/oas/3.1/schema/2022-10-07';
+
 my $yamlpp = YAML::PP->new(boolean => 'JSON::PP');
 
 subtest 'extract operationIds and identify duplicates' => sub {
@@ -93,9 +96,9 @@ YAML
   cmp_deeply(
     [ map $_->TO_JSON, $doc->errors ],
     [ map +{
-        instanceLocation => '',
-        keywordLocation => $_.'/operationId',
-        absoluteKeywordLocation => Mojo::URL->new('http://localhost:1234/api')->fragment($_.'/operationId')->to_string,
+        instanceLocation => $_.'/operationId',
+        keywordLocation => '',
+        absoluteKeywordLocation => SCHEMA,
         error => 'duplicate of operationId at /components/callbacks/callback_a/$url_a/patch/callbacks/callback_z/$url_z/delete',
       },
       (

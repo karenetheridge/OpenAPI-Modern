@@ -45,22 +45,22 @@ subtest '/paths correctness' => sub {
       +{
         instanceLocation => '/paths/~1a~1{b}',
         keywordLocation => '',
-        absoluteKeywordLocation => 'http://localhost:1234/api',
-        error => 'duplicate templated path /a/{b}',
+        absoluteKeywordLocation => SCHEMA,
+        error => 'duplicate of templated path /a/{a}',
       },
       +{
         instanceLocation => '/paths/~1b~1{b}~1hi',
         keywordLocation => '',
-        absoluteKeywordLocation => 'http://localhost:1234/api',
-        error => 'duplicate templated path /b/{b}/hi',
+        absoluteKeywordLocation => SCHEMA,
+        error => 'duplicate of templated path /b/{a}/hi',
       },
     ],
     'duplicate paths are not permitted',
   );
 
   is(document_result($doc), substr(<<'ERRORS', 0, -1), 'stringified errors');
-'': duplicate templated path /a/{b}
-'': duplicate templated path /b/{b}/hi
+'/paths/~1a~1{b}': duplicate of templated path /a/{a}
+'/paths/~1b~1{b}~1hi': duplicate of templated path /b/{a}/hi
 ERRORS
 };
 

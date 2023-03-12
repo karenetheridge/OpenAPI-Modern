@@ -62,9 +62,9 @@ subtest 'top level document fields' => sub {
     [
       {
         instanceLocation => '',
-        keywordLocation => '',
-        absoluteKeywordLocation => 'http://localhost:1234/api',
-        error => 'invalid document type: integer',
+        keywordLocation => '/type',
+        absoluteKeywordLocation => SCHEMA.'#/type',
+        error => 'got integer, not object',
       },
     ],
     'document is wrong type',
@@ -72,7 +72,7 @@ subtest 'top level document fields' => sub {
 
   is(
     document_result($doc),
-    q!'': invalid document type: integer!,
+    q!'': got integer, not object!,
     'stringified errors',
   );
 
@@ -87,16 +87,16 @@ subtest 'top level document fields' => sub {
     [
       {
         instanceLocation => '',
-        keywordLocation => '/openapi',
-        absoluteKeywordLocation => 'http://localhost:1234/api#/openapi',
-        error => 'openapi keyword is required',
+        keywordLocation => '/required',
+        absoluteKeywordLocation => SCHEMA.'#/required',
+        error => 'missing property: openapi',
       },
     ],
     'missing openapi',
   );
   is(
     document_result($doc),
-    q!'/openapi': openapi keyword is required!,
+    q!'': missing property: openapi!,
     'stringified errors',
   );
 
@@ -146,10 +146,16 @@ ERRORS
     [ map $_->TO_JSON, $doc->errors ],
     [
       {
-        instanceLocation => '',
-        keywordLocation => '/openapi',
-        absoluteKeywordLocation => 'http://localhost:1234/api#/openapi',
+        instanceLocation => '/openapi',
+        keywordLocation => '/properties/openapi/pattern',
+        absoluteKeywordLocation => SCHEMA.'#/properties/openapi/pattern',
         error => 'unrecognized openapi version 2.1.3',
+      },
+      {
+        instanceLocation => '',
+        keywordLocation => '/properties',
+        absoluteKeywordLocation => SCHEMA.'#/properties',
+        error => 'not all properties are valid',
       },
     ],
     'invalid openapi version',
@@ -172,19 +178,24 @@ ERRORS
     [ map $_->TO_JSON, $doc->errors ],
     [
       {
+        instanceLocation => '/jsonSchemaDialect',
+        keywordLocation => '/properties/jsonSchemaDialect/type',
+        absoluteKeywordLocation => SCHEMA.'#/properties/jsonSchemaDialect/type',
+        error => 'got null, not string',
+      },
+      {
         instanceLocation => '',
-        keywordLocation => '/jsonSchemaDialect',
-        absoluteKeywordLocation => 'http://localhost:1234/api#/jsonSchemaDialect',
-        error => 'jsonSchemaDialect value is not a string',
+        keywordLocation => '/properties',
+        absoluteKeywordLocation => SCHEMA.'#/properties',
+        error => 'not all properties are valid',
       },
     ],
     'null jsonSchemaDialect is rejected',
   );
-  is(
-    document_result($doc),
-    q!'/jsonSchemaDialect': jsonSchemaDialect value is not a string!,
-    'stringified errors',
-  );
+  is(document_result($doc), substr(<<'ERRORS', 0, -1), 'stringified errors');
+'/jsonSchemaDialect': got null, not string
+'': not all properties are valid
+ERRORS
 
 
   $js->add_schema({

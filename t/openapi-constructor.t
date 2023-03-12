@@ -109,9 +109,9 @@ subtest 'document errors' => sub {
       errors => [
         {
           instanceLocation => '',
-          keywordLocation => '',
-          absoluteKeywordLocation => '/api',
-          error => 'invalid document type: array',
+          keywordLocation => '/type',
+          absoluteKeywordLocation => 'https://spec.openapis.org/oas/3.1/schema/2022-10-07#/type',
+          error => 'got array, not object',
         },
       ],
     },
@@ -120,7 +120,7 @@ subtest 'document errors' => sub {
 
   is(
     "$result",
-    q!'': invalid document type: array!,
+    q!'': got array, not object!,
     'exception during construction serializes the error correctly',
   );
 };
