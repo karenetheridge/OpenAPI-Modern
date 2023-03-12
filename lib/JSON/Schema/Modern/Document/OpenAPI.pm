@@ -137,10 +137,12 @@ sub traverse ($self, $evaluator) {
       callbacks => {
         '$dynamicRef' => sub ($, $schema, $state) {
           push @json_schema_paths, $state->{data_path} if $schema->{'$dynamicRef'} eq '#meta';
+          return 1;
         },
         '$ref' => sub ($data, $schema, $state) {
           push @operation_paths, [ $data->{operationId} => $state->{data_path} ]
             if $schema->{'$ref'} eq '#/$defs/operation' and defined $data->{operationId};
+          return 1;
         },
       },
     },
