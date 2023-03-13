@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.041     2023-03-13 02:47:59Z
           - now detecting and erroring on two /paths with the same template
             semantics
           - handle new callback behaviour in JSON::Schema::Modern 0.565
