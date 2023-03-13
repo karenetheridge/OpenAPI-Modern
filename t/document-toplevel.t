@@ -6,6 +6,9 @@ no if "$]" >= 5.033001, feature => 'multidimensional';
 no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 
+use lib 't/lib';
+use Helper;
+
 use Test::More 0.96;
 use if $ENV{AUTHOR_TESTING}, 'Test::Warnings';
 use Test::Deep;
@@ -66,6 +69,12 @@ subtest 'top level document fields' => sub {
     'document is wrong type',
   );
 
+  is(
+    document_result($doc),
+    q!'': invalid document type: integer!,
+    'stringified errors',
+  );
+
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
     evaluator => $js = JSON::Schema::Modern->new,
@@ -82,6 +91,11 @@ subtest 'top level document fields' => sub {
       },
     ],
     'missing openapi',
+  );
+  is(
+    document_result($doc),
+    q!'/openapi': openapi keyword is required!,
+    'stringified errors',
   );
 
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
@@ -111,6 +125,10 @@ subtest 'top level document fields' => sub {
     ],
     'missing /info properties',
   );
+  is(document_result($doc), substr(<<'ERRORS', 0, -1), 'stringified errors');
+'/info': missing properties: title, version
+'': not all properties are valid
+ERRORS
 
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
@@ -157,6 +175,11 @@ subtest 'top level document fields' => sub {
     ],
     'null jsonSchemaDialect is rejected',
   );
+  is(
+    document_result($doc),
+    q!'/jsonSchemaDialect': jsonSchemaDialect value is not a string!,
+    'stringified errors',
+  );
 
 
   $js->add_schema({
@@ -198,7 +221,10 @@ subtest 'top level document fields' => sub {
     ],
     'bad jsonSchemaDialect is rejected',
   );
-
+  is(document_result($doc), substr(<<'ERRORS', 0, -1), 'stringified errors');
+'/jsonSchemaDialect/$vocabulary/https:~1~1unknown': "https://unknown" is not a known vocabulary
+'/jsonSchemaDialect': "https://metaschema/with/wrong/spec" is not a valid metaschema
+ERRORS
 
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
@@ -244,6 +270,18 @@ subtest 'top level document fields' => sub {
     'missing paths (etc), and bad types for top level fields',
   );
 
+  is(document_result($doc), substr(<<'ERRORS', 0, -1), 'stringified errors');
+'': missing property: paths
+'': missing property: components
+'': missing property: webhooks
+'': no subschemas are valid
+'/externalDocs': got string, not object
+'/security': got string, not array
+'/servers': got string, not array
+'/tags': got string, not array
+'': not all properties are valid
+ERRORS
+
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
     evaluator => $js,
@@ -274,6 +312,12 @@ subtest 'top level document fields' => sub {
     ],
     'bad types for paths, webhooks, components',
   );
+  is(document_result($doc), substr(<<'ERRORS', 0, -1), 'stringified errors');
+'/components': got string, not object
+'/paths': got string, not object
+'/webhooks': got string, not object
+'': not all properties are valid
+ERRORS
 
   $js = JSON::Schema::Modern->new;
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(

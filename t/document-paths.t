@@ -6,6 +6,9 @@ no if "$]" >= 5.033001, feature => 'multidimensional';
 no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 
+use lib 't/lib';
+use Helper;
+
 use Test::More 0.96;
 use if $ENV{AUTHOR_TESTING}, 'Test::Warnings';
 use Test::Deep;
@@ -54,6 +57,11 @@ subtest '/paths correctness' => sub {
     ],
     'duplicate paths are not permitted',
   );
+
+  is(document_result($doc), substr(<<'ERRORS', 0, -1), 'stringified errors');
+'': duplicate templated path /a/{b}
+'': duplicate templated path /b/{b}/hi
+ERRORS
 };
 
 done_testing;

@@ -118,6 +118,12 @@ subtest 'document errors' => sub {
     },
     'bad document causes validation to immediately fail',
   );
+
+  is(
+    "$result",
+    q!'': invalid document type: array!,
+    'exception during construction serializes the error correctly',
+  );
 };
 
 done_testing;

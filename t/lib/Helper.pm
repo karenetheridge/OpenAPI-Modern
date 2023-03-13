@@ -89,4 +89,11 @@ sub uri ($uri_string, @path_parts) {
   return $uri;
 }
 
+sub document_result ($document) {
+  JSON::Schema::Modern::Result->new(
+    valid => $document->has_errors,
+    errors => [ $document->errors ],
+  );
+}
+
 1;
