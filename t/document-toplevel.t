@@ -56,6 +56,7 @@ subtest 'top level document fields' => sub {
     evaluator => my $js = JSON::Schema::Modern->new,
     schema => 1,
   );
+
   cmp_deeply(
     [ map $_->TO_JSON, $doc->errors ],
     [
@@ -74,6 +75,7 @@ subtest 'top level document fields' => sub {
     q!'': invalid document type: integer!,
     'stringified errors',
   );
+
 
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
@@ -97,6 +99,7 @@ subtest 'top level document fields' => sub {
     q!'/openapi': openapi keyword is required!,
     'stringified errors',
   );
+
 
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
@@ -130,6 +133,7 @@ subtest 'top level document fields' => sub {
 '': not all properties are valid
 ERRORS
 
+
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
     evaluator => $js,
@@ -137,6 +141,7 @@ ERRORS
       openapi => '2.1.3',
     },
   );
+
   cmp_deeply(
     [ map $_->TO_JSON, $doc->errors ],
     [
@@ -221,10 +226,12 @@ ERRORS
     ],
     'bad jsonSchemaDialect is rejected',
   );
+
   is(document_result($doc), substr(<<'ERRORS', 0, -1), 'stringified errors');
 '/jsonSchemaDialect/$vocabulary/https:~1~1unknown': "https://unknown" is not a known vocabulary
 '/jsonSchemaDialect': "https://metaschema/with/wrong/spec" is not a valid metaschema
 ERRORS
+
 
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
@@ -282,6 +289,7 @@ ERRORS
 '': not all properties are valid
 ERRORS
 
+
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
     evaluator => $js,
@@ -318,6 +326,7 @@ ERRORS
 '/webhooks': got string, not object
 '': not all properties are valid
 ERRORS
+
 
   $js = JSON::Schema::Modern->new;
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
@@ -381,6 +390,7 @@ ERRORS
       'https://json-schema.org/draft/2020-12/vocab/applicator' => false,
     },
   });
+
 
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',

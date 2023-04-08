@@ -90,7 +90,6 @@ subtest 'missing arguments' => sub {
   );
 };
 
-
 subtest 'document errors' => sub {
   my $result;
   try {

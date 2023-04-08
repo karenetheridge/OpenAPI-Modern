@@ -83,6 +83,7 @@ YAML
     'extracted the correct location of all operationIds',
   );
 
+
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
     evaluator => $js = JSON::Schema::Modern->new,
