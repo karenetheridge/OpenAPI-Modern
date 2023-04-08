@@ -89,6 +89,8 @@ sub uri ($uri_string, @path_parts) {
   return $uri;
 }
 
+# create a Result object out of the document errors; suitable for stringifying
+# as the OpenAPI::Modern constructor might do.
 sub document_result ($document) {
   JSON::Schema::Modern::Result->new(
     valid => $document->has_errors,
