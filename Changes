@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.042     2023-04-08 21:22:13Z
           - improvements to some errors resulting from parsing an invalid
             OpenAPI document
 
