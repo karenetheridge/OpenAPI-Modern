@@ -30,6 +30,8 @@ use MooX::HandlesVia;
 use MooX::TypeTiny 0.002002;
 use Types::Standard 'InstanceOf';
 use constant { true => JSON::PP::true, false => JSON::PP::false };
+use Mojo::Message::Request;
+use Mojo::Message::Response;
 use namespace::clean;
 
 has openapi_document => (
