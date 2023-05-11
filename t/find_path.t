@@ -16,7 +16,6 @@ use OpenAPI::Modern;
 use JSON::Schema::Modern::Utilities 'jsonp';
 use Test::File::ShareDir -share => { -dist => { 'OpenAPI-Modern' => 'share' } };
 use constant { true => JSON::PP::true, false => JSON::PP::false };
-use YAML::PP 0.005;
 
 use lib 't/lib';
 use Helper;
@@ -32,12 +31,11 @@ YAML
 # the absolute uri we will see in errors
 my $doc_uri_rel = Mojo::URL->new('/api');
 my $doc_uri = $doc_uri_rel->to_abs(Mojo::URL->new('https://example.com'));
-my $yamlpp = YAML::PP->new(boolean => 'JSON::PP');
 
 subtest 'bad conversion to Mojo::Message::Request' => sub {
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => '/api',
-    openapi_schema => $yamlpp->load_string(<<YAML));
+    openapi_schema => yaml(<<YAML));
 $openapi_preamble
 paths: {}
 YAML
@@ -71,7 +69,7 @@ note 'REQUEST/RESPONSE TYPE: '.$::TYPE;
 subtest 'request is parsed to get path information' => sub {
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => '/api',
-    openapi_schema => $yamlpp->load_string(<<YAML));
+    openapi_schema =>yaml(<<YAML));
 $openapi_preamble
 paths:
   /foo/{foo_id}:
@@ -406,7 +404,7 @@ YAML
 
   $openapi = OpenAPI::Modern->new(
     openapi_uri => '/api',
-    openapi_schema => $yamlpp->load_string(<<YAML));
+    openapi_schema => yaml(<<YAML));
 $openapi_preamble
 paths:
   /foo: {}
@@ -437,7 +435,7 @@ YAML
 
   $openapi = OpenAPI::Modern->new(
     openapi_uri => '/api',
-    openapi_schema => $yamlpp->load_string(<<YAML));
+    openapi_schema => yaml(<<YAML));
 $openapi_preamble
 paths:
   /foo/{foo_id}:
@@ -580,7 +578,7 @@ YAML
 
   $openapi = OpenAPI::Modern->new(
     openapi_uri => '/api',
-    openapi_schema => $yamlpp->load_string(<<YAML));
+    openapi_schema => yaml(<<YAML));
 $openapi_preamble
 paths:
   /foo/{foo_id}/bar/{foo_id}:
@@ -612,7 +610,7 @@ YAML
 
   $openapi = OpenAPI::Modern->new(
     openapi_uri => '/api',
-    openapi_schema => $yamlpp->load_string(<<YAML));
+    openapi_schema => yaml(<<YAML));
 $openapi_preamble
 paths:
   /foo/{foo_id}:
@@ -655,7 +653,7 @@ YAML
 subtest 'no request is provided: options are relied on as the sole source of truth' => sub {
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => '/api',
-    openapi_schema => $yamlpp->load_string(<<YAML));
+    openapi_schema => yaml(<<YAML));
 $openapi_preamble
 paths:
   /foo/{foo_id}:
@@ -747,7 +745,7 @@ YAML
 
   $openapi = OpenAPI::Modern->new(
     openapi_uri => '/api',
-    openapi_schema => $yamlpp->load_string(<<YAML));
+    openapi_schema => yaml(<<YAML));
 $openapi_preamble
 paths:
   /foo/{foo_id}:
