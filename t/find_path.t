@@ -34,6 +34,34 @@ my $doc_uri_rel = Mojo::URL->new('/api');
 my $doc_uri = $doc_uri_rel->to_abs(Mojo::URL->new('https://example.com'));
 my $yamlpp = YAML::PP->new(boolean => 'JSON::PP');
 
+subtest 'bad conversion to Mojo::Message::Request' => sub {
+  my $openapi = OpenAPI::Modern->new(
+    openapi_uri => '/api',
+    openapi_schema => $yamlpp->load_string(<<YAML));
+$openapi_preamble
+paths: {}
+YAML
+
+  my $request = HTTP::Request->new(GET => 'http://example.com/', [ Host => 'example.com' ]);
+  ok(!$openapi->find_path(my $options = { request => $request }),
+    'find_path returns false');
+  cmp_deeply(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '/request',
+          keywordLocation => '',
+          absoluteKeywordLocation => $doc_uri->clone->to_string,
+          error => 'Bad request start-line',
+        }),
+      ],
+    },
+    'invalid request object is detected early',
+  );
+};
+
 my $type_index = 0;
 
 START:

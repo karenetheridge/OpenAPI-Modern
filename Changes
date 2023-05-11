@@ -1,6 +1,8 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - properly detect, and fail early, on badly-parsed request or
+            response objects
 
 0.042     2023-04-08 21:22:13Z
           - improvements to some errors resulting from parsing an invalid

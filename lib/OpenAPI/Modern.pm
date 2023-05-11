@@ -202,8 +202,6 @@ sub validate_response ($self, $response, $options = {}) {
     annotations => [],
   };
 
-  $response = _convert_response($response);   # now guaranteed to be a Mojo::Message::Response
-
   try {
     my $path_ok = $self->find_path($options);
     $state->{errors} = delete $options->{errors};
@@ -218,6 +216,13 @@ sub validate_response ($self, $response, $options = {}) {
     $state->{effective_base_uri} = Mojo::URL->new->scheme('https')->host($options->{request}->headers->host)
       if $options->{request};
     $state->{schema_path} = jsonp('/paths', $path_template, $method);
+
+    $response = _convert_response($response);   # now guaranteed to be a Mojo::Message::Response
+
+    if (my $error = $response->error) {
+      ()= E($state, $response->error->{message});
+      return $self->_result($state, 1);
+    }
 
     my $response_name = first { exists $operation->{responses}{$_} }
       $response->code, substr(sprintf('%03s', $response->code), 0, -2).'XX', 'default';
@@ -277,6 +282,11 @@ sub find_path ($self, $options) {
     errors => $options->{errors} //= [],
     $options->{request} ? ( effective_base_uri => Mojo::URL->new->scheme('https')->host($options->{request}->headers->host) ) : (),
   };
+
+  if ($options->{request} and my $error = $options->{request}->error) {
+    ()= E({ %$state, data_path => '/request' }, $options->{request}->error->{message});
+    return $self->_result($state, 1);
+  }
 
   my ($method, $path_template);
 
