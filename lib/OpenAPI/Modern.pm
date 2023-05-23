@@ -690,13 +690,9 @@ __END__
 
 =head1 SYNOPSIS
 
-  use YAML::XS 0.87;
-  use OpenAPI::Modern;
-  local $YAML::XS::Boolean = 'JSON::PP';
-
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => '/api',
-    openapi_schema => Load(<<'YAML'));
+    openapi_schema => YAML::PP->new(boolean => 'JSON::PP')->load_string(<<'YAML'));
   openapi: 3.1.0
   info:
     title: Test API
