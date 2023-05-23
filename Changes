@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.044     2023-05-23 02:08:54Z
           - revert changes to YAML parsing in 0.043, pending fixes to YAML::XS
 
 0.043     2023-05-11 04:36:24Z
