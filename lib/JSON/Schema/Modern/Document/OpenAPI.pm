@@ -23,7 +23,7 @@ use List::Util qw(any pairs);
 use Ref::Util 'is_plain_hashref';
 use MooX::HandlesVia;
 use MooX::TypeTiny 0.002002;
-use Types::Standard qw(InstanceOf HashRef Str);
+use Types::Standard qw(InstanceOf HashRef Str Enum);
 use namespace::clean;
 
 extends 'JSON::Schema::Modern::Document';
@@ -55,6 +55,22 @@ has json_schema_dialect => (
   is => 'rwp',
   isa => InstanceOf['Mojo::URL'],
   coerce => sub { $_[0]->$_isa('Mojo::URL') ? $_[0] : Mojo::URL->new($_[0]) },
+);
+
+my $reffable_entities = Enum[qw(response parameter example request-body header security-scheme link callbacks path-item)];
+
+# json pointer => entity name
+has entities => (
+  is => 'bare',
+  isa => HashRef[$reffable_entities],
+   handles_via => 'Hash',
+   handles => {
+     _add_entity_location => 'set',
+     get_entity_at_location => 'get',
+  },
+  lazy => 1,
+  default => sub { {} },
+
 );
 
 # operationId => document path
@@ -158,8 +174,13 @@ sub traverse ($self, $evaluator) {
           return 1;
         },
         '$ref' => sub ($data, $schema, $state) {
+          my ($entity) = ($schema->{'$ref'} =~ m{#/\$defs/([^/]+?)(?:-or-reference)?$});
+          $self->_add_entity_location($state->{data_path}, $entity)
+            if $entity and $reffable_entities->check($entity);
+
           push @operation_paths, [ $data->{operationId} => $state->{data_path} ]
             if $schema->{'$ref'} eq '#/$defs/operation' and defined $data->{operationId};
+
           return 1;
         },
       },

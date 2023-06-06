@@ -2,6 +2,7 @@ Revision history for OpenAPI-Modern
 
 {{$NEXT}}
           - fix test for changes in JSON::Schema::Modern 0.567
+          - now ensuring that $ref locations are to the correct entity type
 
 0.044     2023-05-23 02:08:54Z
           - revert changes to YAML parsing in 0.043, pending fixes to YAML::XS

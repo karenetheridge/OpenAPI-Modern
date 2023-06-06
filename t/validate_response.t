@@ -212,6 +212,43 @@ $openapi_preamble
 components:
   responses:
     foo:
+      description: foo
+  headers:
+    foo:
+      description: foo
+      schema: {}
+paths:
+  /foo:
+    post:
+      responses:
+        200:
+          \$ref: '#/components/headers/foo'
+YAML
+
+  cmp_deeply(
+    ($result = $openapi->validate_response(response(200), { path_template => '/foo', method => 'post' }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/response',
+          keywordLocation => jsonp(qw(/paths /foo post responses 200 $ref)),
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo post responses 200 $ref)))->to_string,
+          error => 'EXCEPTION: bad $ref to /api#/components/headers/foo: not a "response"',
+        },
+      ],
+    },
+    '$ref in responses points to the wrong type',
+  );
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => '/api',
+    openapi_schema => $yamlpp->load_string(<<YAML));
+$openapi_preamble
+components:
+  responses:
+    foo:
       \$ref: '#/i_do_not_exist'
     default:
       description: unexpected failure

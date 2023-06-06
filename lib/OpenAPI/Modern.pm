@@ -118,7 +118,7 @@ sub validate_request ($self, $request, $options = {}) {
           ($section eq $method ? $method : ()), 'parameters', $idx) };
         my $param_obj = ($section eq $method ? $operation : $path_item)->{parameters}[$idx];
         while (my $ref = $param_obj->{'$ref'}) {
-          $param_obj = $self->_resolve_ref($ref, $state);
+          $param_obj = $self->_resolve_ref('parameter', $ref, $state);
         }
 
         my $fc_name = $param_obj->{in} eq 'header' ? fc($param_obj->{name}) : $param_obj->{name};
@@ -155,7 +155,7 @@ sub validate_request ($self, $request, $options = {}) {
       $state->{schema_path} = jsonp($state->{schema_path}, 'requestBody');
 
       while (my $ref = $body_obj->{'$ref'}) {
-        $body_obj = $self->_resolve_ref($ref, $state);
+        $body_obj = $self->_resolve_ref('request-body', $ref, $state);
       }
 
       if ($request->headers->content_length // $request->body_size) {
@@ -235,7 +235,7 @@ sub validate_response ($self, $response, $options = {}) {
     my $response_obj = $operation->{responses}{$response_name};
     $state->{schema_path} = jsonp($state->{schema_path}, 'responses', $response_name);
     while (my $ref = $response_obj->{'$ref'}) {
-      $response_obj = $self->_resolve_ref($ref, $state);
+      $response_obj = $self->_resolve_ref('response', $ref, $state);
     }
 
     foreach my $header_name (sort keys(($response_obj->{headers}//{})->%*)) {
@@ -243,7 +243,7 @@ sub validate_response ($self, $response, $options = {}) {
       my $state = { %$state, schema_path => jsonp($state->{schema_path}, 'headers', $header_name) };
       my $header_obj = $response_obj->{headers}{$header_name};
       while (my $ref = $header_obj->{'$ref'}) {
-        $header_obj = $self->_resolve_ref($ref, $state);
+        $header_obj = $self->_resolve_ref('header', $ref, $state);
       }
 
       ()= $self->_validate_header_parameter({ %$state,
@@ -591,7 +591,7 @@ sub _result ($self, $state, $exception = 0) {
   );
 }
 
-sub _resolve_ref ($self, $ref, $state) {
+sub _resolve_ref ($self, $entity_type, $ref, $state) {
   my $uri = Mojo::URL->new($ref)->to_abs($state->{initial_schema_uri});
   my $schema_info = $self->evaluator->_fetch_from_uri($uri);
   abort({ %$state, keyword => '$ref' }, 'EXCEPTION: unable to find resource %s', $uri)
@@ -599,6 +599,9 @@ sub _resolve_ref ($self, $ref, $state) {
 
   abort({ %$state, keyword => '$ref' }, 'EXCEPTION: maximum evaluation depth exceeded')
     if $state->{depth}++ > $self->evaluator->max_traversal_depth;
+
+  abort({ %$state, keyword => '$ref' }, 'EXCEPTION: bad $ref to %s: not a "%s"', $schema_info->{canonical_uri}, $entity_type)
+    if $schema_info->{document}->get_entity_at_location($schema_info->{document_path}) ne $entity_type;
 
   $state->{initial_schema_uri} = $schema_info->{canonical_uri};
   $state->{traversed_schema_path} = $state->{traversed_schema_path}.$state->{schema_path}.jsonp('/$ref');
