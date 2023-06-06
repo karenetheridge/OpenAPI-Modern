@@ -1462,8 +1462,8 @@ YAML
       errors => [
         {
           instanceLocation => '/request',
-          keywordLocation => jsonp(qw(/paths /foo post parameters 0), ('$ref')x16),
-          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/parameters/bar')->to_string,
+          keywordLocation => jsonp(qw(/paths /foo post parameters 0), ('$ref')x17),
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/parameters/bar/$ref')->to_string,
           error => 'EXCEPTION: maximum evaluation depth exceeded',
         },
       ],
