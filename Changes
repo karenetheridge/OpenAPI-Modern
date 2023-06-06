@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.045     2023-06-06 04:15:18Z
           - fix test for changes in JSON::Schema::Modern 0.567
           - now ensuring that $ref locations are to the correct entity type
