@@ -8,6 +8,7 @@ package OpenAPI::Modern;
 our $VERSION = '0.046';
 
 use 5.020;
+use utf8;
 use Moo;
 use strictures 2;
 use stable 0.031 'postderef';
@@ -223,6 +224,17 @@ sub validate_response ($self, $response, $options = {}) {
     if (my $error = $response->error) {
       ()= E($state, $response->error->{message});
       return $self->_result($state, 1);
+    }
+
+    if ($response->headers->header('Transfer-Encoding')) {
+      ()= E({ %$state, data_path => jsonp($state->{data_path}, qw(header Transfer-Encoding)) },
+        'RFC9112 §6.1-10: A server MUST NOT send a Transfer-Encoding header field in any response with a status code of 1xx (Informational) or 204 (No Content)')
+        if $response->is_info or $response->code == 204;
+
+      # connect method is not supported in openapi 3.1.0, but this may be possible in the future
+      ()= E({ %$state, data_path => jsonp($state->{data_path}, qw(header Transfer-Encoding)) },
+        'RFC9112 §6.1-10: A server MUST NOT send a Transfer-Encoding header field in any 2xx (Successful) response to a CONNECT request')
+        if $response->is_success and $method eq 'connect';
     }
 
     my $response_name = first { exists $operation->{responses}{$_} }

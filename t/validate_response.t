@@ -323,6 +323,39 @@ YAML
     'header is evaluated against its schema',
   );
 
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => '/api',
+    openapi_schema => $yamlpp->load_string(<<YAML));
+$openapi_preamble
+paths:
+  /foo:
+    get:
+      responses:
+        default:
+          description: foo
+YAML
+
+  cmp_deeply(
+    ($result = $openapi->validate_response(response($_, [ 'Transfer-Encoding' => 'blah' ]), { path_template => '/foo', method => 'get' }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/response/header/Transfer-Encoding',
+          keywordLocation => jsonp(qw(/paths /foo get)),
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo get)))->to_string,
+          error => 'RFC9112 §6.1-10: A server MUST NOT send a Transfer-Encoding header field in any response with a status code of 1xx (Informational) or 204 (No Content)',
+        },
+      ],
+    },
+    'Transfer-Encoding header is detected with status code '.$_,
+  )
+  foreach 102, 204;
+
+  # TODO: test 'connect' method, once it's allowed by the spec.
+
+
   $openapi = OpenAPI::Modern->new(
     openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
