@@ -144,6 +144,9 @@ sub validate_request ($self, $request, $options = {}) {
 
     # 3.2 "Each template expression in the path MUST correspond to a path parameter that is included in
     # the Path Item itself and/or in each of the Path Item’s Operations."
+    # We could validate this at document parse time, except the path-item can also be reached via a
+    # $ref and the referencing path could be from another document and is therefore unknowable until
+    # runtime.
     foreach my $path_name (sort keys $path_captures->%*) {
       abort({ %$state, data_path => jsonp($state->{data_path}, qw(uri path), $path_name) },
           'missing path parameter specification for "%s"', $path_name)
