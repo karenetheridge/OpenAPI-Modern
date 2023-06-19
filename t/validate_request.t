@@ -628,7 +628,7 @@ paths:
               required: ['key']
 YAML
 
-  $request = request('GET', 'http://example.com/foo?query1={corrupt json',
+  $request = request('GET', 'http://example.com/foo?query1={corrupt json',  # } to mollify vim
     [ 'Header1' => '{corrupt json' ]);
   cmp_deeply(
     ($result = $openapi->validate_request($request, { path_template => '/foo', path_captures => {} }))->TO_JSON,
@@ -1012,7 +1012,7 @@ YAML
   );
 
   $request = request('GET', 'http://example.com/foo', [ 'Content-Type' => 'application/json; charset=UTF-8' ],
-    '{corrupt json');
+    '{corrupt json'); # } to mollify vim
   cmp_deeply(
     ($result = $openapi->validate_request($request, { path_template => '/foo', path_captures => {} }))->TO_JSON,
     {
