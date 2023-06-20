@@ -20,7 +20,7 @@ use JSON::Schema::Modern::Utilities 0.525 qw(E canonical_uri jsonp);
 use Safe::Isa;
 use File::ShareDir 'dist_dir';
 use Path::Tiny;
-use List::Util qw(any pairs);
+use List::Util 'pairs';
 use Ref::Util 'is_plain_hashref';
 use MooX::HandlesVia;
 use MooX::TypeTiny 0.002002;
@@ -211,13 +211,19 @@ sub traverse ($self, $evaluator) {
 
   return $state if $state->{errors}->@*;
 
+  # disregard paths that are not the root of each embedded subschema.
+  # Because the callbacks are executed after the keyword has (recursively) finished evaluating,
+  # for each nested schema group. the schema paths appear longest first, with the parent schema
+  # appearing last. Therefore we can whittle down to the parent schema for each group by iterating
+  # through the full list in reverse, and checking if it is a child of the last path we chose to save.
   my @real_json_schema_paths;
-  foreach my $path (sort @json_schema_paths) {
-    # disregard paths that are not the root of each embedded subschema.
-    next if any { $path =~ m{^\Q$_\E(?:/|\z)} } @real_json_schema_paths;
+  for (my $idx = $#json_schema_paths; $idx >= 0; --$idx) {
+    next if $idx != $#json_schema_paths
+      and substr($json_schema_paths[$idx], 0, length($real_json_schema_paths[-1])+1)
+        eq $real_json_schema_paths[-1].'/';
 
-    unshift @real_json_schema_paths, $path;
-    $self->_traverse_schema($self->get($path), { %$state, schema_path => $path });
+    push @real_json_schema_paths, $json_schema_paths[$idx];
+    $self->_traverse_schema($self->get($json_schema_paths[$idx]), { %$state, schema_path => $json_schema_paths[$idx] });
   }
 
   foreach my $pair (@operation_paths) {
