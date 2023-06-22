@@ -2,8 +2,8 @@ use strict;
 use warnings;
 package OpenAPI::Modern;
 # vim: set ts=8 sts=2 sw=2 tw=100 et :
-# ABSTRACT: Validate HTTP requests and responses against an OpenAPI document
-# KEYWORDS: validation evaluation JSON Schema OpenAPI Swagger HTTP request response
+# ABSTRACT: Validate HTTP requests and responses against an OpenAPI v3.1 document
+# KEYWORDS: validation evaluation JSON Schema OpenAPI v3.1 Swagger HTTP request response
 
 our $VERSION = '0.046';
 
