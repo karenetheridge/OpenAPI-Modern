@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.046     2023-06-24 21:56:39Z
           - extra validation for Transfer-Encoding response header
 
