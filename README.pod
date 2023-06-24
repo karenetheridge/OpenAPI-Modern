@@ -4,11 +4,11 @@
 
 =head1 NAME
 
-OpenAPI::Modern - Validate HTTP requests and responses against an OpenAPI document
+OpenAPI::Modern - Validate HTTP requests and responses against an OpenAPI v3.1 document
 
 =head1 VERSION
 
-version 0.045
+version 0.046
 
 =head1 SYNOPSIS
 
