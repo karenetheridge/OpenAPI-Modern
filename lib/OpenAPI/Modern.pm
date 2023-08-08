@@ -527,6 +527,8 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
   # does not include charset
   my $content_type = fc((split(/;/, $message->headers->content_type//'', 2))[0] // '');
 
+  # RFC9112 §6.3-7 requires that Content-Length is provided when there is a request body
+  # XXX TODO check if this is request, not response
   return E({ %$state, data_path => $state->{data_path} =~ s{body}{header/Content-Type}r, keyword => 'content' },
       'missing header: Content-Type')
     if not length $content_type;
