@@ -28,7 +28,6 @@ use URI::Escape ();
 use JSON::Schema::Modern 0.557;
 use JSON::Schema::Modern::Utilities 0.531 qw(jsonp unjsonp canonical_uri E abort is_equal is_elements_unique);
 use JSON::Schema::Modern::Document::OpenAPI;
-use MooX::HandlesVia;
 use MooX::TypeTiny 0.002002;
 use Types::Standard 'InstanceOf';
 use constant { true => JSON::PP::true, false => JSON::PP::false };
