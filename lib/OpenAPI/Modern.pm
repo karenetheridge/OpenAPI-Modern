@@ -154,6 +154,10 @@ sub validate_request ($self, $request, $options = {}) {
 
     $state->{schema_path} = jsonp($state->{schema_path}, $method);
 
+    ()= E({ %$state, data_path => jsonp($state->{data_path}, 'header') },
+        'RFC9112 §6.2-2: A sender MUST NOT send a Content-Length header field in any message that contains a Transfer-Encoding header field')
+      if defined $request->headers->content_length and $request->content->is_chunked;
+
     # RFC9112 §6.3-7: A user agent that sends a request that contains a message body MUST send
     # either a valid Content-Length header field or use the chunked transfer coding.
     ()= E({ %$state, data_path => jsonp($state->{data_path}, 'header') }, 'missing header: Content-Length')
@@ -245,6 +249,10 @@ sub validate_response ($self, $response, $options = {}) {
         'RFC9112 §6.1-10: A server MUST NOT send a Transfer-Encoding header field in any 2xx (Successful) response to a CONNECT request')
         if $response->is_success and $method eq 'connect';
     }
+
+    ()= E({ %$state, data_path => jsonp($state->{data_path}, 'header') },
+        'RFC9112 §6.2-2: A sender MUST NOT send a Content-Length header field in any message that contains a Transfer-Encoding header field')
+      if defined $response->headers->content_length and $response->content->is_chunked;
 
     my $response_name = first { exists $operation->{responses}{$_} }
       $response->code, substr(sprintf('%03s', $response->code), 0, -2).'XX', 'default';
