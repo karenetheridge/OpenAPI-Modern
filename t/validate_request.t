@@ -838,6 +838,29 @@ YAML
     'request body is missing',
   );
 
+  TODO: {
+    local $TODO = 'mojo will strip the content body when parsing a request without Content-Length'
+      if $::TYPE eq 'lwp';
+    $request = request('POST', 'http://example.com/foo', [ 'Content-Type' => 'text/plain' ], 'éclair');
+    $request->headers->${$request->isa('Mojo::Message::Request') ? \'remove' : \'remove_header'}('Content-Length');
+
+    cmp_deeply(
+      ($result = $openapi->validate_request($request, { path_template => '/foo', path_captures => {} }))->TO_JSON,
+      {
+        valid => false,
+        errors => [
+          {
+            instanceLocation => '/request/header',
+            keywordLocation => jsonp(qw(/paths /foo post)),
+            absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post)))->to_string,
+            error => 'missing header: Content-Length',
+          },
+        ],
+      },
+      'Content-Length is required in requests with a message body',
+    );
+  }
+
   $request = request('POST', 'http://example.com/foo', [ 'Content-Type' => 'text/bloop' ], 'plain text');
   cmp_deeply(
     ($result = $openapi->validate_request($request, { path_template => '/foo', path_captures => {} }))->TO_JSON,

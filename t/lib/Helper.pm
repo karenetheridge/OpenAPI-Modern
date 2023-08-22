@@ -40,6 +40,9 @@ sub request ($method, $uri_string, $headers = [], $body_content = undef) {
     }
     $req->headers->header('Host', $host) if $host;
     $req->body($body_content) if defined $body_content;
+
+    # add missing Content-Length, etc
+    $req->fix_headers;
   }
   else {
     die '$TYPE '.$TYPE.' not supported';

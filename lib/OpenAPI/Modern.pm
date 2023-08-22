@@ -152,8 +152,15 @@ sub validate_request ($self, $request, $options = {}) {
         if not exists $request_parameters_processed->{path}{$path_name};
     }
 
-    $state->{data_path} = jsonp($state->{data_path}, 'body');
     $state->{schema_path} = jsonp($state->{schema_path}, $method);
+
+    # RFC9112 §6.3-7: A user agent that sends a request that contains a message body MUST send
+    # either a valid Content-Length header field or use the chunked transfer coding.
+    ()= E({ %$state, data_path => jsonp($state->{data_path}, 'header') }, 'missing header: Content-Length')
+      if $request->body_size and not $request->headers->content_length
+        and not $request->content->is_chunked;
+
+    $state->{data_path} = jsonp($state->{data_path}, 'body');
 
     if (my $body_obj = $operation->{requestBody}) {
       $state->{schema_path} = jsonp($state->{schema_path}, 'requestBody');
@@ -162,7 +169,7 @@ sub validate_request ($self, $request, $options = {}) {
         $body_obj = $self->_resolve_ref('request-body', $ref, $state);
       }
 
-      if ($request->headers->content_length // $request->body_size) {
+      if ($request->body_size) {
         $self->_validate_body_content($state, $body_obj->{content}, $request);
       }
       elsif ($body_obj->{required}) {
