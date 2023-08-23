@@ -29,7 +29,7 @@ sub request ($method, $uri_string, $headers = [], $body_content = undef) {
     my $uri = URI->new($uri_string);
     my $host = $uri->$_call_if_can('host');
     $req = HTTP::Request->new($method => $uri, [ @$headers, $host ? ( Host => $host ) : () ], $body_content);
-    $req->protocol('HTTP/1.1'); # not added by HTTP::Request constructor
+    $req->protocol('HTTP/1.1'); # required, but not added by HTTP::Request constructor
   }
   elsif ($TYPE eq 'mojo') {
     my $uri = Mojo::URL->new($uri_string);

@@ -181,6 +181,7 @@ sub validate_request ($self, $request, $options = {}) {
       }
     }
     else {
+      # we presume that no body specification for GET and HEAD requests -> no body is expected
       ()= E($state, 'unspecified body is present in %s request', uc $method)
         if ($method eq 'get' or $method eq 'head')
           and $request->headers->content_length // $request->body_size;
