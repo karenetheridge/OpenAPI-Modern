@@ -82,6 +82,9 @@ around BUILDARGS => sub ($orig, $class, @args) {
 };
 
 sub validate_request ($self, $request, $options = {}) {
+  croak '$request and $options->{request} are inconsistent'
+    if $request and $options->{request} and $request != $options->{request};
+
   my $state = {
     data_path => '/request',
     initial_schema_uri => $self->openapi_uri,   # the canonical URI as of the start or last $id, or the last traversed $ref
@@ -92,8 +95,6 @@ sub validate_request ($self, $request, $options = {}) {
   };
 
   try {
-    croak '$request and $options->{request} are inconsistent'
-      if $request and $options->{request} and $request != $options->{request};
     $options->{request} //= $request;
     my $path_ok = $self->find_path($options);
     $request = $options->{request};   # now guaranteed to be a Mojo::Message::Request
