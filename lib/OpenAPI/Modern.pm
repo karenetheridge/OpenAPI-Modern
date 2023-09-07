@@ -25,7 +25,7 @@ use Scalar::Util 'looks_like_number';
 use Feature::Compat::Try;
 use Encode 2.89;
 use URI::Escape ();
-use JSON::Schema::Modern 0.557;
+use JSON::Schema::Modern 0.560;
 use JSON::Schema::Modern::Utilities 0.531 qw(jsonp unjsonp canonical_uri E abort is_equal is_elements_unique);
 use JSON::Schema::Modern::Document::OpenAPI;
 use MooX::TypeTiny 0.002002;
@@ -492,6 +492,7 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
   return 1 if grep fc $header_name eq fc $_, qw(Accept Content-Type Authorization);
 
   # NOTE: for now, we will only support a single header value.
+  # TODO: explode multiple values into an array when type: array is requested.
   @$headers = map s/^\s*//r =~ s/\s*$//r, @$headers;
 
   if (not @$headers) {
@@ -535,7 +536,10 @@ sub _validate_parameter_content ($self, $state, $param_obj, $content_ref) {
     return $self->_evaluate_subschema($content_ref->$*, $schema, $state);
   }
 
-  $state = { %$state, schema_path => jsonp($state->{schema_path}, 'schema') };
+  # TODO: handle multi-valued elements like headers and query parameters, when type=array
+  # requested, and consider 'style' and 'explode' settings
+
+  $state = { %$state, schema_path => jsonp($state->{schema_path}, 'schema'), stringy_numbers => 1 };
   $self->_evaluate_subschema($content_ref->$*, $param_obj->{schema}, $state);
 }
 
@@ -660,18 +664,6 @@ sub _evaluate_subschema ($self, $data, $schema, $state) {
 
   return 1 if !keys(%$schema);  # schema is {}
 
-  # treat numeric-looking data as a string, unless "type" explicitly requests number or integer.
-  if (is_plain_hashref($schema) and exists $schema->{type} and not is_plain_arrayref($schema->{type})
-      and grep $schema->{type} eq $_, qw(number integer) and looks_like_number($data)) {
-    $data = $data+0;
-  }
-  elsif (defined $data and not is_ref($data)) {
-    $data = $data.'';
-  }
-
-  # TODO: also handle multi-valued elements like headers and query parameters, when type=array requested
-  # (and possibly coerce their numeric-looking elements as well)
-
   my $result = $self->evaluator->evaluate(
     $data, canonical_uri($state),
     {
@@ -679,6 +671,7 @@ sub _evaluate_subschema ($self, $data, $schema, $state) {
       traversed_schema_path => $state->{traversed_schema_path}.$state->{schema_path},
       effective_base_uri => $state->{effective_base_uri},
       collect_annotations => 1,
+      $state->{stringy_numbers} ? ( stringy_numbers => 1 ) : (),
     },
   );
 

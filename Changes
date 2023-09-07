@@ -1,6 +1,9 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - strings are now treated as numbers without requiring the "type"
+            keyword, and only from parameters, not message bodies, and only
+            when no media type is provided
 
 0.046     2023-06-24 21:56:39Z
           - extra validation for Transfer-Encoding response header

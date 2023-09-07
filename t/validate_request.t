@@ -1312,86 +1312,141 @@ YAML
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
-  /foo/{foo_id}:
+  /foo/{path_plain}/bar/{path_encoded}:
     parameters:
-    - name: foo_id
+    - name: path_plain
       in: path
       required: true
       schema:
-        type: number
+        type: integer
         maximum: 10
+    - name: path_encoded
+      in: path
+      required: true
+      content:
+        text/plain:
+          schema:
+            type: integer
+            maximum: 10
     post:
       parameters:
-      - name: bar
+      - name: query_plain
         in: query
         required: false
         schema:
           type: integer
           maximum: 10
-      - name: Foo-Bar
+      - name: query_encoded
+        in: query
+        required: false
+        content:
+          text/plain:
+            schema:
+              type: integer
+              maximum: 10
+      - name: Header-Plain
         in: header
         required: false
         schema:
-          type: number
+          type: integer
           maximum: 10
+      - name: Header-Encoded
+        in: header
+        required: false
+        content:
+          text/plain:
+            schema:
+              type: integer
+              maximum: 10
       requestBody:
         required: true
         content:
           text/plain:
             schema:
-              type: number
+              type: integer
               maximum: 10
 YAML
 
+  $request = request('POST', 'http://example.com/foo/11/bar/12?query_plain=13&query_encoded=14',
+    [ 'Header-Plain' => 15, 'Header-Encoded' => 16, 'Content-Type' => 'text/plain' ], 17);
   cmp_deeply(
-    ($result = $openapi->validate_request($request,
-      { path_template => '/foo/{foo_id}', path_captures => { foo_id => 123 } }))->TO_JSON,
+    ($result = $openapi->validate_request($request, { path_template => '/foo/{path_plain}/bar/{path_encoded}', path_captures => { path_plain => 11, path_encoded => 12 } }))->TO_JSON,
     {
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/uri/query/bar',
-          keywordLocation => jsonp('/paths', '/foo/{foo_id}', qw(post parameters 0 schema maximum)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}', qw(post parameters 0 schema maximum)))->to_string,
+          instanceLocation => '/request/uri/query/query_plain',
+          keywordLocation => jsonp('/paths', '/foo/{path_plain}/bar/{path_encoded}', qw(post parameters 0 schema maximum)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{path_plain}/bar/{path_encoded}', qw(post parameters 0 schema maximum)))->to_string,
           error => 'value is larger than 10',
         },
         {
-          instanceLocation => '/request/header/Foo-Bar',
-          keywordLocation => jsonp('/paths', '/foo/{foo_id}', qw(post parameters 1 schema maximum)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}', qw(post parameters 1 schema maximum)))->to_string,
+          instanceLocation => '/request/uri/query/query_encoded',
+          keywordLocation => jsonp('/paths', '/foo/{path_plain}/bar/{path_encoded}', qw(post parameters 1 content text/plain schema type)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{path_plain}/bar/{path_encoded}', qw(post parameters 1 content text/plain schema type)))->to_string,
+          error => 'got string, not integer',
+        },
+        {
+          instanceLocation => '/request/header/Header-Plain',
+          keywordLocation => jsonp('/paths', '/foo/{path_plain}/bar/{path_encoded}', qw(post parameters 2 schema maximum)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{path_plain}/bar/{path_encoded}', qw(post parameters 2 schema maximum)))->to_string,
           error => 'value is larger than 10',
         },
         {
-          instanceLocation => '/request/uri/path/foo_id',
-          keywordLocation => jsonp('/paths', '/foo/{foo_id}', qw(parameters 0 schema maximum)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}', qw(parameters 0 schema maximum)))->to_string,
+          instanceLocation => '/request/header/Header-Encoded',
+          keywordLocation => jsonp('/paths', '/foo/{path_plain}/bar/{path_encoded}', qw(post parameters 3 content text/plain schema type)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{path_plain}/bar/{path_encoded}', qw(post parameters 3 content text/plain schema type)))->to_string,
+          error => 'got string, not integer',
+        },
+        {
+          instanceLocation => '/request/uri/path/path_plain',
+          keywordLocation => jsonp('/paths', '/foo/{path_plain}/bar/{path_encoded}', qw(parameters 0 schema maximum)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{path_plain}/bar/{path_encoded}', qw(parameters 0 schema maximum)))->to_string,
           error => 'value is larger than 10',
+        },
+        {
+          instanceLocation => '/request/uri/path/path_encoded',
+          keywordLocation => jsonp('/paths', '/foo/{path_plain}/bar/{path_encoded}', qw(parameters 1 content text/plain schema type)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{path_plain}/bar/{path_encoded}', qw(parameters 1 content text/plain schema type)))->to_string,
+          error => 'got string, not integer',
         },
         {
           instanceLocation => '/request/body',
-          keywordLocation => jsonp('/paths', '/foo/{foo_id}', qw(post requestBody content text/plain schema maximum)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}', qw(post requestBody content text/plain schema maximum)))->to_string,
-          error => 'value is larger than 10',
+          keywordLocation => jsonp('/paths', '/foo/{path_plain}/bar/{path_encoded}', qw(post requestBody content text/plain schema type)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{path_plain}/bar/{path_encoded}', qw(post requestBody content text/plain schema type)))->to_string,
+          error => 'got string, not integer',
         },
       ],
     },
-    'numeric values are treated as numbers when explicitly type-checked as numbers',
+    'numeric values are treated as numbers when explicitly type-checked as numbers, but only when not encoded',
   );
 
 
   my $val = 20; my $str = sprintf("%s\n", $val);
-  $request = request('POST', 'http://example.com/foo/9', [ 'Content-Type' => 'text/plain' ], $val);
+  $request = request('POST', 'http://example.com/foo/20/bar/hi', [ 'Content-Type' => 'text/plain' ], $val);
   cmp_deeply(
     ($result = $openapi->validate_request($request,
-      { path_template => '/foo/{foo_id}', path_captures => { foo_id => 9 } }))->TO_JSON,
+      { path_template => '/foo/{path_plain}/bar/{path_encoded}', path_captures => { path_plain => $val, path_encoded => 'hi' } }))->TO_JSON,
     {
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/body',
-          keywordLocation => jsonp('/paths', '/foo/{foo_id}', qw(post requestBody content text/plain schema maximum)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{foo_id}', qw(post requestBody content text/plain schema maximum)))->to_string,
+          instanceLocation => '/request/uri/path/path_plain',
+          keywordLocation => jsonp('/paths', '/foo/{path_plain}/bar/{path_encoded}', qw(parameters 0 schema maximum)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{path_plain}/bar/{path_encoded}', qw(parameters 0 schema maximum)))->to_string,
           error => 'value is larger than 10',
+        },
+        {
+          instanceLocation => '/request/uri/path/path_encoded',
+          keywordLocation => jsonp('/paths', '/foo/{path_plain}/bar/{path_encoded}', qw(parameters 1 content text/plain schema type)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{path_plain}/bar/{path_encoded}', qw(parameters 1 content text/plain schema type)))->to_string,
+          error => 'got string, not integer',
+        },
+        {
+          instanceLocation => '/request/body',
+          keywordLocation => jsonp('/paths', '/foo/{path_plain}/bar/{path_encoded}', qw(post requestBody content text/plain schema type)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo/{path_plain}/bar/{path_encoded}', qw(post requestBody content text/plain schema type)))->to_string,
+          error => 'got string, not integer',
         },
       ],
     },
