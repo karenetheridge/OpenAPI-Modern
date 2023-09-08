@@ -25,6 +25,7 @@ use Ref::Util 'is_plain_hashref';
 use MooX::HandlesVia;
 use MooX::TypeTiny 0.002002;
 use Types::Standard qw(InstanceOf HashRef Str Enum);
+use Storable 'dclone';
 use namespace::clean;
 
 extends 'JSON::Schema::Modern::Document';
@@ -243,6 +244,25 @@ sub traverse ($self, $evaluator) {
   return $state;
 }
 
+sub recursive_get ($self, $json_pointer) {
+  my $base = $self->canonical_uri;
+  my $uri = Mojo::URL->new->fragment($json_pointer);
+  my ($depth, $schema);
+
+  while ($uri) {
+    die 'maximum evaluation depth exceeded' if $depth++ > $self->evaluator->max_traversal_depth;
+    $uri = Mojo::URL->new($uri)->to_abs($base);
+    my $schema_info = $self->evaluator->_fetch_from_uri($uri);
+    die('unable to find resource ', $uri) if not $schema_info;
+    $schema = $schema_info->{schema};
+    $base = $schema_info->{canonical_uri};
+    $uri = $schema->{'$ref'};
+  }
+
+  $schema = dclone($schema);
+  return wantarray ? ($schema, $base) : $schema;
+}
+
 ######## NO PUBLIC INTERFACES FOLLOW THIS POINT ########
 
 sub _add_vocab_and_default_schemas ($self) {
@@ -367,6 +387,12 @@ longer be assumed.
 Returns the json pointer location of the operation containing the provided C<operationId> (suitable
 for passing to C<< $document->get(..) >>), or C<undef> if the location does not exist in the
 document.
+
+=head2 recursive_get
+
+Given a json pointer, get the schema at that location, resolving any C<$ref>s along the way.
+Returns the schema data in scalar context, or a tuple of the schema data and the canonical URI of
+the referenced location in list context.
 
 =head1 SEE ALSO
 

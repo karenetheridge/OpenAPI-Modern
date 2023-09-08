@@ -883,6 +883,9 @@ used for validation.
 
 Fetches the subschema at the provided JSON pointer.
 Proxies to L<JSON::Schema::Modern::Document::OpenAPI/get>.
+This is not recursive (does not follow C<$ref> chains) -- for that, use
+C<< $openapi->openapi_document->recursive_get($json_pointer) >>, in
+L<JSON::Schema::Modern::Document::OpenAPI/recursive_get>.
 
 =head2 evaluator
 

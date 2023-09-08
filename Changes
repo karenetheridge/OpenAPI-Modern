@@ -4,6 +4,9 @@ Revision history for OpenAPI-Modern
           - strings are now treated as numbers without requiring the "type"
             keyword, and only from parameters, not message bodies, and only
             when no media type is provided
+          - new "recursive_get" method on
+            JSON::Schema::Modern::Document::OpenAPI for fetching a
+            specification at a json pointer and following any $refs
 
 0.046     2023-06-24 21:56:39Z
           - extra validation for Transfer-Encoding response header
