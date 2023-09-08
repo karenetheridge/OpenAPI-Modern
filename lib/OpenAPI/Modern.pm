@@ -877,6 +877,13 @@ The data structure describing the OpenAPI document. See L<the specification/http
 The L<JSON::Schema::Modern::Document::OpenAPI> document that holds the OpenAPI information to be
 used for validation.
 
+=head2 document_get
+
+  my $parameter_data = $openapi->document_get('/paths/~1foo~1{foo_id}/get/parameters/0');
+
+Fetches the subschema at the provided JSON pointer.
+Proxies to L<JSON::Schema::Modern::Document::OpenAPI/get>.
+
 =head2 evaluator
 
 The L<JSON::Schema::Modern> object to use for all URI resolution and JSON Schema evaluation.
