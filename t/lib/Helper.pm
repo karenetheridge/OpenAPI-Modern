@@ -14,6 +14,7 @@ use HTTP::Response;
 use HTTP::Status ();
 use Mojo::Message::Request;
 use Mojo::Message::Response;
+use Test2::API 'context_do';
 
 # type can be
 # 'lwp': classes of type URI, HTTP::Headers, HTTP::Request, HTTP::Response
@@ -119,6 +120,23 @@ sub document_result ($document) {
     valid => $document->has_errors,
     errors => [ $document->errors ],
   );
+}
+
+# deep comparison, with strict typing
+sub is_equal ($x, $y, $test_name = undef) {
+  context_do {
+    my $ctx = shift;
+    my ($x, $y, $test_name) = @_;
+    my $equal = JSON::Schema::Modern::Utilities::is_equal($x, $y, my $state = {});
+    if ($equal) {
+      $ctx->pass($test_name);
+    }
+    else {
+      $ctx->fail($test_name);
+      $ctx->note('structures differ'.($state->{path} ? ' starting at '.$state->{path} : ''));
+    }
+    return $equal;
+  } $x, $y, $test_name;
 }
 
 1;
