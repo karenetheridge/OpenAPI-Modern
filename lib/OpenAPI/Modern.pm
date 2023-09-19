@@ -237,7 +237,7 @@ sub validate_response ($self, $response, $options = {}) {
     $response = _convert_response($response);   # now guaranteed to be a Mojo::Message::Response
 
     if (my $error = $response->error) {
-      ()= E($state, $response->error->{message});
+      ()= E($state, $error->{message});
       return $self->_result($state, 1);
     }
 
@@ -316,7 +316,7 @@ sub find_path ($self, $options) {
   };
 
   if ($options->{request} and my $error = $options->{request}->error) {
-    ()= E({ %$state, data_path => '/request' }, $options->{request}->error->{message});
+    ()= E({ %$state, data_path => '/request' }, $error->{message});
     return $self->_result($state, 1);
   }
 
