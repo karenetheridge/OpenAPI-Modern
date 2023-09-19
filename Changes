@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.047     2023-09-19 04:29:16Z
           - strings are now treated as numbers without requiring the "type"
             keyword, and only from parameters, not message bodies, and only
             when no media type is provided
