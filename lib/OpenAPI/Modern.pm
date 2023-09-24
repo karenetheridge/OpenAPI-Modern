@@ -533,14 +533,14 @@ sub _validate_parameter_content ($self, $state, $param_obj, $content_ref) {
     }
 
     $state = { %$state, schema_path => jsonp($state->{schema_path}, 'content', $media_type, 'schema') };
-    return $self->_evaluate_subschema($content_ref->$*, $schema, $state);
+    return $self->_evaluate_subschema($content_ref, $schema, $state);
   }
 
   # TODO: handle multi-valued elements like headers and query parameters, when type=array
   # requested, and consider 'style' and 'explode' settings
 
   $state = { %$state, schema_path => jsonp($state->{schema_path}, 'schema'), stringy_numbers => 1 };
-  $self->_evaluate_subschema($content_ref->$*, $param_obj->{schema}, $state);
+  $self->_evaluate_subschema($content_ref, $param_obj->{schema}, $state);
 }
 
 sub _validate_body_content ($self, $state, $content_obj, $message) {
@@ -611,7 +611,7 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
   return if not defined $schema;
 
   $state = { %$state, schema_path => jsonp($state->{schema_path}, 'content', $media_type, 'schema') };
-  $self->_evaluate_subschema($content_ref->$*, $schema, $state);
+  $self->_evaluate_subschema($content_ref, $schema, $state);
 }
 
 # wrap a result object around the errors
@@ -647,7 +647,7 @@ sub _resolve_ref ($self, $entity_type, $ref, $state) {
 }
 
 # evaluates data against the subschema at the current state location
-sub _evaluate_subschema ($self, $data, $schema, $state) {
+sub _evaluate_subschema ($self, $dataref, $schema, $state) {
   # boolean schema
   if (not is_plain_hashref($schema)) {
     return 1 if $schema;
@@ -665,7 +665,7 @@ sub _evaluate_subschema ($self, $data, $schema, $state) {
   return 1 if !keys(%$schema);  # schema is {}
 
   my $result = $self->evaluator->evaluate(
-    $data, canonical_uri($state),
+    $dataref->$*, canonical_uri($state),
     {
       data_path => $state->{data_path},
       traversed_schema_path => $state->{traversed_schema_path}.$state->{schema_path},
