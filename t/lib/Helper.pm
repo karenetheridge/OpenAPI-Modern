@@ -21,6 +21,7 @@ use Mojo::Message::Response;
 our @TYPES = qw(lwp mojo);
 our $TYPE;
 
+# Note: if you want your query parameters or uri fragment to be normalized, set them afterwards
 sub request ($method, $uri_string, $headers = [], $body_content = undef) {
   die '$TYPE is not set' if not defined $TYPE;
 
@@ -85,6 +86,24 @@ sub uri ($uri_string, @path_parts) {
   elsif ($TYPE eq 'mojo') {
     $uri = Mojo::URL->new($uri_string);
     $uri->path->parts(\@path_parts) if @path_parts;
+  }
+  else {
+    die '$TYPE '.$TYPE.' not supported';
+  }
+
+  return $uri;
+}
+
+# sets query parameters on the request
+sub query_params ($request, $pairs) {
+  die '$TYPE is not set' if not defined $TYPE;
+
+  my $uri;
+  if ($TYPE eq 'lwp') {
+    $request->uri->query_form($pairs);
+  }
+  elsif ($TYPE eq 'mojo') {
+    $request->url->query->pairs($pairs);
   }
   else {
     die '$TYPE '.$TYPE.' not supported';

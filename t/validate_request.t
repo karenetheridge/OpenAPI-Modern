@@ -537,7 +537,8 @@ YAML
     'after adding wildcard support, this parameter can be parsed',
   );
 
-  $request = request('POST', 'http://example.com/foo?alpha=1&epsilon={"foo":42}', [ Alpha => 1 ]);
+  $request = request('POST', 'http://example.com/foo', [ Alpha => 1 ]);
+  query_params($request, [alpha => 1, epsilon => '{"foo":42}']);
   cmp_deeply(
     ($result = $openapi->validate_request($request, { path_template => '/foo', path_captures => {} }))->TO_JSON,
     {
@@ -628,8 +629,8 @@ paths:
               required: ['key']
 YAML
 
-  $request = request('GET', 'http://example.com/foo?query1={corrupt json',  # } to mollify vim
-    [ 'Header1' => '{corrupt json' ]);
+  $request = request('GET', 'http://example.com/foo', [ 'Header1' => '{corrupt json' ]); # } for vim
+  query_params($request, [query1 => '{corrupt json']); # } for vim
   cmp_deeply(
     ($result = $openapi->validate_request($request, { path_template => '/foo', path_captures => {} }))->TO_JSON,
     {
@@ -652,8 +653,8 @@ YAML
     'errors during media-type decoding are detected',
   );
 
-  $request = request('GET', 'http://example.com/foo?query1={"hello":"there"}',
-    [ 'Header1' => '{"hello":"there"}' ]);
+  $request = request('GET', 'http://example.com/foo', [ 'Header1' => '{"hello":"there"}' ]);
+  query_params($request, [query1 => '{"hello":"there"}']);
   cmp_deeply(
     ($result = $openapi->validate_request($request, { path_template => '/foo', path_captures => {} }))->TO_JSON,
     {
