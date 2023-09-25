@@ -279,6 +279,7 @@ subtest 'query parameters' => sub {
           error => 'allowReserved: true is not yet supported',
         },
       ],
+      todo => 'allowReserved not yet supported',
     },
     {
       param_obj => { name => 'color', in => 'query', schema => { type => 'integer' } },

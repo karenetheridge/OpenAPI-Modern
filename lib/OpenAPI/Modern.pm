@@ -488,12 +488,12 @@ sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
     return 1;
   }
 
+  # TODO: check 'allowEmptyValue'; difficult to do without access to the raw request string
+
   return $self->_validate_parameter_content($state, $param_obj, \ $query_params->{$param_obj->{name}})
     if exists $param_obj->{content};
 
-  # TODO: check 'allowReserved': if true, do not use percent-decoding
-  return E({ %$state, keyword => 'allowReserved' }, 'allowReserved: true is not yet supported')
-    if $param_obj->{allowReserved} // 0;
+  # TODO: check 'allowReserved'; difficult to do without access to the raw request string
 
   # TODO: support different styles.
   # for now, we only support style=form and do not allow for multiple values per
