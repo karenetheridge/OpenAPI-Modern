@@ -136,7 +136,7 @@ sub validate_request ($self, $request, $options = {}) {
         my $valid =
             $param_obj->{in} eq 'path' ? $self->_validate_path_parameter($state, $param_obj, $path_captures)
           : $param_obj->{in} eq 'query' ? $self->_validate_query_parameter($state, $param_obj, $request->url)
-          : $param_obj->{in} eq 'header' ? $self->_validate_header_parameter($state, $param_obj->{name}, $param_obj, [ $request->headers->header($param_obj->{name}) // () ])
+          : $param_obj->{in} eq 'header' ? $self->_validate_header_parameter($state, $param_obj->{name}, $param_obj, $request->headers->header($param_obj->{name}))
           : $param_obj->{in} eq 'cookie' ? $self->_validate_cookie_parameter($state, $param_obj, $request)
           : abort($state, 'unrecognized "in" value "%s"', $param_obj->{in});
       }
@@ -280,7 +280,7 @@ sub validate_response ($self, $response, $options = {}) {
 
       ()= $self->_validate_header_parameter({ %$state,
           data_path => jsonp($state->{data_path}, 'header', $header_name) },
-        $header_name, $header_obj, [ $response->headers->header($header_name) // () ]);
+        $header_name, $header_obj, $response->headers->header($header_name));
     }
 
     $self->_validate_body_content({ %$state, data_path => jsonp($state->{data_path}, 'body') },
@@ -514,33 +514,39 @@ sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
 }
 
 # validates a header, from either the request or the response
-sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $headers) {
+sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $header_string) {
   return 1 if grep fc $header_name eq fc $_, qw(Accept Content-Type Authorization);
 
-  # NOTE: for now, we will only support a single header value.
-  # TODO: explode multiple values into an array when type: array is requested.
-  @$headers = map s/^\s*//r =~ s/\s*$//r, @$headers;
-
-  if (not @$headers) {
+  if (not defined $header_string) {
     return E({ %$state, keyword => 'required' }, 'missing header: %s', $header_name)
       if $header_obj->{required};
     return 1;
   }
 
-  return $self->_validate_parameter_content($state, $header_obj, \ $headers->[0])
+  return $self->_validate_parameter_content($state, $header_obj, \ $header_string)
     if exists $header_obj->{content};
+
+  # "The field value does not include any leading or trailing whitespace: OWS occurring before the
+  # first non-whitespace octet of the field value or after the last non-whitespace octet of the
+  # field value ought to be excluded by parsers when extracting the field value from a header field."
+  $header_string =~ s/^\s*//;
+  $header_string =~ s/\s*$//;
 
   # TODO: handle multi-valued elements in headers, when type=array
   # requested, and consider 'explode' settings
 
+  my $data;
   my $types = is_plain_hashref($header_obj->{schema}) ? $header_obj->{schema}{type}//[] : [];
   $types = [ $types ] if not is_plain_arrayref($types);
   if (grep $_ eq 'array', @$types or grep $_ eq 'object', @$types) {
     return E($state, 'deserializing to non-primitive types is not yet supported in headers');
   }
+  else {
+    $data = join(', ', split(/\s*,\s*/, $header_string));
+  }
 
   $state = { %$state, schema_path => jsonp($state->{schema_path}, 'schema'), stringy_numbers => 1 };
-  $self->_evaluate_subschema(\ $headers->[0], $header_obj->{schema}, $state);
+  $self->_evaluate_subschema(\ $data, $header_obj->{schema}, $state);
 }
 
 sub _validate_cookie_parameter ($self, $state, $param_obj, $request) {
@@ -1058,8 +1064,7 @@ Only certain permutations of OpenAPI documents are supported at this time:
 * for path parameters, only C<style: simple> and C<explode: false> is supported
 * for query parameters, only C<style: form> and C<explode: true> is supported, only the first value
   of each parameter name is considered, and C<allowEmptyValue> and C<allowReserved> are not checked
-* for header parameters, only C<style: simple> and C<explode: false> is supported and only the first
-  header line is considered
+* for header parameters, only C<style: simple> and C<explode: false> is supported
 * cookie parameters are not checked at all yet
 
 =head1 SEE ALSO

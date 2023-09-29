@@ -9,6 +9,7 @@ no if "$]" >= 5.031009, feature => 'indirect';
 no if "$]" >= 5.033001, feature => 'multidimensional';
 no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 use Safe::Isa;
+use List::Util 'pairs';
 use HTTP::Request;
 use HTTP::Response;
 use HTTP::Status ();
@@ -30,17 +31,17 @@ sub request ($method, $uri_string, $headers = [], $body_content = undef) {
   if ($TYPE eq 'lwp') {
     my $uri = URI->new($uri_string);
     my $host = $uri->$_call_if_can('host');
-    $req = HTTP::Request->new($method => $uri, [ @$headers, $host ? ( Host => $host ) : () ], $body_content);
+    $req = HTTP::Request->new($method => $uri, [], $body_content);
+    $req->headers->header(Host => $host) if $host;
+    $req->headers->push_header(@$_) foreach pairs @$headers;
     $req->protocol('HTTP/1.1'); # required, but not added by HTTP::Request constructor
   }
   elsif ($TYPE eq 'mojo') {
     my $uri = Mojo::URL->new($uri_string);
     my $host = $uri->host;
     $req = Mojo::Message::Request->new(method => $method, url => Mojo::URL->new($uri_string));
-    while (my ($name, $value) = splice(@$headers, 0, 2)) {
-      $req->headers->header($name, $value);
-    }
     $req->headers->header('Host', $host) if $host;
+    $req->headers->add(@$_) foreach pairs @$headers;
     $req->body($body_content) if defined $body_content;
 
     # add missing Content-Length, etc

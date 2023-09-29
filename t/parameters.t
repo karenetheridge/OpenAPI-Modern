@@ -450,14 +450,12 @@ subtest 'header parameters' => sub {
       header_obj => { schema => false },
       values => [ ' foo ', '  bar  ' ],
       content => 'foo, bar',
-      todo => 'validate more than the first header',
     },
     {
       name => 'Multiple-Headers-String',
       header_obj => { schema => { type => 'string' } },
       values => [ ' foo ', ' bar ' ],
       content => 'foo, bar',
-      todo => 'validate more than the first header',
     },
     {
       # multiple headers are passed as an array iff when array is requested
@@ -521,7 +519,7 @@ subtest 'header parameters' => sub {
     $headers->add($name, $test->{values}->@*) if defined $test->{values};
 
     ()= $openapi->_validate_header_parameter({ %$state, data_path => '/request/header/'.$name },
-      $name, $test->{header_obj}, [ $headers->header($name) // () ]);
+      $name, $test->{header_obj}, $headers->header($name));
 
     local $TODO = $test->{todo} if $test->{todo};
 

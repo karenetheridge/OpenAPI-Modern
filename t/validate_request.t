@@ -1515,6 +1515,51 @@ YAML
   );
 };
 
+subtest 'parameter parsing' => sub {
+  my $openapi = OpenAPI::Modern->new(
+    openapi_uri => '/api',
+    openapi_schema => $yamlpp->load_string(<<YAML));
+$openapi_preamble
+paths:
+  /foo:
+    get:
+      parameters:
+      - name: SingleValue
+        in: header
+        schema:
+          const: mystring
+      - name: MultipleValuesAsString
+        in: header
+        schema:
+          const: 'one, two, three'
+YAML
+
+  my $request = request('GET', 'http://example.com/foo', [ SingleValue => '  mystring  ']);
+  cmp_deeply(
+    (my $result = $openapi->validate_request($request, { path_template => '/foo', path_captures => {} }))->TO_JSON,
+    { valid => true },
+    'a single header value has its leading and trailing whitespace stripped',
+  );
+
+  $request = request('GET', 'http://example.com/foo', [ MultipleValuesAsString => '  one , two  , three  ']);
+  cmp_deeply(
+    ($result = $openapi->validate_request($request, { path_template => '/foo', path_captures => {} }))->TO_JSON,
+    { valid => true },
+    'multiple values in a single header are validated as a string, with leading and trailing whitespace stripped',
+  );
+
+  $request = request('GET', 'http://example.com/foo', [
+      MultipleValuesAsString => '  one ',
+      MultipleValuesAsString => ' two  ',
+      MultipleValuesAsString => 'three  ',
+    ]);
+  cmp_deeply(
+    ($result = $openapi->validate_request($request, { path_template => '/foo', path_captures => {} }))->TO_JSON,
+    { valid => true },
+    'multiple headers on separate lines are validated as a string, with leading and trailing whitespace stripped',
+  );
+};
+
 subtest 'max_depth' => sub {
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => '/api',

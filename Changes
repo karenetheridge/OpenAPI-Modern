@@ -1,6 +1,8 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - now validating all headers of a given name, not just the first,
+          when provided on the request/response as separate lines
 
 0.047     2023-09-19 04:29:16Z
           - strings are now treated as numbers without requiring the "type"
