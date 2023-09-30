@@ -1532,6 +1532,44 @@ paths:
         in: header
         schema:
           const: 'one, two, three'
+      - name: MultipleValuesAsArray
+        in: header
+        schema:
+          type: array
+          uniqueItems: true
+          minItems: 3
+          maxItems: 3
+          items:
+            enum: [one, two, three]
+      - name: MultipleValuesAsObjectExplodeFalse
+        in: header
+        schema:
+          type: object
+          minProperties: 3
+          maxProperties: 3
+          properties:
+            R:
+              const: '100'
+            G:
+              type: integer
+            B:
+              maximum: 300
+              minimum: 300
+      - name: MultipleValuesAsObjectExplodeTrue
+        in: header
+        explode: true
+        schema:
+          type: object
+          minProperties: 3
+          maxProperties: 3
+          properties:
+            R:
+              const: '100'
+            G:
+              type: integer
+            B:
+              maximum: 300
+              minimum: 300
 YAML
 
   my $request = request('GET', 'http://example.com/foo', [ SingleValue => '  mystring  ']);
@@ -1557,6 +1595,25 @@ YAML
     ($result = $openapi->validate_request($request, { path_template => '/foo', path_captures => {} }))->TO_JSON,
     { valid => true },
     'multiple headers on separate lines are validated as a string, with leading and trailing whitespace stripped',
+  );
+
+  $request = request('GET', 'http://example.com/foo', [ MultipleValuesAsArray => '  one, two, three  ']);
+  cmp_deeply(
+    ($result = $openapi->validate_request($request, { path_template => '/foo', path_captures => {} }))->TO_JSON,
+    { valid => true },
+    'headers can be parsed into an array in order to test multiple values without sorting',
+  );
+
+  $request = request('GET', 'http://example.com/foo', [
+      MultipleValuesAsObjectExplodeFalse => ' R, 100 ',
+      MultipleValuesAsObjectExplodeFalse => ' B, 300,  G , 200 ',
+      MultipleValuesAsObjectExplodeTrue => ' R=100  , B=300 ',
+      MultipleValuesAsObjectExplodeTrue => '  G=200 ',
+    ]);
+  cmp_deeply(
+    ($result = $openapi->validate_request($request, { path_template => '/foo', path_captures => {} }))->TO_JSON,
+    { valid => true },
+    'headers can be parsed into an object, represented in two ways depending on explode value',
   );
 };
 

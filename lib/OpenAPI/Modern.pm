@@ -532,14 +532,25 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
   $header_string =~ s/^\s*//;
   $header_string =~ s/\s*$//;
 
-  # TODO: handle multi-valued elements in headers, when type=array
-  # requested, and consider 'explode' settings
-
-  my $data;
   my $types = is_plain_hashref($header_obj->{schema}) ? $header_obj->{schema}{type}//[] : [];
   $types = [ $types ] if not is_plain_arrayref($types);
-  if (grep $_ eq 'array', @$types or grep $_ eq 'object', @$types) {
-    return E($state, 'deserializing to non-primitive types is not yet supported in headers');
+
+  # all deserialization follows the spec: https://spec.openapis.org/oas/v3.1.0#style-examples
+  # We strip leading and trailing whitespace between fields, as per RFC9112§5.1-3
+  my $data;
+  if (grep $_ eq 'array', @$types) {
+    # style=simple, explode=false or true: "blue,black,brown" -> ["blue","black","brown"]
+    $data = [ split /\s*,\s*/, $header_string ];
+  }
+  elsif (grep $_ eq 'object', @$types) {
+    if ($header_obj->{explode}//false) {
+      # style=simple, explode=true: "R=100,G=200,B=150" -> { "R": 100, "G": 200, "B": 150 }
+      $data = +{ map m/^([^=]*)=?(.*)$/g, split(/\s*,\s*/, $header_string) };
+    }
+    else {
+      # style=simple, explode=false: "R,100,G,200,B,150" -> { "R": 100, "G": 200, "B": 150 }
+      $data = +{ split /\s*,\s*/, $header_string };
+    }
   }
   else {
     $data = join(', ', split(/\s*,\s*/, $header_string));
@@ -1064,7 +1075,6 @@ Only certain permutations of OpenAPI documents are supported at this time:
 * for path parameters, only C<style: simple> and C<explode: false> is supported
 * for query parameters, only C<style: form> and C<explode: true> is supported, only the first value
   of each parameter name is considered, and C<allowEmptyValue> and C<allowReserved> are not checked
-* for header parameters, only C<style: simple> and C<explode: false> is supported
 * cookie parameters are not checked at all yet
 
 =head1 SEE ALSO

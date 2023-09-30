@@ -443,7 +443,6 @@ subtest 'header parameters' => sub {
       header_obj => { schema => { type => 'array' } },
       values => [ 'foo' ],
       content => [ 'foo' ],
-      todo => 'pass multiple values as an array',
     },
     {
       name => 'Multiple-Headers-False',
@@ -463,7 +462,6 @@ subtest 'header parameters' => sub {
       header_obj => { schema => { type => 'array' } },
       values => [ ' foo ', ' bar ' ],
       content => [ 'foo', 'bar' ],
-      todo => 'validate more than the first header',
     },
     {
       # comma-separated values are always normalized
@@ -471,7 +469,6 @@ subtest 'header parameters' => sub {
       header_obj => { schema => { type => 'string' } },
       values => [ ' foo,  bar ' ],
       content => 'foo, bar',
-      todo => 'normalize comma-separated values',
     },
     {
       # split individual values on comma when type=array
@@ -479,28 +476,24 @@ subtest 'header parameters' => sub {
       header_obj => { schema => { type => 'array' } },
       values => [ ' foo,  bar ' ],
       content => [ 'foo', 'bar' ],
-      todo => 'parse as array',
     },
     {
       name => 'Multi-Comma-Headers',
       header_obj => { schema => { type => 'array' } },
       values => [ ' foo,  bar ', ' baz ' ],
       content => [ 'foo', 'bar', 'baz' ],
-      todo => 'parse as array',
     },
     {
       name => 'ObjectExplodeFalse',
       header_obj => { explode => false, schema => { type => 'object' } },
       values => [ ' R, 100 ', ' B, 150,  G , 200 ' ],
       content => { R => '100', G => '200', B => '150' },
-      todo => 'parse as object',
     },
     {
       name => 'ObjectExplodeTrue',
       header_obj => { explode => true, schema => { type => 'object' } },
       values => [ ' R=100  , B=150 ', '  G=200 ' ],
       content => { R => '100', G => '200', B => '150' },
-      todo => 'parse as object',
     },
   );
 
