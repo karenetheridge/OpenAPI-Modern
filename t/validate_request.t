@@ -1235,6 +1235,66 @@ YAML
     },
     'duplicate query parameters in operation section',
   );
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => '/api',
+    openapi_schema => $yamlpp->load_string(<<YAML));
+$openapi_preamble
+paths:
+  /foo:
+    post:
+      requestBody:
+        required: false
+        content:
+          text/plain:
+            schema:
+              minLength: 10
+YAML
+
+  # bypass auto-initialization of Content-Length, Content-Type
+  $request = request('POST', 'http://example.com/foo', [ 'Content-Length' => 1 ], '!');
+  cmp_deeply(
+    ($result = $openapi->validate_request($request, { path_template => '/foo', path_captures => {} }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/header/Content-Type',
+          keywordLocation => jsonp(qw(/paths /foo post requestBody content)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content)))->to_string,
+          error => 'missing header: Content-Type',
+        },
+      ],
+    },
+    'missing Content-Type does not cause an exception',
+  );
+
+  # bypass auto-initialization of Content-Length, Content-Type; leave Content-Length empty
+  $request = request('POST', 'http://example.com/foo', [ 'Content-Type' => 'text/plain' ], '!');
+  cmp_deeply(
+    ($result = $openapi->validate_request($request, { path_template => '/foo', path_captures => {} }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/body',
+          keywordLocation => jsonp(qw(/paths /foo post requestBody content text/plain schema minLength)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content text/plain schema minLength)))->to_string,
+          error => 'length is less than 10',
+        },
+      ],
+    },
+    'missing Content-Length does not prevent the request body from being checked',
+  );
+
+
+  $request = request('POST', 'http://example.com/foo', [ 'Content-Type' => 'text/plain' ]);
+  cmp_deeply(
+    ($result = $openapi->validate_request($request, { path_template => '/foo', path_captures => {} }))->TO_JSON,
+    { valid => true },
+    'request body is missing but not required',
+  );
 };
 
 subtest 'type handling of values for evaluation' => sub {
@@ -1452,66 +1512,6 @@ YAML
       ],
     },
     'ambiguously-typed numbers are still handled gracefully',
-  );
-
-
-  $openapi = OpenAPI::Modern->new(
-    openapi_uri => '/api',
-    openapi_schema => $yamlpp->load_string(<<YAML));
-$openapi_preamble
-paths:
-  /foo:
-    post:
-      requestBody:
-        required: false
-        content:
-          text/plain:
-            schema:
-              minLength: 10
-YAML
-
-  # bypass auto-initialization of Content-Length, Content-Type
-  $request = request('POST', 'http://example.com/foo', [ 'Content-Length' => 1 ], '!');
-  cmp_deeply(
-    ($result = $openapi->validate_request($request, { path_template => '/foo', path_captures => {} }))->TO_JSON,
-    {
-      valid => false,
-      errors => [
-        {
-          instanceLocation => '/request/header/Content-Type',
-          keywordLocation => jsonp(qw(/paths /foo post requestBody content)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content)))->to_string,
-          error => 'missing header: Content-Type',
-        },
-      ],
-    },
-    'missing Content-Type does not cause an exception',
-  );
-
-  # bypass auto-initialization of Content-Length, Content-Type; leave Content-Length empty
-  $request = request('POST', 'http://example.com/foo', [ 'Content-Type' => 'text/plain' ], '!');
-  cmp_deeply(
-    ($result = $openapi->validate_request($request, { path_template => '/foo', path_captures => {} }))->TO_JSON,
-    {
-      valid => false,
-      errors => [
-        {
-          instanceLocation => '/request/body',
-          keywordLocation => jsonp(qw(/paths /foo post requestBody content text/plain schema minLength)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content text/plain schema minLength)))->to_string,
-          error => 'length is less than 10',
-        },
-      ],
-    },
-    'missing Content-Length does not prevent the request body from being checked',
-  );
-
-
-  $request = request('POST', 'http://example.com/foo', [ 'Content-Type' => 'text/plain' ]);
-  cmp_deeply(
-    ($result = $openapi->validate_request($request, { path_template => '/foo', path_captures => {} }))->TO_JSON,
-    { valid => true },
-    'request body is missing but not required',
   );
 };
 
