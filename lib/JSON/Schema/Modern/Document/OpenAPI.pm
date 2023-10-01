@@ -189,6 +189,7 @@ sub traverse ($self, $evaluator) {
       },
     },
   );
+  $self->_add_entity_location($_, 'schema') foreach @json_schema_paths;
 
   if (not $result) {
     $_->mode('evaluate') foreach $result->errors;

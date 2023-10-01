@@ -468,8 +468,7 @@ sub _validate_path_parameter ($self, $state, $param_obj, $path_captures) {
   return E({ %$state, keyword => 'style' }, 'only style: simple is supported in path parameters')
     if ($param_obj->{style}//'simple') ne 'simple';
 
-  my $types = is_plain_hashref($param_obj->{schema}) ? $param_obj->{schema}{type}//[] : [];
-  $types = [ $types ] if not is_plain_arrayref($types);
+  my $types = $self->_type_in_schema($param_obj->{schema}, { %$state, schema_path => jsonp($state->{schema_path}) });
   if (grep $_ eq 'array', @$types or grep $_ eq 'object', @$types) {
     return E($state, 'deserializing to non-primitive types is not yet supported in path parameters');
   }
@@ -503,8 +502,7 @@ sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
   return E({ %$state, keyword => 'style' }, 'only style: form is supported in query parameters')
     if ($param_obj->{style}//'form') ne 'form';
 
-  my $types = is_plain_hashref($param_obj->{schema}) ? $param_obj->{schema}{type}//[] : [];
-  $types = [ $types ] if not is_plain_arrayref($types);
+  my $types = $self->_type_in_schema($param_obj->{schema}, { %$state, schema_path => jsonp($state->{schema_path}) });
   if (grep $_ eq 'array', @$types or grep $_ eq 'object', @$types) {
     return E($state, 'deserializing to non-primitive types is not yet supported in query parameters');
   }
@@ -532,8 +530,7 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
   $header_string =~ s/^\s*//;
   $header_string =~ s/\s*$//;
 
-  my $types = is_plain_hashref($header_obj->{schema}) ? $header_obj->{schema}{type}//[] : [];
-  $types = [ $types ] if not is_plain_arrayref($types);
+  my $types = $self->_type_in_schema($header_obj->{schema}, { %$state, schema_path => jsonp($state->{schema_path}, 'schema') });
 
   # all deserialization follows the spec: https://spec.openapis.org/oas/v3.1.0#style-examples
   # We strip leading and trailing whitespace between fields, as per RFC9112§5.1-3
@@ -692,6 +689,19 @@ sub _resolve_ref ($self, $entity_type, $ref, $state) {
   $state->{schema_path} = '';
 
   return $schema_info->{schema};
+}
+
+# determines the type(s) requested in a schema, and the new schema.
+sub _type_in_schema ($self, $schema, $state) {
+  return [] if not is_plain_hashref($schema);
+
+  while (my $ref = $schema->{'$ref'}) {
+    $schema = $self->_resolve_ref('schema', $ref, $state);
+  }
+  my $types = is_plain_hashref($schema) ? $schema->{type}//[] : [];
+  $types = [ $types ] if not is_plain_arrayref($types);
+
+  return $types;
 }
 
 # evaluates data against the subschema at the current state location

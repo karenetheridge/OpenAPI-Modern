@@ -1570,6 +1570,19 @@ paths:
             B:
               maximum: 300
               minimum: 300
+      - name: ArrayWithRef
+        in: header
+        schema:
+          \$ref: '#/paths/~1foo/get/parameters/2/schema'
+      - name: ArrayWithRefAndOtherKeywords
+        in: header
+        schema:
+          \$ref: '#/paths/~1foo/get/parameters/2/schema'
+          not: true
+      - name: ArrayWithBrokenRef
+        in: header
+        schema:
+          \$ref: '#/components/schemas/i_do_not_exist'
 YAML
 
   my $request = request('GET', 'http://example.com/foo', [ SingleValue => '  mystring  ']);
@@ -1614,6 +1627,45 @@ YAML
     ($result = $openapi->validate_request($request, { path_template => '/foo', path_captures => {} }))->TO_JSON,
     { valid => true },
     'headers can be parsed into an object, represented in two ways depending on explode value',
+  );
+
+  $request = request('GET', 'http://example.com/foo', [
+      ArrayWithRef => 'one, one, three',
+      ArrayWithRefAndOtherKeywords => 'one, one, three',
+      ArrayWithBrokenRef => 'hi',
+    ]);
+  cmp_deeply(
+    ($result = $openapi->validate_request($request, { path_template => '/foo', path_captures => {} }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/header/ArrayWithRef',
+          keywordLocation => jsonp('/paths', '/foo', qw(get parameters 5 schema $ref uniqueItems)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo', qw(get parameters 2 schema uniqueItems)))->to_string,
+          error => 'items at indices 0 and 1 are not unique',
+        },
+        {
+          instanceLocation => '/request/header/ArrayWithRefAndOtherKeywords',
+          keywordLocation => jsonp('/paths', '/foo', qw(get parameters 6 schema $ref uniqueItems)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo', qw(get parameters 2 schema uniqueItems)))->to_string,
+          error => 'items at indices 0 and 1 are not unique',
+        },
+        {
+          instanceLocation => '/request/header/ArrayWithRefAndOtherKeywords',
+          keywordLocation => jsonp('/paths', '/foo', qw(get parameters 6 schema not)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo', qw(get parameters 6 schema not)))->to_string,
+          error => 'subschema is valid',
+        },
+        {
+          instanceLocation => '/request/header/ArrayWithBrokenRef',
+          keywordLocation => jsonp('/paths', '/foo', qw(get parameters 7 schema $ref)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo', qw(get parameters 7 schema $ref)))->to_string,
+          error => 'EXCEPTION: unable to find resource /api#/components/schemas/i_do_not_exist',
+        },
+      ],
+    },
+    'header schemas can use a $ref and we follow it correctly, updating locations, and respect adjacent keywords',
   );
 };
 
