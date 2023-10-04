@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.048     2023-10-04 05:34:44Z
           - now validating all headers of a given name, not just the first,
           when provided on the request/response as separate lines
