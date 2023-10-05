@@ -484,16 +484,22 @@ subtest 'header parameters' => sub {
       content => [ 'foo', 'bar', 'baz' ],
     },
     {
-      name => 'ObjectExplodeFalse',
+      name => 'Object-Explode-False',
       header_obj => { explode => false, schema => { type => 'object' } },
       values => [ ' R, 100 ', ' B, 150,  G , 200 ' ],
       content => { R => '100', G => '200', B => '150' },
     },
     {
-      name => 'ObjectExplodeTrue',
+      name => 'Object-Explode-True',
       header_obj => { explode => true, schema => { type => 'object' } },
       values => [ ' R=100  , B=150 ', '  G=200 ' ],
       content => { R => '100', G => '200', B => '150' },
+    },
+    {
+      name => 'Odd-Headers-Object',
+      header_obj => { explode => false, schema => { type => 'object' } },
+      values => [ 'foo, bar, baz' ],
+      content => { foo => 'bar', baz => '' },
     },
   );
 

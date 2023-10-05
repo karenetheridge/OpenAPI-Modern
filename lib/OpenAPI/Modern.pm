@@ -547,7 +547,7 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
     }
     else {
       # style=simple, explode=false: "R,100,G,200,B,150" -> { "R": 100, "G": 200, "B": 150 }
-      $data = +{ @values };
+      $data = +{ @values, (@values % 2 ? '' : ()) };
     }
   }
   else {
