@@ -535,22 +535,23 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
   # all deserialization follows the spec: https://spec.openapis.org/oas/v3.1.0#style-examples
   # We strip leading and trailing whitespace between fields, as per RFC9112§5.1-3
   my $data;
+  my @values = split /\s*,\s*/, $header_string;
   if (grep $_ eq 'array', @$types) {
     # style=simple, explode=false or true: "blue,black,brown" -> ["blue","black","brown"]
-    $data = [ split /\s*,\s*/, $header_string ];
+    $data = \@values;
   }
   elsif (grep $_ eq 'object', @$types) {
     if ($header_obj->{explode}//false) {
       # style=simple, explode=true: "R=100,G=200,B=150" -> { "R": 100, "G": 200, "B": 150 }
-      $data = +{ map m/^([^=]*)=?(.*)$/g, split(/\s*,\s*/, $header_string) };
+      $data = +{ map m/^([^=]*)=?(.*)$/g, @values };
     }
     else {
       # style=simple, explode=false: "R,100,G,200,B,150" -> { "R": 100, "G": 200, "B": 150 }
-      $data = +{ split /\s*,\s*/, $header_string };
+      $data = +{ @values };
     }
   }
   else {
-    $data = join(', ', split(/\s*,\s*/, $header_string));
+    $data = join ', ', @values;
   }
 
   $state = { %$state, schema_path => jsonp($state->{schema_path}, 'schema'), stringy_numbers => 1 };
