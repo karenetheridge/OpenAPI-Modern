@@ -56,6 +56,18 @@ subtest 'path parameters' => sub {
     },
     # encoded with media-type
     {
+      param_obj => { name => 'missing_json_content', in => 'path', content => { 'application/json' => { schema => { type => 'integer' } } } },
+      path_captures => {},
+      content => undef,
+      errors => [
+        {
+          instanceLocation => '/request/path/missing_json_content',
+          keywordLocation => $schema_path.'/required',
+          error => 'missing path parameter: missing_json_content',
+        },
+      ],
+    },
+    {
       param_obj => { name => 'json_content', in => 'path', content => { 'application/json' => { schema => { type => 'integer' } } } },
       path_captures => { json_content => '3' },
       content => 3, # numeric, not string!
@@ -259,9 +271,21 @@ subtest 'query parameters' => sub {
       todo => 'allowEmptyValue not yet supported',
     },
     {
-      param_obj => { name => 'data', in => 'query', content => { 'application/json' => { schema => { type => 'object' } } } },
+      param_obj => { name => 'missing_encoded_not_required', in => 'query', content => { 'application/json' => { schema => { type => 'object' } } } },
       queries => 'foo=1&bar=2',
       content => undef,
+    },
+    {
+      param_obj => { name => 'missing_encoded_required', in => 'query', required => true, content => { 'application/json' => { schema => { type => 'object' } } } },
+      queries => 'foo=1&bar=2',
+      content => undef,
+      errors => [
+        {
+          instanceLocation => '/request/query/missing_encoded_required',
+          keywordLocation => $schema_path.'/required',
+          error => 'missing query parameter: missing_encoded_required',
+        },
+      ],
     },
     {
       param_obj => { name => 'foo', in => 'query', content => { 'application/json' => { schema => { type => 'integer' } } } },
