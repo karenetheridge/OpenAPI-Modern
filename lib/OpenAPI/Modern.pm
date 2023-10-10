@@ -770,6 +770,15 @@ sub _convert_response ($response) {
   croak 'unknown type '.ref($response);
 }
 
+# callback hook for Sereal::Decoder
+sub THAW ($class, $serializer, $data) {
+  foreach my $attr (qw(openapi_document evaluator)) {
+    die "serialization missing attribute '$attr': perhaps your serialized data was produced for an older version of $class?"
+      if not exists $class->{$attr};
+  }
+  bless($data, $class);
+}
+
 1;
 __END__
 
@@ -878,7 +887,7 @@ prints:
     "valid" : true
   }
 
-=for Pod::Coverage BUILDARGS
+=for Pod::Coverage BUILDARGS THAW
 
 =for stopwords schemas jsonSchemaDialect metaschema subschema perlish operationId
 

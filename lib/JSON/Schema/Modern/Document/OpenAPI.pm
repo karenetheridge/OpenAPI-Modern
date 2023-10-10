@@ -314,6 +314,15 @@ sub _traverse_schema ($self, $schema, $state) {
   push $state->{identifiers}->@*, $subschema_state->{identifiers}->@*;
 }
 
+# callback hook for Sereal::Decoder
+sub THAW ($class, $serializer, $data) {
+  foreach my $attr (qw(schema evaluator entities)) {
+    die "serialization missing attribute '$attr': perhaps your serialized data was produced for an older version of $class?"
+      if not exists $class->{$attr};
+  }
+  bless($data, $class);
+}
+
 1;
 __END__
 
@@ -331,6 +340,8 @@ __END__
     schema => $schema,
     metaschema_uri => 'https://example.com/my_custom_dialect',
   );
+
+=for Pod::Coverage THAW
 
 =head1 DESCRIPTION
 
