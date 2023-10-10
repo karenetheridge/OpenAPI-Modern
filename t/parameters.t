@@ -352,19 +352,16 @@ subtest 'query parameters' => sub {
 
     # TODO:
     # spaceDelimited, string - not supported
+    # spaceDelimited, array/object, true - not supported
     # spaceDelimited, array, false
-    # spaceDelimited, array, true
     # spaceDelimited, object, false
-    # spaceDelimited, object, true
     # pipeDelimited, string - not supported
+    # pipeDelimited, array/object, true - not supported
     # pipeDelimited, array, false
-    # pipeDelimited, array, true
     # pipeDelimited, object, false
-    # pipeDelimited, object, true
     # deepObject, string - not supported
-    # deepObject, array, false - not supported
-    # deepObject, array, true - not supported
-    # deepObject, object, false
+    # deepObject, array - not supported
+    # deepObject, object, false - not supported
     # deepObject, object, true
   );
 
