@@ -8,19 +8,40 @@ no if "$]" >= 5.033001, feature => 'multidimensional';
 no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 
+use Test::Fatal;
 use URI;
 
 use lib 't/lib';
 use Helper;
 
 my $openapi = OpenAPI::Modern->new(
-  openapi_uri => 'openapi.yaml',
+  openapi_uri => '',
   openapi_schema => {
     openapi => '3.1.0',
     info => { title => 'Test API', version => '1.2.3' },
+    components => {
+      schemas => {
+        nothing => {},
+        string => { type => 'string' },
+        array => { type => 'array' },
+        object => { type => 'object' },
+        deep_string => { '$defs' => { foo => { type => 'string' } } },
+        ref_to_deep_string => { '$ref' => '#/components/schemas/string' },
+      },
+    },
     paths => {},
   },
 );
+
+$openapi->evaluator->add_schema({
+  '$id' => 'http://localhost:1234/extras',
+  '$defs' => {
+    array => { type => 'array' },
+    object => { type => 'object' },
+    deep_string => { '$defs' => { foo => { type => 'string' } } },
+    ref_to_deep_string => { '$ref' => '#/components/schemas/string' },
+  },
+});
 
 my $parameter_content;
 no warnings 'redefine';
@@ -454,6 +475,19 @@ subtest 'header parameters' => sub {
       content => 'foo',
     },
     {
+      name => 'Single-Header-Deep-Ref-String',
+      header_obj => { schema => { '$ref' => '#/components/schemas/ref_to_deep_string' } },
+      values => [ 'foo' ],
+      content => 'foo',
+    },
+    {
+      name => 'Single-Header-Deep-Ref-Elsewhere-String',
+      header_obj => { schema => { '$ref' => 'http://localhost:1234/extras#/$defs/ref_to_deep_string' } },
+      values => [ 'foo' ],
+      content => 'foo',
+      todo => '_resolve_ref does not know how to verify entities in JSDO objects',
+    },
+    {
       # a single header is passed as an array iff when array is requested
       name => 'Single-Header-Array',
       header_obj => { schema => { type => 'array' } },
@@ -533,10 +567,14 @@ subtest 'header parameters' => sub {
     my $headers = Mojo::Headers->new;
     $headers->add($name, $test->{values}->@*) if defined $test->{values};
 
-    ()= $openapi->_validate_header_parameter({ %$state, data_path => '/request/header/'.$name },
-      $name, $test->{header_obj}, $headers);
+    my $exception = exception {
+      ()= $openapi->_validate_header_parameter({ %$state, data_path => '/request/header/'.$name },
+        $name, $test->{header_obj}, $headers);
+    };
 
     local $TODO = $test->{todo} if $test->{todo};
+
+    is($exception, undef, 'no exceptions');
 
     is_equal(
       [ map $_->TO_JSON, $state->{errors}->@* ],
