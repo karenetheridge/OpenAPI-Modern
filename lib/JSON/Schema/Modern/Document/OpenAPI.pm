@@ -181,6 +181,9 @@ sub traverse ($self, $evaluator) {
       },
     },
   );
+
+  # note that if we are using a lax schema like https://spec.openapis.org/oas/3.1/schema, we will
+  # never traverse within a schema, so we won't find all the subschemas within
   $self->_add_entity_location($_, 'schema') foreach @json_schema_paths;
 
   if (not $result) {

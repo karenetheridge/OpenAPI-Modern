@@ -471,12 +471,22 @@ sub recursive_get ($self, $uri_reference) {
   my $ref = $uri_reference;
   my ($depth, $schema);
 
+  my $entity_type;
+  $entity_type = $self->openapi_document->get_entity_at_location(Mojo::URL->new($uri_reference)->fragment)
+    if $uri_reference =~ /^#/;
+
   while ($ref) {
     die 'maximum evaluation depth exceeded' if $depth++ > $self->evaluator->max_traversal_depth;
     my $uri = Mojo::URL->new($ref)->to_abs($base);
 
     my $schema_info = $self->evaluator->_fetch_from_uri($uri);
+
     die('unable to find resource ', $uri) if not $schema_info;
+    die sprintf('bad $ref to %s: not a "%s"', $schema_info->{canonical_uri}, $entity_type)
+      if $entity_type and $entity_type ne 'schema'
+        and ($schema_info->{document}->get_entity_at_location($schema_info->{document_path})//'') ne $entity_type;
+
+    $entity_type //= $schema_info->{document}->get_entity_at_location($schema_info->{document_path});
     $schema = $schema_info->{schema};
     $base = $schema_info->{canonical_uri};
     $ref = $schema->{'$ref'};
