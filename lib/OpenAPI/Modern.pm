@@ -484,7 +484,7 @@ sub recursive_get ($self, $uri_reference) {
     die('unable to find resource ', $uri) if not $schema_info;
     die sprintf('bad $ref to %s: not a "%s"', $schema_info->{canonical_uri}, $entity_type)
       if $entity_type and $entity_type ne 'schema'
-        and ($schema_info->{document}->get_entity_at_location($schema_info->{document_path})//'') ne $entity_type;
+        and $schema_info->{document}->get_entity_at_location($schema_info->{document_path}) ne $entity_type;
 
     $entity_type //= $schema_info->{document}->get_entity_at_location($schema_info->{document_path});
     $schema = $schema_info->{schema};
@@ -729,7 +729,7 @@ sub _resolve_ref ($self, $entity_type, $ref, $state) {
     if $state->{depth}++ > $self->evaluator->max_traversal_depth;
 
   abort({ %$state, keyword => '$ref' }, 'EXCEPTION: bad $ref to %s: not a "%s"', $schema_info->{canonical_uri}, $entity_type)
-    if ($schema_info->{document}->get_entity_at_location($schema_info->{document_path})//'') ne $entity_type;
+    if $schema_info->{document}->get_entity_at_location($schema_info->{document_path}) ne $entity_type;
 
   $state->{initial_schema_uri} = $schema_info->{canonical_uri};
   $state->{traversed_schema_path} = $state->{traversed_schema_path}.$state->{schema_path}.jsonp('/$ref');

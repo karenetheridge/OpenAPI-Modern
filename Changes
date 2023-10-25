@@ -4,6 +4,8 @@ Revision history for OpenAPI-Modern
           - Content-Length checking is now more properly consistent with
             RFC9112; some users of HTTP::Request and ::Response objects may
             need to make adjustments in their tests to be compliant
+          - track all subschema locations, not just schema roots, for better
+            $ref verification
 
 0.050     2023-11-06 03:10:15Z
           - fix construction of an OpenAPI::Modern object with a

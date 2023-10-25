@@ -75,7 +75,7 @@ sub _eval_keyword_discriminator ($self, $data, $schema, $state) {
       Mojo::URL->new($mapping =~ /^#/ ? $mapping : '#/components/schemas/'.$mapping)->to_abs($state->{initial_schema_uri}),
     );
   }
-  elsif (($state->{document}->get_entity_at_location('/components/schemas/'.$discriminator_value)//'') eq 'schema') {
+  elsif ($state->{document}->get_entity_at_location('/components/schemas/'.$discriminator_value) eq 'schema') {
     return $self->eval_subschema_at_uri($data, $schema, { %$state, _schema_path_suffix => 'propertyName' },
       Mojo::URL->new->fragment(jsonp('/components/schemas', $discriminator_value))->to_abs($state->{initial_schema_uri}),
     );

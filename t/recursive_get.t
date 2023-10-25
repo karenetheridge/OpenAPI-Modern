@@ -80,6 +80,7 @@ subtest recursive_get => sub {
         },
         schemas => {
           alpha => { type => 'integer' },
+          beta => { properties => { alpha => { type => 'string' } } },
         },
       },
     },
@@ -128,6 +129,12 @@ subtest recursive_get => sub {
     [ $openapi->recursive_get('http://far_far_away/api2#/components/parameters/foo') ],
     [ { name => 'baz', in => 'query', schema => {} }, str('http://localhost:1234/api#/components/parameters/baz') ],
     'successful get through multiple $refs, with a change in document, starting with an absolute uri',
+  );
+
+  cmp_deeply(
+    [ $openapi->recursive_get('http://far_far_away/api2#/components/schemas/beta/properties/alpha') ],
+    [ { type => 'string' }, str('http://far_far_away/api2#/components/schemas/beta/properties/alpha') ],
+    'successful get of a schema contained within a schema',
   );
 };
 

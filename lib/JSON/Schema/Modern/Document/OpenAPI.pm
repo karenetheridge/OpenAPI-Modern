@@ -57,18 +57,8 @@ has json_schema_dialect => (
   coerce => sub { $_[0]->$_isa('Mojo::URL') ? $_[0] : Mojo::URL->new($_[0]) },
 );
 
-my $reffable_entities = Enum[qw(schema response parameter example request-body header security-scheme link callbacks path-item)];
-
-# json pointer => entity name
-has _entities => (
-  is => 'ro',
-  isa => HashRef[$reffable_entities],
-  lazy => 1,
-  default => sub { {} },
-);
-
-sub _add_entity_location { $_[0]->_entities->{$_[1]} = $reffable_entities->($_[2]) }
-sub get_entity_at_location { $_[0]->_entities->{$_[1]} }
+# json pointer => entity name (indexed by integer); overrides parent
+sub __entities { qw(schema response parameter example request-body header security-scheme link callbacks path-item) }
 
 # operationId => document path
 has _operationIds => (
@@ -96,6 +86,7 @@ sub traverse ($self, $evaluator) {
     configs => {},
     spec_version => $evaluator->SPECIFICATION_VERSION_DEFAULT,
     vocabularies => [],
+    subschemas => [],
   };
 
   # this is an abridged form of https://spec.openapis.org/oas/3.1/schema/latest
@@ -182,10 +173,6 @@ sub traverse ($self, $evaluator) {
     },
   );
 
-  # note that if we are using a lax schema like https://spec.openapis.org/oas/3.1/schema, we will
-  # never traverse within a schema, so we won't find all the subschemas within
-  $self->_add_entity_location($_, 'schema') foreach @json_schema_paths;
-
   if (not $result) {
     $_->mode('evaluate') foreach $result->errors;
     push $state->{errors}->@*, $result->errors;
@@ -223,6 +210,8 @@ sub traverse ($self, $evaluator) {
     push @real_json_schema_paths, $json_schema_paths[$idx];
     $self->_traverse_schema($self->get($json_schema_paths[$idx]), { %$state, schema_path => $json_schema_paths[$idx] });
   }
+
+  $self->_add_entity_location($_, 'schema') foreach $state->{subschemas}->@*;
 
   foreach my $pair (@operation_paths) {
     my ($operation_id, $path) = @$pair;
@@ -291,6 +280,7 @@ sub _traverse_schema ($self, $schema, $state) {
   return if $subschema_state->{errors}->@*;
 
   push $state->{identifiers}->@*, $subschema_state->{identifiers}->@*;
+  push $state->{subschemas}->@*, $subschema_state->{subschemas}->@*;
 }
 
 # callback hook for Sereal::Decoder
