@@ -71,7 +71,7 @@ subtest 'bad subschemas' => sub {
 ERRORS
 };
 
-subtest 'identify subschemas' => sub {
+subtest 'identify subschemas and other entities' => sub {
   my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
     metaschema_uri => 'https://spec.openapis.org/oas/3.1/schema',
@@ -241,6 +241,29 @@ subtest 'identify subschemas' => sub {
       }), 2..3,
     },
     'subschema resources are correctly identified in the document',
+  );
+
+  cmp_deeply(
+    $doc->{entities},
+    {
+      '/components/schemas/beta_schema' => 'schema',
+      # '/components/schemas/beta_schema/not' => 'schema', # TODO - requires JSM fix
+      '/components/parameters/my_param1' => 'parameter',
+      '/components/parameters/my_param1/schema' => 'schema',
+      '/components/parameters/my_param2' => 'parameter',
+      '/components/parameters/my_param2/content/media_type_0/schema' => 'schema',
+      '/components/pathItems/path0' => 'path-item',
+      '/components/pathItems/path0/parameters/0' => 'parameter',
+      '/components/pathItems/path0/parameters/0/schema' => 'schema',
+      '/components/pathItems/path0/get/parameters/0' => 'parameter',
+      '/components/pathItems/path0/get/parameters/0/schema' => 'schema',
+      '/components/pathItems/path0/get/requestBody' => 'request-body',
+      '/components/pathItems/path0/get/requestBody/content/media_type_1/schema' => 'schema',
+      '/components/pathItems/path0/get/responses/200' => 'response',
+      '/components/pathItems/path0/get/responses/200/content/media_type_2/schema' => 'schema',
+      '/components/pathItems/path0/get/responses/200/content/media_type_3/schema' => 'schema',
+    },
+    'all entity locations are identified',
   );
 };
 
