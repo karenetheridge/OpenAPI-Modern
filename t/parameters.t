@@ -184,7 +184,7 @@ subtest 'path parameters' => sub {
     },
     {
       param_obj => { name => 'label_array_false', style => 'label', schema => { type => 'array' } },
-      path_captures => { label_array_false => '.blue.black.brown' },
+      path_captures => { label_array_false => '.blue,black,brown' },
       content => [ qw(blue black brown) ],
       todo => 'style=label, parse as array',
     },
@@ -196,7 +196,7 @@ subtest 'path parameters' => sub {
     },
     {
       param_obj => { name => 'label_object_false', style => 'label', schema => { type => 'object' } },
-      path_captures => { label_object_false => '.R.100.G.200.B.150' },
+      path_captures => { label_object_false => '.R,100,G,200,B,150' },
       content => { R => '100', G => '200', B => '150' },
       todo => 'style=label, parse as object',
     },
