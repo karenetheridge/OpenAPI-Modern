@@ -68,7 +68,7 @@ YAML
 
   ok(!$doc->errors, 'no errors when parsing this document');
   cmp_deeply(
-    $doc->{operationIds},
+    $doc->_operationIds,
     {
       operation_id_a => '/components/callbacks/callback_a/$url_a/patch',
       operation_id_b => '/webhooks/webhook_b/put',

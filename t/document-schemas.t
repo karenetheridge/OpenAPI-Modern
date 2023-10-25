@@ -244,7 +244,7 @@ subtest 'identify subschemas and other entities' => sub {
   );
 
   cmp_deeply(
-    $doc->{entities},
+    $doc->_entities,
     {
       '/components/schemas/beta_schema' => 'schema',
       # '/components/schemas/beta_schema/not' => 'schema', # TODO - requires JSM fix

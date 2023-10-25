@@ -21,7 +21,6 @@ use File::ShareDir 'dist_dir';
 use Path::Tiny;
 use List::Util 'pairs';
 use Ref::Util 'is_plain_hashref';
-use MooX::HandlesVia;
 use MooX::TypeTiny 0.002002;
 use Types::Standard qw(InstanceOf HashRef Str Enum);
 use namespace::clean;
@@ -58,34 +57,29 @@ has json_schema_dialect => (
   coerce => sub { $_[0]->$_isa('Mojo::URL') ? $_[0] : Mojo::URL->new($_[0]) },
 );
 
-my $reffable_entities = Enum[qw(response parameter example request-body header security-scheme link callbacks path-item)];
+my $reffable_entities = Enum[qw(schema response parameter example request-body header security-scheme link callbacks path-item)];
 
 # json pointer => entity name
-has entities => (
-  is => 'bare',
+has _entities => (
+  is => 'ro',
   isa => HashRef[$reffable_entities],
-   handles_via => 'Hash',
-   handles => {
-     _add_entity_location => 'set',
-     get_entity_at_location => 'get',
-  },
   lazy => 1,
   default => sub { {} },
-
 );
+
+sub _add_entity_location { $_[0]->_entities->{$_[1]} = $reffable_entities->($_[2]) }
+sub get_entity_at_location { $_[0]->_entities->{$_[1]} }
 
 # operationId => document path
-has operationIds => (
-  is => 'bare',
+has _operationIds => (
+  is => 'ro',
   isa => HashRef[Str],
-   handles_via => 'Hash',
-   handles => {
-     _add_operationId => 'set',
-     get_operationId_path => 'get',
-  },
   lazy => 1,
   default => sub { {} },
 );
+
+sub get_operationId_path { $_[0]->_operationIds->{$_[1]} }
+sub _add_operationId { $_[0]->_operationIds->{$_[1]} = Str->($_[2]) }
 
 sub traverse ($self, $evaluator) {
   $self->_add_vocab_and_default_schemas;
@@ -176,9 +170,8 @@ sub traverse ($self, $evaluator) {
           return 1;
         },
         '$ref' => sub ($data, $schema, $state) {
-          my ($entity) = ($schema->{'$ref'} =~ m{#/\$defs/([^/]+?)(?:-or-reference)?$});
-          $self->_add_entity_location($state->{data_path}, $entity)
-            if $entity and $reffable_entities->check($entity);
+          my ($entity) = ($schema->{'$ref'} =~ m{#/\$defs/([^/]+?)(?:-or-reference)$});
+          $self->_add_entity_location($state->{data_path}, $entity) if $entity;
 
           push @operation_paths, [ $data->{operationId} => $state->{data_path} ]
             if $schema->{'$ref'} eq '#/$defs/operation' and defined $data->{operationId};
@@ -299,7 +292,7 @@ sub _traverse_schema ($self, $schema, $state) {
 
 # callback hook for Sereal::Decoder
 sub THAW ($class, $serializer, $data) {
-  foreach my $attr (qw(schema evaluator entities)) {
+  foreach my $attr (qw(schema evaluator _entities)) {
     die "serialization missing attribute '$attr': perhaps your serialized data was produced for an older version of $class?"
       if not exists $class->{$attr};
   }
@@ -324,7 +317,7 @@ __END__
     metaschema_uri => 'https://example.com/my_custom_dialect',
   );
 
-=for Pod::Coverage THAW
+=for Pod::Coverage THAW get_entity_at_location
 
 =head1 DESCRIPTION
 
