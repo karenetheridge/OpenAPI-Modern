@@ -235,13 +235,13 @@ sub traverse ($self, $evaluator) {
       ()= E({ %$state, data_path => $path .'/operationId',
           initial_schema_uri => Mojo::URL->new(DEFAULT_METASCHEMA) },
         'duplicate of operationId at %s', $existing);
+      $state->{errors}[-1]->mode('evaluate');
     }
     else {
       $self->_add_operationId($operation_id => $path);
     }
   }
 
-  $_->mode('evaluate') foreach $state->{errors}->@*;
   return $state;
 }
 
@@ -307,6 +307,10 @@ sub _traverse_schema ($self, $schema, $state) {
     traversed_schema_path => $state->{traversed_schema_path}.$state->{schema_path},
     metaschema_uri => $self->json_schema_dialect,
   });
+
+  foreach my $error ($subschema_state->{errors}->@*) {
+    $error->mode('traverse') if not defined $error->mode;
+  }
 
   push $state->{errors}->@*, $subschema_state->{errors}->@*;
   return if $subschema_state->{errors}->@*;

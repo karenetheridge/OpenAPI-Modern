@@ -48,7 +48,7 @@ sub _traverse_keyword_discriminator ($self, $schema, $state) {
     }
   }
 
-  $valid = E($state, 'missing sibling keyword: one of oneOf, anyOf, allOf')
+  $valid = E({ %$state, keyword => undef }, 'missing sibling keyword to discriminator: one of oneOf, anyOf, allOf')
     if not grep exists $schema->{$_}, qw(oneOf anyOf allOf);
 
   return 1;
