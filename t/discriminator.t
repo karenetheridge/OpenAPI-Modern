@@ -177,4 +177,84 @@ YAML
   );
 };
 
+subtest 'discriminator in a parent definition' => sub {
+# 8< start of temporary exception-catch
+  local $TODO = 'requirement of sibling oneOf/anyOf/allOf is not actually in the spec';
+
+  my $openapi;
+  eval {
+# >8 end of temporary exception-catch
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => '/api',
+    openapi_schema => $yamlpp->load_string(<<YAML));
+$openapi_preamble
+  description: 'runtime: use discriminator to determine petType'
+components:
+  schemas:
+    Pet:
+      type: object
+      required:
+      - petType
+      - sound
+      properties:
+        petType:
+          type: string
+      discriminator:
+        propertyName: petType
+        mapping:
+          dog: Dog
+    Cat:
+      allOf:
+      - \$ref: '#/components/schemas/Pet'
+      - type: object
+        # all other properties specific to a `Cat`
+        properties:
+          name:
+            type: string
+          sound:
+            const: meow
+    Dog:
+      allOf:
+      - \$ref: '#/components/schemas/Pet'
+      - type: object
+        # all other properties specific to a `Dog`
+        properties:
+          sound:
+            const: bark
+    Lizard:
+      allOf:
+      - \$ref: '#/components/schemas/Pet'
+      - type: object
+        # all other properties specific to a `Lizard`
+        properties:
+          lovesRocks:
+            type: boolean
+          sound:
+            const: 'null'
+YAML
+
+  # currently we get:
+  # instance_location => '',
+  # keyword_location => '/components/schemas/Pet',
+  # absolute_keyword_location => '/api#/components/schemas/Pet',
+  # error => 'missing sibling keyword to discriminator: one of oneOf, anyOf, allOf',
+  cmp_deeply(
+    $openapi->evaluator->evaluate(
+      { petType => 'Cat', sound => 'meow' },
+      Mojo::URL->new('/api#/components/schemas/Pet'),
+    )->TO_JSON,
+    { valid => true },
+    'discriminator can be defined in the base class',
+  );
+
+# 8< start of temporary exception-catch
+  };
+  is(
+    $@,
+    '',
+    'no exception for this use of discriminator',
+  );
+# >8 end of temporary exception-catch
+};
+
 done_testing;
