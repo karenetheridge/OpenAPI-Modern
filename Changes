@@ -3,6 +3,8 @@ Revision history for OpenAPI-Modern
 {{$NEXT}}
           - fix "recursive_get" to take a uri-reference, rather than a json
             pointer
+          - fix some "discriminator" tests that fail with JSON::Schema::Modern
+            0.574
 
 0.048     2023-10-04 05:34:44Z
           - now validating all headers of a given name, not just the first,

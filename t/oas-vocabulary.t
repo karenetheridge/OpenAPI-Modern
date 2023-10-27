@@ -58,6 +58,11 @@ $accepter->acceptance(
     $result;
   },
   @ARGV ? (tests => { file => \@ARGV }) : (),
+  todo_tests => [
+    # this was added to the schema in https://github.com/OAI/OpenAPI-Specification/pulls/3137 but
+    # needs to be backed out because these keywords need not be adjacent to 'discriminator'.
+    { file => 'discriminator.json', test_description => 'missing oneOf, anyOf, allOf' },
+  ],
 );
 
 path('t/results/oas-vocabulary.txt')->spew_utf8($accepter->results_text)

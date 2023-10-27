@@ -74,13 +74,15 @@ sub _eval_keyword_discriminator ($self, $data, $schema, $state) {
   }
   elsif (exists $schema->{discriminator}{mapping} and exists $schema->{discriminator}{mapping}{$discriminator_value}) {
     # use 'mapping' to determine which schema to use.
-    $uri = Mojo::URL->new($schema->{discriminator}{mapping}{$discriminator_value});
+    $uri = Mojo::URL->new($schema->{discriminator}{mapping}{$discriminator_value})
+      ->to_abs($state->{initial_schema_uri});
     $state = { %$state, _schema_path_suffix => [ 'mapping', $discriminator_value ] };
   }
   else {
     # If the discriminator value does not match an implicit or explicit mapping, no schema can be
     # determined and validation SHOULD fail.
-    return E($state, 'invalid %s: "%s"', $discriminator_key, $discriminator_value);
+    return E({ %$state, data_path => jsonp($state->{data_path}, $discriminator_key) },
+      'invalid %s: "%s"', $discriminator_key, $discriminator_value);
   }
 
   return E($state, 'subschema for %s: %s is invalid', $discriminator_key, $discriminator_value)
