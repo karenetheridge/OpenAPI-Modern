@@ -48,9 +48,6 @@ sub _traverse_keyword_discriminator ($self, $schema, $state) {
     }
   }
 
-  $valid = E({ %$state, keyword => undef }, 'missing sibling keyword to discriminator: one of oneOf, anyOf, allOf')
-    if not grep exists $schema->{$_}, qw(oneOf anyOf allOf);
-
   return 1;
 }
 
@@ -67,15 +64,21 @@ sub _eval_keyword_discriminator ($self, $data, $schema, $state) {
   my $discriminator_value = $data->{$discriminator_key};
 
   # if /components/$discriminator_value exists, that schema must validate
-  my $uri = Mojo::URL->new->fragment(jsonp('', qw(components schemas), $discriminator_value))
+  my $uri = Mojo::URL->new->fragment(jsonp('/components/schemas', $discriminator_value))
     ->to_abs($state->{initial_schema_uri});
   if (my $component_schema_info = $state->{evaluator}->_fetch_from_uri($uri)) {
     $state = { %$state, _schema_path_suffix => 'propertyName' };
   }
   elsif (exists $schema->{discriminator}{mapping} and exists $schema->{discriminator}{mapping}{$discriminator_value}) {
     # use 'mapping' to determine which schema to use.
-    $uri = Mojo::URL->new($schema->{discriminator}{mapping}{$discriminator_value})
+    # Note that the spec uses an example that assumes that the mapping value can be appended to
+    # /components/schemas/, _as well as_ being treated as a uri-reference, but this is ambiguous.
+    # For now we will handle it by preprending '#/components/schemas' if it is not already a
+    # fragment-only uri reference.
+    my $mapping = $schema->{discriminator}{mapping}{$discriminator_value};
+    $uri = Mojo::URL->new($mapping =~ /^#/ ? $mapping : '#/components/schemas/'.$mapping)
       ->to_abs($state->{initial_schema_uri});
+
     $state = { %$state, _schema_path_suffix => [ 'mapping', $discriminator_value ] };
   }
   else {
