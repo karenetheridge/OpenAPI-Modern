@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.049     2023-10-29 01:01:38Z
           - fix "recursive_get" to take a uri-reference, rather than a json
             pointer
