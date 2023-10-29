@@ -8,7 +8,7 @@ OpenAPI::Modern - Validate HTTP requests and responses against an OpenAPI v3.1 d
 
 =head1 VERSION
 
-version 0.048
+version 0.049
 
 =head1 SYNOPSIS
 
@@ -121,7 +121,7 @@ your application. The JSON Schema evaluator is fully specification-compliant; th
 aims to be but some features are not yet available. My belief is that missing features are better
 than features that seem to work but actually cut corners for simplicity.
 
-=for Pod::Coverage BUILDARGS
+=for Pod::Coverage BUILDARGS THAW
 
 =for stopwords schemas jsonSchemaDialect metaschema subschema perlish operationId
 
