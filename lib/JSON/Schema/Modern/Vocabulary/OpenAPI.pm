@@ -63,23 +63,23 @@ sub _eval_keyword_discriminator ($self, $data, $schema, $state) {
 
   my $discriminator_value = $data->{$discriminator_key};
 
-  # if /components/$discriminator_value exists, that schema must validate
-  my $uri = Mojo::URL->new->fragment(jsonp('/components/schemas', $discriminator_value))
-    ->to_abs($state->{initial_schema_uri});
-  if (my $component_schema_info = $state->{evaluator}->_fetch_from_uri($uri)) {
-    $state = { %$state, _schema_path_suffix => 'propertyName' };
-  }
-  elsif (exists $schema->{discriminator}{mapping} and exists $schema->{discriminator}{mapping}{$discriminator_value}) {
+  if (exists $schema->{discriminator}{mapping} and exists $schema->{discriminator}{mapping}{$discriminator_value}) {
     # use 'mapping' to determine which schema to use.
     # Note that the spec uses an example that assumes that the mapping value can be appended to
     # /components/schemas/, _as well as_ being treated as a uri-reference, but this is ambiguous.
     # For now we will handle it by preprending '#/components/schemas' if it is not already a
     # fragment-only uri reference.
     my $mapping = $schema->{discriminator}{mapping}{$discriminator_value};
-    $uri = Mojo::URL->new($mapping =~ /^#/ ? $mapping : '#/components/schemas/'.$mapping)
-      ->to_abs($state->{initial_schema_uri});
 
-    $state = { %$state, _schema_path_suffix => [ 'mapping', $discriminator_value ] };
+    return $self->eval_subschema_at_uri($data, $schema,
+      { %$state, _schema_path_suffix => [ 'mapping', $discriminator_value ] },
+      Mojo::URL->new($mapping =~ /^#/ ? $mapping : '#/components/schemas/'.$mapping)->to_abs($state->{initial_schema_uri}),
+    );
+  }
+  elsif (($state->{document}->get_entity_at_location('/components/schemas/'.$discriminator_value)//'') eq 'schema') {
+    return $self->eval_subschema_at_uri($data, $schema, { %$state, _schema_path_suffix => 'propertyName' },
+      Mojo::URL->new->fragment(jsonp('/components/schemas', $discriminator_value))->to_abs($state->{initial_schema_uri}),
+    );
   }
   else {
     # If the discriminator value does not match an implicit or explicit mapping, no schema can be
@@ -87,10 +87,6 @@ sub _eval_keyword_discriminator ($self, $data, $schema, $state) {
     return E({ %$state, data_path => jsonp($state->{data_path}, $discriminator_key) },
       'invalid %s: "%s"', $discriminator_key, $discriminator_value);
   }
-
-  return E($state, 'subschema for %s: %s is invalid', $discriminator_key, $discriminator_value)
-    if not $self->eval_subschema_at_uri($data, $schema, $state, $uri);
-  return 1;
 }
 
 sub _traverse_keyword_example { 1 }

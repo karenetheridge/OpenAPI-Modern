@@ -216,6 +216,14 @@ components:
         properties:
           sound:
             const: bark
+    dog:
+      description: this is not the dog you're looking for
+      allOf:
+      - \$ref: '#/components/schemas/Pet'
+      - type: object
+        properties:
+          sound:
+            const: yipyip
     Lizard:
       allOf:
       - \$ref: '#/components/schemas/Pet'
@@ -230,11 +238,42 @@ YAML
 
   cmp_deeply(
     $openapi->evaluator->evaluate(
-      { petType => 'dog', sound => 'bark' },
+      { petType => 'Cat', sound => 'meow' },
       Mojo::URL->new('/api#/components/schemas/petType'),
     )->TO_JSON,
     { valid => true },
     'discriminator can be defined in the base class',
+  );
+
+  cmp_deeply(
+    $openapi->evaluator->evaluate(
+      { petType => 'dog', sound => 'yipyip' },
+      Mojo::URL->new('/api#/components/schemas/petType'),
+    )->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/sound',
+          keywordLocation => '/discriminator/mapping/dog/allOf/1/properties/sound/const',
+          absoluteKeywordLocation => '/api#/components/schemas/Dog/allOf/1/properties/sound/const',
+          error => 'value does not match',
+        },
+        {
+          instanceLocation => '',
+          keywordLocation => '/discriminator/mapping/dog/allOf/1/properties',
+          absoluteKeywordLocation => '/api#/components/schemas/Dog/allOf/1/properties',
+          error => 'not all properties are valid',
+        },
+        {
+          instanceLocation => '',
+          keywordLocation => '/discriminator/mapping/dog/allOf',
+          absoluteKeywordLocation => '/api#/components/schemas/Dog/allOf',
+          error => 'subschema 1 is not valid',
+        },
+      ],
+    },
+    'a mapping entry has precedence over defaulting to /components/schemas/{petType}',
   );
 };
 
