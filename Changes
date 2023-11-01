@@ -3,6 +3,8 @@ Revision history for OpenAPI-Modern
 {{$NEXT}}
           - fix construction of an OpenAPI::Modern object with a
             pre-constructed JSON::Schema::Modern::Document::OpenAPI object
+          - "recursive_get" moved from JSON::Schema::Modern::Document::OpenAPI
+            to OpenAPI::Modern
 
 0.049     2023-10-29 01:01:38Z
           - fix "recursive_get" to take a uri-reference, rather than a json
@@ -24,7 +26,7 @@ Revision history for OpenAPI-Modern
           - new "recursive_get" method on
             JSON::Schema::Modern::Document::OpenAPI for fetching a
             specification at a json pointer and following any $refs
-            (note this interface has changed as of 0.049)
+            (note this interface has changed in 0.049 and 0.050)
 
 0.046     2023-06-24 21:56:39Z
           - extra validation for Transfer-Encoding response header

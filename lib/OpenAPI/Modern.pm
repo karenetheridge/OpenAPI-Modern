@@ -32,6 +32,7 @@ use Types::Standard 'InstanceOf';
 use constant { true => JSON::PP::true, false => JSON::PP::false };
 use Mojo::Message::Request;
 use Mojo::Message::Response;
+use Storable 'dclone';
 use namespace::clean;
 
 has openapi_document => (
@@ -453,6 +454,26 @@ sub find_path ($self, $options) {
   delete $options->{operation_id} if not defined $options->{operation_id};
   $options->{operation_path} = jsonp('/paths', $path_template, $method);
   return 1;
+}
+
+sub recursive_get ($self, $uri_reference) {
+  my $base = $self->openapi_uri;
+  my $ref = $uri_reference;
+  my ($depth, $schema);
+
+  while ($ref) {
+    die 'maximum evaluation depth exceeded' if $depth++ > $self->evaluator->max_traversal_depth;
+    my $uri = Mojo::URL->new($ref)->to_abs($base);
+
+    my $schema_info = $self->evaluator->_fetch_from_uri($uri);
+    die('unable to find resource ', $uri) if not $schema_info;
+    $schema = $schema_info->{schema};
+    $base = $schema_info->{canonical_uri};
+    $ref = $schema->{'$ref'};
+  }
+
+  $schema = dclone($schema);
+  return wantarray ? ($schema, $base) : $schema;
 }
 
 ######## NO PUBLIC INTERFACES FOLLOW THIS POINT ########
@@ -889,7 +910,7 @@ prints:
 
 =for Pod::Coverage BUILDARGS THAW
 
-=for stopwords schemas jsonSchemaDialect metaschema subschema perlish operationId
+=for stopwords schemas jsonSchemaDialect metaschema subschema perlish operationId openapi
 
 =head1 DESCRIPTION
 
@@ -1045,6 +1066,22 @@ In addition, this value is populated in the options hash (when available):
 Note that the L<C</servers>|https://spec.openapis.org/oas/v3.1.0#server-object> section of the
 OpenAPI document is not used for path matching at this time, for either scheme and host matching nor
 path prefixes.
+
+=head2 recursive_get
+
+Given a uri or uri-reference, get the definition at that location, following any C<$ref>s along the
+way. Returns the data in scalar context, or a tuple of the data and the canonical URI of the
+referenced location in list context.
+
+If the provided location is relative, the main openapi document is used for the base URI.
+If you have a local json pointer you want to resolve, you can turn it into a uri-reference by
+prepending C<#>.
+
+  my $schema = $openapi->recursive_get('#/components/parameters/Content-Encoding');
+
+  # starts with a JSON::Schema::Modern object (TODO)
+  my $schema = $js->recursive_get('https:///openapi_doc.yaml#/components/schemas/my_object')
+  my $schema = $js->recursive_get('https://localhost:1234/my_spec#/$defs/my_object')
 
 =head2 canonical_uri
 
