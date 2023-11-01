@@ -65,17 +65,18 @@ around BUILDARGS => sub ($orig, $class, @args) {
       if not exists $args->{openapi_uri};
     croak 'missing required constructor arguments: either openapi_document, or openapi_schema'
       if not exists $args->{openapi_schema};
-
-    $args->{evaluator} //= JSON::Schema::Modern->new(validate_formats => 1, max_traversal_depth => 80);
-    $args->{openapi_document} = JSON::Schema::Modern::Document::OpenAPI->new(
-      canonical_uri => $args->{openapi_uri},
-      schema => $args->{openapi_schema},
-      evaluator => $args->{evaluator},
-    );
-
-    # if there were errors, this will die with a JSON::Schema::Modern::Result object
-    $args->{evaluator}->add_schema($args->{openapi_document});
   }
+
+  $args->{evaluator} //= JSON::Schema::Modern->new(validate_formats => 1, max_traversal_depth => 80);
+
+  $args->{openapi_document} //= JSON::Schema::Modern::Document::OpenAPI->new(
+    canonical_uri => $args->{openapi_uri},
+    schema => $args->{openapi_schema},
+    evaluator => $args->{evaluator},
+  );
+
+  # if there were errors, this will die with a JSON::Schema::Modern::Result object
+  $args->{evaluator}->add_schema($args->{openapi_document});
 
   return $args;
 };

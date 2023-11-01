@@ -1,6 +1,8 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - fix construction of an OpenAPI::Modern object with a
+            pre-constructed JSON::Schema::Modern::Document::OpenAPI object
 
 0.049     2023-10-29 01:01:38Z
           - fix "recursive_get" to take a uri-reference, rather than a json
