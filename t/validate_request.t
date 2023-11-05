@@ -1577,6 +1577,10 @@ paths:
         in: header
         schema:
           \$ref: '#/components/schemas/i_do_not_exist'
+      - name: MultipleValuesAsRawString
+        in: header
+        schema:
+          const: 'one , two  , three'
 YAML
 
   my $request = request('GET', 'http://example.com/foo', [ SingleValue => '  mystring  ']);
@@ -1586,11 +1590,11 @@ YAML
     'a single header value has its leading and trailing whitespace stripped',
   );
 
-  $request = request('GET', 'http://example.com/foo', [ MultipleValuesAsString => '  one , two  , three  ']);
+  $request = request('GET', 'http://example.com/foo', [ MultipleValuesAsRawString => '  one , two  , three  ']);
   cmp_deeply(
     ($result = $openapi->validate_request($request, { path_template => '/foo', path_captures => {} }))->TO_JSON,
     { valid => true },
-    'multiple values in a single header are validated as a string, with leading and trailing whitespace stripped',
+    'multiple values in a single header are validated as a string, with only leading and trailing whitespace stripped',
   );
 
   $request = request('GET', 'http://example.com/foo', [

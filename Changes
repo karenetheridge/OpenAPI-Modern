@@ -5,6 +5,9 @@ Revision history for OpenAPI-Modern
             pre-constructed JSON::Schema::Modern::Document::OpenAPI object
           - "recursive_get" moved from JSON::Schema::Modern::Document::OpenAPI
             to OpenAPI::Modern
+          - when validating header strings against a string schema, no longer
+            parse out internal whitespace surrounding commas (validate as an
+            array to use RFC9112 semantics).
 
 0.049     2023-10-29 01:01:38Z
           - fix "recursive_get" to take a uri-reference, rather than a json

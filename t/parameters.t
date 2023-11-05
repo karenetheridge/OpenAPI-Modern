@@ -430,7 +430,7 @@ subtest 'header parameters' => sub {
       ],
     },
     {
-      name => 'EncodedNumber',
+      name => 'Encoded-Number',
       header_obj => { content => { 'application/json' => { schema => { type => 'integer' } } } },
       values => [ '3' ],
       content => 3, # number, not string!
@@ -480,11 +480,11 @@ subtest 'header parameters' => sub {
       content => [ 'foo', 'bar' ],
     },
     {
-      # comma-separated values are always normalized
+      # internal comma-separated values are not altered
       name => 'Comma-Headers-String',
       header_obj => { schema => { type => 'string' } },
       values => [ ' foo,  bar ' ],
-      content => 'foo, bar',
+      content => 'foo,  bar',
     },
     {
       # split individual values on comma when type=array
@@ -534,7 +534,7 @@ subtest 'header parameters' => sub {
     $headers->add($name, $test->{values}->@*) if defined $test->{values};
 
     ()= $openapi->_validate_header_parameter({ %$state, data_path => '/request/header/'.$name },
-      $name, $test->{header_obj}, $headers->header($name));
+      $name, $test->{header_obj}, $headers);
 
     local $TODO = $test->{todo} if $test->{todo};
 

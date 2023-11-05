@@ -137,7 +137,7 @@ sub validate_request ($self, $request, $options = {}) {
         my $valid =
             $param_obj->{in} eq 'path' ? $self->_validate_path_parameter($state, $param_obj, $path_captures)
           : $param_obj->{in} eq 'query' ? $self->_validate_query_parameter($state, $param_obj, $request->url)
-          : $param_obj->{in} eq 'header' ? $self->_validate_header_parameter($state, $param_obj->{name}, $param_obj, $request->headers->header($param_obj->{name}))
+          : $param_obj->{in} eq 'header' ? $self->_validate_header_parameter($state, $param_obj->{name}, $param_obj, $request->headers)
           : $param_obj->{in} eq 'cookie' ? $self->_validate_cookie_parameter($state, $param_obj, $request)
           : abort($state, 'unrecognized "in" value "%s"', $param_obj->{in});
       }
@@ -281,7 +281,7 @@ sub validate_response ($self, $response, $options = {}) {
 
       ()= $self->_validate_header_parameter({ %$state,
           data_path => jsonp($state->{data_path}, 'header', $header_name) },
-        $header_name, $header_obj, $response->headers->header($header_name));
+        $header_name, $header_obj, $response->headers);
     }
 
     $self->_validate_body_content({ %$state, data_path => jsonp($state->{data_path}, 'body') },
@@ -533,30 +533,33 @@ sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
 }
 
 # validates a header, from either the request or the response
-sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $header_string) {
+sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $headers) {
   return 1 if grep fc $header_name eq fc $_, qw(Accept Content-Type Authorization);
 
-  if (not defined $header_string) {
+  if (not $headers->every_header($header_name)->@*) {
     return E({ %$state, keyword => 'required' }, 'missing header: %s', $header_name)
       if $header_obj->{required};
     return 1;
   }
 
-  return $self->_validate_parameter_content($state, $header_obj, \ $header_string)
+  # validate as a single comma-concatenated string, presumably to be decoded
+  return $self->_validate_parameter_content($state, $header_obj, \ $headers->header($header_name))
     if exists $header_obj->{content};
 
-  # "The field value does not include any leading or trailing whitespace: OWS occurring before the
-  # first non-whitespace octet of the field value or after the last non-whitespace octet of the
-  # field value ought to be excluded by parsers when extracting the field value from a header field."
-  $header_string =~ s/^\s*//;
-  $header_string =~ s/\s*$//;
+  # RFC9112§5.1-3: "The field line value does not include that leading or trailing whitespace: OWS
+  # occurring before the first non-whitespace octet of the field line value, or after the last
+  # non-whitespace octet of the field line value, is excluded by parsers when extracting the field
+  # line value from a field line."
+  my @values = map s/^\s*//r =~ s/\s*$//r, map split(/,/, $_), $headers->every_header($header_name)->@*;
 
   my $types = $self->_type_in_schema($header_obj->{schema}, { %$state, schema_path => jsonp($state->{schema_path}, 'schema') });
 
-  # all deserialization follows the spec: https://spec.openapis.org/oas/v3.1.0#style-examples
-  # We strip leading and trailing whitespace between fields, as per RFC9112§5.1-3
+  # RFC9112§5.3-1: "A recipient MAY combine multiple field lines within a field section that have
+  # the same field name into one field line, without changing the semantics of the message, by
+  # appending each subsequent field line value to the initial field line value in order, separated
+  # by a comma (",") and optional whitespace (OWS, defined in Section 5.6.3). For consistency, use
+  # comma SP."
   my $data;
-  my @values = split /\s*,\s*/, $header_string;
   if (grep $_ eq 'array', @$types) {
     # style=simple, explode=false or true: "blue,black,brown" -> ["blue","black","brown"]
     $data = \@values;
@@ -572,7 +575,9 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
     }
   }
   else {
-    $data = join ', ', @values;
+    # when validating as a single string, preserve internal whitespace in each individual header
+    # but strip leading/trailing whitespace
+    $data = join ', ', map s/^\s*//r =~ s/\s*$//r, $headers->every_header($header_name)->@*;
   }
 
   $state = { %$state, schema_path => jsonp($state->{schema_path}, 'schema'), stringy_numbers => 1 };
