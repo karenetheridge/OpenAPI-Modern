@@ -156,8 +156,10 @@ sub validate_request ($self, $request, $options = {}) {
 
     $state->{schema_path} = jsonp($state->{schema_path}, $method);
 
-    ()= E({ %$state, data_path => jsonp($state->{data_path}, 'header') },
-        'RFC9112 §6.2-2: A sender MUST NOT send a Content-Length header field in any message that contains a Transfer-Encoding header field')
+    # RFC9112 §6.2-2: A sender MUST NOT send a Content-Length header field in any message that
+    # contains a Transfer-Encoding header field.
+    ()= E({ %$state, data_path => jsonp($state->{data_path}, 'header', 'Content-Length') },
+        'Content-Length cannot appear together with Transfer-Encoding')
       if defined $request->headers->content_length and $request->content->is_chunked;
 
     # RFC9112 §6.3-7: A user agent that sends a request that contains a message body MUST send
@@ -253,9 +255,17 @@ sub validate_response ($self, $response, $options = {}) {
         if $response->is_success and $method eq 'connect';
     }
 
-    ()= E({ %$state, data_path => jsonp($state->{data_path}, 'header') },
-        'RFC9112 §6.2-2: A sender MUST NOT send a Content-Length header field in any message that contains a Transfer-Encoding header field')
+    # RFC9112 §6.2-2: A sender MUST NOT send a Content-Length header field in any message that
+    # contains a Transfer-Encoding header field.
+    ()= E({ %$state, data_path => jsonp($state->{data_path}, 'header', 'Content-Length') },
+        'Content-Length cannot appear together with Transfer-Encoding')
       if defined $response->headers->content_length and $response->content->is_chunked;
+
+    # RFC9112 §6.3-7: A user agent that sends a request that contains a message body MUST send
+    # either a valid Content-Length header field or use the chunked transfer coding.
+    ()= E({ %$state, data_path => jsonp($state->{data_path}, 'header') }, 'missing header: Content-Length')
+      if $response->body_size and not $response->headers->content_length
+        and not $response->content->is_chunked;
 
     my $response_name = first { exists $operation->{responses}{$_} }
       $response->code, substr(sprintf('%03s', $response->code), 0, -2).'XX', 'default';
@@ -771,10 +781,8 @@ sub _convert_request ($request) {
   return $request if $request->isa('Mojo::Message::Request');
   if ($request->isa('HTTP::Request')) {
     my $req = Mojo::Message::Request->new;
-    if (not defined $request->headers->content_length) {
-      my $length = length $request->content_ref->$*;
-      $req->headers->content_length($length) if $length;
-    }
+    # we could call $req->fix_headers here to add a missing Content-Length, but proper requests from
+    # the network should always have it set.
     $req->parse($request->as_string);
     return $req;
   }
@@ -786,11 +794,9 @@ sub _convert_response ($response) {
   return $response if $response->isa('Mojo::Message::Response');
   if ($response->isa('HTTP::Response')) {
     my $res = Mojo::Message::Response->new;
-    if (not defined $response->headers->content_length) {
-      my $length = length $response->content_ref->$*;
-      $res->headers->content_length($length) if $length;
-    }
     $res->parse($response->as_string);
+    # we could call $req->fix_headers here to add a missing Content-Length, but proper requests from
+    # the network should always have it set.
     return $res;
   }
   croak 'unknown type '.ref($response);

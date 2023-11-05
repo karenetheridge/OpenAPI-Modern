@@ -834,10 +834,11 @@ YAML
   );
 
   TODO: {
-    local $TODO = 'mojo will strip the content body when parsing a request without Content-Length'
+    local $TODO = 'mojo will strip the content body when parsing a stringified request that lacks Content-Length'
       if $::TYPE eq 'lwp';
+
     $request = request('POST', 'http://example.com/foo', [ 'Content-Type' => 'text/plain' ], 'éclair');
-    $request->headers->${$request->isa('Mojo::Message::Request') ? \'remove' : \'remove_header'}('Content-Length');
+    remove_header($request, 'Content-Length');
 
     cmp_deeply(
       ($result = $openapi->validate_request($request, { path_template => '/foo', path_captures => {} }))->TO_JSON,
@@ -1261,7 +1262,7 @@ YAML
         },
       ],
     },
-    'missing Content-Type does not cause an exception',
+    'missing Content-Type is an error, not an exception',
   );
 
   # bypass auto-initialization of Content-Length, Content-Type; leave Content-Length empty

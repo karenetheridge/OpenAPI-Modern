@@ -43,6 +43,8 @@ sub request ($method, $uri_string, $headers = [], $body_content = undef) {
     $req = HTTP::Request->new($method => $uri, [], $body_content);
     $req->headers->header(Host => $host) if $host;
     $req->headers->push_header(@$_) foreach pairs @$headers;
+    $req->headers->header('Content-Length' => length($body_content))
+      if defined $body_content and not defined $req->headers->header('Content-Length');
     $req->protocol('HTTP/1.1'); # required, but not added by HTTP::Request constructor
   }
   elsif ($TYPE eq 'mojo') {
@@ -70,6 +72,8 @@ sub response ($code, $headers = [], $body_content = undef) {
   if ($TYPE eq 'lwp') {
     $res = HTTP::Response->new($code, HTTP::Status::status_message($code), $headers, $body_content);
     $res->protocol('HTTP/1.1'); # not added by HTTP::Response constructor
+    $res->headers->header('Content-Length' => length($body_content))
+      if defined $body_content and not defined $res->headers->header('Content-Length');
   }
   elsif ($TYPE eq 'mojo') {
     $res = Mojo::Message::Response->new(code => $code);
@@ -78,6 +82,9 @@ sub response ($code, $headers = [], $body_content = undef) {
       $res->headers->header($name, $value);
     }
     $res->body($body_content) if defined $body_content;
+
+    # add missing Content-Length, etc
+    $res->fix_headers;
   }
   else {
     die '$TYPE '.$TYPE.' not supported';
@@ -121,6 +128,20 @@ sub query_params ($request, $pairs) {
   }
 
   return $uri;
+}
+
+sub remove_header ($message, $header_name) {
+  die '$TYPE is not set' if not defined $TYPE;
+
+  if ($TYPE eq 'lwp') {
+    $message->headers->remove_header($header_name);
+  }
+  elsif ($TYPE eq 'mojo') {
+    $message->headers->remove($header_name);
+  }
+  else {
+    die '$TYPE '.$TYPE.' not supported';
+  }
 }
 
 # create a Result object out of the document errors; suitable for stringifying
