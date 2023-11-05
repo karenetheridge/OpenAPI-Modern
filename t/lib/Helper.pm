@@ -1,5 +1,4 @@
-use strict;
-use warnings;
+use strictures 2;
 # no package, so things defined here appear in the namespace of the parent.
 use 5.020;
 use stable 0.031 'postderef';

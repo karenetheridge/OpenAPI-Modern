@@ -1,5 +1,4 @@
-use strict;
-use warnings;
+use strictures 2;
 package OpenAPI::Modern;
 # vim: set ts=8 sts=2 sw=2 tw=100 et :
 # ABSTRACT: Validate HTTP requests and responses against an OpenAPI v3.1 document

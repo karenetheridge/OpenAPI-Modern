@@ -1,5 +1,4 @@
-use strict;
-use warnings;
+use strictures 2;
 package JSON::Schema::Modern::Vocabulary::OpenAPI;
 # vim: set ts=8 sts=2 sw=2 tw=100 et :
 # ABSTRACT: Implementation of the JSON Schema OpenAPI vocabulary
