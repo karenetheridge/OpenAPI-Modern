@@ -835,7 +835,7 @@ YAML
 
   TODO: {
     local $TODO = 'mojo will strip the content body when parsing a stringified request that lacks Content-Length'
-      if $::TYPE eq 'lwp';
+      if $::TYPE eq 'lwp' or $::TYPE eq 'plack';
 
     $request = request('POST', 'http://example.com/foo', [ 'Content-Type' => 'text/plain' ], 'éclair');
     remove_header($request, 'Content-Length');
@@ -1598,16 +1598,19 @@ YAML
     'multiple values in a single header are validated as a string, with only leading and trailing whitespace stripped',
   );
 
+  TODO: {
   $request = request('GET', 'http://example.com/foo', [
       MultipleValuesAsString => '  one ',
       MultipleValuesAsString => ' two  ',
       MultipleValuesAsString => 'three  ',
     ]);
+  local $TODO = 'HTTP::Message::to_psgi fetches all headers as a single concatenated string' if $::TYPE eq 'plack';
   cmp_deeply(
     ($result = $openapi->validate_request($request, { path_template => '/foo', path_captures => {} }))->TO_JSON,
     { valid => true },
     'multiple headers on separate lines are validated as a string, with leading and trailing whitespace stripped',
   );
+  }
 
   $request = request('GET', 'http://example.com/foo', [ MultipleValuesAsArray => '  one, two, three  ']);
   cmp_deeply(
@@ -1858,6 +1861,9 @@ YAML
     'no errors from POST with body',
   );
 
+SKIP: {
+  # "Bad Content-Length: maybe client disconnect? (1 bytes remaining)"
+  skip 'plack dies on this input', 3 if $::TYPE eq 'plack';
   cmp_deeply(
     ($result = $openapi->validate_request(request($_, 'https://example.com/foo', [ 'Content-Length' => 1])))->TO_JSON,
     {
@@ -1879,6 +1885,7 @@ YAML
     { valid => true },
     'no errors from POST with Content-Length',
   );
+} # end SKIP
 };
 
 subtest 'custom error messages for false schemas' => sub {

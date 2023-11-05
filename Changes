@@ -2,6 +2,8 @@ Revision history for OpenAPI-Modern
 
 {{$NEXT}}
           - "recursive_get" now optionally takes a target entity type
+          - support added for validation of Plack::Request and Plack::Response
+            objects
 
 0.051     2023-11-13 01:02:33Z
           - Content-Length checking is now more properly consistent with

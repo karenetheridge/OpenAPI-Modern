@@ -792,6 +792,16 @@ sub _convert_request ($request) {
     $req->parse($request->as_string);
     return $req;
   }
+  elsif ($request->isa('Plack::Request')) {
+    my $req = Mojo::Message::Request->new->parse($request->env);
+    my $body = $request->content;
+    $req->parse($body) if length $body;
+    # Plack is unable to distinguish between %2F and /, so the raw (undecoded) uri can be passed
+    # here. see PSGI::FAQ
+    $req->url(Mojo::URL->new($request->env->{REQUEST_URI})) if exists $request->env->{REQUEST_URI};
+    return $req;
+  }
+
   croak 'unknown type '.ref($request);
 }
 
@@ -805,6 +815,18 @@ sub _convert_response ($response) {
     # the network should always have it set.
     return $res;
   }
+  elsif ($response->isa('Plack::Response')) {
+    my $res = Mojo::Message::Response->new;
+    $res->code($response->status);
+    my @headers = $response->headers->psgi_flatten->@*;
+    while (my ($name, $value) = splice(@headers, 0, 2)) {
+      $res->headers->header($name, $value);
+    }
+    my $body = $response->body;
+    $res->body($body) if length $body;
+    return $res;
+  }
+
   croak 'unknown type '.ref($response);
 }
 
@@ -1010,7 +1032,7 @@ The L<JSON::Schema::Modern> object to use for all URI resolution and JSON Schema
     },
   );
 
-Validates an L<HTTP::Request> or L<Mojo::Message::Request>
+Validates an L<HTTP::Request>, L<Plack::Request> or L<Mojo::Message::Request>
 object against the corresponding OpenAPI v3.1 document, returning a
 L<JSON::Schema::Modern::Result> object.
 
@@ -1030,7 +1052,7 @@ to improve performance.
     },
   );
 
-Validates an L<HTTP::Response> or L<Mojo::Message::Response>
+Validates an L<HTTP::Response>, L<Plack::Response> or L<Mojo::Message::Response>
 object against the corresponding OpenAPI v3.1 document, returning a
 L<JSON::Schema::Modern::Result> object.
 

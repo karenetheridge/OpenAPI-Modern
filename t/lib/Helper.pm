@@ -15,6 +15,7 @@ use HTTP::Status ();
 use Mojo::Message::Request;
 use Mojo::Message::Response;
 use Test2::API 'context_do';
+use Test::Needs;
 
 use Test::More 0.96;
 use if $ENV{AUTHOR_TESTING}, 'Test::Warnings';
@@ -29,7 +30,8 @@ use YAML::PP 0.005;
 # type can be
 # 'lwp': classes of type URI, HTTP::Headers, HTTP::Request, HTTP::Response
 # 'mojo': classes of type Mojo::URL, Mojo::Headers, Mojo::Message::Request, Mojo::Message::Response
-our @TYPES = qw(lwp mojo);
+# 'plack': classes of type Plack::Request, Plack::Response
+our @TYPES = qw(lwp mojo plack);
 our $TYPE;
 
 # Note: if you want your query parameters or uri fragment to be normalized, set them afterwards
@@ -37,7 +39,7 @@ sub request ($method, $uri_string, $headers = [], $body_content = undef) {
   die '$TYPE is not set' if not defined $TYPE;
 
   my $req;
-  if ($TYPE eq 'lwp') {
+  if ($TYPE eq 'lwp' or $TYPE eq 'plack') {
     my $uri = URI->new($uri_string);
     my $host = $uri->$_call_if_can('host');
     $req = HTTP::Request->new($method => $uri, [], $body_content);
@@ -60,6 +62,16 @@ sub request ($method, $uri_string, $headers = [], $body_content = undef) {
   }
   else {
     die '$TYPE '.$TYPE.' not supported';
+  }
+
+  if ($TYPE eq 'plack') {
+    test_needs('Plack::Request', 'HTTP::Message::PSGI');
+    my $uri = $req->uri;
+    $req = Plack::Request->new($req->to_psgi);
+
+    # Plack is unable to distinguish between %2F and /, so the raw (undecoded) uri can be passed
+    # here. see PSGI::FAQ
+    $req->env->{REQUEST_URI} = $uri . '';
   }
 
   return $req;
@@ -86,6 +98,12 @@ sub response ($code, $headers = [], $body_content = undef) {
     # add missing Content-Length, etc
     $res->fix_headers;
   }
+  elsif ($TYPE eq 'plack') {
+    test_needs('Plack::Response');
+    $res = Plack::Response->new($code, $headers, $body_content);
+    $res->headers->header('Content-Length' => length($body_content))
+      if defined $body_content and not defined $res->headers->header('Content-Length');
+  }
   else {
     die '$TYPE '.$TYPE.' not supported';
   }
@@ -97,7 +115,7 @@ sub uri ($uri_string, @path_parts) {
   die '$TYPE is not set' if not defined $TYPE;
 
   my $uri;
-  if ($TYPE eq 'lwp') {
+  if ($TYPE eq 'lwp' or $TYPE eq 'plack') {
     $uri = URI->new($uri_string);
     $uri->path_segments(@path_parts) if @path_parts;
   }
@@ -123,6 +141,11 @@ sub query_params ($request, $pairs) {
   elsif ($TYPE eq 'mojo') {
     $request->url->query->pairs($pairs);
   }
+  elsif ($TYPE eq 'plack') {
+    # this is the encoded query string portion of the URI
+    $request->env->{QUERY_STRING} = Mojo::Parameters->new->pairs($pairs)->to_string;
+    $request->env->{REQUEST_URI} .= '?' . $request->env->{QUERY_STRING};
+  }
   else {
     die '$TYPE '.$TYPE.' not supported';
   }
@@ -138,6 +161,10 @@ sub remove_header ($message, $header_name) {
   }
   elsif ($TYPE eq 'mojo') {
     $message->headers->remove($header_name);
+  }
+  elsif ($TYPE eq 'plack') {
+    $message->headers->remove_header($header_name);
+    delete $message->env->{uc $header_name =~ s/-/_/r} if $message->isa('Plack::Request');
   }
   else {
     die '$TYPE '.$TYPE.' not supported';
