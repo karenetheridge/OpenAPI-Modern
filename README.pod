@@ -8,7 +8,7 @@ OpenAPI::Modern - Validate HTTP requests and responses against an OpenAPI v3.1 d
 
 =head1 VERSION
 
-version 0.049
+version 0.050
 
 =head1 SYNOPSIS
 
@@ -123,7 +123,7 @@ than features that seem to work but actually cut corners for simplicity.
 
 =for Pod::Coverage BUILDARGS THAW
 
-=for stopwords schemas jsonSchemaDialect metaschema subschema perlish operationId
+=for stopwords schemas jsonSchemaDialect metaschema subschema perlish operationId openapi
 
 =head1 CONSTRUCTOR ARGUMENTS
 
@@ -284,6 +284,22 @@ In addition, this value is populated in the options hash (when available):
 Note that the L<C</servers>|https://spec.openapis.org/oas/v3.1.0#server-object> section of the
 OpenAPI document is not used for path matching at this time, for either scheme and host matching nor
 path prefixes.
+
+=head2 recursive_get
+
+Given a uri or uri-reference, get the definition at that location, following any C<$ref>s along the
+way. Returns the data in scalar context, or a tuple of the data and the canonical URI of the
+referenced location in list context.
+
+If the provided location is relative, the main openapi document is used for the base URI.
+If you have a local json pointer you want to resolve, you can turn it into a uri-reference by
+prepending C<#>.
+
+  my $schema = $openapi->recursive_get('#/components/parameters/Content-Encoding');
+
+  # starts with a JSON::Schema::Modern object (TODO)
+  my $schema = $js->recursive_get('https:///openapi_doc.yaml#/components/schemas/my_object')
+  my $schema = $js->recursive_get('https://localhost:1234/my_spec#/$defs/my_object')
 
 =head2 canonical_uri
 
