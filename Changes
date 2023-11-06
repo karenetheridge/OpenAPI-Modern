@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.050     2023-11-06 03:10:15Z
           - fix construction of an OpenAPI::Modern object with a
             pre-constructed JSON::Schema::Modern::Document::OpenAPI object
