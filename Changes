@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.051     2023-11-13 01:02:33Z
           - Content-Length checking is now more properly consistent with
             RFC9112; some users of HTTP::Request and ::Response objects may
