@@ -469,11 +469,7 @@ sub find_path ($self, $options) {
 sub recursive_get ($self, $uri_reference) {
   my $base = $self->openapi_uri;
   my $ref = $uri_reference;
-  my ($depth, $schema);
-
-  my $entity_type;
-  $entity_type = $self->openapi_document->get_entity_at_location(Mojo::URL->new($uri_reference)->fragment)
-    if $uri_reference =~ /^#/;
+  my ($depth, $schema, $entity_type);
 
   while ($ref) {
     die 'maximum evaluation depth exceeded' if $depth++ > $self->evaluator->max_traversal_depth;
