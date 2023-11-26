@@ -466,10 +466,10 @@ sub find_path ($self, $options) {
   return 1;
 }
 
-sub recursive_get ($self, $uri_reference) {
+sub recursive_get ($self, $uri_reference, $entity_type = undef) {
   my $base = $self->openapi_uri;
   my $ref = $uri_reference;
-  my ($depth, $schema, $entity_type);
+  my ($depth, $schema);
 
   while ($ref) {
     die 'maximum evaluation depth exceeded' if $depth++ > $self->evaluator->max_traversal_depth;
@@ -1087,14 +1087,19 @@ path prefixes.
 =head2 recursive_get
 
 Given a uri or uri-reference, get the definition at that location, following any C<$ref>s along the
-way. Returns the data in scalar context, or a tuple of the data and the canonical URI of the
+way. Include the expected definition type
+(one of C<schema>, C<response>, C<parameter>, C<example>, C<request-body>, C<header>,
+C<security-scheme>, C<link>, C<callbacks>, or C<path-item>)
+for validation of the entire reference chain.
+
+Returns the data in scalar context, or a tuple of the data and the canonical URI of the
 referenced location in list context.
 
 If the provided location is relative, the main openapi document is used for the base URI.
 If you have a local json pointer you want to resolve, you can turn it into a uri-reference by
 prepending C<#>.
 
-  my $schema = $openapi->recursive_get('#/components/parameters/Content-Encoding');
+  my $schema = $openapi->recursive_get('#/components/parameters/Content-Encoding', 'parameter');
 
   # starts with a JSON::Schema::Modern object (TODO)
   my $schema = $js->recursive_get('https:///openapi_doc.yaml#/components/schemas/my_object')

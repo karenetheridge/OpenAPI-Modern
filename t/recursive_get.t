@@ -101,6 +101,12 @@ subtest recursive_get => sub {
     'endless loop',
   );
 
+  like(
+    exception { $openapi->recursive_get('#/components/parameters/baz', 'example') },
+    qr{^bad \$ref to http://localhost:1234/api\#/components/parameters/baz: not an "example"},
+    'incorrect expected entity type',
+  );
+
   cmp_deeply(
     [ $openapi->recursive_get('#/paths/~1foo/post/parameters/2') ],
     [ { name => 'baz', in => 'query', schema => {} }, str('http://localhost:1234/api#/components/parameters/baz') ],
