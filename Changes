@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.052     2023-11-26 23:48:32Z
           - "recursive_get" now optionally takes a target entity type
           - support added for validation of Plack::Request and Plack::Response
             objects

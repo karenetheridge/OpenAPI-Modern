@@ -8,7 +8,7 @@ OpenAPI::Modern - Validate HTTP requests and responses against an OpenAPI v3.1 d
 
 =head1 VERSION
 
-version 0.051
+version 0.052
 
 =head1 SYNOPSIS
 
@@ -198,7 +198,7 @@ The L<JSON::Schema::Modern> object to use for all URI resolution and JSON Schema
     },
   );
 
-Validates an L<HTTP::Request> or L<Mojo::Message::Request>
+Validates an L<HTTP::Request>, L<Plack::Request> or L<Mojo::Message::Request>
 object against the corresponding OpenAPI v3.1 document, returning a
 L<JSON::Schema::Modern::Result> object.
 
@@ -218,7 +218,7 @@ to improve performance.
     },
   );
 
-Validates an L<HTTP::Response> or L<Mojo::Message::Response>
+Validates an L<HTTP::Response>, L<Plack::Response> or L<Mojo::Message::Response>
 object against the corresponding OpenAPI v3.1 document, returning a
 L<JSON::Schema::Modern::Result> object.
 
@@ -288,14 +288,19 @@ path prefixes.
 =head2 recursive_get
 
 Given a uri or uri-reference, get the definition at that location, following any C<$ref>s along the
-way. Returns the data in scalar context, or a tuple of the data and the canonical URI of the
+way. Include the expected definition type
+(one of C<schema>, C<response>, C<parameter>, C<example>, C<request-body>, C<header>,
+C<security-scheme>, C<link>, C<callbacks>, or C<path-item>)
+for validation of the entire reference chain.
+
+Returns the data in scalar context, or a tuple of the data and the canonical URI of the
 referenced location in list context.
 
 If the provided location is relative, the main openapi document is used for the base URI.
 If you have a local json pointer you want to resolve, you can turn it into a uri-reference by
 prepending C<#>.
 
-  my $schema = $openapi->recursive_get('#/components/parameters/Content-Encoding');
+  my $schema = $openapi->recursive_get('#/components/parameters/Content-Encoding', 'parameter');
 
   # starts with a JSON::Schema::Modern object (TODO)
   my $schema = $js->recursive_get('https:///openapi_doc.yaml#/components/schemas/my_object')
