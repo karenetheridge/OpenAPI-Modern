@@ -478,7 +478,7 @@ sub recursive_get ($self, $uri_reference) {
     my $schema_info = $self->evaluator->_fetch_from_uri($uri);
 
     die('unable to find resource ', $uri) if not $schema_info;
-    die sprintf('bad $ref to %s: not a "%s"', $schema_info->{canonical_uri}, $entity_type)
+    die sprintf('bad $ref to %s: not a%s "%s"', $schema_info->{canonical_uri}, ($entity_type =~ /^[aeiou]/ ? 'n' : ''), $entity_type)
       if $entity_type and $entity_type ne 'schema'
         and $schema_info->{document}->get_entity_at_location($schema_info->{document_path}) ne $entity_type;
 
