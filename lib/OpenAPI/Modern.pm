@@ -581,9 +581,10 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
     $data = \@values;
   }
   elsif (grep $_ eq 'object', @$types) {
+    # XXX this fixes us not parsing foo== properly? test
     if ($header_obj->{explode}//false) {
       # style=simple, explode=true: "R=100,G=200,B=150" -> { "R": 100, "G": 200, "B": 150 }
-      $data = +{ map m/^([^=]*)=?(.*)$/g, @values };
+      $data = +{ map m/^([^=]*)(?:=(.*))?$/g, @values };
     }
     else {
       # style=simple, explode=false: "R,100,G,200,B,150" -> { "R": 100, "G": 200, "B": 150 }
