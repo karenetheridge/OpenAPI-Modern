@@ -653,19 +653,21 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
       'incorrect Content-Type "%s"', $content_type)
     if not defined $media_type;
 
-  if (exists $content_obj->{$media_type}{encoding}) {
-    my $state = { %$state, schema_path => jsonp($state->{schema_path}, 'content', $media_type) };
-    # 4.8.14.1 "The key, being the property name, MUST exist in the schema as a property."
-    foreach my $property (sort keys $content_obj->{$media_type}{encoding}->%*) {
-      ()= E({ $state, schema_path => jsonp($state->{schema_path}, 'schema', 'properties', $property) },
-          'encoding property "%s" requires a matching property definition in the schema')
-        if not exists(($content_obj->{$media_type}{schema}{properties}//{})->{$property});
+  # §4.8.14.1 "The encoding object SHALL only apply to requestBody objects when the media type is
+  # multipart or application/x-www-form-urlencoded."
+  if ($content_type =~ m{^multipart/} or $content_type eq 'application/x-www-form-urlencoded') {
+    if (exists $content_obj->{$media_type}{encoding}) {
+      my $state = { %$state, schema_path => jsonp($state->{schema_path}, 'content', $media_type) };
+      # 4.8.14.1 "The key, being the property name, MUST exist in the schema as a property."
+      foreach my $property (sort keys $content_obj->{$media_type}{encoding}->%*) {
+        ()= E({ $state, schema_path => jsonp($state->{schema_path}, 'schema', 'properties', $property) },
+            'encoding property "%s" requires a matching property definition in the schema')
+          if not exists(($content_obj->{$media_type}{schema}{properties}//{})->{$property});
+      }
+      return E({ %$state, keyword => 'encoding' }, 'encoding not yet supported');
     }
 
-    # 4.8.14.1 "The encoding object SHALL only apply to requestBody objects when the media type is
-    # multipart or application/x-www-form-urlencoded."
-    return E({ %$state, keyword => 'encoding' }, 'encoding not yet supported')
-      if $content_type =~ m{^multipart/} or $content_type eq 'application/x-www-form-urlencoded';
+    return E($state, '%s is not yet supported', $content_type);
   }
 
   # TODO: handle Content-Encoding header; https://github.com/OAI/OpenAPI-Specification/issues/2868
