@@ -112,6 +112,52 @@ YAML
     'path parameters are evaluated against their schemas',
   );
 
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => '/api',
+    openapi_schema => $yamlpp->load_string(<<YAML));
+$openapi_preamble
+paths:
+  /foo/{foo_id}:
+    get:
+      parameters:
+      - name: foo_id
+        in: path
+        required: true
+        content:
+          application/json: {}
+      - name: Bar
+        in: header
+        required: false
+        content:
+          electric/boogaloo: {}
+YAML
+
+  cmp_deeply(
+    ($result = $openapi->validate_request(request('GET', 'http://example.com/foo/corrupt_json'),
+      { path_template => '/foo/{foo_id}', path_captures => { foo_id => 'corrupt_json' } }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/uri/path/foo_id',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id} get parameters 0 content application/json)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get parameters 0 content application/json)))->to_string,
+          error => re(qr/^could not decode content as application\/json: malformed JSON string/),
+        },
+      ],
+    },
+    'corrupt data is detected, even when there is no schema',
+  );
+
+  cmp_deeply(
+    ($result = $openapi->validate_request(request('GET', 'http://example.com/foo/{}', [ Bar => 1 ]),
+      { path_template => '/foo/{foo_id}', path_captures => { foo_id => '{}' } }))->TO_JSON,
+    { valid => true },
+    'valid encoded content is always valid when there is no schema, and unknown media types are okay',
+  );
+
+
   $openapi = OpenAPI::Modern->new(
     openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
@@ -1123,14 +1169,38 @@ paths:
       requestBody:
         required: true
         content:
-          text/plain: {}
+          application/json: {}
+          electric/boogaloo: {}
 YAML
 
-  $request = request('POST', 'http://example.com/foo', [ 'Content-Type' => 'text/plain' ], '!!!');
+  $request = request('POST', 'http://example.com/foo', [ 'Content-Type' => 'application/json' ], 'corrupt_json');
+  cmp_deeply(
+    ($result = $openapi->validate_request($request, { path_template => '/foo', path_captures => {} }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/body',
+          keywordLocation => jsonp(qw(/paths /foo post requestBody content application/json)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content application/json)))->to_string,
+          error => re(qr/^could not decode content as application\/json: malformed JSON string/),
+        },
+      ],
+    },
+    'corrupt data is detected, even when there is no schema',
+  );
+
+  $request = request('POST', 'http://example.com/foo', [ 'Content-Type' => 'application/json' ], '{}');
   cmp_deeply(
     ($result = $openapi->validate_request($request, { path_template => '/foo', path_captures => {} }))->TO_JSON,
     { valid => true },
-    'empty media-type object is not an error',
+    'valid encoded content is always valid when there is no schema',
+  );
+
+  cmp_deeply(
+    ($result = $openapi->validate_request(request('POST', 'http://example.com/foo', [ 'Content-Type' => 'electric/boogaloo' ], 'blah'), { path_template => '/foo', path_captures => {} }))->TO_JSON,
+    { valid => true },
+    '..even when the media-type is unknown',
   );
 };
 
