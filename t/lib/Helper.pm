@@ -28,10 +28,10 @@ use constant { true => JSON::PP::true, false => JSON::PP::false };
 use YAML::PP 0.005;
 
 # type can be
-# 'lwp': classes of type URI, HTTP::Headers, HTTP::Request, HTTP::Response
 # 'mojo': classes of type Mojo::URL, Mojo::Headers, Mojo::Message::Request, Mojo::Message::Response
+# 'lwp': classes of type URI, HTTP::Headers, HTTP::Request, HTTP::Response
 # 'plack': classes of type Plack::Request, Plack::Response
-our @TYPES = qw(lwp mojo plack);
+our @TYPES = qw(mojo lwp plack);
 our $TYPE;
 
 # Note: if you want your query parameters or uri fragment to be normalized, set them afterwards
