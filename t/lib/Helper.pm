@@ -43,8 +43,7 @@ sub request ($method, $uri_string, $headers = [], $body_content = '') {
     my $uri = URI->new($uri_string);
     my $host = $uri->$_call_if_can('host');
     $req = HTTP::Request->new($method => $uri, [], $body_content);
-    $req->headers->header(Host => $host) if $host;
-    $req->headers->push_header(@$_) foreach pairs @$headers;
+    $req->headers->push_header(@$_) foreach pairs @$headers, $host ? (Host => $host) : ();
     $req->headers->header('Content-Length' => length($body_content))
       if defined $body_content and not defined $req->headers->header('Content-Length')
         and not defined $req->headers->header('Transfer-Encoding');
@@ -54,8 +53,7 @@ sub request ($method, $uri_string, $headers = [], $body_content = '') {
     my $uri = Mojo::URL->new($uri_string);
     my $host = $uri->host;
     $req = Mojo::Message::Request->new(method => $method, url => Mojo::URL->new($uri_string));
-    $req->headers->header('Host', $host) if $host;
-    $req->headers->add(@$_) foreach pairs @$headers;
+    $req->headers->add(@$_) foreach pairs @$headers, $host ? (Host => $host) : ();
     $req->body($body_content) if defined $body_content;
 
     # add missing Content-Length, etc
@@ -92,9 +90,7 @@ sub response ($code, $headers = [], $body_content = '') {
   elsif ($TYPE eq 'mojo') {
     $res = Mojo::Message::Response->new(code => $code);
     $res->message($res->default_message);
-    while (my ($name, $value) = splice(@$headers, 0, 2)) {
-      $res->headers->header($name, $value);
-    }
+    $res->headers->add(@$_) foreach pairs @$headers;
     $res->body($body_content) if defined $body_content;
 
     # add missing Content-Length, etc
