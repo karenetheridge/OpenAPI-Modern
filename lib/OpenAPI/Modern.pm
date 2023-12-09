@@ -1186,7 +1186,7 @@ Only certain permutations of OpenAPI documents are supported at this time:
 * L<JSON::Schema::Modern>
 * L<https://json-schema.org>
 * L<https://www.openapis.org/>
-* L<https://oai.github.io/Documentation/>
+* L<https://learn.openapis.org/>
 * L<https://spec.openapis.org/oas/v3.1.0>
 
 =head1 SUPPORT
