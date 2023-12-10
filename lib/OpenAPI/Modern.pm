@@ -1182,6 +1182,7 @@ Only certain permutations of OpenAPI documents are supported at this time:
 
 =for :list
 * L<Mojolicious::Plugin::OpenAPI::Modern>
+* L<Test::Mojo::Role::OpenAPI::Modern>
 * L<JSON::Schema::Modern::Document::OpenAPI>
 * L<JSON::Schema::Modern>
 * L<https://json-schema.org>
