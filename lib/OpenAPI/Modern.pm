@@ -771,7 +771,6 @@ sub _evaluate_subschema ($self, $dataref, $schema, $state) {
       data_path => $state->{data_path},
       traversed_schema_path => $state->{traversed_schema_path}.$state->{schema_path},
       effective_base_uri => $state->{effective_base_uri},
-      collect_annotations => 1,
       $state->{stringy_numbers} ? ( stringy_numbers => 1 ) : (),
     },
   );

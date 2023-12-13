@@ -1749,29 +1749,6 @@ YAML
     },
     'unevaluatedProperties can be used in schemas',
   );
-
-  $request = request('POST', 'http://example.com/foo', [ 'Content-Type' => 'application/json' ], '{"bar":1}');
-  cmp_deeply(
-    ($result = $openapi->validate_request($request))->format('basic', 1),
-    {
-      valid => true,
-      annotations => [
-        {
-          instanceLocation => '/request/body',
-          keywordLocation => jsonp(qw(/paths /foo post requestBody content application/json schema properties)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content application/json schema properties)))->to_string,
-          annotation => ['bar'],
-        },
-        {
-          instanceLocation => '/request/body',
-          keywordLocation => jsonp(qw(/paths /foo post requestBody content application/json schema unevaluatedProperties)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content application/json schema unevaluatedProperties)))->to_string,
-          annotation => [],
-        },
-      ],
-    },
-    'annotations are collected when evaluating valid requests',
-  );
 };
 
 subtest 'readOnly' => sub {
