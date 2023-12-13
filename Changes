@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.053     2023-12-13 05:01:33Z
           - no longer improperly reporting 4xx response errors as validation
             failures when message has actually been transmitted
