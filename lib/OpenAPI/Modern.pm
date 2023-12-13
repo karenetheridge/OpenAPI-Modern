@@ -239,11 +239,6 @@ sub validate_response ($self, $response, $options = {}) {
 
     $response = _convert_response($response);   # now guaranteed to be a Mojo::Message::Response
 
-    if (my $error = $response->error) {
-      ()= E($state, $error->{message});
-      return $self->_result($state, 1);
-    }
-
     if ($response->headers->header('Transfer-Encoding')) {
       ()= E({ %$state, data_path => jsonp($state->{data_path}, qw(header Transfer-Encoding)) },
         'RFC9112 §6.1-10: A server MUST NOT send a Transfer-Encoding header field in any response with a status code of 1xx (Informational) or 204 (No Content)')
@@ -326,6 +321,7 @@ sub find_path ($self, $options) {
     $options->{request} ? ( effective_base_uri => Mojo::URL->new->scheme('https')->host($options->{request}->headers->host) ) : (),
   };
 
+  # requests don't have response codes, so if 'error' is set, it is some sort of parsing error
   if ($options->{request} and my $error = $options->{request}->error) {
     ()= E({ %$state, data_path => '/request' }, $error->{message});
     return $self->_result($state, 1);

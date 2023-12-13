@@ -1,6 +1,8 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - no longer improperly reporting 4xx response errors as validation
+            failures when message has actually been transmitted
 
 0.052     2023-11-26 23:48:32Z
           - "recursive_get" now optionally takes a target entity type
