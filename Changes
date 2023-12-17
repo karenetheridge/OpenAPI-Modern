@@ -1,6 +1,9 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - now making use of "recommended_response" in JSON::Schema::Modern to
+            recommend an HTTP response code and message to use after certain
+            request validation failures
 
 0.053     2023-12-13 05:01:33Z
           - no longer improperly reporting 4xx response errors as validation

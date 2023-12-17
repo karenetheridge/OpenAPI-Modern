@@ -100,6 +100,12 @@ sub validate_request ($self, $request, $options = {}) {
     my $path_ok = $self->find_path($options);
     $request = $options->{request};   # now guaranteed to be a Mojo::Message::Request
     $state->{errors} = delete $options->{errors};
+
+    # Reporting a failed find_path as an exception will result in a recommended response of
+    # [ 500, Internal Server Error ], which is warranted if we consider the lack of a specification
+    # entry for this incoming request as an unexpected, server-side error.
+    # Callers can decide if this should instead be reported as a [ 404, Not Found ], but that sort
+    # of response is likely to leave oversights in the specification go unnoticed.
     return $self->_result($state, 1) if not $path_ok;
 
     my ($path_template, $path_captures) = $options->@{qw(path_template path_captures)};
@@ -164,7 +170,8 @@ sub validate_request ($self, $request, $options = {}) {
 
     # RFC9112 §6.3-7: A user agent that sends a request that contains a message body MUST send
     # either a valid Content-Length header field or use the chunked transfer coding.
-    ()= E({ %$state, data_path => jsonp($state->{data_path}, 'header') }, 'missing header: Content-Length')
+    ()= E({ %$state, data_path => jsonp($state->{data_path}, 'header'),
+        recommended_response => [ 411, 'Length Required' ] }, 'missing header: Content-Length')
       if $request->body_size and not $request->headers->content_length
         and not $request->content->is_chunked;
 
@@ -225,13 +232,13 @@ sub validate_response ($self, $response, $options = {}) {
   try {
     my $path_ok = $self->find_path($options);
     $state->{errors} = delete $options->{errors};
-    return $self->_result($state, 1) if not $path_ok;
+    return $self->_result($state, 1, 1) if not $path_ok;
 
     my ($path_template, $path_captures) = $options->@{qw(path_template path_captures)};
     my $method = lc $options->{method};
     my $operation = $self->openapi_document->schema->{paths}{$path_template}{$method};
 
-    return $self->_result($state) if not exists $operation->{responses};
+    return $self->_result($state, 0, 1) if not exists $operation->{responses};
 
     $state->{effective_base_uri} = Mojo::URL->new->scheme('https')->host($options->{request}->headers->host)
       if $options->{request};
@@ -267,7 +274,7 @@ sub validate_response ($self, $response, $options = {}) {
 
     if (not $response_name) {
       ()= E({ %$state, keyword => 'responses' }, 'no response object found for code %s', $response->code);
-      return $self->_result($state);
+      return $self->_result($state, 0, 1);
     }
 
     my $response_obj = $operation->{responses}{$response_name};
@@ -295,6 +302,7 @@ sub validate_response ($self, $response, $options = {}) {
   }
   catch ($e) {
     if ($e->$_isa('JSON::Schema::Modern::Result')) {
+      $e->recommended_response(undef);
       return $e;
     }
     elsif ($e->$_isa('JSON::Schema::Modern::Error')) {
@@ -305,7 +313,7 @@ sub validate_response ($self, $response, $options = {}) {
     }
   }
 
-  return $self->_result($state);
+  return $self->_result($state, 0, 1);
 }
 
 sub find_path ($self, $options) {
@@ -324,7 +332,7 @@ sub find_path ($self, $options) {
   # requests don't have response codes, so if 'error' is set, it is some sort of parsing error
   if ($options->{request} and my $error = $options->{request}->error) {
     ()= E({ %$state, data_path => '/request' }, $error->{message});
-    return $self->_result($state, 1);
+    return $self->_result($state);
   }
 
   my ($method, $path_template);
@@ -370,7 +378,8 @@ sub find_path ($self, $options) {
     my $path_item = $self->openapi_document->schema->{paths}{$path_template};
     return E({ %$state, keyword => 'paths' }, 'missing path-item "%s"', $path_template) if not $path_item;
 
-    return E({ %$state, data_path => '/request/method', schema_path => jsonp('/paths', $path_template), keyword => $method },
+    return E({ %$state, data_path => '/request/method', schema_path => jsonp('/paths', $path_template),
+        keyword => $method, recommended_response => [ 405, 'Method Not Allowed' ] },
         'missing operation for HTTP method "%s"', $method)
       if not $path_item->{$method};
   }
@@ -403,7 +412,9 @@ sub find_path ($self, $options) {
         if $options->{path_captures} and not is_equal($options->{path_captures}, \%path_captures);
 
       $options->{path_captures} = \%path_captures;
-      return E({ %$state, data_path => '/request/method', schema_path => jsonp('/paths', $path_template), keyword => $method },
+      return E({ %$state, data_path => '/request/method',
+          schema_path => jsonp('/paths', $path_template), keyword => $method,
+          recommended_response => [ 405, 'Method Not Allowed' ] },
           'missing operation for HTTP method "%s"', $method)
         if not exists $schema->{paths}{$path_template}{$method};
 
@@ -638,7 +649,8 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
   my $media_type = (first { $content_type eq fc } keys $content_obj->%*)
     // (first { m{([^/]+)/\*$} && fc($content_type) =~ m{^\F\Q$1\E/[^/]+$} } keys $content_obj->%*);
   $media_type = '*/*' if not defined $media_type and exists $content_obj->{'*/*'};
-  return E({ %$state, keyword => 'content' }, 'incorrect Content-Type "%s"', $content_type)
+  return E({ %$state, keyword => 'content', recommended_response => [ 415, 'Unsupported Media Type' ] },
+      'incorrect Content-Type "%s"', $content_type)
     if not defined $media_type;
 
   if (exists $content_obj->{$media_type}{encoding}) {
@@ -699,15 +711,16 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
 }
 
 # wrap a result object around the errors
-sub _result ($self, $state, $exception = 0) {
+sub _result ($self, $state, $exception = 0, $response = 0) {
   return JSON::Schema::Modern::Result->new(
     output_format => $self->evaluator->output_format,
     formatted_annotations => 0,
     valid => !$state->{errors}->@*,
-    $exception ? ( exception => 1 ) : (),
+    $exception ? ( exception => 1 ) : (), # -> recommended_response: [ 500, 'Internal Server Error' ]
     !$state->{errors}->@*
       ? (annotations => $state->{annotations}//[])
       : (errors => $state->{errors}),
+    $response ? ( recommended_response => undef ) : (),
   );
 }
 
