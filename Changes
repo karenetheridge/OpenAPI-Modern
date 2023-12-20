@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.054     2023-12-20 19:41:20Z
           - now making use of "recommended_response" in JSON::Schema::Modern to
             recommend an HTTP response code and message to use after certain
