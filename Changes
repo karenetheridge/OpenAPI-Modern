@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.056     2023-12-31 17:26:55Z
           - bump optional dependency on HTTP::Headers::Fast for a psgi
             interface (GH#70)
 
