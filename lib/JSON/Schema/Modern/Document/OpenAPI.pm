@@ -87,6 +87,7 @@ sub traverse ($self, $evaluator) {
     spec_version => $evaluator->SPECIFICATION_VERSION_DEFAULT,
     vocabularies => [],
     subschemas => [],
+    depth => 0,
   };
 
   # this is an abridged form of https://spec.openapis.org/oas/3.1/schema/latest

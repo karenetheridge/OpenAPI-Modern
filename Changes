@@ -1,6 +1,7 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - fix incompatibility with JSON::Schema::Modern 0.578
 
 0.054     2023-12-20 19:41:20Z
           - now making use of "recommended_response" in JSON::Schema::Modern to

@@ -93,6 +93,7 @@ sub validate_request ($self, $request, $options = {}) {
     schema_path => '',              # the rest of the path, since the last $id or the last traversed $ref
     effective_base_uri => Mojo::URL->new->scheme('https')->host($request->headers->header('Host')),
     annotations => [],
+    depth => 0,
   };
 
   try {
@@ -141,10 +142,10 @@ sub validate_request ($self, $request, $options = {}) {
           ((grep $param_obj->{in} eq $_, qw(path query)) ? 'uri' : ()), $param_obj->{in},
           $param_obj->{name});
         my $valid =
-            $param_obj->{in} eq 'path' ? $self->_validate_path_parameter($state, $param_obj, $path_captures)
-          : $param_obj->{in} eq 'query' ? $self->_validate_query_parameter($state, $param_obj, $request->url)
-          : $param_obj->{in} eq 'header' ? $self->_validate_header_parameter($state, $param_obj->{name}, $param_obj, $request->headers)
-          : $param_obj->{in} eq 'cookie' ? $self->_validate_cookie_parameter($state, $param_obj, $request)
+            $param_obj->{in} eq 'path' ? $self->_validate_path_parameter({ %$state, depth => $state->{depth}+1 }, $param_obj, $path_captures)
+          : $param_obj->{in} eq 'query' ? $self->_validate_query_parameter({ %$state, depth => $state->{depth}+1 }, $param_obj, $request->url)
+          : $param_obj->{in} eq 'header' ? $self->_validate_header_parameter({ %$state, depth => $state->{depth}+1 }, $param_obj->{name}, $param_obj, $request->headers)
+          : $param_obj->{in} eq 'cookie' ? $self->_validate_cookie_parameter({ %$state, depth => $state->{depth}+1 }, $param_obj, $request)
           : abort($state, 'unrecognized "in" value "%s"', $param_obj->{in});
       }
     }
@@ -185,7 +186,7 @@ sub validate_request ($self, $request, $options = {}) {
       }
 
       if ($request->body_size) {
-        $self->_validate_body_content($state, $body_obj->{content}, $request);
+        $self->_validate_body_content({ %$state, depth => $state->{depth}+1 }, $body_obj->{content}, $request);
       }
       elsif ($body_obj->{required}) {
         ()= E({ %$state, keyword => 'required' }, 'request body is required but missing');
@@ -227,6 +228,7 @@ sub validate_response ($self, $response, $options = {}) {
     traversed_schema_path => '',    # the accumulated traversal path as of the start, or last $id, or up to the last traversed $ref
     schema_path => '',              # the rest of the path, since the last $id or the last traversed $ref
     annotations => [],
+    depth => 0,
   };
 
   try {
@@ -292,11 +294,11 @@ sub validate_response ($self, $response, $options = {}) {
       }
 
       ()= $self->_validate_header_parameter({ %$state,
-          data_path => jsonp($state->{data_path}, 'header', $header_name) },
+          data_path => jsonp($state->{data_path}, 'header', $header_name), depth => $state->{depth}+1 },
         $header_name, $header_obj, $response->headers);
     }
 
-    $self->_validate_body_content({ %$state, data_path => jsonp($state->{data_path}, 'body') },
+    $self->_validate_body_content({ %$state, data_path => jsonp($state->{data_path}, 'body'), depth => $state->{depth}+1 },
         $response_obj->{content}, $response)
       if exists $response_obj->{content} and $response->headers->content_length // $response->body_size;
   }
@@ -327,6 +329,7 @@ sub find_path ($self, $options) {
     schema_path => '',              # the rest of the path, since the last $id or the last traversed $ref
     errors => $options->{errors} //= [],
     $options->{request} ? ( effective_base_uri => Mojo::URL->new->scheme('https')->host($options->{request}->headers->host) ) : (),
+    depth => 0,
   };
 
   # requests don't have response codes, so if 'error' is set, it is some sort of parsing error
@@ -506,7 +509,7 @@ sub _validate_path_parameter ($self, $state, $param_obj, $path_captures) {
   return E({ %$state, keyword => 'required' }, 'missing path parameter: %s', $param_obj->{name})
     if not exists $path_captures->{$param_obj->{name}};
 
-  return $self->_validate_parameter_content($state, $param_obj, \ $path_captures->{$param_obj->{name}})
+  return $self->_validate_parameter_content({ %$state, depth => $state->{depth}+1 }, $param_obj, \ $path_captures->{$param_obj->{name}})
     if exists $param_obj->{content};
 
   return E({ %$state, keyword => 'style' }, 'only style: simple is supported in path parameters')
@@ -517,7 +520,7 @@ sub _validate_path_parameter ($self, $state, $param_obj, $path_captures) {
     return E($state, 'deserializing to non-primitive types is not yet supported in path parameters');
   }
 
-  $self->_evaluate_subschema(\ $path_captures->{$param_obj->{name}}, $param_obj->{schema}, { %$state, schema_path => jsonp($state->{schema_path}, 'schema'), stringy_numbers => 1 });
+  $self->_evaluate_subschema(\ $path_captures->{$param_obj->{name}}, $param_obj->{schema}, { %$state, schema_path => jsonp($state->{schema_path}, 'schema'), stringy_numbers => 1, depth => $state->{depth}+1 });
 }
 
 sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
@@ -532,7 +535,7 @@ sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
 
   # TODO: check 'allowEmptyValue'; difficult to do without access to the raw request string
 
-  return $self->_validate_parameter_content($state, $param_obj, \ $query_params->{$param_obj->{name}})
+  return $self->_validate_parameter_content({ %$state, depth => $state->{depth}+1 }, $param_obj, \ $query_params->{$param_obj->{name}})
     if exists $param_obj->{content};
 
   # TODO: check 'allowReserved'; difficult to do without access to the raw request string
@@ -550,7 +553,8 @@ sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
     return E($state, 'deserializing to non-primitive types is not yet supported in query parameters');
   }
 
-  $self->_evaluate_subschema(\ $query_params->{$param_obj->{name}}, $param_obj->{schema}, { %$state, schema_path => jsonp($state->{schema_path}, 'schema'), stringy_numbers => 1 });
+  $state = { %$state, schema_path => jsonp($state->{schema_path}, 'schema'), stringy_numbers => 1, depth => $state->{depth}+1 };
+  $self->_evaluate_subschema(\ $query_params->{$param_obj->{name}}, $param_obj->{schema}, $state);
 }
 
 # validates a header, from either the request or the response
@@ -564,7 +568,7 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
   }
 
   # validate as a single comma-concatenated string, presumably to be decoded
-  return $self->_validate_parameter_content($state, $header_obj, \ $headers->header($header_name))
+  return $self->_validate_parameter_content({ %$state, depth => $state->{depth}+1 }, $header_obj, \ $headers->header($header_name))
     if exists $header_obj->{content};
 
   # RFC9112§5.1-3: "The field line value does not include that leading or trailing whitespace: OWS
@@ -601,7 +605,8 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
     $data = join ', ', map s/^\s*//r =~ s/\s*$//r, $headers->every_header($header_name)->@*;
   }
 
-  $self->_evaluate_subschema(\ $data, $header_obj->{schema}, { %$state, schema_path => jsonp($state->{schema_path}, 'schema'), stringy_numbers => 1 });
+  $state = { %$state, schema_path => jsonp($state->{schema_path}, 'schema'), stringy_numbers => 1, depth => $state->{depth}+1 };
+  $self->_evaluate_subschema(\ $data, $header_obj->{schema}, $state);
 }
 
 sub _validate_cookie_parameter ($self, $state, $param_obj, $request) {
@@ -631,7 +636,8 @@ sub _validate_parameter_content ($self, $state, $param_obj, $content_ref) {
       'could not decode content as %s: %s', $media_type, $e =~ s/^(.*)\n/$1/r);
   }
 
-  $self->_evaluate_subschema($content_ref, $schema, { %$state, schema_path => jsonp($state->{schema_path}, 'content', $media_type, 'schema') });
+  $state = { %$state, schema_path => jsonp($state->{schema_path}, 'content', $media_type, 'schema'), depth => $state->{depth}+1 };
+  $self->_evaluate_subschema($content_ref, $schema, $state);
 }
 
 sub _validate_body_content ($self, $state, $content_obj, $message) {
@@ -702,7 +708,8 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
 
   return if not defined $schema;
 
-  $self->_evaluate_subschema($content_ref, $schema, { %$state, schema_path => jsonp($state->{schema_path}, 'content', $media_type, 'schema') });
+  $state = { %$state, schema_path => jsonp($state->{schema_path}, 'content', $media_type, 'schema'), depth => $state->{depth}+1 };
+  $self->_evaluate_subschema($content_ref, $schema, $state);
 }
 
 # wrap a result object around the errors
