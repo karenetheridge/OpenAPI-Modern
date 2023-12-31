@@ -517,8 +517,7 @@ sub _validate_path_parameter ($self, $state, $param_obj, $path_captures) {
     return E($state, 'deserializing to non-primitive types is not yet supported in path parameters');
   }
 
-  $state = { %$state, schema_path => jsonp($state->{schema_path}, 'schema'), stringy_numbers => 1 };
-  $self->_evaluate_subschema(\ $path_captures->{$param_obj->{name}}, $param_obj->{schema}, $state);
+  $self->_evaluate_subschema(\ $path_captures->{$param_obj->{name}}, $param_obj->{schema}, { %$state, schema_path => jsonp($state->{schema_path}, 'schema'), stringy_numbers => 1 });
 }
 
 sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
@@ -551,8 +550,7 @@ sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
     return E($state, 'deserializing to non-primitive types is not yet supported in query parameters');
   }
 
-  $state = { %$state, schema_path => jsonp($state->{schema_path}, 'schema'), stringy_numbers => 1 };
-  $self->_evaluate_subschema(\ $query_params->{$param_obj->{name}}, $param_obj->{schema}, $state);
+  $self->_evaluate_subschema(\ $query_params->{$param_obj->{name}}, $param_obj->{schema}, { %$state, schema_path => jsonp($state->{schema_path}, 'schema'), stringy_numbers => 1 });
 }
 
 # validates a header, from either the request or the response
@@ -603,8 +601,7 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
     $data = join ', ', map s/^\s*//r =~ s/\s*$//r, $headers->every_header($header_name)->@*;
   }
 
-  $state = { %$state, schema_path => jsonp($state->{schema_path}, 'schema'), stringy_numbers => 1 };
-  $self->_evaluate_subschema(\ $data, $header_obj->{schema}, $state);
+  $self->_evaluate_subschema(\ $data, $header_obj->{schema}, { %$state, schema_path => jsonp($state->{schema_path}, 'schema'), stringy_numbers => 1 });
 }
 
 sub _validate_cookie_parameter ($self, $state, $param_obj, $request) {
@@ -634,8 +631,7 @@ sub _validate_parameter_content ($self, $state, $param_obj, $content_ref) {
       'could not decode content as %s: %s', $media_type, $e =~ s/^(.*)\n/$1/r);
   }
 
-  $state = { %$state, schema_path => jsonp($state->{schema_path}, 'content', $media_type, 'schema') };
-  $self->_evaluate_subschema($content_ref, $schema, $state);
+  $self->_evaluate_subschema($content_ref, $schema, { %$state, schema_path => jsonp($state->{schema_path}, 'content', $media_type, 'schema') });
 }
 
 sub _validate_body_content ($self, $state, $content_obj, $message) {
@@ -706,8 +702,7 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
 
   return if not defined $schema;
 
-  $state = { %$state, schema_path => jsonp($state->{schema_path}, 'content', $media_type, 'schema') };
-  $self->_evaluate_subschema($content_ref, $schema, $state);
+  $self->_evaluate_subschema($content_ref, $schema, { %$state, schema_path => jsonp($state->{schema_path}, 'content', $media_type, 'schema') });
 }
 
 # wrap a result object around the errors
