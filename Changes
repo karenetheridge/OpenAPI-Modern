@@ -1,6 +1,8 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - bump optional dependency on HTTP::Headers::Fast for a psgi
+            interface (GH#70)
 
 0.055     2023-12-31 06:21:46Z
           - fix incompatibility with JSON::Schema::Modern 0.578
