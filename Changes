@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.057     2024-01-15 18:36:19Z
           - fix OAS vocabulary definitions for changes in JSON::Schema::Modern
             0.579
 
