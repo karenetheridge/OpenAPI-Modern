@@ -1,6 +1,8 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - fix OAS vocabulary definitions for changes in JSON::Schema::Modern
+            0.579
 
 0.056     2023-12-31 17:26:55Z
           - bump optional dependency on HTTP::Headers::Fast for a psgi

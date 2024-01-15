@@ -236,23 +236,31 @@ sub _add_vocab_and_default_schemas ($self) {
   my $js = $self->evaluator;
   $js->add_vocabulary('JSON::Schema::Modern::Vocabulary::OpenAPI');
 
-  $js->add_format_validation(
-    int32 => +{ type => 'integer', sub => sub ($x) {
+  $js->add_format_validation(int32 => +{
+    type => 'number',
+    sub => sub ($x) {
       require Math::BigInt;
       $x = Math::BigInt->new($x);
+      return if $x->is_nan;
       my $bound = Math::BigInt->new(2) ** 31;
       $x >= -$bound && $x < $bound;
-    } },
-    int64 => +{ type => 'integer', sub => sub ($x) {
+    }
+  });
+
+  $js->add_format_validation(int64 => +{
+    type => 'number',
+    sub => sub ($x) {
       require Math::BigInt;
       $x = Math::BigInt->new($x);
+      return if $x->is_nan;
       my $bound = Math::BigInt->new(2) ** 63;
       $x >= -$bound && $x < $bound;
-    } },
-    float => +{ type => 'number', sub => sub ($) { 1 } },
-    double => +{ type => 'number', sub => sub ($) { 1 } },
-    password => +{ type => 'string', sub => sub ($) { 1 } },
-  );
+    }
+  });
+
+  $js->add_format_validation(float => +{ type => 'number', sub => sub ($x) { 1 } });
+  $js->add_format_validation(double => +{ type => 'number', sub => sub ($x) { 1 } });
+  $js->add_format_validation(password => +{ type => 'string', sub => sub ($) { 1 } });
 
   foreach my $pairs (pairs DEFAULT_SCHEMAS->%*) {
     my ($filename, $uri) = @$pairs;
