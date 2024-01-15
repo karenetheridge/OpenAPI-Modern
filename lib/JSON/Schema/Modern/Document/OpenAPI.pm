@@ -239,7 +239,7 @@ sub _add_vocab_and_default_schemas ($self) {
   $js->add_format_validation(int32 => +{
     type => 'number',
     sub => sub ($x) {
-      require Math::BigInt;
+      require Math::BigInt; Math::BigInt->VERSION(1.999701);
       $x = Math::BigInt->new($x);
       return if $x->is_nan;
       my $bound = Math::BigInt->new(2) ** 31;
@@ -250,7 +250,7 @@ sub _add_vocab_and_default_schemas ($self) {
   $js->add_format_validation(int64 => +{
     type => 'number',
     sub => sub ($x) {
-      require Math::BigInt;
+      require Math::BigInt; Math::BigInt->VERSION(1.999701);
       $x = Math::BigInt->new($x);
       return if $x->is_nan;
       my $bound = Math::BigInt->new(2) ** 63;

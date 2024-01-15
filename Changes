@@ -1,6 +1,7 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - bump internal version requirement for Math::BigInt
 
 0.057     2024-01-15 18:36:19Z
           - fix OAS vocabulary definitions for changes in JSON::Schema::Modern
