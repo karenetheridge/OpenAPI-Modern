@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.058     2024-01-18 04:37:30Z
           - bump internal version requirement for Math::BigInt
 
