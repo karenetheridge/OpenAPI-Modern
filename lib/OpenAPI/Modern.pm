@@ -800,12 +800,14 @@ sub _convert_request ($request) {
     # we could call $req->fix_headers here to add a missing Content-Length, but proper requests from
     # the network should always have it set.
     $req->parse($request->as_string);
+    warn 'parse error when converting HTTP::Request' if not $req->is_finished;
     return $req;
   }
   elsif ($request->isa('Plack::Request')) {
     my $req = Mojo::Message::Request->new->parse($request->env);
     my $body = $request->content;
     $req->parse($body) if length $body;
+    warn 'parse error when converting Plack::Request' if not $req->is_finished;
     # Plack is unable to distinguish between %2F and /, so the raw (undecoded) uri can be passed
     # here. see PSGI::FAQ
     $req->url(Mojo::URL->new($request->env->{REQUEST_URI})) if exists $request->env->{REQUEST_URI};
@@ -821,8 +823,9 @@ sub _convert_response ($response) {
   if ($response->isa('HTTP::Response')) {
     my $res = Mojo::Message::Response->new;
     $res->parse($response->as_string);
-    # we could call $req->fix_headers here to add a missing Content-Length, but proper requests from
+    # we could call $res->fix_headers here to add a missing Content-Length, but proper requests from
     # the network should always have it set.
+    warn 'parse error when converting HTTP::Response' if not $res->is_finished;
     return $res;
   }
   elsif ($response->isa('Plack::Response')) {
@@ -959,7 +962,7 @@ prints:
 
 =for Pod::Coverage BUILDARGS THAW
 
-=for stopwords schemas jsonSchemaDialect metaschema subschema perlish operationId openapi
+=for stopwords schemas jsonSchemaDialect metaschema subschema perlish operationId openapi Mojolicious
 
 =head1 DESCRIPTION
 
@@ -1179,6 +1182,13 @@ manually in a test environment (as opposed to being parsed from incoming network
 therefore inadvertently contain perlish numbers rather than strings.
 
 =head1 LIMITATIONS
+
+All message validation is done using L<Mojolicious> objects (L<Mojo::Message::Request> and
+L<Mojo::Message::Response>). If messages of other types are passed, conversion is done on a
+best-effort basis, but since different implementations have different levels of adherence to the RFC
+specs, some validation errors may occur e.g. if a certain required header is missing on the
+original. For best results in validating real messages from the network, parse them directly into
+Mojolicious messages (see L<Mojo::Message/parse>).
 
 Only certain permutations of OpenAPI documents are supported at this time:
 

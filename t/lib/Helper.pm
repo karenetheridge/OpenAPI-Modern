@@ -35,7 +35,7 @@ our @TYPES = qw(lwp mojo plack);
 our $TYPE;
 
 # Note: if you want your query parameters or uri fragment to be normalized, set them afterwards
-sub request ($method, $uri_string, $headers = [], $body_content = undef) {
+sub request ($method, $uri_string, $headers = [], $body_content = '') {
   die '$TYPE is not set' if not defined $TYPE;
 
   my $req;
@@ -46,7 +46,8 @@ sub request ($method, $uri_string, $headers = [], $body_content = undef) {
     $req->headers->header(Host => $host) if $host;
     $req->headers->push_header(@$_) foreach pairs @$headers;
     $req->headers->header('Content-Length' => length($body_content))
-      if defined $body_content and not defined $req->headers->header('Content-Length');
+      if defined $body_content and not defined $req->headers->header('Content-Length')
+        and not defined $req->headers->header('Transfer-Encoding');
     $req->protocol('HTTP/1.1'); # required, but not added by HTTP::Request constructor
   }
   elsif ($TYPE eq 'mojo') {
@@ -77,15 +78,16 @@ sub request ($method, $uri_string, $headers = [], $body_content = undef) {
   return $req;
 }
 
-sub response ($code, $headers = [], $body_content = undef) {
+sub response ($code, $headers = [], $body_content = '') {
   die '$TYPE is not set' if not defined $TYPE;
 
   my $res;
   if ($TYPE eq 'lwp') {
-    $res = HTTP::Response->new($code, HTTP::Status::status_message($code), $headers, $body_content);
+    $res = HTTP::Response->new($code, HTTP::Status::status_message($code), @$headers ? $headers : (), length $body_content ? $body_content : ());
     $res->protocol('HTTP/1.1'); # not added by HTTP::Response constructor
     $res->headers->header('Content-Length' => length($body_content))
-      if defined $body_content and not defined $res->headers->header('Content-Length');
+      if defined $body_content and not defined $res->headers->header('Content-Length')
+        and not defined $res->headers->header('Transfer-Encoding');
   }
   elsif ($TYPE eq 'mojo') {
     $res = Mojo::Message::Response->new(code => $code);
@@ -102,7 +104,8 @@ sub response ($code, $headers = [], $body_content = undef) {
     test_needs('Plack::Response', 'HTTP::Message::PSGI', { 'HTTP::Headers::Fast' => 0.21 });
     $res = Plack::Response->new($code, $headers, $body_content);
     $res->headers->header('Content-Length' => length($body_content))
-      if defined $body_content and not defined $res->headers->header('Content-Length');
+      if defined $body_content and not defined $res->headers->header('Content-Length')
+        and not defined $res->headers->header('Transfer-Encoding');
   }
   else {
     die '$TYPE '.$TYPE.' not supported';

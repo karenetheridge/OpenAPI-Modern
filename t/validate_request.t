@@ -11,6 +11,7 @@ use utf8;
 use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 
 use JSON::Schema::Modern::Utilities 'jsonp';
+use Test::Warnings 0.033 qw(:no_end_test allow_patterns);
 
 use lib 't/lib';
 use Helper;
@@ -1816,7 +1817,10 @@ SKIP: {
   # "Bad Content-Length: maybe client disconnect? (1 bytes remaining)"
   skip 'plack dies on this input', 3 if $::TYPE eq 'plack';
   cmp_deeply(
-    ($result = $openapi->validate_request(request($_, 'https://example.com/foo', [ 'Content-Length' => 1])))->TO_JSON,
+    $result = do {
+      my $x = allow_patterns(qr/^parse error when converting HTTP::Request/) if $::TYPE eq 'lwp';
+      $openapi->validate_request(request($_, 'https://example.com/foo', [ 'Content-Length' => 1]));
+    }->TO_JSON,
     {
       valid => false,
       errors => [
@@ -1832,7 +1836,10 @@ SKIP: {
   ) foreach qw(GET HEAD);
 
   cmp_deeply(
-    ($result = $openapi->validate_request(request('POST', 'https://example.com/foo', [ 'Content-Length' => 1])))->TO_JSON,
+    $result = do {
+      my $x = allow_patterns(qr/^parse error when converting HTTP::Request/) if $::TYPE eq 'lwp';
+      $openapi->validate_request(request('POST', 'https://example.com/foo', [ 'Content-Length' => 1]));
+    }->TO_JSON,
     { valid => true },
     'no errors from POST with Content-Length',
   );
