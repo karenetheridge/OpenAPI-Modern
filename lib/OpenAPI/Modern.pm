@@ -407,9 +407,9 @@ sub find_path ($self, $options) {
       my @capture_names = ($path_template =~ m!\{([^/?#}]+)\}!g);
       my %path_captures; @path_captures{@capture_names} = @capture_values;
 
-      my $indexes = [];
-      return E({ %$state, keyword => 'paths' }, 'duplicate path capture name %s', $capture_names[$indexes->[0]])
-        if not is_elements_unique(\@capture_names, $indexes);
+      if (not is_elements_unique(\@capture_names, my $indexes = [])) {
+        return E({ %$state, keyword => 'paths' }, 'duplicate path capture name %s', $capture_names[$indexes->[0]]);
+      }
 
       return E({ %$state, keyword => 'paths' }, 'provided path_captures values do not match request URI')
         if $options->{path_captures} and not is_equal($options->{path_captures}, \%path_captures);
@@ -650,7 +650,7 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
 
   my $media_type = (first { $content_type eq fc } keys $content_obj->%*)
     // (first { m{([^/]+)/\*$} && fc($content_type) =~ m{^\F\Q$1\E/[^/]+$} } keys $content_obj->%*);
-  $media_type = '*/*' if not defined $media_type and exists $content_obj->{'*/*'};
+  $media_type //= '*/*' if exists $content_obj->{'*/*'};
   return E({ %$state, keyword => 'content', recommended_response => [ 415, 'Unsupported Media Type' ] },
       'incorrect Content-Type "%s"', $content_type)
     if not defined $media_type;
