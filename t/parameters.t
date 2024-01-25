@@ -494,7 +494,6 @@ subtest 'header parameters' => sub {
       header_obj => { schema => { '$ref' => 'http://localhost:1234/extras#/$defs/ref_to_deep_string' } },
       values => [ 'foo' ],
       content => 'foo',
-      todo => '_resolve_ref does not know how to verify entities in JSDO objects',
     },
     {
       # a single header is passed as an array iff when array is requested
