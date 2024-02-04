@@ -130,8 +130,8 @@ paths:
 YAML
 
   cmp_deeply(
-    $result = $openapi->validate_request(request('GET', 'http://example.com/foo/corrupt_json'),
-      { path_template => '/foo/{foo_id}', path_captures => { foo_id => 'corrupt_json' } })->TO_JSON,
+    ($result = $openapi->validate_request(request('GET', 'http://example.com/foo/corrupt_json'),
+      { path_template => '/foo/{foo_id}', path_captures => { foo_id => 'corrupt_json' } }))->TO_JSON,
     {
       valid => false,
       errors => [
@@ -1817,10 +1817,10 @@ SKIP: {
   # "Bad Content-Length: maybe client disconnect? (1 bytes remaining)"
   skip 'plack dies on this input', 3 if $::TYPE eq 'plack';
   cmp_deeply(
-    $result = do {
+    ($result = do {
       my $x = allow_patterns(qr/^parse error when converting HTTP::Request/) if $::TYPE eq 'lwp';
       $openapi->validate_request(request($_, 'https://example.com/foo', [ 'Content-Length' => 1]));
-    }->TO_JSON,
+    })->TO_JSON,
     {
       valid => false,
       errors => [
@@ -1836,10 +1836,10 @@ SKIP: {
   ) foreach qw(GET HEAD);
 
   cmp_deeply(
-    $result = do {
+    ($result = do {
       my $x = allow_patterns(qr/^parse error when converting HTTP::Request/) if $::TYPE eq 'lwp';
       $openapi->validate_request(request('POST', 'https://example.com/foo', [ 'Content-Length' => 1]));
-    }->TO_JSON,
+    })->TO_JSON,
     { valid => true },
     'no errors from POST with Content-Length',
   );

@@ -403,10 +403,10 @@ YAML
   remove_header($response, 'Content-Length');
 
   cmp_deeply(
-    $result = do {
+    ($result = do {
       my $x = allow_patterns(qr/^parse error when converting HTTP::Response/) if $::TYPE eq 'lwp';
       $openapi->validate_response($response, { path_template => '/foo', method => 'post' });
-    }->TO_JSON,
+    })->TO_JSON,
     {
       valid => false,
       errors => [
@@ -583,12 +583,12 @@ YAML
 
 
   cmp_deeply(
-    $result = do {
+    ($result = do {
       my $x = allow_patterns(qr/^parse error when converting HTTP::Response/) if $::TYPE eq 'lwp';
       $openapi->validate_response(
         response(400, [ 'Content-Length' => 1, 'Content-Type' => 'text/plain' ], ''), # Content-Length lies!
           { path_template => '/foo', method => 'post' });
-    }->TO_JSON,
+    })->TO_JSON,
     {
       valid => false,
       errors => [
@@ -608,10 +608,10 @@ YAML
 
 
   cmp_deeply(
-    $result = do {
+    ($result = do {
       my $x = allow_patterns(qr/^parse error when converting HTTP::Response/) if $::TYPE eq 'lwp';
       $openapi->validate_response($response, { path_template => '/foo', method => 'post' });
-    }->TO_JSON,
+    })->TO_JSON,
     {
       valid => false,
       errors => [
