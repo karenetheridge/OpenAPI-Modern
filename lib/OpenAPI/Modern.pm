@@ -617,38 +617,19 @@ sub _validate_parameter_content ($self, $state, $param_obj, $content_ref) {
   my ($media_type) = keys $param_obj->{content}->%*;  # there can only be one key
 
   my $media_type_decoder = $self->get_media_type($media_type);  # case-insensitive, wildcard lookup
-  if (not $media_type_decoder) {
-    # don't fail if the schema would pass on any input
-    my $schema = $param_obj->{content}{$media_type}{schema};
-    return if not defined $schema or is_plain_hashref($schema) ? !keys %$schema : $schema;
 
-    abort({ %$state, keyword => 'content', _schema_path_suffix => $media_type},
-      'EXCEPTION: unsupported media type "%s": add support with $openapi->add_media_type(...)', $media_type);
-  }
-
-  try {
-    $content_ref = $media_type_decoder->($content_ref);
-  }
-  catch ($e) {
-    return E({ %$state, keyword => 'content', _schema_path_suffix => $media_type },
-      'could not decode content as %s: %s', $media_type, $e =~ s/^(.*)\n/$1/r);
-  }
-
-  return if not defined $param_obj->{content}{$media_type}{schema};
-
-  $state = { %$state, schema_path => jsonp($state->{schema_path}, 'content', $media_type, 'schema'), depth => $state->{depth}+1 };
-  $self->_evaluate_subschema($content_ref, $param_obj->{content}{$media_type}{schema}, $state);
+  return $self->_validate_media_type($state, $param_obj->{content}, $media_type, $media_type_decoder, $content_ref);
 }
 
 sub _validate_body_content ($self, $state, $content_obj, $message) {
   # does not include charset
-  my $content_type = fc((split(/;/, $message->headers->content_type//'', 2))[0] // '');
+  my $content_type = (split(/;/, $message->headers->content_type//'', 2))[0] // '';
 
   return E({ %$state, data_path => $state->{data_path} =~ s{body}{header/Content-Type}r, keyword => 'content' },
       'missing header: Content-Type')
     if not length $content_type;
 
-  my $media_type = (first { $content_type eq fc } keys $content_obj->%*)
+  my $media_type = (first { fc($content_type) eq fc } keys $content_obj->%*)
     // (first { m{([^/]+)/\*$} && fc($content_type) =~ m{^\F\Q$1\E/[^/]+$} } keys $content_obj->%*);
   $media_type //= '*/*' if exists $content_obj->{'*/*'};
   return E({ %$state, keyword => 'content', recommended_response => [ 415, 'Unsupported Media Type' ] },
@@ -657,7 +638,7 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
 
   # §4.8.14.1 "The encoding object SHALL only apply to requestBody objects when the media type is
   # multipart or application/x-www-form-urlencoded."
-  if ($content_type =~ m{^multipart/} or $content_type eq 'application/x-www-form-urlencoded') {
+  if ($content_type =~ m{^\Fmultipart/} or fc($content_type) eq 'application/x-www-form-urlencoded') {
     if (exists $content_obj->{$media_type}{encoding}) {
       my $state = { %$state, schema_path => jsonp($state->{schema_path}, 'content', $media_type) };
       # 4.8.14.1 "The key, being the property name, MUST exist in the schema as a property."
@@ -689,14 +670,19 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
   # use the original Content-Type, NOT the possibly wildcard media type from the openapi document
   # lookup is case-insensitive and falls back to wildcard definitions
   my $media_type_decoder = $self->get_media_type($content_type);
+
+  return $self->_validate_media_type($state, $content_obj, $media_type, $media_type_decoder, $content_ref);
+}
+
+sub _validate_media_type ($self, $state, $content_obj, $media_type, $media_type_decoder, $content_ref) {
   $media_type_decoder = sub ($content_ref) { $content_ref } if $media_type eq '*/*';
   if (not $media_type_decoder) {
     # don't fail if the schema would pass on any input
     my $schema = $content_obj->{$media_type}{schema};
     return if not defined $schema or is_plain_hashref($schema) ? !keys %$schema : $schema;
 
-    abort({ %$state, keyword => 'content', _schema_path_suffix => $media_type },
-      'EXCEPTION: unsupported Content-Type "%s": add support with $openapi->add_media_type(...)', $content_type)
+    abort({ %$state, keyword => 'content', _schema_path_suffix => $media_type},
+      'EXCEPTION: unsupported media type "%s": add support with $openapi->add_media_type(...)', $media_type);
   }
 
   try {
@@ -707,7 +693,7 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
       'could not decode content as %s: %s', $media_type, $e =~ s/^(.*)\n/$1/r);
   }
 
-  return if not defined $content_obj->{$media_type}{schema};
+  return if not exists $content_obj->{$media_type}{schema};
 
   $state = { %$state, schema_path => jsonp($state->{schema_path}, 'content', $media_type, 'schema'), depth => $state->{depth}+1 };
   $self->_evaluate_subschema($content_ref, $content_obj->{$media_type}{schema}, $state);

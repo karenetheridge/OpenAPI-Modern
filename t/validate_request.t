@@ -922,7 +922,7 @@ YAML
           instanceLocation => '/request/body',
           keywordLocation => jsonp(qw(/paths /foo post requestBody content blOOp/HTml)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content blOOp/HTml)))->to_string,
-          error => 'EXCEPTION: unsupported Content-Type "bloop/html": add support with $openapi->add_media_type(...)',
+          error => 'EXCEPTION: unsupported media type "blOOp/HTml": add support with $openapi->add_media_type(...)',
         },
       ],
     },
