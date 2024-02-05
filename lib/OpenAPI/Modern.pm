@@ -1197,6 +1197,7 @@ Only certain permutations of OpenAPI documents are supported at this time:
 * for query parameters, only C<style: form> and C<explode: true> is supported, only the first value
   of each parameter name is considered, and C<allowEmptyValue> and C<allowReserved> are not checked
 * cookie parameters are not checked at all yet
+* C<application/x-www-form-urlencoded> and C<multipart/*> messages are not yet supported
 
 =head1 SEE ALSO
 
