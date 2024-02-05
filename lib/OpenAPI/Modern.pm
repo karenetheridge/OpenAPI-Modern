@@ -61,11 +61,9 @@ around BUILDARGS => sub ($orig, $class, @args) {
     $args->{evaluator} = $args->{openapi_document}->evaluator;
   }
   else {
-    # construct document out of openapi_uri, openapi_schema, evaluator, if provided.
-    croak 'missing required constructor arguments: either openapi_document, or openapi_uri'
-      if not exists $args->{openapi_uri};
-    croak 'missing required constructor arguments: either openapi_document, or openapi_schema'
-      if not exists $args->{openapi_schema};
+    # construct document out of openapi_uri, openapi_schema (and evaluator if provided).
+    croak 'missing required constructor arguments: either openapi_document, or openapi_uri and openapi_schema'
+      if not exists $args->{openapi_uri} or not exists $args->{openapi_schema};
   }
 
   $args->{evaluator} //= JSON::Schema::Modern->new(validate_formats => 1, max_traversal_depth => 80);
@@ -995,7 +993,7 @@ L<https://spec.openapis.org/oas/v3.1.0>). Ignored if L</openapi_document> is pro
 =head2 openapi_document
 
 The L<JSON::Schema::Modern::Document::OpenAPI> document that holds the OpenAPI information to be
-used for validation. If it is not provided to the constructor, then L</openapi_uri> and
+used for validation. If it is not provided to the constructor, then both L</openapi_uri> and
 L</openapi_schema> B<MUST> be provided, and L</evaluator> will also be used if provided.
 
 =head2 evaluator
