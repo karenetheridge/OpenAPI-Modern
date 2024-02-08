@@ -22,7 +22,7 @@ use Ref::Util qw(is_plain_hashref is_plain_arrayref is_ref);
 use List::Util 'first';
 use Scalar::Util 'looks_like_number';
 use Feature::Compat::Try;
-use Encode 2.89;
+use Encode 2.89 ();
 use URI::Escape ();
 use JSON::Schema::Modern 0.560;
 use JSON::Schema::Modern::Utilities 0.531 qw(jsonp unjsonp canonical_uri E abort is_equal is_elements_unique);
@@ -401,7 +401,8 @@ sub find_path ($self, $options) {
 
       # perldoc perlvar, @-: $n coincides with "substr $_, $-[n], $+[n] - $-[n]" if "$-[n]" is defined
       my @capture_values = map
-        Encode::decode('UTF-8', URI::Escape::uri_unescape(substr($uri_path, $-[$_], $+[$_]-$-[$_]))), 1 .. $#-;
+        Encode::decode('UTF-8', URI::Escape::uri_unescape(substr($uri_path, $-[$_], $+[$_]-$-[$_])),
+          Encode::FB_CROAK | Encode::LEAVE_SRC), 1 .. $#-;
       my @capture_names = ($path_template =~ m!\{([^/?#}]+)\}!g);
       my %path_captures; @path_captures{@capture_names} = @capture_values;
 
@@ -460,7 +461,8 @@ sub find_path ($self, $options) {
 
   # perldoc perlvar, @-: $n coincides with "substr $_, $-[n], $+[n] - $-[n]" if "$-[n]" is defined
   my @capture_values = map
-    Encode::decode('UTF-8', URI::Escape::uri_unescape(substr($uri_path, $-[$_], $+[$_]-$-[$_]))), 1 .. $#-;
+    Encode::decode('UTF-8', URI::Escape::uri_unescape(substr($uri_path, $-[$_], $+[$_]-$-[$_])),
+      Encode::FB_CROAK | Encode::LEAVE_SRC), 1 .. $#-;
   return E({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
       'provided path_captures values do not match request URI')
     if exists $options->{path_captures}
