@@ -8,7 +8,7 @@ OpenAPI::Modern - Validate HTTP requests and responses against an OpenAPI v3.1 d
 
 =head1 VERSION
 
-version 0.058
+version 0.059
 
 =head1 SYNOPSIS
 
@@ -123,7 +123,7 @@ than features that seem to work but actually cut corners for simplicity.
 
 =for Pod::Coverage BUILDARGS THAW
 
-=for stopwords schemas jsonSchemaDialect metaschema subschema perlish operationId openapi
+=for stopwords schemas jsonSchemaDialect metaschema subschema perlish operationId openapi Mojolicious
 
 =head1 CONSTRUCTOR ARGUMENTS
 
@@ -148,7 +148,7 @@ L<https://spec.openapis.org/oas/v3.1.0>). Ignored if L</openapi_document> is pro
 =head2 openapi_document
 
 The L<JSON::Schema::Modern::Document::OpenAPI> document that holds the OpenAPI information to be
-used for validation. If it is not provided to the constructor, then L</openapi_uri> and
+used for validation. If it is not provided to the constructor, then both L</openapi_uri> and
 L</openapi_schema> B<MUST> be provided, and L</evaluator> will also be used if provided.
 
 =head2 evaluator
@@ -349,6 +349,13 @@ therefore inadvertently contain perlish numbers rather than strings.
 
 =head1 LIMITATIONS
 
+All message validation is done using L<Mojolicious> objects (L<Mojo::Message::Request> and
+L<Mojo::Message::Response>). If messages of other types are passed, conversion is done on a
+best-effort basis, but since different implementations have different levels of adherence to the RFC
+specs, some validation errors may occur e.g. if a certain required header is missing on the
+original. For best results in validating real messages from the network, parse them directly into
+Mojolicious messages (see L<Mojo::Message/parse>).
+
 Only certain permutations of OpenAPI documents are supported at this time:
 
 =over 4
@@ -364,6 +371,10 @@ for query parameters, only C<style: form> and C<explode: true> is supported, onl
 =item *
 
 cookie parameters are not checked at all yet
+
+=item *
+
+C<application/x-www-form-urlencoded> and C<multipart/*> messages are not yet supported
 
 =back
 
