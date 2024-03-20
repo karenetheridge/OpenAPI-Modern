@@ -1,6 +1,9 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - remove use of JSON::MaybeXS, to avoid potential use of JSON::XS;
+            now we use Cpanel::JSON::XS or JSON::PP directly, using the same
+            environment variables as in Mojo::JSON for customization.
 
 0.059     2024-02-10 02:29:14Z
           - now being more strict on conversions from LWP and Plack
