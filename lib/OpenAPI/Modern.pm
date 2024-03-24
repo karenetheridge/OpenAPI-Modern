@@ -84,21 +84,12 @@ sub validate_request ($self, $request, $options = {}) {
   croak '$request and $options->{request} are inconsistent'
     if $request and $options->{request} and $request != $options->{request};
 
-  my $state = {
-    data_path => '/request',
-    initial_schema_uri => $self->openapi_uri,   # the canonical URI as of the start or last $id, or the last traversed $ref
-    traversed_schema_path => '',    # the accumulated traversal path as of the start, or last $id, or up to the last traversed $ref
-    schema_path => '',              # the rest of the path, since the last $id or the last traversed $ref
-    effective_base_uri => Mojo::URL->new->scheme('https')->host($request->headers->header('Host')),
-    annotations => [],
-    depth => 0,
-  };
+  my $state = {}; # populated by find_path
 
   try {
     $options->{request} //= $request;
-    my $path_ok = $self->find_path($options);
-    $request = $options->{request};   # now guaranteed to be a Mojo::Message::Request
-    $state->{errors} = delete $options->{errors};
+    my $path_ok = $self->find_path($options, $state);
+    delete $options->{errors};
 
     # Reporting a failed find_path as an exception will result in a recommended response of
     # [ 500, Internal Server Error ], which is warranted if we consider the lack of a specification
@@ -107,12 +98,13 @@ sub validate_request ($self, $request, $options = {}) {
     # of response is likely to leave oversights in the specification go unnoticed.
     return $self->_result($state, 1) if not $path_ok;
 
-    my ($path_template, $path_captures) = $options->@{qw(path_template path_captures)};
-    my $path_item = $self->openapi_document->schema->{paths}{$path_template};
-    my $method = lc $request->method;
-    my $operation = $path_item->{$method};
+    $state->{data_path} = '/request';
+    $request = $options->{request};   # now guaranteed to be a Mojo::Message::Request
 
-    $state->{schema_path} = jsonp('/paths', $path_template);
+    my $path_captures = $options->{path_captures};
+    my $method = lc $request->method;
+    my $path_item = delete $options->{_path_item};  # after following path-item $refs
+    my $operation = $path_item->{$method};
 
     # PARAMETERS
     # { $in => { $name => 'path-item'|$method } }  as we process each one.
@@ -220,29 +212,25 @@ sub validate_response ($self, $response, $options = {}) {
     $options->{request} //= $request;
   }
 
-  my $state = {
-    data_path => '/response',
-    initial_schema_uri => $self->openapi_uri,   # the canonical URI as of the start or last $id, or the last traversed $ref
-    traversed_schema_path => '',    # the accumulated traversal path as of the start, or last $id, or up to the last traversed $ref
-    schema_path => '',              # the rest of the path, since the last $id or the last traversed $ref
-    annotations => [],
-    depth => 0,
-  };
+  my $state = {}; # populated by find_path
 
   try {
-    my $path_ok = $self->find_path($options);
-    $state->{errors} = delete $options->{errors};
+    # FIXME: if the operation is shared by multiple paths, path_template may not be inferrable, and
+    # we also don't need path_captures
+    my $path_ok = $self->find_path($options, $state);
+    delete $options->{errors};
     return $self->_result($state, 1, 1) if not $path_ok;
 
-    my ($path_template, $path_captures) = $options->@{qw(path_template path_captures)};
     my $method = lc $options->{method};
-    my $operation = $self->openapi_document->schema->{paths}{$path_template}{$method};
+    my $path_item = delete $options->{_path_item};
+    my $operation = $path_item->{$method};
 
     return $self->_result($state, 0, 1) if not exists $operation->{responses};
 
     $state->{effective_base_uri} = Mojo::URL->new->scheme('https')->host($options->{request}->headers->host)
       if $options->{request};
-    $state->{schema_path} = jsonp('/paths', $path_template, $method);
+    $state->{schema_path} = jsonp($state->{schema_path}, $method);
+    $state->{data_path} = '/response';
 
     $response = _convert_response($response);   # now guaranteed to be a Mojo::Message::Response
 
@@ -316,19 +304,17 @@ sub validate_response ($self, $response, $options = {}) {
   return $self->_result($state, 0, 1);
 }
 
-sub find_path ($self, $options) {
+sub find_path ($self, $options, $state = {}) {
   # now guaranteed to be a Mojo::Message::Request
   $options->{request} = _convert_request($options->{request}) if $options->{request};
 
-  my $state = {
-    data_path => '/request/uri/path',
-    initial_schema_uri => $self->openapi_uri,   # the canonical URI as of the start or last $id, or the last traversed $ref
-    traversed_schema_path => '',    # the accumulated traversal path as of the start, or last $id, or up to the last traversed $ref
-    schema_path => '',              # the rest of the path, since the last $id or the last traversed $ref
-    errors => $options->{errors} //= [],
-    $options->{request} ? ( effective_base_uri => Mojo::URL->new->scheme('https')->host($options->{request}->headers->host) ) : (),
-    depth => 0,
-  };
+  $state->{data_path} = '/request/uri/path';
+  $state->{initial_schema_uri} = $self->openapi_uri;   # the canonical URI as of the start or last $id, or the last traversed $ref
+  $state->{traversed_schema_path} = '';    # the accumulated traversal path as of the start, or last $id, or up to the last traversed $ref
+  $state->{schema_path} = '';              # the rest of the path, since the last $id or the last traversed $ref
+  $state->{errors} = $options->{errors} //= [];
+  $state->{effective_base_uri} = Mojo::URL->new->scheme('https')->host($options->{request}->headers->host) if $options->{request};
+  $state->{depth} = 0;
 
   # requests don't have response codes, so if 'error' is set, it is some sort of parsing error
   if ($options->{request} and my $error = $options->{request}->error) {
@@ -336,7 +322,7 @@ sub find_path ($self, $options) {
     return $self->_result($state);
   }
 
-  my ($method, $path_template);
+  my ($method, $path_template, $path_item_path);
 
   # method from options
   if (exists $options->{method}) {
@@ -350,13 +336,24 @@ sub find_path ($self, $options) {
 
   # path_template and method from operation_id from options
   if (exists $options->{operation_id}) {
+    # FIXME: what if the operation is defined in another document? Need to look it up across
+    # all documents, and localize $state->{initial_schema_uri}
     my $operation_path = $self->openapi_document->get_operationId_path($options->{operation_id});
     return E({ %$state, keyword => 'paths' }, 'unknown operation_id "%s"', $options->{operation_id})
       if not $operation_path;
     return E({ %$state, schema_path => $operation_path, keyword => 'operationId' },
       'operation id does not have an associated path') if $operation_path !~ m{^/paths/};
-    (undef, undef, $path_template, $method) = unjsonp($operation_path);
+    my @bits = unjsonp($operation_path);
+    ($path_template, $method) = @bits[-2,-1];
+    pop @bits;
+    $path_item_path = jsonp(@bits);
 
+    $options->{_path_item} = $self->openapi_document->get($path_item_path);
+    $options->{path_item_uri} = Mojo::URL->new($state->{initial_schema_uri})->fragment($path_item_path);
+
+    # FIXME: the path_template is not correct if there was a $ref from the original /paths/ entry to
+    # get to this path-item and operation. We need to look up the path_template from the request as
+    # normal, below.
     return E({ %$state, schema_path => jsonp('/paths', $path_template) },
         'operation does not match provided path_template')
       if exists $options->{path_template} and $options->{path_template} ne $path_template;
@@ -365,7 +362,6 @@ sub find_path ($self, $options) {
         'wrong HTTP method %s', $options->{method})
       if $options->{method} and lc $options->{method} ne $method;
 
-    $options->{operation_path} = $operation_path;
     $options->{method} = lc $method;
   }
 
@@ -379,6 +375,9 @@ sub find_path ($self, $options) {
     my $path_item = $self->openapi_document->schema->{paths}{$path_template};
     return E({ %$state, keyword => 'paths' }, 'missing path-item "%s"', $path_template) if not $path_item;
 
+    # FIXME: follow $ref chain in path-item
+    $options->{_path_item} = $path_item;
+    $options->{path_item_uri} = Mojo::URL->new($state->{initial_schema_uri})->fragment(jsonp('/paths', $path_template));
     return E({ %$state, data_path => '/request/method', schema_path => jsonp('/paths', $path_template),
         keyword => $method, recommended_response => [ 405, 'Method Not Allowed' ] },
         'missing operation for HTTP method "%s"', $method)
@@ -399,6 +398,12 @@ sub find_path ($self, $options) {
 
       $options->{path_template} = $path_template;
 
+      # FIXME: follow $ref chain in path-item
+      $path_item_path = jsonp('/paths', $path_template);
+      $options->{_path_item} = $self->openapi_document->get($path_item_path);
+      $options->{path_item_uri} = Mojo::URL->new($state->{initial_schema_uri})->fragment($path_item_path);
+      $state->{schema_path} = $path_item_path;
+
       # perldoc perlvar, @-: $n coincides with "substr $_, $-[n], $+[n] - $-[n]" if "$-[n]" is defined
       my @capture_values = map
         Encode::decode('UTF-8', URI::Escape::uri_unescape(substr($uri_path, $-[$_], $+[$_]-$-[$_])),
@@ -407,32 +412,36 @@ sub find_path ($self, $options) {
       my %path_captures; @path_captures{@capture_names} = @capture_values;
 
       if (not is_elements_unique(\@capture_names, my $indexes = [])) {
-        return E({ %$state, keyword => 'paths' }, 'duplicate path capture name %s', $capture_names[$indexes->[0]]);
+        return E({ %$state, schema_path => '/paths' }, 'duplicate path capture name %s', $capture_names[$indexes->[0]]);
       }
 
-      return E({ %$state, keyword => 'paths' }, 'provided path_captures values do not match request URI')
+      return E({ %$state, schema_path => '/paths' }, 'provided path_captures values do not match request URI')
         if $options->{path_captures} and not is_equal($options->{path_captures}, \%path_captures);
 
       $options->{path_captures} = \%path_captures;
-      return E({ %$state, data_path => '/request/method',
-          schema_path => jsonp('/paths', $path_template), keyword => $method,
+
+      return E({ %$state, data_path => '/request/method', keyword => $method,
           recommended_response => [ 405, 'Method Not Allowed' ] },
           'missing operation for HTTP method "%s"', $method)
-        if not exists $schema->{paths}{$path_template}{$method};
+        if not exists $options->{_path_item}{$method};
 
-      $options->{operation_id} = $self->openapi_document->schema->{paths}{$path_template}{$method}{operationId};
+      $options->{operation_id} = $options->{_path_item}{$method}{operationId};
       delete $options->{operation_id} if not defined $options->{operation_id};
-      $options->{operation_path} = jsonp('/paths', $path_template, $method);
+
       return 1;
     }
 
     return E({ %$state, keyword => 'paths' }, 'no match found for URI path "%s"', $uri_path);
   }
 
+  # FIXME: operation_id alone is insufficient to infer path_template, but we may not need it
   croak 'at least one of $options->{request}, $options->{path_template} and $options->{operation_id} must be provided'
     if not $path_template;
 
-  $options->{operation_path} = jsonp('/paths', $path_template, $method);
+  # FIXME: follow $ref chain in path-item
+  $path_item_path = jsonp('/paths', $path_template);
+  $options->{_path_item} = $self->openapi_document->get($path_item_path);
+  $options->{path_item_uri} = Mojo::URL->new($state->{initial_schema_uri})->fragment($path_item_path);
 
   # note: we aren't doing anything special with escaped slashes. this bit of the spec is hazy.
   my @capture_names = ($path_template =~ m!\{([^/}]+)\}!g);
@@ -445,6 +454,7 @@ sub find_path ($self, $options) {
     $options->@{qw(path_template operation_id)} =
       ($path_template, $self->openapi_document->schema->{paths}{$path_template}{$method}{operationId});
     delete $options->{operation_id} if not defined $options->{operation_id};
+    $state->{schema_path} = $path_item_path;
     return 1;
   }
 
@@ -469,10 +479,16 @@ sub find_path ($self, $options) {
       and not is_equal([ map $_.'', $options->{path_captures}->@{@capture_names} ], \@capture_values);
 
   my %path_captures; @path_captures{@capture_names} = @capture_values;
-  $options->@{qw(path_template path_captures operation_id)} =
-    ($path_template, \%path_captures, $self->openapi_document->schema->{paths}{$path_template}{$method}{operationId});
+
+  # FIXME: follow $ref chain in path-item using path_template
+  $options->@{qw(path_template path_captures _path_item)} =
+    ($path_template, \%path_captures, $self->openapi_document->schema->{paths}{$path_template}{$method});
+  $options->{operation_id} = $options->{_path_item}{operationId};
   delete $options->{operation_id} if not defined $options->{operation_id};
-  $options->{operation_path} = jsonp('/paths', $path_template, $method);
+
+  $options->{_path_item} = $self->openapi_document->get(jsonp('/paths', $path_template));
+  $options->{path_item_uri} = Mojo::URL->new($state->{initial_schema_uri})->fragment($path_item_path);
+  $state->{schema_path} = $path_item_path;
   return 1;
 }
 
@@ -1099,11 +1115,18 @@ When not successful, the options hash will be populated with key C<errors>, an a
 a L<JSON::Schema::Modern::Error> object, and the return value is false. Other values may also be
 populated if they can be successfully calculated.
 
-In addition, this value is populated in the options hash (when available):
+In addition, these values are populated in the options hash (when available):
 
-* C<operation_path>: a json pointer string indicating the document location of the operation that
-  was just evaluated against the request
+* C<path_item_uri>: a URI indicating the document location of the path-item object for the
+  request, after following any references (usually something under C</paths/>, but may be in another
+  document). Use C<< $openapi->evaluator->get($uri) >> to fetch this content (see
+  L<JSON::Schema::Modern/get>). Note that this is the same as
+  C<< $openapi->recursive_get(Mojo::URL->new->fragment(JSON::Schema::Modern::Utilities::jsonp('/paths', $options->{path_template}))) >>.
 * C<request> (not necessarily what was passed in: this is always a L<Mojo::Message::Request>)
+
+You can find the associated operation object by using either C<path_item_uri> and the HTTP method,
+or by calling C<< $openapi->openapi_document->get_operationId_path($operation_id) >>
+(see L<JSON::Schema::Modern::Document::OpenAPI/get_operationId_path>).
 
 Note that the L<C</servers>|https://spec.openapis.org/oas/v3.1.0#server-object> section of the
 OpenAPI document is not used for path matching at this time, for either scheme and host matching nor
