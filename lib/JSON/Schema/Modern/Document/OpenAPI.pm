@@ -84,6 +84,7 @@ sub traverse ($self, $evaluator) {
     evaluator => $evaluator,
     identifiers => [],
     configs => {},
+    # note that this is the JSON Schema specification version, not OpenAPI
     spec_version => $evaluator->SPECIFICATION_VERSION_DEFAULT,
     vocabularies => [],
     subschemas => [],
