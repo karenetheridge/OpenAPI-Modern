@@ -13,20 +13,21 @@ use Test::Fatal;
 use lib 't/lib';
 use Helper;
 
-my $preamble = {
-  openapi => '3.1.0',
-  info => {
-    title => 'my title',
-    version => '1.2.3',
-  },
-};
+my $yamlpp = YAML::PP->new(boolean => 'JSON::PP');
+my $openapi_preamble = <<'YAML';
+---
+openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.2.3
+YAML
 
 subtest 'bad subschemas' => sub {
   my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
     evaluator => my $js = JSON::Schema::Modern->new,
     schema => {
-      %$preamble,
+      $yamlpp->load_string($openapi_preamble)->%*,
       jsonSchemaDialect => JSON::Schema::Modern::Document::OpenAPI->DEFAULT_DIALECT,
       components => {
         schemas => {
@@ -76,92 +77,58 @@ subtest 'identify subschemas and other entities' => sub {
     canonical_uri => 'http://localhost:1234/api',
     metaschema_uri => 'https://spec.openapis.org/oas/3.1/schema',
     evaluator => my $js = JSON::Schema::Modern->new,
-    schema => {
-      %$preamble,
-      components => {
-        schemas => {
-          beta_schema => {
-            '$id' => 'beta',
-            not => {
-              '$id' => 'gamma',
-              '$schema' => 'https://json-schema.org/draft/2019-09/schema',
-            },
-          },
-        },
-        parameters => {
-          my_param1 => {
-            name => 'param1',
-            in => 'query',
-            schema => {
-              '$id' => 'parameter1_id',
-            },
-          },
-          my_param2 => {
-            name => 'param2',
-            in => 'query',
-            content => {
-              media_type_0 => {
-                schema => {
-                  '$id' => 'parameter2_id',
-                },
-              },
-            },
-          },
-        },
-        pathItems => {
-          path0 => {
-            parameters => [
-              {
-                name => 'param0',
-                in => 'query',
-                schema => {
-                  '$id' => 'pathItem0_param_id',
-                },
-              },
-              # TODO param2 with content/media_type_0
-            ],
-            get => {
-              parameters => [
-                {
-                  name => 'param1',
-                  in => 'query',
-                  schema => {
-                    '$id' => 'pathItem0_get_param_id',
-                  },
-                },
-              ],
-              requestBody => {
-                content => {
-                  media_type_1 => {
-                    schema => {
-                      '$id' => 'pathItem0_get_requestBody_id',
-                    },
-                  },
-                },
-              },
-              responses => {
-                200 => {
-                  description => 'normal response',
-                  content => {
-                    media_type_2 => {
-                      schema => {
-                        '$id' => 'pathItem0_get_responses2_id',
-                      },
-                    },
-                    media_type_3 => {
-                      schema => {
-                        '$id' => 'pathItem0_get_responses3_id',
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          }
-        }
-      },
-    },
-  );
+    schema => $yamlpp->load_string(<<YAML));
+$openapi_preamble
+components:
+  schemas:
+    beta_schema:
+      \$id: beta
+      not:
+        \$id: gamma
+        \$schema: https://json-schema.org/draft/2019-09/schema
+  parameters:
+    my_param1:
+      name: param1
+      in: query
+      schema:
+        \$id: parameter1_id
+    my_param2:
+      name: param2
+      in: query
+      content:
+        media_type_0:
+          schema:
+            \$id: parameter2_id
+  pathItems:
+    path0:
+      parameters:
+        - name: param0
+          in: query
+          schema:
+            \$id: pathItem0_param_id
+        # TODO param2 with content/media_type_0
+      get:
+        parameters:
+          - name: param1
+            in: query
+            schema:
+              \$id: pathItem0_get_param_id
+        requestBody:
+          content:
+            media_type_1:
+              schema:
+                \$id: pathItem0_get_requestBody_id
+        responses:
+          200:
+            description: normal response
+            content:
+              media_type_2:
+                schema:
+                  \$id: pathItem0_get_responses2_id
+              media_type_3:
+                schema:
+                  \$id: pathItem0_get_responses3_id
+YAML
 
   is($doc->errors, 0, 'no errors during traversal');
   cmp_deeply(
