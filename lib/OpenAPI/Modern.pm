@@ -476,6 +476,7 @@ sub find_path ($self, $options) {
   return 1;
 }
 
+# TODO: this should (also?) be available at JSON::Schema::Modern
 sub recursive_get ($self, $uri_reference, $entity_type = undef) {
   my $base = $self->openapi_uri;
   my $ref = $uri_reference;
@@ -1014,8 +1015,8 @@ used for validation.
 Fetches the subschema at the provided JSON pointer.
 Proxies to L<JSON::Schema::Modern::Document::OpenAPI/get>.
 This is not recursive (does not follow C<$ref> chains) -- for that, use
-C<< $openapi->openapi_document->recursive_get($json_pointer) >>, in
-L<JSON::Schema::Modern::Document::OpenAPI/recursive_get>.
+C<< $openapi->recursive_get(Mojo::URL->new->fragment($json_pointer)) >>, see
+L</recursive_get>.
 
 =head2 evaluator
 
