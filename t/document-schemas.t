@@ -99,6 +99,13 @@ components:
         media_type_0:
           schema:
             \$id: parameter2_id
+  responses:
+    my_response4:
+      description: bad response
+      content:
+        media_type_4:
+          schema:
+            \$comment: nothing to see here
   pathItems:
     path0:
       parameters:
@@ -128,6 +135,8 @@ components:
               media_type_3:
                 schema:
                   \$id: pathItem0_get_responses3_id
+          default:
+            \$ref: '#/components/responses/my_response4'
 YAML
 
   is($doc->errors, 0, 'no errors during traversal');
@@ -225,8 +234,11 @@ YAML
       '/components/pathItems/path0/get/responses/200' => 1,
       '/components/pathItems/path0/get/responses/200/content/media_type_2/schema' => 0,
       '/components/pathItems/path0/get/responses/200/content/media_type_3/schema' => 0,
+      '/components/pathItems/path0/get/responses/default' => 1,
       '/components/pathItems/path0/parameters/0' => 2,
       '/components/pathItems/path0/parameters/0/schema' => 0,
+      '/components/responses/my_response4' => 1,
+      '/components/responses/my_response4/content/media_type_4/schema' => 0,
       '/components/schemas/beta_schema' => 0,
       '/components/schemas/beta_schema/not' => 0,
     },
