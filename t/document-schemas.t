@@ -213,15 +213,11 @@ YAML
   cmp_deeply(
     $doc->_entities,
     {
-      '/components/schemas/beta_schema' => 0,
-      '/components/schemas/beta_schema/not' => 0,
       '/components/parameters/my_param1' => 2,
       '/components/parameters/my_param1/schema' => 0,
       '/components/parameters/my_param2' => 2,
       '/components/parameters/my_param2/content/media_type_0/schema' => 0,
       '/components/pathItems/path0' => 9,
-      '/components/pathItems/path0/parameters/0' => 2,
-      '/components/pathItems/path0/parameters/0/schema' => 0,
       '/components/pathItems/path0/get/parameters/0' => 2,
       '/components/pathItems/path0/get/parameters/0/schema' => 0,
       '/components/pathItems/path0/get/requestBody' => 4,
@@ -229,6 +225,10 @@ YAML
       '/components/pathItems/path0/get/responses/200' => 1,
       '/components/pathItems/path0/get/responses/200/content/media_type_2/schema' => 0,
       '/components/pathItems/path0/get/responses/200/content/media_type_3/schema' => 0,
+      '/components/pathItems/path0/parameters/0' => 2,
+      '/components/pathItems/path0/parameters/0/schema' => 0,
+      '/components/schemas/beta_schema' => 0,
+      '/components/schemas/beta_schema/not' => 0,
     },
     'all entity locations are identified',
   );
