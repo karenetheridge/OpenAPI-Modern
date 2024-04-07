@@ -145,6 +145,9 @@ components:
           my_callback:
             '{\$request.query.queryUrl}':
               post: {}
+paths:
+  /foo/alpha: {}
+  /foo/beta: {}
 webhooks:
   foo: {}
   bar: {}
@@ -254,6 +257,8 @@ YAML
       '/components/responses/my_response4/content/media_type_4/schema' => 0,
       '/components/schemas/beta_schema' => 0,
       '/components/schemas/beta_schema/not' => 0,
+      '/paths/~1foo~1alpha' => 9,
+      '/paths/~1foo~1beta' => 9,
       '/webhooks/foo' => 9,
       '/webhooks/bar' => 9,
     },

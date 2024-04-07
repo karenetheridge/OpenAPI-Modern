@@ -59,6 +59,8 @@ has json_schema_dialect => (
 );
 
 # json pointer => entity name (indexed by integer); overrides parent
+# these aren't all the different types of objects; for now we only track those that are the valid
+# target of a $ref keyword in an openapi document.
 sub __entities { qw(schema response parameter example request-body header security-scheme link callbacks path-item) }
 
 # operationId => document path
@@ -169,7 +171,10 @@ sub traverse ($self, $evaluator) {
           return 1;
         },
         '$ref' => sub ($data, $schema, $state) {
-          my ($entity) = ($schema->{'$ref'} =~ m{#/\$defs/([^/]+?)(?:-or-reference)$});
+          # we only need to special-case path-item, because this is the only entity that is
+          # referenced in the schema without an -or-reference
+          my ($entity) = (($schema->{'$ref'} =~ m{#/\$defs/([^/]+?)(?:-or-reference)$}),
+            ($schema->{'$ref'} =~ m{#/\$defs/(path-item)$}));
           $self->_add_entity_location($state->{data_path}, $entity) if $entity;
 
           push @operation_paths, [ $data->{operationId} => $state->{data_path} ]
