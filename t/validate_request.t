@@ -444,6 +444,14 @@ components:
       required: true
       schema:
         pattern: ^[0-9]+\$
+    bar-header-ref:
+      \$ref: '#/components/parameters/bar-header'
+    bar-header:
+      name: Beta
+      in: header
+      required: true
+      schema:
+        pattern: ^[0-9]+\$
 paths:
   /foo:
     parameters:
@@ -491,6 +499,7 @@ paths:
           iMAgE/*:
             schema:
               not: true
+      - \$ref: '#/components/parameters/bar-header-ref'
 YAML
   # note that bar_id is not listed as a path parameter
 
@@ -511,13 +520,18 @@ YAML
           absoluteKeywordLocation => $doc_uri->clone->fragment('/components/parameters/foo-header/required')->to_string,
           error => 'missing header: Alpha',
         },
+        {
+          instanceLocation => '/request/header/Beta',
+          keywordLocation => jsonp(qw(/paths /foo post parameters 7 $ref $ref required)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/parameters/bar-header/required')->to_string,
+          error => 'missing header: Beta',
+        },
       ],
     },
     'query and header parameters are missing; header names are case-insensitive',
   );
 
-
-  $request = request('POST', 'http://example.com/foo?alpha=1&gamma=foo&delta=bar', [ Alpha => 1 ]);
+  $request = request('POST', 'http://example.com/foo?alpha=1&gamma=foo&delta=bar', [ Alpha => 1, Beta => 1 ]);
   cmp_deeply(
     ($result = $openapi->validate_request($request, { path_template => '/foo', path_captures => {} }))->TO_JSON,
     {
@@ -552,7 +566,7 @@ YAML
     'after adding wildcard support, this parameter can be parsed',
   );
 
-  $request = request('POST', 'http://example.com/foo', [ Alpha => 1 ]);
+  $request = request('POST', 'http://example.com/foo', [ Alpha => 1, Beta => 1 ]);
   query_params($request, [alpha => 1, epsilon => '{"foo":42}']);
   cmp_deeply(
     ($result = $openapi->validate_request($request, { path_template => '/foo', path_captures => {} }))->TO_JSON,
@@ -572,7 +586,7 @@ YAML
 
   $openapi->add_media_type('image/*' => sub ($value) { $value });
 
-  $request = request('POST', 'http://example.com/foo?alpha=1&zeta=binary', [ Alpha => 1 ]);
+  $request = request('POST', 'http://example.com/foo?alpha=1&zeta=binary', [ Alpha => 1, Beta => 1 ]);
   cmp_deeply(
     ($result = $openapi->validate_request($request, { path_template => '/foo', path_captures => {} }))->TO_JSON,
     {
@@ -590,7 +604,7 @@ YAML
   );
 
   $request = request('POST', 'http://example.com/foo?alpha=hello&beta=3.1415',
-    [ 'alpha' => 'header value' ]);    # exactly matches query parameter
+    [ 'alpha' => 'header value', Beta => 1 ]);    # exactly matches query parameter
   cmp_deeply(
     ($result = $openapi->validate_request($request, { path_template => '/foo', path_captures => {} }))->TO_JSON,
     {
