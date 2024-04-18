@@ -1224,11 +1224,6 @@ Only certain permutations of OpenAPI documents are supported at this time:
 * L<https://learn.openapis.org/>
 * L<https://spec.openapis.org/oas/v3.1.0>
 
-=head1 SUPPORT
-
-You can also find me on the L<JSON Schema Slack server|https://json-schema.slack.com> and L<OpenAPI
-Slack server|https://open-api.slack.com>, which are also great resources for finding help.
-
 =head1 COPYRIGHT AND LICENCE
 
 Some schema files have their own licence, in share/oas/LICENSE.
