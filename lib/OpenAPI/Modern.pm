@@ -387,14 +387,13 @@ sub find_path ($self, $options, $state = {}) {
   # path_template from request URI
   if (not $path_template and $options->{request} and my $uri_path = $options->{request}->url->path) {
     my $schema = $self->openapi_document->schema;
-    croak 'servers not yet supported when matching request URIs'
-      if exists $schema->{servers} and $schema->{servers}->@*;
 
     # sorting (ascii-wise) gives us the desired results that concrete path components sort ahead of
     # templated components, except when the concrete component is a non-ascii character or matches [|}~].
     foreach $path_template (sort keys $schema->{paths}->%*) {
       my $path_pattern = $path_template =~ s!\{[^}]+\}!([^/?#]*)!gr;
 
+      # TODO: consider 'servers' fields when matching request URIs
       next if $uri_path !~ m/^$path_pattern$/;
 
       $options->{path_template} = $path_template;
@@ -1127,7 +1126,8 @@ or by calling C<< $openapi->openapi_document->get_operationId_path($operation_id
 
 Note that the L<C</servers>|https://spec.openapis.org/oas/v3.1.0#server-object> section of the
 OpenAPI document is not used for path matching at this time, for either scheme and host matching nor
-path prefixes.
+path prefixes. For now, if you use a path prefix in C<servers> entries you will need to add this to
+the path templates under `/paths`.
 
 =head2 recursive_get
 
