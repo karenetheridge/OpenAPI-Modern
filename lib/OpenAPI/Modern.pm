@@ -393,7 +393,8 @@ sub find_path ($self, $options, $state = {}) {
     foreach $path_template (sort keys $schema->{paths}->%*) {
       my $path_pattern = $path_template =~ s!\{[^}]+\}!([^/?#]*)!gr;
 
-      # TODO: consider 'servers' fields when matching request URIs
+      # TODO: consider 'servers' fields when matching request URIs: this requires looking at
+      # path prefixes present in server urls
       next if $uri_path !~ m/^$path_pattern$/;
 
       $options->{path_template} = $path_template;
@@ -423,6 +424,10 @@ sub find_path ($self, $options, $state = {}) {
 
       $options->{operation_id} = $options->{_path_item}{$method}{operationId};
       delete $options->{operation_id} if not defined $options->{operation_id};
+
+      # TODO: extract 'servers' variables into $options
+      # Since we didn't take a servers url prefix into consideration when matching path templates
+      # earlier, we may have a mismatch now, which should constitute an error
 
       return 1;
     }
@@ -473,6 +478,10 @@ sub find_path ($self, $options, $state = {}) {
       'provided path_captures values do not match request URI')
     if exists $options->{path_captures}
       and not is_equal([ map $_.'', $options->{path_captures}->@{@capture_names} ], \@capture_values);
+
+  # TODO: validate request uri against the nearest 'servers' object and extract server variables
+  # Since we didn't take a servers uri prefix into consideration earlier, we may have a mismatch
+  # now, which should constitute an error
 
   my %path_captures; @path_captures{@capture_names} = @capture_values;
 
