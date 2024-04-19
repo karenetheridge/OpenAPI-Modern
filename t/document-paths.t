@@ -40,21 +40,21 @@ subtest '/paths correctness' => sub {
         instanceLocation => '/paths/~1a~1{b}',
         keywordLocation => '',
         absoluteKeywordLocation => SCHEMA,
-        error => 'duplicate of templated path /a/{a}',
+        error => 'duplicate of templated path "/a/{a}"',
       },
       +{
         instanceLocation => '/paths/~1b~1{b}~1hi',
         keywordLocation => '',
         absoluteKeywordLocation => SCHEMA,
-        error => 'duplicate of templated path /b/{a}/hi',
+        error => 'duplicate of templated path "/b/{a}/hi"',
       },
     ],
     'duplicate paths are not permitted',
   );
 
   is(document_result($doc), substr(<<'ERRORS', 0, -1), 'stringified errors');
-'/paths/~1a~1{b}': duplicate of templated path /a/{a}
-'/paths/~1b~1{b}~1hi': duplicate of templated path /b/{a}/hi
+'/paths/~1a~1{b}': duplicate of templated path "/a/{a}"
+'/paths/~1b~1{b}~1hi': duplicate of templated path "/b/{a}/hi"
 ERRORS
 };
 

@@ -189,7 +189,7 @@ sub traverse ($self, $evaluator) {
     if (my $first_path = $seen_path{$normalized}) {
       ()= E({ %$state, data_path => jsonp('/paths', $path),
         initial_schema_uri => Mojo::URL->new(DEFAULT_METASCHEMA) },
-        'duplicate of templated path %s', $first_path);
+        'duplicate of templated path "%s"', $first_path);
       $state->{errors}[-1]->mode('evaluate');
       next;
     }
