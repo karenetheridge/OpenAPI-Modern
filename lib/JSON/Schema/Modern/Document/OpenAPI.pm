@@ -152,7 +152,7 @@ sub traverse ($self, $evaluator) {
 
   # evaluate the document against its metaschema to find any errors, to identify all schema
   # resources within to add to the global resource index, and to extract all operationIds
-  my (@json_schema_paths, @operation_paths);
+  my (@json_schema_paths, @operation_paths, @servers_paths);
   my $result = $self->evaluator->evaluate(
     $schema, $self->metaschema_uri,
     {
@@ -171,6 +171,10 @@ sub traverse ($self, $evaluator) {
 
           push @operation_paths, [ $data->{operationId} => $state->{data_path} ]
             if $schema->{'$ref'} eq '#/$defs/operation' and defined $data->{operationId};
+
+          # will contain duplicates; filter out later
+          push @servers_paths, ($state->{data_path} =~ s{/[0-9]+$}{}r)
+            if $schema->{'$ref'} eq '#/$defs/server';
 
           return 1;
         },
@@ -207,6 +211,58 @@ sub traverse ($self, $evaluator) {
       next;
     }
     $seen_path{$normalized} = $path;
+  }
+
+  my %seen_servers;
+  foreach my $servers_location (reverse @servers_paths) {
+    next if $seen_servers{$servers_location}++;
+
+    my $servers = $self->get($servers_location);
+    my %seen_url;
+
+    foreach my $server_idx (0 .. $servers->$#*) {
+      my $normalized = $servers->[$server_idx]{url} =~ s/\{[^}]+\}/\x00/r;
+      my @url_variables = $servers->[$server_idx]{url} =~ /\{([^}]+)\}/g;
+
+      if (my $first_url = $seen_url{$normalized}) {
+        ()= E({ %$state, data_path => jsonp($servers_location, $server_idx, 'url'),
+          initial_schema_uri => Mojo::URL->new(DEFAULT_METASCHEMA) },
+          'duplicate of templated server url "%s"', $first_url);
+        $state->{errors}[-1]->mode('evaluate');
+      }
+      $seen_url{$normalized} = $servers->[$server_idx]{url};
+
+      my $variables_obj = $servers->[$server_idx]{variables};
+      if (@url_variables and not $variables_obj) {
+        # missing 'variables': needs variables/$varname/default
+        ()= E({ %$state, data_path => jsonp($servers_location, $server_idx),
+          initial_schema_uri => Mojo::URL->new(DEFAULT_METASCHEMA) },
+          '"variables" property is required for templated server urls');
+        $state->{errors}[-1]->mode('evaluate');
+        next;
+      }
+
+      next if not $variables_obj;
+
+      foreach my $varname (keys $variables_obj->%*) {
+        if (exists $variables_obj->{$varname}{enum}
+            and not grep $variables_obj->{$varname}{default} eq $_, $variables_obj->{$varname}{enum}->@*) {
+          ()= E({ %$state, data_path => jsonp($servers_location, $server_idx, 'variables', $varname, 'default'),
+            initial_schema_uri => Mojo::URL->new(DEFAULT_METASCHEMA) },
+            'servers default is not a member of enum');
+          $state->{errors}[-1]->mode('evaluate');
+        }
+      }
+
+      if (@url_variables
+          and my @missing_definitions = grep !exists $variables_obj->{$_}, @url_variables) {
+        ()= E({ %$state, data_path => jsonp($servers_location, $server_idx, 'variables'),
+          initial_schema_uri => Mojo::URL->new(DEFAULT_METASCHEMA) },
+          'missing "variables" definition for templated variable%s "%s"',
+          @missing_definitions > 1 ? 's' : '', join('", "', @missing_definitions));
+        $state->{errors}[-1]->mode('evaluate');
+      }
+    }
   }
 
   return $state if $state->{errors}->@*;

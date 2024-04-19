@@ -13,6 +13,9 @@ use Test::Fatal;
 use lib 't/lib';
 use Helper;
 
+# the document where most constraints are defined
+use constant SCHEMA => 'https://spec.openapis.org/oas/3.1/schema/2022-10-07';
+
 my $yamlpp = YAML::PP->new(boolean => 'JSON::PP');
 my $openapi_preamble = <<'YAML';
 ---
@@ -243,6 +246,89 @@ YAML
       '/components/schemas/beta_schema/not' => 0,
     },
     'all entity locations are identified',
+  );
+};
+
+subtest 'invalid servers entries' => sub {
+  my $servers = $yamlpp->load_string(<<YAML);
+servers:
+  - url: https://example.com/{version}/{greeting}
+    variables:
+      version:
+        default: v1
+        enum: [v2, v3]
+      greeting:
+        default: hi
+      unused:
+        default: nope
+  - url: https://example.com/{v}/{greeting}
+  - url: https://example.com/{foo}
+    variables: {}
+  - url: http://example.com/literal
+    variables:
+      version:
+        default: v1
+        enum: [v2, v3]
+  - url: http://example.com/literal2
+YAML
+
+  my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
+    canonical_uri => 'http://localhost:1234/api',
+    metaschema_uri => 'https://spec.openapis.org/oas/3.1/schema',
+    # Note: OpenAPI::Modern sets this value to true, but the current 3.1 schema disallows templated
+    # server urls (via the uri-reference format requirement).
+    evaluator => my $js = JSON::Schema::Modern->new(validate_formats => 0),
+    schema => {
+      $yamlpp->load_string($openapi_preamble)->%*,
+      %$servers,
+      components => {
+        pathItems => {
+          path0 => {
+            %$servers,
+            get => $servers,
+          },
+        },
+      },
+    },
+  );
+
+  cmp_deeply(
+    [ $doc->errors ],
+    [
+      map +(
+        methods(TO_JSON => {
+          instanceLocation => $_.'/servers/0/variables/version/default',
+          keywordLocation => '',
+          absoluteKeywordLocation => SCHEMA,
+          error => 'servers default is not a member of enum',
+        }),
+        methods(TO_JSON => {
+          instanceLocation => $_.'/servers/1/url',
+          keywordLocation => '',
+          absoluteKeywordLocation => SCHEMA,
+          error => 'duplicate of templated server url "https://example.com/{version}/{greeting}"',
+        }),
+        methods(TO_JSON => {
+          instanceLocation => $_.'/servers/1',
+          keywordLocation => '',
+          absoluteKeywordLocation => SCHEMA,
+          error => '"variables" property is required for templated server urls',
+        }),
+        methods(TO_JSON => {
+          instanceLocation => $_.'/servers/2/variables',
+          keywordLocation => '',
+          absoluteKeywordLocation => SCHEMA,
+          error => 'missing "variables" definition for templated variable "foo"',
+        }),
+        methods(TO_JSON => {
+          instanceLocation => $_.'/servers/3/variables/version/default',
+          keywordLocation => '',
+          absoluteKeywordLocation => SCHEMA,
+          error => 'servers default is not a member of enum',
+        }),
+      ), '', '/components/pathItems/path0', '/components/pathItems/path0/get',
+    ],
+    'all issues with server entries found',
   );
 };
 
