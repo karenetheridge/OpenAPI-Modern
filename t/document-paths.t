@@ -29,6 +29,7 @@ subtest '/paths correctness' => sub {
         '/a/{b}' => {},
         '/b/{a}/hi' => {},
         '/b/{b}/hi' => {},
+        '/c/{c}/d/{c}/e/{e}/f/{e}' => {},
       },
     },
   );
@@ -48,13 +49,27 @@ subtest '/paths correctness' => sub {
         absoluteKeywordLocation => SCHEMA,
         error => 'duplicate of templated path "/b/{a}/hi"',
       },
+      +{
+        instanceLocation => '/paths/~1c~1{c}~1d~1{c}~1e~1{e}~1f~1{e}',
+        keywordLocation => '',
+        absoluteKeywordLocation => SCHEMA,
+        error => 'duplicate path template variable "c"',
+      },
+      +{
+        instanceLocation => '/paths/~1c~1{c}~1d~1{c}~1e~1{e}~1f~1{e}',
+        keywordLocation => '',
+        absoluteKeywordLocation => SCHEMA,
+        error => 'duplicate path template variable "e"',
+      },
     ],
-    'duplicate paths are not permitted',
+    'duplicate paths or template variables are not permitted',
   );
 
   is(document_result($doc), substr(<<'ERRORS', 0, -1), 'stringified errors');
 '/paths/~1a~1{b}': duplicate of templated path "/a/{a}"
 '/paths/~1b~1{b}~1hi': duplicate of templated path "/b/{a}/hi"
+'/paths/~1c~1{c}~1d~1{c}~1e~1{e}~1f~1{e}': duplicate path template variable "c"
+'/paths/~1c~1{c}~1d~1{c}~1e~1{e}~1f~1{e}': duplicate path template variable "e"
 ERRORS
 };
 

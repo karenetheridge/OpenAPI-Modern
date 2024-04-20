@@ -185,6 +185,16 @@ sub traverse ($self, $evaluator) {
   # are identical."
   my %seen_path;
   foreach my $path (sort keys $schema->{paths}->%*) {
+    my %seen_names;
+    foreach my $name ($path =~ m!\{([^}]+)\}!g) {
+      if (++$seen_names{$name} == 2) {
+        ()= E({ %$state, data_path => jsonp('/paths', $path),
+          initial_schema_uri => Mojo::URL->new(DEFAULT_METASCHEMA) },
+          'duplicate path template variable "%s"', $name);
+        $state->{errors}[-1]->mode('evaluate');
+      }
+    }
+
     my $normalized = $path =~ s/\{[^}]+\}/\x00/r;
     if (my $first_path = $seen_path{$normalized}) {
       ()= E({ %$state, data_path => jsonp('/paths', $path),

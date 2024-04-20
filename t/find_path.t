@@ -601,40 +601,6 @@ YAML
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
-  /foo/{foo_id}/bar/{foo_id}:
-    get: {}
-YAML
-
-  $request = request('GET', 'http://example.com/foo/1/bar/2');
-  ok(!$openapi->find_path($options = { request => $request }),
-    'find_path returns false');
-
-  cmp_deeply(
-    $options,
-    {
-      request => isa('Mojo::Message::Request'),
-      method => 'get',
-      path_template => '/foo/{foo_id}/bar/{foo_id}',
-      _path_item => { get => ignore },
-      path_item_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1{foo_id}~1bar~1{foo_id}'),
-      errors => [
-        methods(TO_JSON => {
-          instanceLocation => '/request/uri/path',
-          keywordLocation => '/paths',
-          absoluteKeywordLocation => $doc_uri->clone->fragment('/paths')->to_string,
-          error => 'duplicate path capture name foo_id',
-        }),
-      ],
-    },
-    'duplicate capture names are detected',
-  );
-
-
-  $openapi = OpenAPI::Modern->new(
-    openapi_uri => '/api',
-    openapi_schema => $yamlpp->load_string(<<YAML));
-$openapi_preamble
-paths:
   /foo/{foo_id}:
     get: {}
 YAML

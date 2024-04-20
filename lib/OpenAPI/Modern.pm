@@ -412,10 +412,6 @@ sub find_path ($self, $options, $state = {}) {
       my @capture_names = ($path_template =~ m!\{([^/?#}]+)\}!g);
       my %path_captures; @path_captures{@capture_names} = @capture_values;
 
-      if (not is_elements_unique(\@capture_names, my $indexes = [])) {
-        return E({ %$state, schema_path => '/paths' }, 'duplicate path capture name %s', $capture_names[$indexes->[0]]);
-      }
-
       return E({ %$state, schema_path => '/paths' }, 'provided path_captures values do not match request URI')
         if $options->{path_captures} and not is_equal($options->{path_captures}, \%path_captures);
 
