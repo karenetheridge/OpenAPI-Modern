@@ -393,7 +393,8 @@ sub find_path ($self, $options, $state = {}) {
     # sorting (ascii-wise) gives us the desired results that concrete path components sort ahead of
     # templated components, except when the concrete component is a non-ascii character or matches [|}~].
     foreach $path_template (sort keys $schema->{paths}->%*) {
-      my $path_pattern = $path_template =~ s!\{[^/}]+\}!([^/?#]*)!gr;
+      my $path_pattern = $path_template =~ s!\{[^}]+\}!([^/?#]*)!gr;
+
       next if $uri_path !~ m/^$path_pattern$/;
 
       $options->{path_template} = $path_template;
@@ -444,7 +445,7 @@ sub find_path ($self, $options, $state = {}) {
   $options->{path_item_uri} = Mojo::URL->new($state->{initial_schema_uri})->fragment($path_item_path);
 
   # note: we aren't doing anything special with escaped slashes. this bit of the spec is hazy.
-  my @capture_names = ($path_template =~ m!\{([^/}]+)\}!g);
+  my @capture_names = ($path_template =~ m!\{([^}]+)\}!g);
   return E({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
       'provided path_captures names do not match path template "%s"', $path_template)
     if exists $options->{path_captures}
@@ -464,7 +465,7 @@ sub find_path ($self, $options, $state = {}) {
 
   # 3.2: "The value for these path parameters MUST NOT contain any unescaped “generic syntax”
   # characters described by [RFC3986]: forward slashes (/), question marks (?), or hashes (#)."
-  my $path_pattern = $path_template =~ s!\{[^/}]+\}!([^/?#]*)!gr;
+  my $path_pattern = $path_template =~ s!\{[^}]+\}!([^/?#]*)!gr;
   return E({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
       'provided %s does not match request URI', exists $options->{path_template} ? 'path_template' : 'operation_id')
     if $uri_path !~ m/^$path_pattern$/;
