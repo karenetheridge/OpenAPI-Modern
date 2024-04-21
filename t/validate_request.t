@@ -1733,7 +1733,7 @@ YAML
 subtest 'max_depth' => sub {
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => '/api',
-    evaluator => JSON::Schema::Modern->new(max_traversal_depth => 15),
+    evaluator => JSON::Schema::Modern->new(max_traversal_depth => 15, validate_formats => 1),
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 components:
@@ -1770,7 +1770,7 @@ YAML
 subtest 'unevaluatedProperties and annotations' => sub {
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => '/api',
-    evaluator => JSON::Schema::Modern->new,
+    evaluator => JSON::Schema::Modern->new(validate_formats => 1),
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
@@ -1813,7 +1813,7 @@ YAML
 subtest 'readOnly' => sub {
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => '/api',
-    evaluator => JSON::Schema::Modern->new,
+    evaluator => JSON::Schema::Modern->new(validate_formats => 1),
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
@@ -1864,7 +1864,7 @@ YAML
 subtest 'no bodies in GET or HEAD requests without requestBody' => sub {
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => '/api',
-    evaluator => JSON::Schema::Modern->new,
+    evaluator => JSON::Schema::Modern->new(validate_formats => 1),
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:
@@ -1933,7 +1933,7 @@ SKIP: {
 subtest 'custom error messages for false schemas' => sub {
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => '/api',
-    evaluator => JSON::Schema::Modern->new,
+    evaluator => JSON::Schema::Modern->new(validate_formats => 1),
     openapi_schema => $yamlpp->load_string(<<YAML));
 $openapi_preamble
 paths:

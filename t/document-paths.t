@@ -17,7 +17,7 @@ use constant SCHEMA => 'https://spec.openapis.org/oas/3.1/schema/2022-10-07';
 subtest '/paths correctness' => sub {
   my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
-    evaluator => my $js = JSON::Schema::Modern->new,
+    evaluator => my $js = JSON::Schema::Modern->new(validate_formats => 1),
     schema => {
       openapi => '3.1.0',
       info => {
