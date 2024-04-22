@@ -311,7 +311,10 @@ sub find_path ($self, $options, $state = {}) {
   $state->{traversed_schema_path} = '';    # the accumulated traversal path as of the start, or last $id, or up to the last traversed $ref
   $state->{schema_path} = '';              # the rest of the path, since the last $id or the last traversed $ref
   $state->{errors} = $options->{errors} //= [];
-  $state->{effective_base_uri} = Mojo::URL->new->scheme('https')->host($options->{request}->headers->host) if $options->{request};
+  $state->{effective_base_uri} = Mojo::URL->new
+      ->scheme($options->{request}->url->to_abs->scheme // 'https')
+      ->host($options->{request}->headers->host)
+    if $options->{request};
   $state->{depth} = 0;
 
   # requests don't have response codes, so if 'error' is set, it is some sort of parsing error
@@ -994,7 +997,7 @@ The URI that identifies the OpenAPI document.
 Ignored if L</openapi_document> is provided.
 
 If it is not absolute, it is resolved at runtime against the request's C<Host> header (when available)
-and the https scheme is assumed.
+and scheme (e.g. C<https>).
 
 =head2 openapi_schema
 

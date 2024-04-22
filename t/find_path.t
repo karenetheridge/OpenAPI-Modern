@@ -26,7 +26,7 @@ YAML
 
 # the absolute uri we will see in errors
 my $doc_uri_rel = Mojo::URL->new('/api');
-my $doc_uri = $doc_uri_rel->to_abs(Mojo::URL->new('https://example.com'));
+my $doc_uri = $doc_uri_rel->to_abs(Mojo::URL->new('http://example.com'));
 my $yamlpp = YAML::PP->new(boolean => 'JSON::PP');
 
 subtest 'bad conversion to Mojo::Message::Request' => sub {

@@ -1,6 +1,8 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - the url scheme of absoluteKeywordLocations in errors is now taken
+            from the incoming request, rather than always being "https"
 
 0.062     2024-04-21 18:11:43Z
           - BREAKING CHANGE: operation_path is dropped from the populated
