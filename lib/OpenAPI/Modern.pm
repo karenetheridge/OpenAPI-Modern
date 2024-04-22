@@ -227,8 +227,6 @@ sub validate_response ($self, $response, $options = {}) {
 
     return $self->_result($state, 0, 1) if not exists $operation->{responses};
 
-    $state->{effective_base_uri} = Mojo::URL->new->scheme('https')->host($options->{request}->headers->host)
-      if $options->{request};
     $state->{schema_path} = jsonp($state->{schema_path}, $method);
     $state->{data_path} = '/response';
 
