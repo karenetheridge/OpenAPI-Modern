@@ -391,7 +391,9 @@ sub find_path ($self, $options, $state = {}) {
     foreach $path_template (sort keys $schema->{paths}->%*) {
       # §3.2: "The value for these path parameters MUST NOT contain any unescaped “generic syntax”
       # characters described by [RFC3986]: forward slashes (/), question marks (?), or hashes (#)."
-      my $path_pattern = $path_template =~ s!\{[^}]+\}!([^/?#]*)!gr;
+      my $path_pattern = join '',
+        map +(substr($_, 0, 1) eq '{' ? '([^/?#]*)' : quotemeta($_)),
+        split /(\{[^}]+\})/, $path_template;
 
       # TODO: consider 'servers' fields when matching request URIs: this requires looking at
       # path prefixes present in server urls
@@ -465,7 +467,10 @@ sub find_path ($self, $options, $state = {}) {
 
   # §3.2: "The value for these path parameters MUST NOT contain any unescaped “generic syntax”
   # characters described by [RFC3986]: forward slashes (/), question marks (?), or hashes (#)."
-  my $path_pattern = $path_template =~ s!\{[^}]+\}!([^/?#]*)!gr;
+  my $path_pattern = join '',
+    map +(substr($_, 0, 1) eq '{' ? '([^/?#]*)' : quotemeta($_)),
+    split /(\{[^}]+\})/, $path_template;
+
   return E({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
       'provided %s does not match request URI', exists $options->{path_template} ? 'path_template' : 'operation_id')
     if $uri_path !~ m/^$path_pattern$/;
