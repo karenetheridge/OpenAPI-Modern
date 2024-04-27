@@ -392,6 +392,8 @@ sub find_path ($self, $options, $state = {}) {
     # sorting (ascii-wise) gives us the desired results that concrete path components sort ahead of
     # templated components, except when the concrete component is a non-ascii character or matches [|}~].
     foreach $path_template (sort keys $schema->{paths}->%*) {
+      # §3.2: "The value for these path parameters MUST NOT contain any unescaped “generic syntax”
+      # characters described by [RFC3986]: forward slashes (/), question marks (?), or hashes (#)."
       my $path_pattern = $path_template =~ s!\{[^}]+\}!([^/?#]*)!gr;
 
       # TODO: consider 'servers' fields when matching request URIs: this requires looking at
@@ -464,7 +466,7 @@ sub find_path ($self, $options, $state = {}) {
   # operation_id, and now we verify it against path_captures and the request URI.
   my $uri_path = $options->{request}->url->path;
 
-  # 3.2: "The value for these path parameters MUST NOT contain any unescaped “generic syntax”
+  # §3.2: "The value for these path parameters MUST NOT contain any unescaped “generic syntax”
   # characters described by [RFC3986]: forward slashes (/), question marks (?), or hashes (#)."
   my $path_pattern = $path_template =~ s!\{[^}]+\}!([^/?#]*)!gr;
   return E({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
