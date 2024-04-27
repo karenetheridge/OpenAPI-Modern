@@ -183,8 +183,6 @@ YAML
       request => isa('Mojo::Message::Request'),
       method => 'post',
       path_template => '/foo/{foo_id}',
-      _path_item => { get => ignore },
-      path_item_uri => $doc_uri_rel->clone->fragment(jsonp('/paths', qw(/foo/bar))),
       path_captures => {},
       operation_id => 'my-get-path',
       errors => [
@@ -209,8 +207,6 @@ YAML
       request => isa('Mojo::Message::Request'),
       method => 'post',
       path_captures => {},
-      _path_item => { get => ignore },
-      path_item_uri => $doc_uri_rel->clone->fragment(jsonp('/paths', qw(/foo/bar))),
       operation_id => 'my-get-path',
       errors => [
         methods(TO_JSON => {
@@ -373,8 +369,6 @@ YAML
       method => 'get',
       path_captures => {},
       operation_id => 'my-get-path',
-      _path_item => { get => ignore },
-      path_item_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1bar'),
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/uri/path',
@@ -398,8 +392,6 @@ YAML
       method => 'post',
       path_captures => { foo_id => 'goodbye' },
       operation_id => 'my-post-path',
-      _path_item => { post => ignore },
-      path_item_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1{foo_id}'),
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/uri/path',
@@ -666,8 +658,6 @@ YAML
       operation_id => 'my-get-path',
       method => 'POST',
       path_captures => {},
-      _path_item => { get => ignore },
-      path_item_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1{foo_id}'),
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/method',

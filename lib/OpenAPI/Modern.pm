@@ -349,9 +349,6 @@ sub find_path ($self, $options, $state = {}) {
     pop @bits;
     $path_item_path = jsonp(@bits);
 
-    $options->{_path_item} = $self->openapi_document->get($path_item_path);
-    $options->{path_item_uri} = Mojo::URL->new($state->{initial_schema_uri})->fragment($path_item_path);
-
     # FIXME: the path_template is not correct if there was a $ref from the original /paths/ entry to
     # get to this path-item and operation. We need to look up the path_template from the request as
     # normal, below.
@@ -444,8 +441,7 @@ sub find_path ($self, $options, $state = {}) {
 
   # FIXME: follow $ref chain in path-item
   $path_item_path = jsonp('/paths', $path_template);
-  $options->{_path_item} = $self->openapi_document->get($path_item_path);
-  $options->{path_item_uri} = Mojo::URL->new($state->{initial_schema_uri})->fragment($path_item_path);
+  my $path_item = $self->openapi_document->get($path_item_path);
 
   # note: we aren't doing anything special with escaped slashes. this bit of the spec is hazy.
   my @capture_names = ($path_template =~ m!\{([^}]+)\}!g);
@@ -455,8 +451,9 @@ sub find_path ($self, $options, $state = {}) {
       and not is_equal([ sort keys $options->{path_captures}->%* ], [ sort @capture_names ]);
 
   if (not $options->{request}) {
-    $options->@{qw(path_template operation_id)} =
-      ($path_template, $self->openapi_document->schema->{paths}{$path_template}{$method}{operationId});
+    $options->@{qw(path_template operation_id _path_item path_item_uri)} =
+      ($path_template, $self->openapi_document->schema->{paths}{$path_template}{$method}{operationId},
+      $path_item, Mojo::URL->new($state->{initial_schema_uri})->fragment($path_item_path));
     delete $options->{operation_id} if not defined $options->{operation_id};
     $state->{schema_path} = $path_item_path;
     return 1;
