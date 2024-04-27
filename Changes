@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.063     2024-04-27 22:26:47Z
           - the url scheme of absoluteKeywordLocations in errors is now taken
             from the incoming request, rather than always being "https"
           - fix matching of request uri against path templates so that

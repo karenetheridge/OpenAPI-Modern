@@ -8,7 +8,7 @@ OpenAPI::Modern - Validate HTTP requests and responses against an OpenAPI v3.1 d
 
 =head1 VERSION
 
-version 0.062
+version 0.063
 
 =head1 SYNOPSIS
 
@@ -138,7 +138,7 @@ The URI that identifies the OpenAPI document.
 Ignored if L</openapi_document> is provided.
 
 If it is not absolute, it is resolved at runtime against the request's C<Host> header (when available)
-and the https scheme is assumed.
+and scheme (e.g. C<https>).
 
 =head2 openapi_schema
 
