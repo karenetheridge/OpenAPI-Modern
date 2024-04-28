@@ -383,7 +383,10 @@ sub find_path ($self, $options, $state = {}) {
   }
 
   # path_template from request URI
-  if (not $path_template and $options->{request} and my $uri_path = $options->{request}->url->path) {
+  if (not $path_template and $options->{request}) {
+    my $uri_path = $options->{request}->url->path->to_string;
+    $uri_path = '/' if not length $uri_path;
+
     my $schema = $self->openapi_document->schema;
 
     # sorting (ascii-wise) gives us the desired results that concrete path components sort ahead of

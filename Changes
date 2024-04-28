@@ -1,6 +1,8 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - fix: requests with an empty URI path (e.g. "https://example.com?foo=1")
+            now match path "/".
 
 0.063     2024-04-27 22:26:47Z
           - the url scheme of absoluteKeywordLocations in errors is now taken

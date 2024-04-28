@@ -736,6 +736,19 @@ YAML
     },
     'path_template provided; no operation_id is recorded, because one does not exist in the schema document',
   );
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => '/api',
+    openapi_schema => $yamlpp->load_string(<<YAML));
+$openapi_preamble
+paths:
+  /:
+    get: {}
+YAML
+
+  $request = request('GET', 'http://example.com');
+  ok($openapi->find_path($options = { request => $request }), 'find_path can match an empty uri path');
 };
 
 subtest 'no request is provided: options are relied on as the sole source of truth' => sub {
