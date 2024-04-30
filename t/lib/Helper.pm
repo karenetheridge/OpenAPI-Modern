@@ -48,6 +48,15 @@ sub request ($method, $uri_string, $headers = [], $body_content = '') {
       if defined $body_content and not defined $req->headers->header('Content-Length')
         and not defined $req->headers->header('Transfer-Encoding');
     $req->protocol('HTTP/1.1'); # required, but not added by HTTP::Request constructor
+
+    if ($TYPE eq 'plack') {
+      test_needs('Plack::Request', 'HTTP::Message::PSGI', { 'HTTP::Headers::Fast' => 0.21 });
+      $req = Plack::Request->new($req->to_psgi);
+
+      # Plack is unable to distinguish between %2F and /, so the raw (undecoded) uri can be passed
+      # here. see PSGI::FAQ
+      $req->env->{REQUEST_URI} = $uri . '';
+    }
   }
   elsif ($TYPE eq 'mojo') {
     my $uri = Mojo::URL->new($uri_string);
@@ -61,16 +70,6 @@ sub request ($method, $uri_string, $headers = [], $body_content = '') {
   }
   else {
     die '$TYPE '.$TYPE.' not supported';
-  }
-
-  if ($TYPE eq 'plack') {
-    test_needs('Plack::Request', 'HTTP::Message::PSGI', { 'HTTP::Headers::Fast' => 0.21 });
-    my $uri = $req->uri;
-    $req = Plack::Request->new($req->to_psgi);
-
-    # Plack is unable to distinguish between %2F and /, so the raw (undecoded) uri can be passed
-    # here. see PSGI::FAQ
-    $req->env->{REQUEST_URI} = $uri . '';
   }
 
   return $req;
