@@ -601,7 +601,7 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
   return $self->_validate_parameter_content({ %$state, depth => $state->{depth}+1 }, $header_obj, \ $headers->header($header_name))
     if exists $header_obj->{content};
 
-  # RFC9112§5.1-3: "The field line value does not include that leading or trailing whitespace: OWS
+  # RFC9112 §5.1-3: "The field line value does not include that leading or trailing whitespace: OWS
   # occurring before the first non-whitespace octet of the field line value, or after the last
   # non-whitespace octet of the field line value, is excluded by parsers when extracting the field
   # line value from a field line."
@@ -609,7 +609,7 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
 
   my $types = $self->_type_in_schema($header_obj->{schema}, { %$state, schema_path => jsonp($state->{schema_path}, 'schema') });
 
-  # RFC9112§5.3-1: "A recipient MAY combine multiple field lines within a field section that have
+  # RFC9112 §5.3-1: "A recipient MAY combine multiple field lines within a field section that have
   # the same field name into one field line, without changing the semantics of the message, by
   # appending each subsequent field line value to the initial field line value in order, separated
   # by a comma (",") and optional whitespace (OWS, defined in Section 5.6.3). For consistency, use
