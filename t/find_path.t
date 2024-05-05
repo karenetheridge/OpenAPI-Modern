@@ -648,7 +648,7 @@ YAML
   ok($openapi->find_path($options = { operation_id => 'concrete-foo-bar', request => $request } ), 'find_path returns successfully');
   cmp_deeply(
     $options,
-    $got_options,
+    { %$got_options, request => isa('Mojo::Message::Request') },
     'inferred (correct) path_template matches request uri',
   );
 
@@ -692,7 +692,7 @@ YAML
   ok($openapi->find_path($options = { operation_id => 'templated-foo-bar', request => $request } ), 'find_path returns successfully');
   cmp_deeply(
     $options,
-    $got_options,
+    { %$got_options, request => isa('Mojo::Message::Request') },
     'inferred (correct) path_template matches request uri',
   );
 
