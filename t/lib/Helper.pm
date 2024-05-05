@@ -55,6 +55,7 @@ sub request ($method, $uri_string, $headers = [], $body_content = '') {
       # Plack is unable to distinguish between %2F and /, so the raw (undecoded) uri can be passed
       # here. see PSGI::FAQ
       $req->env->{REQUEST_URI} = $uri . '';
+      $req->env->{'psgi.url_scheme'} = $uri->scheme;
     }
   }
   elsif ($TYPE eq 'mojo') {
