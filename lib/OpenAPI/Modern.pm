@@ -814,49 +814,58 @@ sub _evaluate_subschema ($self, $dataref, $schema, $state) {
 # results may be unsatisfactory if not a valid HTTP request.
 sub _convert_request ($request) {
   return $request if $request->isa('Mojo::Message::Request');
+
+  my $req = Mojo::Message::Request->new;
+
   if ($request->isa('HTTP::Request')) {
-    my $req = Mojo::Message::Request->new;
-    # we could call $req->fix_headers here to add a missing Content-Length, but proper requests from
-    # the network should always have it set.
     $req->parse($request->as_string);
-    warn 'parse error when converting HTTP::Request' if not $req->is_finished;
-    return $req;
   }
   elsif ($request->isa('Plack::Request')) {
-    my $req = Mojo::Message::Request->new->parse($request->env);
+    $req->parse($request->env);
+
     my $body = $request->content;
     $req->parse($body) if length $body;
-    warn 'parse error when converting Plack::Request' if not $req->is_finished;
+
     # Plack is unable to distinguish between %2F and /, so the raw (undecoded) uri can be passed
     # here. see PSGI::FAQ
     $req->url(Mojo::URL->new($request->env->{REQUEST_URI})) if exists $request->env->{REQUEST_URI};
-    return $req;
+  }
+  else {
+    croak 'unknown type '.ref($request);
   }
 
-  croak 'unknown type '.ref($request);
+  # we could call $req->fix_headers here to add a missing Content-Length, but proper requests from
+  # the network should always have it set.
+
+  warn 'parse error when converting '.ref($request) if not $req->is_finished;
+  return $req;
 }
 
 # results may be unsatisfactory if not a valid HTTP response.
 sub _convert_response ($response) {
   return $response if $response->isa('Mojo::Message::Response');
+
+  my $res = Mojo::Message::Response->new;
+
   if ($response->isa('HTTP::Response')) {
-    my $res = Mojo::Message::Response->new;
     $res->parse($response->as_string);
-    # we could call $res->fix_headers here to add a missing Content-Length, but proper requests from
-    # the network should always have it set.
     warn 'parse error when converting HTTP::Response' if not $res->is_finished;
-    return $res;
   }
   elsif ($response->isa('Plack::Response')) {
-    my $res = Mojo::Message::Response->new;
     $res->code($response->status);
     $res->headers->add(@$_) foreach pairs $response->headers->psgi_flatten->@*;
+
     my $body = $response->body;
     $res->body($body) if length $body;
-    return $res;
+  }
+  else {
+    croak 'unknown type '.ref($response);
   }
 
-  croak 'unknown type '.ref($response);
+  # we could call $res->fix_headers here to add a missing Content-Length, but proper responses from
+  # the network should always have it set.
+
+  return $res;
 }
 
 # callback hook for Sereal::Decoder
