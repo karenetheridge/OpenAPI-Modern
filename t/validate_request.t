@@ -1696,6 +1696,28 @@ YAML
   );
 
   $request = request('GET', 'http://example.com/foo', [
+    MultipleValuesAsArray => '  one',
+    MultipleValuesAsArray => ' one ',
+    MultipleValuesAsArray => ' three ',
+  ]);
+  cmp_deeply(
+    ($result = $openapi->validate_request($request, { path_template => '/foo', path_captures => {} }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/header/MultipleValuesAsArray',
+          keywordLocation => jsonp('/paths', '/foo', qw(get parameters 2 schema uniqueItems)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp('/paths', '/foo', qw(get parameters 2 schema uniqueItems)))->to_string,
+          error => 'items at indices 0 and 1 are not unique',
+        },
+      ],
+    },
+    'headers that appear more than once are parsed into an array',
+  );
+
+
+  $request = request('GET', 'http://example.com/foo', [
       MultipleValuesAsObjectExplodeFalse => ' R, 100 ',
       MultipleValuesAsObjectExplodeFalse => ' B, 300,  G , 200 ',
       MultipleValuesAsObjectExplodeTrue => ' R=100  , B=300 ',

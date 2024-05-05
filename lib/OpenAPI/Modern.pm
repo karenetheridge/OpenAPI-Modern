@@ -19,7 +19,7 @@ no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 use Carp 'croak';
 use Safe::Isa;
 use Ref::Util qw(is_plain_hashref is_plain_arrayref is_ref);
-use List::Util 'first';
+use List::Util qw(first pairs);
 use Scalar::Util 'looks_like_number';
 use Feature::Compat::Try;
 use Encode 2.89 ();
@@ -850,10 +850,7 @@ sub _convert_response ($response) {
   elsif ($response->isa('Plack::Response')) {
     my $res = Mojo::Message::Response->new;
     $res->code($response->status);
-    my @headers = $response->headers->psgi_flatten->@*;
-    while (my ($name, $value) = splice(@headers, 0, 2)) {
-      $res->headers->header($name, $value);
-    }
+    $res->headers->add(@$_) foreach pairs $response->headers->psgi_flatten->@*;
     my $body = $response->body;
     $res->body($body) if length $body;
     return $res;

@@ -332,6 +332,51 @@ paths:
       responses:
         default:
           description: foo
+          headers:
+            MultipleValuesAsArray:
+              schema:
+                type: array
+                uniqueItems: true
+                minItems: 3
+                maxItems: 3
+                items:
+                  enum: [one, two, three]
+          content:
+            '*/*':
+              schema: {}
+YAML
+
+  my $response = response(404, [
+    MultipleValuesAsArray => '  one',
+    MultipleValuesAsArray => ' one ',
+    MultipleValuesAsArray => ' three ',
+  ]);
+  cmp_deeply(
+    ($result = $openapi->validate_response($response, { path_template => '/foo', path_captures => {}, method => 'get' }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/response/header/MultipleValuesAsArray',
+          keywordLocation => jsonp('/paths', '/foo', qw(get responses default headers MultipleValuesAsArray schema uniqueItems)),
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp('/paths', '/foo', qw(get responses default headers MultipleValuesAsArray schema uniqueItems)))->to_string,
+          error => 'items at indices 0 and 1 are not unique',
+        },
+      ],
+    },
+    'headers that appear more than once are parsed into an array',
+  );
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => '/api',
+    openapi_schema => $yamlpp->load_string(<<YAML));
+$openapi_preamble
+paths:
+  /foo:
+    get:
+      responses:
+        default:
+          description: foo
 YAML
 
   cmp_deeply(
@@ -399,7 +444,7 @@ YAML
     'missing Content-Type does not cause an exception',
   );
 
-  my $response = response(200, [ 'Content-Type' => 'application/json' ], 'null');
+  $response = response(200, [ 'Content-Type' => 'application/json' ], 'null');
   remove_header($response, 'Content-Length');
 
   cmp_deeply(
