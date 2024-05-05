@@ -586,7 +586,7 @@ YAML
     ($result = do {
       my $x = allow_patterns(qr/^parse error when converting HTTP::Response/) if $::TYPE eq 'lwp';
       $openapi->validate_response(
-        response(400, [ 'Content-Length' => 1, 'Content-Type' => 'text/plain' ], ''), # Content-Length lies!
+        response(400, [ 'Content-Length' => 12, 'Content-Type' => 'text/plain' ], ''), # Content-Length lies!
           { path_template => '/foo', method => 'post' });
     })->TO_JSON,
     {
