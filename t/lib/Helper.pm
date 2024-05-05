@@ -90,7 +90,6 @@ sub response ($code, $headers = [], $body_content = '') {
   }
   elsif ($TYPE eq 'mojo') {
     $res = Mojo::Message::Response->new(code => $code);
-    $res->message($res->default_message);
     $res->headers->add(@$_) foreach pairs @$headers;
     $res->body($body_content) if defined $body_content;
 
