@@ -870,7 +870,7 @@ YAML
 
   TODO: {
     local $TODO = 'mojo will strip the content body when parsing a stringified request that lacks Content-Length'
-      if $::TYPE eq 'lwp' or $::TYPE eq 'plack';
+      if $::TYPE eq 'lwp' or $::TYPE eq 'plack' or $::TYPE eq 'catalyst';
 
     $request = request('POST', 'http://example.com/foo', [ 'Content-Type' => 'text/plain' ], 'éclair');
     remove_header($request, 'Content-Length');
@@ -1680,7 +1680,8 @@ YAML
       MultipleValuesAsString => ' two  ',
       MultipleValuesAsString => 'three  ',
     ]);
-  local $TODO = 'HTTP::Message::to_psgi fetches all headers as a single concatenated string' if $::TYPE eq 'plack';
+  local $TODO = 'HTTP::Message::to_psgi fetches all headers as a single concatenated string'
+    if $::TYPE eq 'plack' or $::TYPE eq 'catalyst';
   cmp_deeply(
     ($result = $openapi->validate_request($request, { path_template => '/foo', path_captures => {} }))->TO_JSON,
     { valid => true },
@@ -1938,7 +1939,7 @@ YAML
 
 SKIP: {
   # "Bad Content-Length: maybe client disconnect? (1 bytes remaining)"
-  skip 'plack dies on this input', 3 if $::TYPE eq 'plack';
+  skip 'plack dies on this input', 3 if $::TYPE eq 'plack' or $::TYPE eq 'catalyst';
   cmp_deeply(
     ($result = do {
       my $x = allow_patterns(qr/^parse error when converting HTTP::Request/) if $::TYPE eq 'lwp';
