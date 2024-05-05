@@ -603,9 +603,26 @@ YAML
     'missing body (with a lying Content-Length) does not cause an exception, but is detectable',
   );
 
+  cmp_deeply(
+    ($result = $openapi->validate_response(
+      response(400, [ 'Content-Type' => 'text/plain' ], '0'), { path_template => '/foo', method => 'post' }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/response/body',
+          keywordLocation => jsonp(qw(/paths /foo post responses default content text/plain schema minLength)),
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo post responses default content text/plain schema minLength)))->to_string,
+          error => 'length is less than 10',
+        },
+      ],
+    },
+    '"false" body is still seen',
+  );
+
+
   $response = response(400, [ 'Content-Type' => 'text/plain' ], 'éclair');
   remove_header($response, 'Content-Length');
-
 
   cmp_deeply(
     ($result = do {

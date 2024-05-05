@@ -1172,6 +1172,23 @@ YAML
     'unknown content type can still be evaluated if */* is an acceptable media-type',
   );
 
+  $request = request('POST', 'http://example.com/foo', [ 'Content-Type' => 'a/b' ], '0');
+  cmp_deeply(
+    ($result = $openapi->validate_request($request, { path_template => '/foo', path_captures => {} }))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/body',
+          keywordLocation => jsonp(qw(/paths /foo post requestBody content */* schema minLength)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content */* schema minLength)))->to_string,
+          error => 'length is less than 10',
+        },
+      ],
+    },
+    '"false" body is still seen',
+  );
+
 
   $openapi = OpenAPI::Modern->new(
     openapi_uri => '/api',
