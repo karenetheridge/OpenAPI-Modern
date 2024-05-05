@@ -32,7 +32,7 @@ our @TYPES = qw(mojo lwp plack);
 our $TYPE;
 
 # Note: if you want your query parameters or uri fragment to be normalized, set them afterwards
-sub request ($method, $uri_string, $headers = [], $body_content = '') {
+sub request ($method, $uri_string, $headers = [], $body_content = undef) {
   die '$TYPE is not set' if not defined $TYPE;
 
   my $req;
@@ -74,17 +74,17 @@ sub request ($method, $uri_string, $headers = [], $body_content = '') {
   return $req;
 }
 
-sub response ($code, $headers = [], $body_content = '') {
+sub response ($code, $headers = [], $body_content = undef) {
   die '$TYPE is not set' if not defined $TYPE;
 
   my $res;
   if ($TYPE eq 'lwp') {
     test_needs('HTTP::Response', 'HTTP::Status');
 
-    $res = HTTP::Response->new($code, HTTP::Status::status_message($code), @$headers ? $headers : (), length $body_content ? $body_content : ());
+    $res = HTTP::Response->new($code, HTTP::Status::status_message($code), $headers, $body_content);
     $res->protocol('HTTP/1.1'); # not added by HTTP::Response constructor
-    $res->headers->header('Content-Length' => length($body_content))
-      if defined $body_content and not defined $res->headers->header('Content-Length')
+    $res->headers->header('Content-Length' => length($body_content)//0)
+      if not defined $res->headers->header('Content-Length')
         and not defined $res->headers->header('Transfer-Encoding');
   }
   elsif ($TYPE eq 'mojo') {
@@ -98,7 +98,7 @@ sub response ($code, $headers = [], $body_content = '') {
   elsif ($TYPE eq 'plack') {
     test_needs('Plack::Response', 'HTTP::Message::PSGI', { 'HTTP::Headers::Fast' => 0.21 });
     $res = Plack::Response->new($code, $headers, $body_content);
-    $res->headers->header('Content-Length' => length($body_content))
+    $res->headers->header('Content-Length' => length $body_content)
       if defined $body_content and not defined $res->headers->header('Content-Length')
         and not defined $res->headers->header('Transfer-Encoding');
   }
