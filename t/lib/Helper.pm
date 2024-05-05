@@ -60,7 +60,6 @@ sub request ($method, $uri_string, $headers = [], $body_content = '') {
   }
   elsif ($TYPE eq 'mojo') {
     my $uri = Mojo::URL->new($uri_string);
-    my $host = $uri->host;
     $req = Mojo::Message::Request->new(method => $method, url => Mojo::URL->new($uri_string));
     $req->headers->add(@$_) foreach pairs @$headers;
     $req->body($body_content) if defined $body_content;
