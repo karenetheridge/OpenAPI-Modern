@@ -43,14 +43,14 @@ YAML
 
   cmp_deeply(
     (my $result = $openapi->validate_response(HTTP::Response->new(404),
-      { request => my $request = HTTP::Request->new(GET => 'http://example.com/', [ Host => 'example.com' ]) }))->TO_JSON,
+      { request => HTTP::Request->new(GET => 'http://example.com/', [ Host => 'example.com' ]) }))->TO_JSON,
     {
       valid => false,
       errors => [
         {
           instanceLocation => '/request',
           keywordLocation => '',
-          absoluteKeywordLocation => $doc_uri->clone->scheme('http')->to_string,
+          absoluteKeywordLocation => $doc_uri->clone->to_string,
           error => 'Bad request start-line',
         },
       ],

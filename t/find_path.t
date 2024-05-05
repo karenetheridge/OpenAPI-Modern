@@ -83,7 +83,7 @@ webhooks:
       operationId: hooky
 YAML
 
-  my $request = request('GET', 'http://example.com/foo/bar');
+  my $request = request('GET', 'gopher://example.com/foo/bar');
   ok(!$openapi->find_path(my $options = { request => $request, path_template => '/foo/baz', path_captures => {} }),
     'find_path returns false');
   cmp_deeply(
@@ -97,15 +97,16 @@ YAML
         methods(TO_JSON => {
           instanceLocation => '/request/uri/path',
           keywordLocation => '/paths',
-          absoluteKeywordLocation => $doc_uri->clone->fragment('/paths')->to_string,
+          absoluteKeywordLocation => $doc_uri->clone->scheme('gopher')->fragment('/paths')->to_string,
           error => 'missing path-item "/foo/baz"',
         }),
       ],
     },
-    'unsuccessful path extraction results in the error being returned in the options hash',
+    'unsuccessful path extraction results in the error being returned in the options hash; correct URI scheme is used in errors',
   );
 
 
+  $request = request('GET', 'http://example.com/foo/bar');
   ok(!$openapi->find_path($options = { request => $request, operation_id => 'bloop', path_captures => {} }),
     'find_path returns false');
   cmp_deeply(

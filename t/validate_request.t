@@ -1876,14 +1876,14 @@ YAML
 
   my $result;
   cmp_deeply(
-    ($result = $openapi->validate_request(request($_, 'https://example.com/foo', [], 'content')))->TO_JSON,
+    ($result = $openapi->validate_request(request($_, 'http://example.com/foo', [], 'content')))->TO_JSON,
     {
       valid => false,
       errors => [
         {
           instanceLocation => '/request/body',
           keywordLocation => jsonp(qw(/paths /foo), lc),
-          absoluteKeywordLocation => $doc_uri->clone->scheme('https')->fragment(jsonp(qw(/paths /foo), lc))->to_string,
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo), lc))->to_string,
           error => 'unspecified body is present in '.$_.' request',
         },
       ],
@@ -1892,7 +1892,7 @@ YAML
   ) foreach qw(GET HEAD);
 
   cmp_deeply(
-    ($result = $openapi->validate_request(request('POST', 'https://example.com/foo', [], 'content')))->TO_JSON,
+    ($result = $openapi->validate_request(request('POST', 'http://example.com/foo', [], 'content')))->TO_JSON,
     { valid => true },
     'no errors from POST with body',
   );
@@ -1903,7 +1903,7 @@ SKIP: {
   cmp_deeply(
     ($result = do {
       my $x = allow_patterns(qr/^parse error when converting HTTP::Request/) if $::TYPE eq 'lwp';
-      $openapi->validate_request(request($_, 'https://example.com/foo', [ 'Content-Length' => 1]));
+      $openapi->validate_request(request($_, 'http://example.com/foo', [ 'Content-Length' => 1]));
     })->TO_JSON,
     {
       valid => false,
@@ -1911,7 +1911,7 @@ SKIP: {
         {
           instanceLocation => '/request/body',
           keywordLocation => jsonp(qw(/paths /foo), lc),
-          absoluteKeywordLocation => $doc_uri->clone->scheme('https')->fragment(jsonp(qw(/paths /foo), lc))->to_string,
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo), lc))->to_string,
           error => 'unspecified body is present in '.$_.' request',
         },
       ],
@@ -1922,7 +1922,7 @@ SKIP: {
   cmp_deeply(
     ($result = do {
       my $x = allow_patterns(qr/^parse error when converting HTTP::Request/) if $::TYPE eq 'lwp';
-      $openapi->validate_request(request('POST', 'https://example.com/foo', [ 'Content-Length' => 1]));
+      $openapi->validate_request(request('POST', 'http://example.com/foo', [ 'Content-Length' => 1]));
     })->TO_JSON,
     { valid => true },
     'no errors from POST with Content-Length',
