@@ -853,7 +853,7 @@ sub _convert_response ($response) {
   }
   elsif ($response->isa('Plack::Response')) {
     $res->code($response->status);
-    $res->headers->add(@$_) foreach pairs $response->headers->psgi_flatten->@*;
+    $res->headers->add(@$_) foreach pairs $response->headers->psgi_flatten_without_sort->@*;
 
     my $body = $response->body;
     $res->body($body) if length $body;
