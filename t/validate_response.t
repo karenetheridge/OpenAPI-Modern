@@ -41,6 +41,7 @@ paths:
           description: foo
 YAML
 
+  test_needs 'HTTP::Request', 'HTTP::Response';
   cmp_deeply(
     (my $result = $openapi->validate_response(HTTP::Response->new(404),
       { request => HTTP::Request->new(GET => 'http://example.com/', [ Host => 'example.com' ]) }))->TO_JSON,

@@ -30,6 +30,8 @@ my $doc_uri = $doc_uri_rel->to_abs(Mojo::URL->new('http://example.com'));
 my $yamlpp = YAML::PP->new(boolean => 'JSON::PP');
 
 subtest 'bad conversion to Mojo::Message::Request' => sub {
+  test_needs('HTTP::Request', 'URI');
+
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));

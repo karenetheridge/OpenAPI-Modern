@@ -9,9 +9,6 @@ no if "$]" >= 5.033001, feature => 'multidimensional';
 no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 use Safe::Isa;
 use List::Util 'pairs';
-use HTTP::Request;
-use HTTP::Response;
-use HTTP::Status ();
 use Mojo::Message::Request;
 use Mojo::Message::Response;
 use Test2::API 'context_do';
@@ -40,6 +37,8 @@ sub request ($method, $uri_string, $headers = [], $body_content = '') {
 
   my $req;
   if ($TYPE eq 'lwp' or $TYPE eq 'plack') {
+    test_needs('HTTP::Request', 'URI');
+
     my $uri = URI->new($uri_string);
     my $host = $uri->$_call_if_can('host');
     $req = HTTP::Request->new($method => $uri, [], $body_content);
@@ -80,6 +79,8 @@ sub response ($code, $headers = [], $body_content = '') {
 
   my $res;
   if ($TYPE eq 'lwp') {
+    test_needs('HTTP::Response', 'HTTP::Status');
+
     $res = HTTP::Response->new($code, HTTP::Status::status_message($code), @$headers ? $headers : (), length $body_content ? $body_content : ());
     $res->protocol('HTTP/1.1'); # not added by HTTP::Response constructor
     $res->headers->header('Content-Length' => length($body_content))
