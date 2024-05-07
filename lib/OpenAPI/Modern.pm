@@ -390,12 +390,13 @@ sub find_path ($self, $options, $state = {}) {
     my $schema = $self->openapi_document->schema;
 
     # sorting (ascii-wise) gives us the desired results that concrete path components sort ahead of
-    # templated components, except when the concrete component is a non-ascii character or matches [|}~].
+    # templated components, except when the concrete component is a non-ascii character or matches
+    # 0x7c (pipe), 0x7d (close-brace) or 0x7e (tilde)
     foreach $path_template (sort keys $schema->{paths}->%*) {
       # §3.2: "The value for these path parameters MUST NOT contain any unescaped “generic syntax”
       # characters described by [RFC3986]: forward slashes (/), question marks (?), or hashes (#)."
       my $path_pattern = join '',
-        map +(substr($_, 0, 1) eq '{' ? '([^/?#]*)' : quotemeta($_)),
+        map +(substr($_, 0, 1) eq '{' ? '([^/?#]*)' : quotemeta($_)), # { for the editor
         split /(\{[^}]+\})/, $path_template;
 
       # TODO: consider 'servers' fields when matching request URIs: this requires looking at
@@ -414,6 +415,7 @@ sub find_path ($self, $options, $state = {}) {
       my @capture_values = map
         Encode::decode('UTF-8', URI::Escape::uri_unescape(substr($uri_path, $-[$_], $+[$_]-$-[$_])),
           Encode::FB_CROAK | Encode::LEAVE_SRC), 1 .. $#-;
+      # { for the editor
       my @capture_names = ($path_template =~ m!\{([^/?#}]+)\}!g);
       my %path_captures; @path_captures{@capture_names} = @capture_values;
 
@@ -449,6 +451,7 @@ sub find_path ($self, $options, $state = {}) {
   my $path_item = $self->openapi_document->get($path_item_path);
 
   # note: we aren't doing anything special with escaped slashes. this bit of the spec is hazy.
+  # { for the editor
   my @capture_names = ($path_template =~ m!\{([^}]+)\}!g);
   return E({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
       'provided path_captures names do not match path template "%s"', $path_template)
@@ -471,7 +474,7 @@ sub find_path ($self, $options, $state = {}) {
   # §3.2: "The value for these path parameters MUST NOT contain any unescaped “generic syntax”
   # characters described by [RFC3986]: forward slashes (/), question marks (?), or hashes (#)."
   my $path_pattern = join '',
-    map +(substr($_, 0, 1) eq '{' ? '([^/?#]*)' : quotemeta($_)),
+    map +(substr($_, 0, 1) eq '{' ? '([^/?#]*)' : quotemeta($_)), # { for the editor
     split /(\{[^}]+\})/, $path_template;
 
   return E({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
