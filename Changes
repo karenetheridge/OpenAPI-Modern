@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.064     2024-05-07 00:14:00Z
           - fix: requests with an empty URI path (e.g. "https://example.com?foo=1")
             now match path "/".
           - fix: preserve all headers of the same name when validating a
