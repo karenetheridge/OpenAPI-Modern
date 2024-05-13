@@ -246,13 +246,13 @@ subtest 'path parameters' => sub {
       [ map $_->TO_JSON, $state->{errors}->@* ],
       $test->{errors}//[],
       'path '.$name.': '.(($test->{errors}//[])->@* ? 'the correct error was returned' : 'no errors occurred'),
-    ) or note 'got: ', explain([ map $_->TO_JSON, $state->{errors}->@* ]);
+    );
 
     is_equal(
       $parameter_content,
       $test->{content},
       'path '.$name.': '.(defined $test->{content} ? 'the correct content was extracted' : 'no content was extracted'),
-    ) or note 'got: ', explain($parameter_content);
+    );
   }
 };
 
@@ -408,13 +408,13 @@ subtest 'query parameters' => sub {
       [ map $_->TO_JSON, $state->{errors}->@* ],
       $test->{errors}//[],
       'query '.$name.' from '.$test->{queries}.': '.(($test->{errors}//[])->@* ? 'the correct error was returned' : 'no errors occurred'),
-    ) or note 'got: ', explain([ map $_->TO_JSON, $state->{errors}->@* ]);
+    );
 
     is_equal(
       $parameter_content,
       $test->{content},
       'query '.$name.' from '.$test->{queries}.': '.(defined $test->{content} ? 'the correct content was extracted' : 'no content was extracted'),
-    ) or note 'got: ', explain($parameter_content);
+    );
   }
 };
 
@@ -588,13 +588,13 @@ subtest 'header parameters' => sub {
       [ map $_->TO_JSON, $state->{errors}->@* ],
       $test->{errors}//[],
       'header '.$name.': '.(($test->{errors}//[])->@* ? 'the correct error was returned' : 'no errors occurred'),
-    ) or note 'got: ', explain([ map $_->TO_JSON, $state->{errors}->@* ]);
+    );
 
     is_equal(
       $parameter_content,
       $test->{content},
       'header '.$name.': '.(defined $test->{content} ? 'the correct content was extracted' : 'no content was extracted'),
-    ) or note 'got: ', explain($parameter_content);
+    );
   }
 };
 

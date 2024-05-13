@@ -43,7 +43,7 @@ YAML
   my $request = HTTP::Request->new(GET => 'http://example.com/', [ Host => 'example.com' ]);
   ok(!$openapi->find_path(my $options = { request => $request }),
     'find_path returns false');
-  cmp_deeply(
+  cmp_result(
     $options,
     {
       request => isa('Mojo::Message::Request'),
@@ -88,7 +88,7 @@ YAML
   my $request = request('GET', 'gopher://example.com/foo/bar');
   ok(!$openapi->find_path(my $options = { request => $request, path_template => '/foo/baz', path_captures => {} }),
     'find_path returns false');
-  cmp_deeply(
+  cmp_result(
     $options,
     {
       request => isa('Mojo::Message::Request'),
@@ -111,7 +111,7 @@ YAML
   $request = request('GET', 'http://example.com/foo/bar');
   ok(!$openapi->find_path($options = { request => $request, operation_id => 'bloop', path_captures => {} }),
     'find_path returns false');
-  cmp_deeply(
+  cmp_result(
     $options,
     {
       request => isa('Mojo::Message::Request'),
@@ -133,7 +133,7 @@ YAML
 
   ok(!$openapi->find_path($options = { request => $request, operation_id => 'hooky', path_captures => {} }),
     'find_path returns false');
-  cmp_deeply(
+  cmp_result(
     $options,
     {
       request => isa('Mojo::Message::Request'),
@@ -155,7 +155,7 @@ YAML
 
   ok(!$openapi->find_path($options = { request => request('GET', 'http://example.com/foo/bloop') }),
     'find_path returns false');
-  cmp_deeply(
+  cmp_result(
     $options,
     {
       request => isa('Mojo::Message::Request'),
@@ -180,7 +180,7 @@ YAML
   ok(!$openapi->find_path($options = { request => request('POST', 'http://example.com/foo/bar'),
       path_template => '/foo/{foo_id}', operation_id => 'my-get-path', path_captures => {} }),
     'find_path returns false');
-  cmp_deeply(
+  cmp_result(
     $options,
     {
       request => isa('Mojo::Message::Request'),
@@ -204,7 +204,7 @@ YAML
   ok(!$openapi->find_path($options = { request => request('POST', 'http://example.com/foo/bar'),
       operation_id => 'my-get-path', path_captures => {} }),
     'find_path returns false');
-  cmp_deeply(
+  cmp_result(
     $options,
     {
       request => isa('Mojo::Message::Request'),
@@ -226,7 +226,7 @@ YAML
 
   ok(!$openapi->find_path($options = { request => request('POST', 'http://example.com/foo/bar'), method => 'GET'}),
     'find_path returns false');
-  cmp_deeply(
+  cmp_result(
     $options,
     {
       request => isa('Mojo::Message::Request'),
@@ -247,7 +247,7 @@ YAML
   ok(!$openapi->find_path($options = { request => request('POST', 'http://example.com/foo/bar'),
         path_template => '/foo/{foo_id}', path_captures => { bloop => 'bar' } }),
     'find_path returns false');
-  cmp_deeply(
+  cmp_result(
     $options,
     {
       request => isa('Mojo::Message::Request'),
@@ -272,7 +272,7 @@ YAML
   ok($openapi->find_path($options = { request => request('GET', 'http://example.com/foo/bar'),
       path_template => '/foo/bar', operation_id => 'my-get-path', path_captures => {} }),
     'find_path returns successfully');
-  cmp_deeply(
+  cmp_result(
     $options,
     {
       request => isa('Mojo::Message::Request'),
@@ -291,7 +291,7 @@ YAML
   ok(!$openapi->find_path($options = { request => request('GET', 'http://example.com/something/else'),
       path_template => '/foo/bar', path_captures => {} }),
     'find_path returns false');
-  cmp_deeply(
+  cmp_result(
     $options,
     {
       request => isa('Mojo::Message::Request'),
@@ -316,7 +316,7 @@ YAML
   ok(!$openapi->find_path($options = { request => request('POST', 'http://example.com/something/else'),
       path_template => '/foo/{foo_id}', path_captures => { foo_id => 123 } }),
     'find_path returns false');
-  cmp_deeply(
+  cmp_result(
     $options,
     {
       request => isa('Mojo::Message::Request'),
@@ -341,7 +341,7 @@ YAML
   ok(!$openapi->find_path($options = { request => request('POST', 'http://example.com/something/else'),
       path_template => '/foo/{foo_id}' }),
     'find_path returns false');
-  cmp_deeply(
+  cmp_result(
     $options,
     {
       request => isa('Mojo::Message::Request'),
@@ -365,7 +365,7 @@ YAML
   ok(!$openapi->find_path($options = { request => request('GET', 'http://example.com/something/else'),
       operation_id => 'my-get-path', path_captures => {} }),
     'find_path returns false');
-  cmp_deeply(
+  cmp_result(
     $options,
     {
       request => isa('Mojo::Message::Request'),
@@ -388,7 +388,7 @@ YAML
   ok(!$openapi->find_path($options = { request => request('POST', 'http://example.com/foo/hello'),
       operation_id => 'my-post-path', path_captures => { foo_id => 'goodbye' } }),
     'find_path returns false');
-  cmp_deeply(
+  cmp_result(
     $options,
     {
       request => isa('Mojo::Message::Request'),
@@ -419,7 +419,7 @@ YAML
   ok(!$openapi->find_path($options = { request => request('POST', 'http://example.com/foo/bar'),
       path_template => '/foo', path_captures => {} }),
     'find_path returns false');
-  cmp_deeply(
+  cmp_result(
     $options,
     {
       request => isa('Mojo::Message::Request'),
@@ -455,7 +455,7 @@ YAML
       path_template => '/foo/{foo_id}' }),
     'find_path returns successfully',
   );
-  cmp_deeply(
+  cmp_result(
     $options,
     {
       request => isa('Mojo::Message::Request'),
@@ -475,7 +475,7 @@ YAML
       operation_id => 'my-get-path' }),
     'find_path returns successfully',
   );
-  cmp_deeply(
+  cmp_result(
     $options,
     {
       request => isa('Mojo::Message::Request'),
@@ -493,7 +493,7 @@ YAML
 
   ok($openapi->find_path($options = { request => request( 'GET', 'http://example.com/foo/123') }),
     'find_path returns successfully');
-  cmp_deeply(
+  cmp_result(
     $options,
     {
       request => isa('Mojo::Message::Request'),
@@ -512,7 +512,7 @@ YAML
   ok(!$openapi->find_path($options = { request => request('GET', 'http://example.com/foo/123'),
       path_captures => { foo_id => 'a' } }),
     'find_path returns false');
-  cmp_deeply(
+  cmp_result(
     $options,
     {
       request => isa('Mojo::Message::Request'),
@@ -536,7 +536,7 @@ YAML
 
   ok(!$openapi->find_path($options = { request => request('GET', 'http://example.com/bloop/blah') }),
     'find_path returns false');
-  cmp_deeply(
+  cmp_result(
     $options,
     {
       request => isa('Mojo::Message::Request'),
@@ -558,7 +558,7 @@ YAML
   ok($openapi->find_path($options = { request => request('GET', $uri),
       path_template => '/foo/{foo_id}', path_captures => { foo_id => 'hello // there ಠ_ಠ!' } }),
     'find_path returns successfully');
-  cmp_deeply(
+  cmp_result(
     $options,
     {
       request => isa('Mojo::Message::Request'),
@@ -574,7 +574,7 @@ YAML
   );
 
   ok($openapi->find_path($options = { request => request('GET', $uri) } ), 'find_path returns successfully');
-  cmp_deeply(
+  cmp_result(
     $options,
     {
       request => isa('Mojo::Message::Request'),
@@ -611,7 +611,7 @@ YAML
 
   $request = request('GET', 'http://example.com/foo/bar');
   ok($openapi->find_path($options = { request => $request } ), 'find_path returns successfully');
-  cmp_deeply(
+  cmp_result(
     $options,
     my $got_options = {
       request => isa('Mojo::Message::Request'),
@@ -627,7 +627,7 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { operation_id => 'dotted-foo-bar', request => $request } ), 'find_path fails');
-  cmp_deeply(
+  cmp_result(
     $options,
     {
       request => isa('Mojo::Message::Request'),
@@ -646,7 +646,7 @@ YAML
   );
 
   ok($openapi->find_path($options = { operation_id => 'concrete-foo-bar', request => $request } ), 'find_path returns successfully');
-  cmp_deeply(
+  cmp_result(
     $options,
     { %$got_options, request => isa('Mojo::Message::Request') },
     'inferred (correct) path_template matches request uri',
@@ -655,7 +655,7 @@ YAML
 
   $request = request('GET', 'http://example.com/foo/x.bar');
   ok($openapi->find_path($options = { request => $request } ), 'find_path returns successfully');
-  cmp_deeply(
+  cmp_result(
     $got_options = $options,
     {
       request => isa('Mojo::Message::Request'),
@@ -671,7 +671,7 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { operation_id => 'all-dots', request => $request } ), 'find_path fails');
-  cmp_deeply(
+  cmp_result(
     $options,
     {
       request => isa('Mojo::Message::Request'),
@@ -690,7 +690,7 @@ YAML
   );
 
   ok($openapi->find_path($options = { operation_id => 'templated-foo-bar', request => $request } ), 'find_path returns successfully');
-  cmp_deeply(
+  cmp_result(
     $options,
     { %$got_options, request => isa('Mojo::Message::Request') },
     'inferred (correct) path_template matches request uri',
@@ -709,7 +709,7 @@ YAML
   $request = request('GET', 'http://example.com/foo/bar');
   ok($openapi->find_path($options = { request => $request }),
     'find_path returns successfully');
-  cmp_deeply(
+  cmp_result(
     $options,
     {
       request => isa('Mojo::Message::Request'),
@@ -726,7 +726,7 @@ YAML
 
   ok($openapi->find_path($options = { request => $request, path_template => '/foo/{foo_id}' }),
     'find_path returns successfully');
-  cmp_deeply(
+  cmp_result(
     $options,
     {
       request => isa('Mojo::Message::Request'),
@@ -774,7 +774,7 @@ YAML
   ok(!$openapi->find_path(my $options = { operation_id => 'my-get-path', method => 'POST', path_captures => {} }),
     'find_path returns false');
 
-  cmp_deeply(
+  cmp_result(
     $options,
     {
       operation_id => 'my-get-path',
@@ -799,7 +799,7 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { path_template => '/foo/{foo_id}', path_captures => {}, method => 'get' }), 'find_path failed');
-  cmp_deeply(
+  cmp_result(
     $options,
     {
       path_template => '/foo/{foo_id}',
@@ -820,7 +820,7 @@ YAML
   );
 
   ok($openapi->find_path($options = { operation_id => 'my-get-path', path_captures => { foo_id => 'a' } }), 'find_path succeeded');
-  cmp_deeply(
+  cmp_result(
     $options,
     {
       operation_id => 'my-get-path',
@@ -835,7 +835,7 @@ YAML
   );
 
   ok($openapi->find_path($options = { method => 'get', path_template => '/foo/{foo_id}', path_captures => { foo_id => 'a' } }), 'find_path succeeded');
-  cmp_deeply(
+  cmp_result(
     $options,
     {
       operation_id => 'my-get-path',
@@ -862,7 +862,7 @@ YAML
   ok($openapi->find_path(
       $options = { method => 'get', path_template => '/foo/{foo_id}', path_captures => { foo_id => 'bar' } }),
     'find_path succeeded');
-  cmp_deeply(
+  cmp_result(
     $options,
     {
       path_template => '/foo/{foo_id}',
