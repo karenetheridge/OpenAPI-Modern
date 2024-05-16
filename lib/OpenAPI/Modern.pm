@@ -1135,7 +1135,7 @@ include:
 * C<path_template>: a string representing the request URI, with placeholders in braces (e.g.
   C</pets/{petId}>); see L<https://spec.openapis.org/oas/v3.1.0#paths-object>.
 * C<operation_id>: a string corresponding to the
-  L<operationId|https://swagger.io/docs/specification/paths-and-operations/#operationid>
+  L<operationId|https://learn.openapis.org/specification/paths.html#the-endpoints-list>
   at a particular path-template and HTTP location under C</paths>
 * C<path_captures>: a hashref mapping placeholders in the path to their actual values in the request
   URI
@@ -1160,6 +1160,8 @@ In addition, these values are populated in the options hash (when available):
   document). Use C<< $openapi->evaluator->get($uri) >> to fetch this content (see
   L<JSON::Schema::Modern/get>). Note that this is the same as
   C<< $openapi->recursive_get(Mojo::URL->new->fragment(JSON::Schema::Modern::Utilities::jsonp('/paths', $options->{path_template}{$options->{method}}))) >>.
+  (See the documentation for an operation at L<https://learn.openapis.org/specification/paths.html#the-endpoints-list> or in the specification at
+  L<§4.8.10 of the specification|https://spec.openapis.org/oas/v3.1.0#operation-object>.)
 * C<request> (not necessarily what was passed in: this is always a L<Mojo::Message::Request>)
 
 You can find the associated operation object by using either C<operation_uri>,
