@@ -164,7 +164,6 @@ YAML
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => 'bloop' },
       _path_item => { post => ignore },
-      path_item_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1{foo_id}'),
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/method',
@@ -256,7 +255,7 @@ YAML
       path_template => '/foo/{foo_id}',
       path_captures => { bloop => 'bar' },
       _path_item => { post => ignore },
-      path_item_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1{foo_id}'),
+      operation_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1{foo_id}/post'),
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/uri/path',
@@ -282,7 +281,7 @@ YAML
       path_captures => {},
       operation_id => 'my-get-path',
       _path_item => { get => ignore },
-      path_item_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1bar'),
+      operation_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1bar/get'),
       errors => [],
     },
     'path_template and operation_id can both be passed, if consistent',
@@ -300,7 +299,7 @@ YAML
       path_template => '/foo/bar',
       path_captures => {},
       _path_item => { get => ignore },
-      path_item_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1bar'),
+      operation_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1bar/get'),
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/uri/path',
@@ -325,7 +324,7 @@ YAML
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => 123 },
       _path_item => { post => ignore },
-      path_item_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1{foo_id}'),
+      operation_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1{foo_id}/post'),
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/uri/path',
@@ -349,7 +348,7 @@ YAML
       method => 'post',
       path_template => '/foo/{foo_id}',
       _path_item => { post => ignore },
-      path_item_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1{foo_id}'),
+      operation_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1{foo_id}/post'),
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/uri/path',
@@ -428,7 +427,6 @@ YAML
       path_template => '/foo',
       path_captures => {},
       _path_item => {},
-      path_item_uri => $doc_uri_rel->clone->fragment('/paths/~1foo'),
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/method',
@@ -465,7 +463,7 @@ YAML
       path_captures => { foo_id => '123' },
       method => 'get',
       _path_item => { get => ignore },
-      path_item_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1{foo_id}'),
+      operation_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1{foo_id}/get'),
       errors => [],
     },
     'path capture values and method are extracted from the path template and request uri',
@@ -485,7 +483,7 @@ YAML
       path_captures => { foo_id => '123' },
       method => 'get',
       _path_item => { get => ignore },
-      path_item_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1{foo_id}'),
+      operation_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1{foo_id}/get'),
       errors => [],
     },
     'path capture values are extracted from the operation id and request uri',
@@ -503,7 +501,7 @@ YAML
       method => 'get',
       operation_id => 'my-get-path',
       _path_item => { get => ignore },
-      path_item_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1{foo_id}'),
+      operation_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1{foo_id}/get'),
       errors => [],
     },
     'path_item and path_capture variables are returned in the provided options hash',
@@ -521,7 +519,6 @@ YAML
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => 'a' },
       _path_item => { get => ignore },
-      path_item_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1{foo_id}'),
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/uri/path',
@@ -567,7 +564,7 @@ YAML
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => 'hello // there ಠ_ಠ!' },
       _path_item => { get => ignore },
-      path_item_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1{foo_id}'),
+      operation_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1{foo_id}/get'),
       operation_id => 'my-get-path',
       errors => [],
     },
@@ -584,7 +581,7 @@ YAML
       path_template => '/foo/{foo_id}',
       method => 'get',
       _path_item => { get => ignore },
-      path_item_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1{foo_id}'),
+      operation_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1{foo_id}/get'),
       errors => [],
     },
     'path captures can be properly extracted from the URI when some values are url-escaped',
@@ -621,7 +618,7 @@ YAML
       method => 'get',
       operation_id => 'concrete-foo-bar',
       _path_item => { get => ignore },
-      path_item_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1bar'),
+      operation_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1bar/get'),
       errors => [],
     },
     'paths with dots are not treated as regex wildcards when matching against URIs',
@@ -665,7 +662,7 @@ YAML
       operation_id => 'templated-foo-bar',
       method => 'get',
       _path_item => { get => ignore },
-      path_item_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1{foo_id}.bar'),
+      operation_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1{foo_id}.bar/get'),
       errors => [],
     },
     'capture values are still captured when using dots in path template',
@@ -718,7 +715,7 @@ YAML
       path_captures => { foo_id => 'bar' },
       method => 'get',
       _path_item => { get => ignore },
-      path_item_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1{foo_id}'),
+      operation_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1{foo_id}/get'),
       errors => [],
     },
     'no path_template provided; no operation_id is recorded, because one does not exist in the schema document',
@@ -735,7 +732,7 @@ YAML
       path_captures => { foo_id => 'bar' },
       method => 'get',
       _path_item => { get => ignore },
-      path_item_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1{foo_id}'),
+      operation_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1{foo_id}/get'),
       errors => [],
     },
     'path_template provided; no operation_id is recorded, because one does not exist in the schema document',
@@ -807,7 +804,7 @@ YAML
       path_captures => {},
       method => 'get',
       _path_item => { get => ignore },
-      path_item_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1{foo_id}'),
+      operation_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1{foo_id}/get'),
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/uri/path',
@@ -829,7 +826,7 @@ YAML
       path_template => '/foo/{foo_id}',
       method => 'get',
       _path_item => { get => ignore },
-      path_item_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1{foo_id}'),
+      operation_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1{foo_id}/get'),
       errors => [],
     },
     'no request provided; path_template and method are extracted from operation_id and path_captures',
@@ -844,7 +841,7 @@ YAML
       path_template => '/foo/{foo_id}',
       method => 'get',
       _path_item => { get => ignore },
-      path_item_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1{foo_id}'),
+      operation_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1{foo_id}/get'),
       errors => [],
     },
     'no request provided; operation_id are extracted from method and path_template',
@@ -870,7 +867,7 @@ YAML
       path_captures => { foo_id => 'bar' },
       method => 'get',
       _path_item => { get => ignore },
-      path_item_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1{foo_id}'),
+      operation_uri => $doc_uri_rel->clone->fragment('/paths/~1foo~1{foo_id}/get'),
       errors => [],
     },
     'no operation_id is recorded, because one does not exist in the schema document',
