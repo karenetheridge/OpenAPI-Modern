@@ -847,6 +847,26 @@ YAML
     'no request provided; operation_id are extracted from method and path_template',
   );
 
+  ok(!$openapi->find_path($options = { path_template => '/foo/{foo_id}', path_captures => { foo_id => 'a' }, method => 'post' }), 'find_path failed');
+  cmp_result(
+    $options,
+    {
+      path_captures => { foo_id => 'a' },
+      path_template => '/foo/{foo_id}',
+      method => 'post',
+      _path_item => { get => ignore },
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '/request/method',
+          keywordLocation => '/paths/~1foo~1{foo_id}/post',
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/{foo_id} post)))->to_string,
+          error => 'missing operation for HTTP method "post"',
+        }),
+      ],
+    },
+    'no request provided; operation does not exist for path-item',
+  );
+
 
   $openapi = OpenAPI::Modern->new(
     openapi_uri => '/api',
