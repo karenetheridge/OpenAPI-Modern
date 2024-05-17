@@ -428,7 +428,7 @@ sub find_path ($self, $options, $state = {}) {
       my %path_captures; @path_captures{@capture_names} = @capture_values;
 
       if (exists $options->{path_captures}) {
-        return E({ %$state, schema_path => '/paths' }, 'provided path_captures values do not match request URI')
+        return E($state, 'provided path_captures values do not match request URI')
           if not is_equal($options->{path_captures}, \%path_captures, { stringy_numbers => 1 });
       }
       else {
