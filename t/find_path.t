@@ -750,6 +750,35 @@ YAML
 
   $request = request('GET', 'http://example.com');
   ok($openapi->find_path($options = { request => $request }), 'find_path can match an empty uri path');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      path_template => '/',
+      path_captures => {},
+      method => 'get',
+      _path_item => { get => ignore },
+      operation_uri => $doc_uri_rel->clone->fragment('/paths/~1/get'),
+      errors => [],
+    },
+    'path_template inferred from request uri',
+  );
+
+  ok($openapi->find_path($options = { request => $request, path_template => '/' }),
+   'find_path can match an empty uri path when passed path_template');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      path_template => '/',
+      path_captures => {},
+      method => 'get',
+      _path_item => { get => ignore },
+      operation_uri => $doc_uri_rel->clone->fragment('/paths/~1/get'),
+      errors => [],
+    },
+    'provided path_template verified against request uri',
+  );
 };
 
 subtest 'no request is provided: options are relied on as the sole source of truth' => sub {

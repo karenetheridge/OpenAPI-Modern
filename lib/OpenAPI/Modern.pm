@@ -477,7 +477,8 @@ sub find_path ($self, $options, $state = {}) {
 
   # if we're still here, we were passed path_template in options or we calculated it from
   # operation_id, and now we verify it against path_captures and the request URI.
-  my $uri_path = $options->{request}->url->path;
+  my $uri_path = $options->{request}->url->path->to_string;
+  $uri_path = '/' if not length $uri_path;
 
   # §3.2: "The value for these path parameters MUST NOT contain any unescaped “generic syntax”
   # characters described by [RFC3986]: forward slashes (/), question marks (?), or hashes (#)."
