@@ -275,6 +275,7 @@ YAML
       path_template => '/foo/{foo_id}',
       path_captures => { bloop => 'bar' },
       _path_item => { post => ignore },
+      operation_id => 'my-post-operation',
       operation_uri => str($doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/{foo_id} post)))),
       errors => [
         methods(TO_JSON => {
@@ -298,6 +299,8 @@ YAML
       path_template => '/foo/bar',
       path_captures => { bloop => 'bar' },
       _path_item => { get => ignore, post => ignore },
+      operation_id => 'another-post-operation',
+      operation_uri => str($doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/bar post)))),
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/uri/path',
@@ -616,6 +619,8 @@ YAML
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => 'a' },
       _path_item => { get => ignore },
+      operation_id => 'my-get-operation',
+      operation_uri => str($doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get)))),
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/uri/path',
@@ -900,7 +905,6 @@ YAML
       _path_item => { post => ignore },
       method => 'post',
       operation_id => 'my_components_pathItem_operation',
-      operation_uri => str($doc_uri_rel->clone->fragment('/components/pathItems/my_path_item/post')),
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/uri/path',
@@ -944,7 +948,6 @@ YAML
       path_template => '/foo/bar',
       _path_item => { post => ignore },
       operation_id => 'my_webhook_operation',
-      operation_uri => str($doc_uri_rel->clone->fragment('/webhooks/my_hook/post')),
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/uri/path',
@@ -967,7 +970,6 @@ YAML
       path_template => '/foo/bar',
       _path_item => { post => ignore },
       operation_id => 'my_paths_pathItem_callback_operation',
-      operation_uri => str($doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/bar post callbacks my_callback {$request.query.queryUrl} post)))),
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/uri/path',
@@ -990,7 +992,6 @@ YAML
       path_template => '/foo/bar',
       _path_item => { post => ignore },
       operation_id => 'my_components_pathItem_callback_operation',
-      operation_uri => str($doc_uri_rel->clone->fragment('/components/pathItems/my_path_item/post/callbacks/my_callback/{$request.query.queryUrl}/post')),
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/uri/path',
@@ -1134,6 +1135,7 @@ YAML
       path_captures => {},
       method => 'get',
       _path_item => { get => ignore },
+      operation_id => 'my-get-operation',
       operation_uri => str($doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get)))),
       errors => [
         methods(TO_JSON => {

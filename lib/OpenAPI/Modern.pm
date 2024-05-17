@@ -387,8 +387,6 @@ sub find_path ($self, $options, $state = {}) {
     }
 
     $options->{method} = lc $method;
-    $options->{_path_item} = $self->openapi_document->get($path_item_path);
-    $options->{operation_uri} = Mojo::URL->new($state->{initial_schema_uri})->fragment(jsonp($path_item_path, $method));
   }
 
   # TODO: support passing $options->{operation_uri}
@@ -399,29 +397,28 @@ sub find_path ($self, $options, $state = {}) {
       and not ($options->{path_template} and $method)
       and not $options->{operation_id};
 
+  my $schema = $self->openapi_document->schema;
+
   # path_template from options
   if (exists $options->{path_template}) {
     $path_template = $options->{path_template};
 
-    my $path_item = $self->openapi_document->schema->{paths}{$path_template};
-    return E({ %$state, keyword => 'paths' }, 'missing path-item "%s"', $path_template) if not $path_item;
+    return E({ %$state, keyword => 'paths' }, 'missing path-item "%s"', $path_template)
+      if not exists $schema->{paths}{$path_template};
 
-    # FIXME: follow $ref chain in path-item
-    $options->{_path_item} = $path_item;
-    return E({ %$state, data_path => '/request/method', schema_path => jsonp('/paths', $path_template),
+    # FIXME: follow $ref chain in path-item; we may have already determined path_item above
+    $options->{_path_item} //= $schema->{paths}{$path_template};
+    my $path_item_path = jsonp('/paths', $path_template);
+    return E({ %$state, data_path => '/request/method', schema_path => $path_item_path,
         keyword => $method, recommended_response => [ 405, 'Method Not Allowed' ] },
         'missing operation for HTTP method "%s"', $method)
-      if not $path_item->{$method};
-
-    $options->{operation_uri} = Mojo::URL->new($state->{initial_schema_uri})->fragment(jsonp('/paths', $path_template, $method));
+      if not exists $schema->{paths}{$path_template}{$method};
   }
 
   # path_template from request URI
   if (not $path_template and $options->{request}) {
     my $uri_path = $options->{request}->url->path->to_string;
     $uri_path = '/' if not length $uri_path;
-
-    my $schema = $self->openapi_document->schema;
 
     # sorting (ascii-wise) gives us the desired results that concrete path components sort ahead of
     # templated components, except when the concrete component is a non-ascii character or matches
@@ -445,7 +442,7 @@ sub find_path ($self, $options, $state = {}) {
       # FIXME: follow $ref chain in path-item
       $state->{schema_path} = $path_item_path = jsonp('/paths', $path_template);
       $options->{path_template} = $path_template;
-      $options->{_path_item} = my $path_item = $self->openapi_document->get($path_item_path);
+      $options->{_path_item} = my $path_item = $schema->{paths}{$path_template};
 
       return E($state, 'templated operation does not match provided operation_id')
         if $options->{operation_id} and ($path_item->{$method}{operationId}//'') ne $options->{operation_id};
@@ -454,6 +451,10 @@ sub find_path ($self, $options, $state = {}) {
           recommended_response => [ 405, 'Method Not Allowed' ] },
           'missing operation for HTTP method "%s"', $method)
         if not exists $path_item->{$method};
+
+      # FIXME: this is not accurate if the operation lives in another document
+      $options->{operation_uri} = Mojo::URL->new($state->{initial_schema_uri})->fragment($path_item_path.'/'.$method);
+      $options->{operation_id} = $path_item->{$method}{operationId} if exists $path_item->{$method}{operationId};
 
       # { for the editor
       my @capture_names = ($path_template =~ m!\{([^}]+)\}!g);
@@ -466,10 +467,6 @@ sub find_path ($self, $options, $state = {}) {
       else {
         $options->{path_captures} = \%path_captures;
       }
-
-      $options->{operation_uri} = Mojo::URL->new($state->{initial_schema_uri})->fragment($path_item_path.'/'.$method);
-      $options->{operation_id} = $options->{_path_item}{$method}{operationId};
-      delete $options->{operation_id} if not defined $options->{operation_id};
 
       # TODO: extract 'servers' variables into $options
       # Since we didn't take a servers url prefix into consideration when matching path templates
@@ -484,13 +481,21 @@ sub find_path ($self, $options, $state = {}) {
 
   if (not $path_template) {
     $state->{schema_path} = $path_item_path;
+    $options->{_path_item} = $self->openapi_document->get($path_item_path);
+
+    # FIXME: this is not accurate if the operation lives in another document
+    $options->{operation_uri} = Mojo::URL->new($state->{initial_schema_uri})->fragment($path_item_path.'/'.$method);
     return 1;
   }
 
   # FIXME: follow $ref chain in path-item
   $path_item_path = jsonp('/paths', $path_template);
-  my $path_item = $self->openapi_document->get($path_item_path);
+  my $path_item = $schema->{paths}{$path_template};
   die 'path_item unexpectedly does not exist' if not $path_item;
+
+  # FIXME: this is not accurate if the operation lives in another document
+  $options->{operation_uri} = Mojo::URL->new($state->{initial_schema_uri})->fragment($path_item_path.'/'.$method);
+  $options->{operation_id} = $path_item->{$method}{operationId} if exists $path_item->{$method}{operationId};
 
   # note: we aren't doing anything special with escaped slashes. this bit of the spec is hazy.
   # { for the editor
@@ -500,12 +505,11 @@ sub find_path ($self, $options, $state = {}) {
     if exists $options->{path_captures}
       and not is_equal([ sort keys $options->{path_captures}->%* ], [ sort @capture_names ]);
 
+  $options->{_path_item} = $path_item;
+
   if (not $options->{request}) {
-    $options->@{qw(path_template operation_id _path_item operation_uri)} =
-      ($path_template, $self->openapi_document->schema->{paths}{$path_template}{$method}{operationId},
-      $path_item, Mojo::URL->new($state->{initial_schema_uri})->fragment($path_item_path.'/'.$method));
-    delete $options->{operation_id} if not defined $options->{operation_id};
     $state->{schema_path} = $path_item_path;
+    $options->{path_template} = $path_template;
     return 1;
   }
 
@@ -546,15 +550,7 @@ sub find_path ($self, $options, $state = {}) {
   # Since we didn't take a servers uri prefix into consideration earlier, we may have a mismatch
   # now, which should constitute an error
 
-  # FIXME: follow $ref chain in path-item using path_template
-  $options->@{qw(path_template _path_item)} =
-    ($path_template, $self->openapi_document->schema->{paths}{$path_template}{$method});
-
-  $options->{operation_id} = $options->{_path_item}{operationId};
-  delete $options->{operation_id} if not defined $options->{operation_id};
-
-  $options->{_path_item} = $self->openapi_document->get(jsonp('/paths', $path_template));
-  $options->{operation_uri} = Mojo::URL->new($state->{initial_schema_uri})->fragment($path_item_path.'/'.$method);
+  $options->{path_template} = $path_template;
   $state->{schema_path} = $path_item_path;
   return 1;
 }
