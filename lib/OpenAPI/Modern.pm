@@ -12,6 +12,7 @@ use Moo;
 use strictures 2;
 use stable 0.031 'postderef';
 use experimental 'signatures';
+no autovivification warn => qw(fetch store exists delete);
 use if "$]" >= 5.022, experimental => 're_strict';
 no if "$]" >= 5.031009, feature => 'indirect';
 no if "$]" >= 5.033001, feature => 'multidimensional';
@@ -108,7 +109,7 @@ sub validate_request ($self, $request, $options = {}) {
 
     # PARAMETERS
     # { $in => { $name => 'path-item'|$method } }  as we process each one.
-    my $request_parameters_processed;
+    my $request_parameters_processed = {};
 
     # first, consider parameters at the operation level.
     # parameters at the path-item level are also considered, if not already seen at the operation level
@@ -124,9 +125,12 @@ sub validate_request ($self, $request, $options = {}) {
         my $fc_name = $param_obj->{in} eq 'header' ? fc($param_obj->{name}) : $param_obj->{name};
 
         abort($state, 'duplicate %s parameter "%s"', $param_obj->{in}, $param_obj->{name})
-          if ($request_parameters_processed->{$param_obj->{in}}{$fc_name} // '') eq $section;
-        next if exists $request_parameters_processed->{$param_obj->{in}}{$fc_name};
-        $request_parameters_processed->{$param_obj->{in}}{$fc_name} = $section;
+          if (($request_parameters_processed->{$param_obj->{in}}//{})->{$fc_name} // '') eq $section;
+        next if exists(($request_parameters_processed->{$param_obj->{in}}//{})->{$fc_name});
+        {
+          use autovivification 'store';
+          $request_parameters_processed->{$param_obj->{in}}{$fc_name} = $section;
+        }
 
         $state->{data_path} = jsonp($state->{data_path},
           ((grep $param_obj->{in} eq $_, qw(path query)) ? 'uri' : ()), $param_obj->{in},
@@ -148,7 +152,7 @@ sub validate_request ($self, $request, $options = {}) {
     foreach my $path_name (sort keys $path_captures->%*) {
       abort({ %$state, data_path => jsonp($state->{data_path}, qw(uri path), $path_name) },
           'missing path parameter specification for "%s"', $path_name)
-        if not exists $request_parameters_processed->{path}{$path_name};
+        if not exists(($request_parameters_processed->{path}//{})->{$path_name});
     }
 
     $state->{schema_path} = jsonp($state->{schema_path}, $method);
@@ -315,6 +319,7 @@ sub find_path ($self, $options, $state = {}) {
       ->scheme($options->{request}->url->to_abs->scheme // 'https')
       ->host($options->{request}->headers->host)
     if $options->{request};
+  $state->{annotations} //= [];
   $state->{depth} = 0;
 
   # requests don't have response codes, so if 'error' is set, it is some sort of parsing error
@@ -392,7 +397,7 @@ sub find_path ($self, $options, $state = {}) {
     # sorting (ascii-wise) gives us the desired results that concrete path components sort ahead of
     # templated components, except when the concrete component is a non-ascii character or matches
     # 0x7c (pipe), 0x7d (close-brace) or 0x7e (tilde)
-    foreach $path_template (sort keys $schema->{paths}->%*) {
+    foreach $path_template (sort keys(($schema->{paths}//{})->%*)) {
       # §3.2: "The value for these path parameters MUST NOT contain any unescaped “generic syntax”
       # characters described by [RFC3986]: forward slashes (/), question marks (?), or hashes (#)."
       my $path_pattern = join '',
