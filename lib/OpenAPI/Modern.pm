@@ -424,7 +424,7 @@ sub find_path ($self, $options, $state = {}) {
         Encode::decode('UTF-8', URI::Escape::uri_unescape(substr($uri_path, $-[$_], $+[$_]-$-[$_])),
           Encode::FB_CROAK | Encode::LEAVE_SRC), 1 .. $#-;
       # { for the editor
-      my @capture_names = ($path_template =~ m!\{([^/?#}]+)\}!g);
+      my @capture_names = ($path_template =~ m!\{([^}]+)\}!g);
       my %path_captures; @path_captures{@capture_names} = @capture_values;
 
       if (exists $options->{path_captures}) {
