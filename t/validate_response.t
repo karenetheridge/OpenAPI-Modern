@@ -360,8 +360,8 @@ YAML
       errors => [
         {
           instanceLocation => '/response/header/MultipleValuesAsArray',
-          keywordLocation => jsonp('/paths', '/foo', qw(get responses default headers MultipleValuesAsArray schema uniqueItems)),
-          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp('/paths', '/foo', qw(get responses default headers MultipleValuesAsArray schema uniqueItems)))->to_string,
+          keywordLocation => jsonp(qw(/paths /foo get responses default headers MultipleValuesAsArray schema uniqueItems)),
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo get responses default headers MultipleValuesAsArray schema uniqueItems)))->to_string,
           error => 'items at indices 0 and 1 are not unique',
         },
       ],
@@ -500,7 +500,7 @@ YAML
         {
           instanceLocation => '/response/body',
           keywordLocation => jsonp(qw(/paths /foo post responses default $ref content bloop/html)),
-          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp('/components/responses/default/content', 'bloop/html'))->to_string,
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/components/responses/default/content bloop/html)))->to_string,
           error => 'EXCEPTION: unsupported media type "bloop/html": add support with $openapi->add_media_type(...)',
         },
       ],
@@ -526,19 +526,19 @@ YAML
         {
           instanceLocation => '/response/body/alpha',
           keywordLocation => jsonp(qw(/paths /foo post responses default $ref content application/json schema properties alpha pattern)),
-          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp('/components/responses/default/content', qw(application/json schema properties alpha pattern)))->to_string,
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/components responses default content application/json schema properties alpha pattern)))->to_string,
           error => 'pattern does not match',
         },
         {
           instanceLocation => '/response/body/gamma',
           keywordLocation => jsonp(qw(/paths /foo post responses default $ref content application/json schema properties gamma const)),
-          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp('/components/responses/default/content', qw(application/json schema properties gamma const)))->to_string,
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/components responses default content application/json schema properties gamma const)))->to_string,
           error => 'value does not match',
         },
         {
           instanceLocation => '/response/body',
           keywordLocation => jsonp(qw(/paths /foo post responses default $ref content application/json schema properties)),
-          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp('/components/responses/default/content', qw(application/json schema properties)))->to_string,
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/components responses default content application/json schema properties)))->to_string,
           error => 'not all properties are valid',
         },
       ],
