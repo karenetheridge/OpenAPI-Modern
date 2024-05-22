@@ -412,6 +412,11 @@ sub find_path ($self, $options, $state = {}) {
       # path prefixes present in server urls
       next if $uri_path !~ m/^$path_pattern$/;
 
+      # perldoc perlvar, @-: $n coincides with "substr $_, $-[n], $+[n] - $-[n]" if "$-[n]" is defined
+      my @capture_values = map
+        Encode::decode('UTF-8', URI::Escape::uri_unescape(substr($uri_path, $-[$_], $+[$_]-$-[$_])),
+          Encode::FB_CROAK | Encode::LEAVE_SRC), 1 .. $#-;
+
       $options->{path_template} = $path_template;
 
       # FIXME: follow $ref chain in path-item
@@ -419,10 +424,6 @@ sub find_path ($self, $options, $state = {}) {
       $options->{_path_item} = $self->openapi_document->get($path_item_path);
       $state->{schema_path} = $path_item_path;
 
-      # perldoc perlvar, @-: $n coincides with "substr $_, $-[n], $+[n] - $-[n]" if "$-[n]" is defined
-      my @capture_values = map
-        Encode::decode('UTF-8', URI::Escape::uri_unescape(substr($uri_path, $-[$_], $+[$_]-$-[$_])),
-          Encode::FB_CROAK | Encode::LEAVE_SRC), 1 .. $#-;
       # { for the editor
       my @capture_names = ($path_template =~ m!\{([^}]+)\}!g);
       my %path_captures; @path_captures{@capture_names} = @capture_values;
