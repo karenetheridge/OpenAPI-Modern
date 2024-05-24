@@ -575,10 +575,15 @@ sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
     return 1;
   }
 
-  # TODO: check 'allowEmptyValue'; difficult to do without access to the raw request string
-
   return $self->_validate_parameter_content({ %$state, depth => $state->{depth}+1 }, $param_obj, \ $query_params->{$param_obj->{name}})
     if exists $param_obj->{content};
+
+  # §4.8.12.2: "If `true`, clients MAY pass a zero-length string value in place of parameters that
+  # would otherwise be omitted entirely, which the server SHOULD interpret as the parameter being
+  # unused."
+  return if $param_obj->{allowEmptyValue}
+    and ($param_obj->{style}//'form') eq 'form'
+    and not length($query_params->{$param_obj->{name}});
 
   # TODO: check 'allowReserved'; difficult to do without access to the raw request string
 

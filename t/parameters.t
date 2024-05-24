@@ -265,31 +265,16 @@ subtest 'query parameters' => sub {
     # errors => collected from state (expected), defaults to []
     # todo
     {
-      param_obj => { name => 'missing', in => 'query', required => true, schema => false },
-      queries => 'foo=bar',
-      content => undef,
-      errors => [
-        {
-          instanceLocation => '/request/query/missing',
-          keywordLocation => $schema_path.'/required',
-          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$schema_path.'/required',
-          error => 'missing query parameter: missing',
-        },
-      ],
+      param_obj => { name => 'reserved', in => 'query', allowEmptyValue => true, schema => false },
+      queries => 'reserved=bloop',
+      content => 'bloop', # parameter is validated as normal
+      errors => [],
     },
     {
       param_obj => { name => 'reserved', in => 'query', allowEmptyValue => true, schema => false },
-      queries => 'empty',
-      content => undef,
-      errors => [
-        {
-          instanceLocation => '/request/query/reserved',
-          keywordLocation => $schema_path.'/allowEmptyValue',
-          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$schema_path.'/allowEmptyValue',
-          error => 'allowEmptyValue: true is not yet supported',
-        },
-      ],
-      todo => 'allowEmptyValue not yet supported',
+      queries => 'reserved=',
+      content => undef, # empty parameter is not validated
+      errors => [],
     },
     {
       param_obj => { name => 'missing_encoded_not_required', in => 'query', content => { 'application/json' => { schema => { type => 'object' } } } },

@@ -4,6 +4,8 @@ Revision history for OpenAPI-Modern
           - BREAKING CHANGE: path_item_uri is dropped from the populated
             $options hash in validate_request, validate_response, and
             find_path, and replaced with operation_uri
+          - add support for "allowEmptyValue" option in query parameter
+            descriptions
 
 0.064     2024-05-07 00:14:00Z
           - fix: requests with an empty URI path (e.g. "https://example.com?foo=1")
