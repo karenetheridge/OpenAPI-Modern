@@ -8,7 +8,7 @@ OpenAPI::Modern - Validate HTTP requests and responses against an OpenAPI v3.1 d
 
 =head1 VERSION
 
-version 0.064
+version 0.065
 
 =head1 SYNOPSIS
 
@@ -251,7 +251,7 @@ C<path_template>: a string representing the request URI, with placeholders in br
 
 =item *
 
-C<operation_id>: a string corresponding to the L<operationId|https://swagger.io/docs/specification/paths-and-operations/#operationid> at a particular path-template and HTTP location under C</paths>
+C<operation_id>: a string corresponding to the L<operationId|https://learn.openapis.org/specification/paths.html#the-endpoints-list> at a particular path-template and HTTP location under C</paths>
 
 =item *
 
@@ -277,16 +277,19 @@ populated if they can be successfully calculated.
 
 In addition, these values are populated in the options hash (when available):
 
-* C<path_item_uri>: a URI indicating the document location of the path-item object for the
+* C<operation_uri>: a URI indicating the document location of the operation object for the
   request, after following any references (usually something under C</paths/>, but may be in another
   document). Use C<< $openapi->evaluator->get($uri) >> to fetch this content (see
   L<JSON::Schema::Modern/get>). Note that this is the same as
-  C<< $openapi->recursive_get(Mojo::URL->new->fragment(JSON::Schema::Modern::Utilities::jsonp('/paths', $options->{path_template}))) >>.
+  C<< $openapi->recursive_get(Mojo::URL->new->fragment(JSON::Schema::Modern::Utilities::jsonp('/paths', $options->{path_template}{$options->{method}}))) >>.
+  (See the documentation for an operation at L<https://learn.openapis.org/specification/paths.html#the-endpoints-list> or in the specification at
+  L<§4.8.10 of the specification|https://spec.openapis.org/oas/v3.1.0#operation-object>.)
 * C<request> (not necessarily what was passed in: this is always a L<Mojo::Message::Request>)
 
-You can find the associated operation object by using either C<path_item_uri> and the HTTP method,
+You can find the associated operation object by using either C<operation_uri>,
 or by calling C<< $openapi->openapi_document->get_operationId_path($operation_id) >>
-(see L<JSON::Schema::Modern::Document::OpenAPI/get_operationId_path>).
+(see L<JSON::Schema::Modern::Document::OpenAPI/get_operationId_path>) (note that the latter will
+be removed in a subsequent release, in order to support operations existing in other documents).
 
 Note that the L<C</servers>|https://spec.openapis.org/oas/v3.1.0#server-object> section of the
 OpenAPI document is not used for path matching at this time, for either scheme and host matching nor

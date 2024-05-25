@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.065     2024-05-25 23:56:08Z
           - BREAKING CHANGE: path_item_uri is dropped from the populated
             $options hash in validate_request, validate_response, and
             find_path, and replaced with operation_uri
