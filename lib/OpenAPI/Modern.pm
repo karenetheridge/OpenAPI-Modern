@@ -489,7 +489,7 @@ sub find_path ($self, $options, $state = {}) {
   }
 
   # FIXME: follow $ref chain in path-item
-  $path_item_path = jsonp('/paths', $path_template);
+  $state->{schema_path} = $path_item_path = jsonp('/paths', $path_template);
   my $path_item = $schema->{paths}{$path_template};
   die 'path_item unexpectedly does not exist' if not $path_item;
 
@@ -500,15 +500,13 @@ sub find_path ($self, $options, $state = {}) {
   # note: we aren't doing anything special with escaped slashes. this bit of the spec is hazy.
   # { for the editor
   my @capture_names = ($path_template =~ m!\{([^}]+)\}!g);
-  return E({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
-      'provided path_captures names do not match path template "%s"', $path_template)
+  return E($state, 'provided path_captures names do not match path template "%s"', $path_template)
     if exists $options->{path_captures}
       and not is_equal([ sort keys $options->{path_captures}->%* ], [ sort @capture_names ]);
 
   $options->{_path_item} = $path_item;
 
   if (not $options->{request}) {
-    $state->{schema_path} = $path_item_path;
     $options->{path_template} = $path_template;
     return 1;
   }
@@ -526,8 +524,7 @@ sub find_path ($self, $options, $state = {}) {
 
   if ($uri_path !~ m/^$path_pattern$/) {
     delete $options->@{qw(operation_id operation_uri _path_item)};
-    return E({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
-      'provided %s does not match request URI', exists $options->{path_template} ? 'path_template' : 'operation_id');
+    return E($state, 'provided %s does not match request URI', exists $options->{path_template} ? 'path_template' : 'operation_id');
   }
 
   # perldoc perlvar, @-: $n coincides with "substr $_, $-[n], $+[n] - $-[n]" if "$-[n]" is defined
@@ -537,8 +534,7 @@ sub find_path ($self, $options, $state = {}) {
 
   if (exists $options->{path_captures}) {
     my %provided_captures = $options->{path_captures}->%*;
-    return E({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
-        'provided path_captures values do not match request URI')
+    return E($state, 'provided path_captures values do not match request URI')
       if not is_equal([ map $_.'', @provided_captures{@capture_names} ], \@capture_values);
   }
   else {
@@ -551,7 +547,6 @@ sub find_path ($self, $options, $state = {}) {
   # now, which should constitute an error
 
   $options->{path_template} = $path_template;
-  $state->{schema_path} = $path_item_path;
   return 1;
 }
 
