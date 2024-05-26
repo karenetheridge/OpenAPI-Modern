@@ -273,7 +273,7 @@ YAML
           instanceLocation => '/request/uri/path',
           keywordLocation => jsonp(qw(/paths /foo)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo)))->to_string,
-          error => 'provided path_captures values do not match request URI',
+          error => 'provided path_captures names do not match path template "/foo"',
         },
       ],
     },

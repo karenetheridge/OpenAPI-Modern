@@ -456,15 +456,19 @@ sub find_path ($self, $options, $state = {}) {
       $options->{operation_uri} = Mojo::URL->new($state->{initial_schema_uri})->fragment($path_item_path.'/'.$method);
       $options->{operation_id} = $path_item->{$method}{operationId} if exists $path_item->{$method}{operationId};
 
+      # note: we aren't doing anything special with escaped slashes. this bit of the spec is hazy.
       # { for the editor
       my @capture_names = ($path_template =~ m!\{([^}]+)\}!g);
-      my %path_captures; @path_captures{@capture_names} = @capture_values;
 
       if (exists $options->{path_captures}) {
+        return E($state, 'provided path_captures names do not match path template "%s"', $path_template)
+          if not is_equal([ sort keys $options->{path_captures}->%* ], [ sort @capture_names ]);
+
         return E($state, 'provided path_captures values do not match request URI')
-          if not is_equal($options->{path_captures}, \%path_captures, { stringy_numbers => 1 });
+          if not is_equal([ $options->{path_captures}->@{@capture_names} ], \@capture_values, { stringy_numbers => 1 });
       }
       else {
+        my %path_captures; @path_captures{@capture_names} = @capture_values;
         $options->{path_captures} = \%path_captures;
       }
 
@@ -533,9 +537,8 @@ sub find_path ($self, $options, $state = {}) {
       Encode::FB_CROAK | Encode::LEAVE_SRC), 1 .. $#-;
 
   if (exists $options->{path_captures}) {
-    my %provided_captures = $options->{path_captures}->%*;
     return E($state, 'provided path_captures values do not match request URI')
-      if not is_equal([ map $_.'', @provided_captures{@capture_names} ], \@capture_values);
+      if not is_equal([ $options->{path_captures}->@{@capture_names} ], \@capture_values, { stringy_numbers => 1 });
   }
   else {
     my %path_captures; @path_captures{@capture_names} = @capture_values;

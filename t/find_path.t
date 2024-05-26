@@ -306,7 +306,7 @@ YAML
           instanceLocation => '/request/uri/path',
           keywordLocation => jsonp(qw(/paths /foo/bar)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
-          error => 'provided path_captures values do not match request URI',
+          error => 'provided path_captures names do not match path template "/foo/bar"',
         }),
       ],
     },
@@ -520,6 +520,24 @@ YAML
   );
   is(get_type($options->{path_captures}{foo_id}), 'integer', 'passed-in path value is preserved as a number');
 
+  ok($openapi->find_path($options = { request => request('POST', 'http://example.com/foo/123'),
+      path_captures => { foo_id => 123 } }),
+    'find_path returns successfully');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      method => 'post',
+      path_captures => { foo_id => 123 },
+      path_template => '/foo/{foo_id}',
+      _path_item => { post => ignore },
+      operation_id => 'my-post-operation',
+      operation_uri => str($doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/{foo_id} post)))),
+      errors => [],
+    },
+    'path_capture values are returned as-is in the provided options hash',
+  );
+  is(get_type($options->{path_captures}{foo_id}), 'integer', 'passed-in path value is preserved as a number');
 
   $openapi = OpenAPI::Modern->new(
     openapi_uri => '/api',
