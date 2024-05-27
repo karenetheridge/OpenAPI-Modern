@@ -79,6 +79,8 @@ paths:
   /foo/bar:
     get:
       operationId: my-get-path
+    post:
+      operationId: another-post-path
 webhooks:
   my_hook:
     description: I like webhooks
@@ -148,22 +150,22 @@ YAML
     'path template does not exist under /paths',
   );
 
-  ok(!$openapi->find_path($options = { request => request('GET', 'http://example.com/foo/bloop') }),
+  ok(!$openapi->find_path($options = { request => request('PUT', 'http://example.com/foo/bloop') }),
     'find_path returns false');
   cmp_result(
     $options,
     {
       request => isa('Mojo::Message::Request'),
-      method => 'get',
+      method => 'put',
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => 'bloop' },
       _path_item => { post => ignore },
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/method',
-          keywordLocation => jsonp(qw(/paths /foo/{foo_id} get)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get)))->to_string,
-          error => 'missing operation for HTTP method "get"',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id} put)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} put)))->to_string,
+          error => 'missing operation for HTTP method "put"',
         }),
       ],
     },
@@ -199,7 +201,6 @@ YAML
     {
       request => isa('Mojo::Message::Request'),
       method => 'post',
-      operation_id => 'my-get-path',
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/method',
@@ -266,7 +267,7 @@ YAML
       path_template => '/foo/bar',
       path_captures => {},
       operation_id => 'my-get-path',
-      _path_item => { get => ignore },
+      _path_item => { get => ignore, post => ignore },
       operation_uri => str($doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/bar get)))),
       errors => [],
     },
@@ -282,8 +283,7 @@ YAML
       request => isa('Mojo::Message::Request'),
       method => 'get',
       path_template => '/foo/bar',
-      _path_item => { get => ignore },
-      operation_uri => str($doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/bar get)))),
+      _path_item => { get => ignore, post => ignore },
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/uri/path',
@@ -307,7 +307,6 @@ YAML
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => 123 },
       _path_item => { post => ignore },
-      operation_uri => str($doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/{foo_id} post)))),
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/uri/path',
@@ -329,7 +328,6 @@ YAML
       method => 'post',
       path_template => '/foo/{foo_id}',
       _path_item => { post => ignore },
-      operation_uri => str($doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/{foo_id} post)))),
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/uri/path',
@@ -350,7 +348,6 @@ YAML
     {
       request => isa('Mojo::Message::Request'),
       method => 'get',
-      operation_id => 'my-get-path',
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/uri/path',
@@ -361,6 +358,28 @@ YAML
       ],
     },
     'operation_id is not consistent with request URI',
+  );
+
+  ok(!$openapi->find_path($options = { request => request('POST', 'http://example.com/foo/123'),
+      operation_id => 'another-post-path' }),
+    'find_path returns false');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      method => 'post',
+      # we should not bother to extract path_captures
+      # operation_id does not match, so is deleted
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '/request/uri/path',
+          keywordLocation => jsonp(qw(/paths /foo/bar)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
+          error => 'provided operation_id does not match request URI',
+        }),
+      ],
+    },
+    'operation_id is not consistent with request URI, but the real operation does exist (with the same method)',
   );
 
   ok(!$openapi->find_path($options = { request => request('POST', 'http://example.com/foo/hello'),
@@ -634,7 +653,6 @@ YAML
     {
       request => isa('Mojo::Message::Request'),
       method => 'get',
-      operation_id => 'dotted-foo-bar',
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/uri/path',
@@ -676,7 +694,6 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
-      operation_id => 'all-dots',
       method => 'get',
       errors => [
         methods(TO_JSON => {
@@ -796,7 +813,6 @@ YAML
   cmp_result(
     $options,
     {
-      operation_id => 'my-get-path',
       method => 'POST',
       path_captures => {},
       errors => [

@@ -362,9 +362,11 @@ sub find_path ($self, $options, $state = {}) {
         'operation does not match provided path_template')
       if exists $options->{path_template} and $options->{path_template} ne $path_template;
 
-    return E({ %$state, data_path => '/request/method', schema_path => $operation_path },
-        'wrong HTTP method "%s"', $options->{method})
-      if $options->{method} and lc $options->{method} ne $method;
+    if ($options->{method} and lc $options->{method} ne $method) {
+      delete $options->{operation_id};
+      return E({ %$state, data_path => '/request/method', schema_path => $operation_path },
+        'wrong HTTP method "%s"', $options->{method});
+    }
 
     $options->{method} = lc $method;
   }
@@ -492,9 +494,11 @@ sub find_path ($self, $options, $state = {}) {
     map +(substr($_, 0, 1) eq '{' ? '([^/?#]*)' : quotemeta($_)), # { for the editor
     split /(\{[^}]+\})/, $path_template;
 
-  return E({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
-      'provided %s does not match request URI', exists $options->{path_template} ? 'path_template' : 'operation_id')
-    if $uri_path !~ m/^$path_pattern$/;
+  if ($uri_path !~ m/^$path_pattern$/) {
+    delete $options->@{qw(operation_id operation_uri)};
+    return E({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
+      'provided %s does not match request URI', exists $options->{path_template} ? 'path_template' : 'operation_id');
+  }
 
   # perldoc perlvar, @-: $n coincides with "substr $_, $-[n], $+[n] - $-[n]" if "$-[n]" is defined
   my @capture_values = map
