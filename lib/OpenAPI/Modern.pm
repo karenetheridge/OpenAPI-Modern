@@ -452,7 +452,8 @@ sub find_path ($self, $options, $state = {}) {
       return 1;
     }
 
-    return E({ %$state, keyword => 'paths' }, 'no match found for URI path "%s"', $uri_path);
+    return E({ %$state, keyword => 'paths' }, 'no match found for URI "%s"',
+      $options->{request}->url->clone->query(undef)->fragment(undef));
   }
 
   # FIXME: operation_id alone is insufficient to infer path_template, but we may not need it

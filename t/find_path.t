@@ -566,7 +566,7 @@ YAML
           instanceLocation => '/request/uri/path',
           keywordLocation => '/paths',
           absoluteKeywordLocation => $doc_uri->clone->fragment('/paths')->to_string,
-          error => 'no match found for URI path "/bloop/blah"',
+          error => 'no match found for URI "http://example.com/bloop/blah"',
         }),
       ],
     },
