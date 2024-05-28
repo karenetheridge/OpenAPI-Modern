@@ -52,7 +52,7 @@ YAML
         {
           instanceLocation => '/request',
           keywordLocation => '',
-          absoluteKeywordLocation => $doc_uri->clone->to_string,
+          absoluteKeywordLocation => $doc_uri->to_string,
           error => 'Bad request start-line',
         },
       ],
