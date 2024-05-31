@@ -113,7 +113,9 @@ sub validate_request ($self, $request, $options = {}) {
 
     # first, consider parameters at the operation level.
     # parameters at the path-item level are also considered, if not already seen at the operation level
+    SECTION:
     foreach my $section ($method, 'path-item') {
+      ENTRY:
       foreach my $idx (0 .. (($section eq $method ? $operation : $path_item)->{parameters}//[])->$#*) {
         my $state = { %$state, schema_path => jsonp($state->{schema_path},
           ($section eq $method ? $method : ()), 'parameters', $idx) };
@@ -126,9 +128,9 @@ sub validate_request ($self, $request, $options = {}) {
 
         abort($state, 'duplicate %s parameter "%s"', $param_obj->{in}, $param_obj->{name})
           if (($request_parameters_processed->{$param_obj->{in}}//{})->{$fc_name} // '') eq $section;
-        next if exists(($request_parameters_processed->{$param_obj->{in}}//{})->{$fc_name});
-        {
-          use autovivification 'store';
+
+        { use autovivification qw(exists store);
+          next ENTRY if exists $request_parameters_processed->{$param_obj->{in}}{$fc_name};
           $request_parameters_processed->{$param_obj->{in}}{$fc_name} = $section;
         }
 
