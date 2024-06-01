@@ -269,7 +269,7 @@ YAML
   $openapi = OpenAPI::Modern->new(
     openapi_uri => '/api',
     openapi_schema => do {
-      YAML::PP->new( boolean => 'JSON::PP' )->load_string(<<YAML);
+      YAML::PP->new(boolean => 'JSON::PP')->load_string(<<YAML);
 $openapi_preamble
 paths:
   /foo/{foo_id}:

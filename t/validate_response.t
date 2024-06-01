@@ -610,7 +610,6 @@ paths:
                 minLength: 10
 YAML
 
-
   cmp_result(
     $openapi->validate_response(response(400, [ 'Content-Length' => 10 ], 'plain text'),
       { path_template => '/foo', method => 'post' })->TO_JSON,
@@ -627,7 +626,6 @@ YAML
     },
     'missing Content-Type does not cause an exception',
   );
-
 
   cmp_result(
     do {
@@ -701,7 +699,6 @@ YAML
     },
     'Content-Length is required in responses with a message body',
   );
-
 
   cmp_result(
     $openapi->validate_response(response(200, [ 'Content-Type' => 'text/plain', 'Content-Length' => 25 ], 'I should not have content'),

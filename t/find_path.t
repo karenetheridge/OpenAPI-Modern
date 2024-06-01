@@ -490,7 +490,7 @@ YAML
   );
 
 
-  ok($openapi->find_path($options = { request => request( 'GET', 'http://example.com/foo/123') }),
+  ok($openapi->find_path($options = { request => request('GET', 'http://example.com/foo/123') }),
     'find_path returns successfully');
   cmp_result(
     $options,
@@ -800,7 +800,6 @@ YAML
 
   ok(!$openapi->find_path(my $options = { operation_id => 'my-get-path', method => 'POST', path_captures => {} }),
     'find_path returns false');
-
   cmp_result(
     $options,
     {
