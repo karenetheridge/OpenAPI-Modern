@@ -1381,6 +1381,7 @@ paths:
       in: path
       required: true
       schema:
+        maximum: 10
         pattern: ^[a-z]\$
     post:
       parameters:
@@ -1388,17 +1389,20 @@ paths:
         in: query
         required: false
         schema:
+          maximum: 10
           pattern: ^[a-z]\$
       - name: Foo-Bar
         in: header
         required: false
         schema:
+          maximum: 10
           pattern: ^[a-z]\$
       requestBody:
         required: true
         content:
           text/plain:
             schema:
+              maximum: 10
               pattern: ^[a-z]\$
 YAML
 
@@ -1407,14 +1411,26 @@ YAML
   cmp_result(
     $openapi->validate_request($request,
       { path_template => '/foo/{foo_id}', path_captures => { foo_id => 123 } })->TO_JSON,
-    {
+    my $expected = {
       valid => false,
       errors => [
+        {
+          instanceLocation => '/request/uri/query/bar',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id} post parameters 0 schema maximum)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} post parameters 0 schema maximum)))->to_string,
+          error => 'value is larger than 10',
+        },
         {
           instanceLocation => '/request/uri/query/bar',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id} post parameters 0 schema pattern)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} post parameters 0 schema pattern)))->to_string,
           error => 'pattern does not match',
+        },
+        {
+          instanceLocation => '/request/header/Foo-Bar',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id} post parameters 1 schema maximum)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} post parameters 1 schema maximum)))->to_string,
+          error => 'value is larger than 10',
         },
         {
           instanceLocation => '/request/header/Foo-Bar',
@@ -1424,10 +1440,17 @@ YAML
         },
         {
           instanceLocation => '/request/uri/path/foo_id',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id} parameters 0 schema maximum)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} parameters 0 schema maximum)))->to_string,
+          error => 'value is larger than 10',
+        },
+        {
+          instanceLocation => '/request/uri/path/foo_id',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id} parameters 0 schema pattern)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} parameters 0 schema pattern)))->to_string,
           error => 'pattern does not match',
         },
+        # maximum is ignored -- types are not loose in bodies
         {
           instanceLocation => '/request/body',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id} post requestBody content text/plain schema pattern)),
@@ -1436,7 +1459,116 @@ YAML
         },
       ],
     },
-    'numeric values are treated as strings by default',
+    'numeric values are treated as both strings and numbers, when no explicit type is requested',
+  );
+
+  cmp_result(
+    $openapi->validate_request($request)->TO_JSON,
+    $expected,
+    'parsed numeric values are treated as both strings and numbers, when no explicit type is requested',
+  );
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => '/api',
+    openapi_schema => $yamlpp->load_string(<<YAML));
+$openapi_preamble
+paths:
+  /foo/{foo_id}:
+    parameters:
+    - name: foo_id
+      in: path
+      required: true
+      schema:
+        type: string
+    post:
+      parameters:
+      - name: bar
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: Foo-Bar
+        in: header
+        required: false
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          text/plain:
+            schema:
+              type: string
+YAML
+
+  $request = request('POST', 'http://example.com/foo/123?bar=456',
+    [ 'Foo-Bar' => 789, 'Content-Type' => 'text/plain' ], 666);
+  cmp_result(
+    $openapi->validate_request($request,
+      { path_template => '/foo/{foo_id}', path_captures => { foo_id => 123 } })->TO_JSON,
+    { valid => true },
+    'all parameter and body values are treated as strings',
+  );
+
+  cmp_result(
+    $openapi->validate_request($request)->TO_JSON,
+    { valid => true },
+    'all parameter and body values are parsed from the request as strings',
+  );
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => '/api',
+    openapi_schema => $yamlpp->load_string(<<YAML));
+$openapi_preamble
+paths:
+  /foo/{foo_id}:
+    parameters:
+    - name: foo_id
+      in: path
+      required: true
+      schema:
+        type: number
+    post:
+      parameters:
+      - name: bar
+        in: query
+        required: false
+        schema:
+          type: number
+      - name: Foo-Bar
+        in: header
+        required: false
+        schema:
+          type: number
+      requestBody:
+        required: true
+        content:
+          text/plain:
+            schema:
+              type: number
+YAML
+
+  cmp_result(
+    $openapi->validate_request($request,
+      { path_template => '/foo/{foo_id}', path_captures => { foo_id => 123 } })->TO_JSON,
+    $expected = {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/body',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id} post requestBody content text/plain schema type)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} post requestBody content text/plain schema type)))->to_string,
+          error => 'got string, not number',
+        },
+      ],
+    },
+    'numeric values are seen as numeric types when requested, but only in parameters and not bodies',
+  );
+
+  cmp_result(
+    $openapi->validate_request($request)->TO_JSON,
+    $expected,
+    'parsed numeric values are seen as numeric types when requested, but only in parameters and not bodies',
   );
 
 
