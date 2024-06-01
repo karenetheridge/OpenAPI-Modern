@@ -1444,6 +1444,7 @@ YAML
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} parameters 0 schema maximum)))->to_string,
           error => 'value is larger than 10',
         },
+        # at least for now, passed-in numbers are validated as numbers...
         {
           instanceLocation => '/request/uri/path/foo_id',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id} parameters 0 schema pattern)),

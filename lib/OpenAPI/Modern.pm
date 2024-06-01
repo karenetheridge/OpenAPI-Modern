@@ -102,7 +102,6 @@ sub validate_request ($self, $request, $options = {}) {
     $state->{data_path} = '/request';
     $request = $options->{request};   # now guaranteed to be a Mojo::Message::Request
 
-    my $path_captures = $options->{path_captures};
     my $method = lc $request->method;
     my $path_item = delete $options->{_path_item};  # after following path-item $refs
     my $operation = $path_item->{$method};
@@ -138,7 +137,7 @@ sub validate_request ($self, $request, $options = {}) {
           ((grep $param_obj->{in} eq $_, qw(path query)) ? 'uri' : ()), $param_obj->{in},
           $param_obj->{name});
         my $valid =
-            $param_obj->{in} eq 'path' ? $self->_validate_path_parameter({ %$state, depth => $state->{depth}+1 }, $param_obj, $path_captures)
+            $param_obj->{in} eq 'path' ? $self->_validate_path_parameter({ %$state, depth => $state->{depth}+1 }, $param_obj, $options->{path_captures})
           : $param_obj->{in} eq 'query' ? $self->_validate_query_parameter({ %$state, depth => $state->{depth}+1 }, $param_obj, $request->url)
           : $param_obj->{in} eq 'header' ? $self->_validate_header_parameter({ %$state, depth => $state->{depth}+1 }, $param_obj->{name}, $param_obj, $request->headers)
           : $param_obj->{in} eq 'cookie' ? $self->_validate_cookie_parameter({ %$state, depth => $state->{depth}+1 }, $param_obj, $request)
@@ -151,7 +150,7 @@ sub validate_request ($self, $request, $options = {}) {
     # We could validate this at document parse time, except the path-item can also be reached via a
     # $ref and the referencing path could be from another document and is therefore unknowable until
     # runtime.
-    foreach my $path_name (sort keys $path_captures->%*) {
+    foreach my $path_name (sort keys $options->{path_captures}->%*) {
       abort({ %$state, data_path => jsonp($state->{data_path}, qw(uri path), $path_name) },
           'missing path parameter specification for "%s"', $path_name)
         if not exists(($request_parameters_processed->{path}//{})->{$path_name});
