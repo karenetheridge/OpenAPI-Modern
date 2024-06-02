@@ -177,7 +177,7 @@ YAML
   );
 
 
-  ok(!$openapi->find_path($options = { request => request('POST', 'http://example.com/foo/bar'),
+  ok(!$openapi->find_path($options = { request => $request = request('POST', 'http://example.com/foo/bar'),
       path_template => '/foo/{foo_id}', operation_id => 'my-get-path', path_captures => {} }),
     'find_path returns false');
   cmp_result(
@@ -201,7 +201,7 @@ YAML
   );
 
 
-  ok(!$openapi->find_path($options = { request => request('POST', 'http://example.com/foo/bar'),
+  ok(!$openapi->find_path($options = { request => $request,
       operation_id => 'my-get-path', path_captures => {} }),
     'find_path returns false');
   cmp_result(
@@ -224,7 +224,7 @@ YAML
   );
 
 
-  ok(!$openapi->find_path($options = { request => request('POST', 'http://example.com/foo/bar'), method => 'GET'}),
+  ok(!$openapi->find_path($options = { request => $request, method => 'GET'}),
     'find_path returns false');
   cmp_result(
     $options,
@@ -244,7 +244,7 @@ YAML
   );
 
 
-  ok(!$openapi->find_path($options = { request => request('POST', 'http://example.com/foo/bar'),
+  ok(!$openapi->find_path($options = { request => $request,
         path_template => '/foo/{foo_id}', path_captures => { bloop => 'bar' } }),
     'find_path returns false');
   cmp_result(
@@ -313,7 +313,7 @@ YAML
   );
 
 
-  ok(!$openapi->find_path($options = { request => request('POST', 'http://example.com/something/else'),
+  ok(!$openapi->find_path($options = { request => $request = request('POST', 'http://example.com/something/else'),
       path_template => '/foo/{foo_id}', path_captures => { foo_id => 123 } }),
     'find_path returns false');
   cmp_result(
@@ -338,7 +338,7 @@ YAML
   );
 
 
-  ok(!$openapi->find_path($options = { request => request('POST', 'http://example.com/something/else'),
+  ok(!$openapi->find_path($options = { request => $request,
       path_template => '/foo/{foo_id}' }),
     'find_path returns false');
   cmp_result(
@@ -450,10 +450,8 @@ paths:
       operationId: my-get-path
 YAML
 
-  ok($openapi->find_path($options = { request => request('GET', 'http://example.com/foo/123'),
-      path_template => '/foo/{foo_id}' }),
-    'find_path returns successfully',
-  );
+  ok($openapi->find_path($options = { request => $request = request('GET', 'http://example.com/foo/123') }),
+    'find_path returns successfully');
   cmp_result(
     $options,
     {

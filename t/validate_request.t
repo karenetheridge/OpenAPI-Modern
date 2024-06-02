@@ -297,7 +297,6 @@ YAML
 };
 
 subtest 'validation errors in requests' => sub {
-  my $request = request('POST', 'http://example.com/foo');
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
@@ -307,6 +306,7 @@ paths:
     post: {}
 YAML
 
+  my $request = request('POST', 'http://example.com/foo');
   cmp_result(
     $openapi->validate_request($request, { path_template => '/foo', path_captures => {} })->TO_JSON,
     { valid => true },
