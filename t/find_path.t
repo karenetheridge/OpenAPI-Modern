@@ -12,7 +12,7 @@ use utf8;
 use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 
 use Test::Fatal;
-use JSON::Schema::Modern::Utilities 'jsonp';
+use JSON::Schema::Modern::Utilities qw(jsonp get_type);
 
 use lib 't/lib';
 use Helper;
@@ -407,6 +407,25 @@ YAML
     'path_captures values are not consistent with request URI',
   );
 
+  ok($openapi->find_path($options = { request => request('POST', 'http://example.com/foo/123'),
+      operation_id => 'my-post-path', path_captures => { foo_id => 123 } }),
+    'find_path returns successfully');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      method => 'post',
+      path_captures => { foo_id => 123 },
+      path_template => '/foo/{foo_id}',
+      _path_item => { post => ignore },
+      operation_id => 'my-post-path',
+      operation_uri => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/{foo_id} post))),
+      errors => [],
+    },
+    'path_capture values are returned as-is in the provided options hash',
+  );
+  is(get_type($options->{path_captures}{foo_id}), 'integer', 'passed-in path value is preserved as a number');
+
 
   $openapi = OpenAPI::Modern->new(
     openapi_uri => '/api',
@@ -454,60 +473,81 @@ YAML
     'find_path returns successfully');
   cmp_result(
     $options,
-    {
+    my $expected = {
       request => isa('Mojo::Message::Request'),
-      operation_id => 'my-get-path',
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => '123' },
       method => 'get',
+      operation_id => 'my-get-path',
       _path_item => { get => ignore },
       operation_uri => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get))),
       errors => [],
     },
-    'path capture values and method are extracted from the path template and request uri',
+    'path_capture values are parsed from the request uri and returned in the provided options hash',
   );
+  is(get_type($options->{path_captures}{foo_id}), 'string', 'captured path value is parsed as a string');
 
-
-  ok($openapi->find_path($options = { request => request('GET', 'http://example.com/foo/123'),
-      operation_id => 'my-get-path' }),
-    'find_path returns successfully',
-  );
+  ok($openapi->find_path($options = { request => $request, path_template => '/foo/{foo_id}' }),
+    'find_path returns successfully');
   cmp_result(
     $options,
-    {
-      request => isa('Mojo::Message::Request'),
-      operation_id => 'my-get-path',
-      path_template => '/foo/{foo_id}',
-      path_captures => { foo_id => '123' },
-      method => 'get',
-      _path_item => { get => ignore },
-      operation_uri => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get))),
-      errors => [],
-    },
+    $expected,
+    'path capture values and method are extracted from the path template and request uri',
+  );
+  is(get_type($options->{path_captures}{foo_id}), 'string', 'captured path value is parsed as a string');
+
+  ok($openapi->find_path($options = { request => $request, path_captures => { foo_id => '123' } }),
+    'find_path returns successfully');
+  cmp_result(
+    $options,
+    $expected,
+    'path_capture values are returned as-is in the provided options hash',
+  );
+  is(get_type($options->{path_captures}{foo_id}), 'string', 'passed-in path value is preserved as a string');
+
+  ok($openapi->find_path($options = { request => $request, path_template => '/foo/{foo_id}', path_captures => { foo_id => 123 } }),
+    'find_path returns successfully');
+  cmp_result(
+    $options,
+    $expected,
+    'path_capture values are returned as-is in the provided options hash',
+  );
+  is(get_type($options->{path_captures}{foo_id}), 'integer', 'passed-in path value is preserved as a number');
+
+  my $val = 123; my $str = sprintf("%s\n", $val);
+  ok($openapi->find_path($options = { request => $request, path_template => '/foo/{foo_id}', path_captures => { foo_id => $val } }),
+    'find_path returns successfully');
+  cmp_result(
+    $options,
+    $expected,
+    'path_capture values are returned as-is in the provided options hash',
+  );
+  # on perls >= 5.35.9, reading the string form of an integer value no longer sets the flag SVf_POK
+  is(
+    get_type($options->{path_captures}{foo_id}),
+    "$]" >= 5.035009 ? 'integer' : 'ambiguous type',
+    'passed-in path value is preserved as a dualvar',
+  );
+
+  ok($openapi->find_path($options = { request => $request, path_captures => { foo_id => 123 } }),
+    'find_path returns successfully');
+  cmp_result(
+    $options,
+    $expected,
+    'path_capture values are returned as-is in the provided options hash',
+  );
+  is(get_type($options->{path_captures}{foo_id}), 'integer', 'passed-in path value is preserved as a number');
+
+  ok($openapi->find_path($options = { request => $request, operation_id => 'my-get-path' }),
+    'find_path returns successfully');
+  cmp_result(
+    $options,
+    $expected,
     'path capture values are extracted from the operation id and request uri',
   );
 
 
-  ok($openapi->find_path($options = { request => request('GET', 'http://example.com/foo/123') }),
-    'find_path returns successfully');
-  cmp_result(
-    $options,
-    {
-      request => isa('Mojo::Message::Request'),
-      path_template => '/foo/{foo_id}',
-      path_captures => { foo_id => '123' },
-      method => 'get',
-      operation_id => 'my-get-path',
-      _path_item => { get => ignore },
-      operation_uri => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get))),
-      errors => [],
-    },
-    'path_item and path_capture variables are returned in the provided options hash',
-  );
-
-
-  ok(!$openapi->find_path($options = { request => request('GET', 'http://example.com/foo/123'),
-      path_captures => { foo_id => 'a' } }),
+  ok(!$openapi->find_path($options = { request => $request, path_captures => { foo_id => 'a' } }),
     'find_path returns false');
   cmp_result(
     $options,
@@ -566,7 +606,7 @@ YAML
       operation_id => 'my-get-path',
       errors => [],
     },
-    'path capture variables are found to be consistent with the URI when some values are url-escaped',
+    'path_capture values are found to be consistent with the URI when some values are url-escaped',
   );
 
   ok($openapi->find_path($options = { request => request('GET', $uri) } ), 'find_path returns successfully');

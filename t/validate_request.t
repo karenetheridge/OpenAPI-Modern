@@ -11,7 +11,7 @@ no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 use utf8;
 use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 
-use JSON::Schema::Modern::Utilities 'jsonp';
+use JSON::Schema::Modern::Utilities qw(jsonp get_type);
 use Test::Warnings 0.033 qw(:no_end_test allow_patterns);
 
 use lib 't/lib';
@@ -1410,7 +1410,7 @@ YAML
     [ 'Foo-Bar' => 789, 'Content-Type' => 'text/plain' ], 666);
   cmp_result(
     $openapi->validate_request($request,
-      { path_template => '/foo/{foo_id}', path_captures => { foo_id => 123 } })->TO_JSON,
+      my $options = { path_template => '/foo/{foo_id}', path_captures => { foo_id => 123 } })->TO_JSON,
     my $expected = {
       valid => false,
       errors => [
@@ -1462,12 +1462,14 @@ YAML
     },
     'numeric values are treated as both strings and numbers, when no explicit type is requested',
   );
+  is(get_type($options->{path_captures}{foo_id}), 'integer', 'passed-in path value is preserved as a number');
 
   cmp_result(
-    $openapi->validate_request($request)->TO_JSON,
+    $openapi->validate_request($request, $options = {})->TO_JSON,
     $expected,
     'parsed numeric values are treated as both strings and numbers, when no explicit type is requested',
   );
+   is(get_type($options->{path_captures}{foo_id}), 'string', 'captured path value is parsed as a string');
 
 
   $openapi = OpenAPI::Modern->new(

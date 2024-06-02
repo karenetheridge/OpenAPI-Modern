@@ -427,10 +427,13 @@ sub find_path ($self, $options, $state = {}) {
       my @capture_names = ($path_template =~ m!\{([^/?#}]+)\}!g);
       my %path_captures; @path_captures{@capture_names} = @capture_values;
 
-      return E({ %$state, schema_path => '/paths' }, 'provided path_captures values do not match request URI')
-        if $options->{path_captures} and not is_equal($options->{path_captures}, \%path_captures);
-
-      $options->{path_captures} = \%path_captures;
+      if (exists $options->{path_captures}) {
+        return E({ %$state, schema_path => '/paths' }, 'provided path_captures values do not match request URI')
+          if not is_equal($options->{path_captures}, \%path_captures, { stringy_numbers => 1 });
+      }
+      else {
+        $options->{path_captures} = \%path_captures;
+      }
 
       return E({ %$state, data_path => '/request/method', keyword => $method,
           recommended_response => [ 405, 'Method Not Allowed' ] },
@@ -495,20 +498,26 @@ sub find_path ($self, $options, $state = {}) {
   my @capture_values = map
     Encode::decode('UTF-8', URI::Escape::uri_unescape(substr($uri_path, $-[$_], $+[$_]-$-[$_])),
       Encode::FB_CROAK | Encode::LEAVE_SRC), 1 .. $#-;
-  return E({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
-      'provided path_captures values do not match request URI')
-    if exists $options->{path_captures}
-      and not is_equal([ map $_.'', $options->{path_captures}->@{@capture_names} ], \@capture_values);
+
+  if (exists $options->{path_captures}) {
+    my %provided_captures = $options->{path_captures}->%*;
+    return E({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
+        'provided path_captures values do not match request URI')
+      if not is_equal([ map $_.'', @provided_captures{@capture_names} ], \@capture_values);
+  }
+  else {
+    my %path_captures; @path_captures{@capture_names} = @capture_values;
+    $options->{path_captures} = \%path_captures;
+  }
 
   # TODO: validate request uri against the nearest 'servers' object and extract server variables
   # Since we didn't take a servers uri prefix into consideration earlier, we may have a mismatch
   # now, which should constitute an error
 
-  my %path_captures; @path_captures{@capture_names} = @capture_values;
-
   # FIXME: follow $ref chain in path-item using path_template
-  $options->@{qw(path_template path_captures _path_item)} =
-    ($path_template, \%path_captures, $self->openapi_document->schema->{paths}{$path_template}{$method});
+  $options->@{qw(path_template _path_item)} =
+    ($path_template, $self->openapi_document->schema->{paths}{$path_template}{$method});
+
   $options->{operation_id} = $options->{_path_item}{operationId};
   delete $options->{operation_id} if not defined $options->{operation_id};
 
@@ -552,7 +561,10 @@ sub _validate_path_parameter ($self, $state, $param_obj, $path_captures) {
   return E({ %$state, keyword => 'required' }, 'missing path parameter: %s', $param_obj->{name})
     if not exists $path_captures->{$param_obj->{name}};
 
-  return $self->_validate_parameter_content({ %$state, depth => $state->{depth}+1 }, $param_obj, \ $path_captures->{$param_obj->{name}})
+  my $value = $path_captures->{$param_obj->{name}};
+  $value .= '';
+
+  return $self->_validate_parameter_content({ %$state, depth => $state->{depth}+1 }, $param_obj, \$value)
     if exists $param_obj->{content};
 
   return E({ %$state, keyword => 'style' }, 'only style: simple is supported in path parameters')
@@ -563,7 +575,7 @@ sub _validate_path_parameter ($self, $state, $param_obj, $path_captures) {
     return E($state, 'deserializing to non-primitive types is not yet supported in path parameters');
   }
 
-  $self->_evaluate_subschema(\ $path_captures->{$param_obj->{name}}, $param_obj->{schema}, { %$state, schema_path => jsonp($state->{schema_path}, 'schema'), stringy_numbers => 1, depth => $state->{depth}+1 });
+  $self->_evaluate_subschema(\$value, $param_obj->{schema}, { %$state, schema_path => jsonp($state->{schema_path}, 'schema'), stringy_numbers => 1, depth => $state->{depth}+1 });
 }
 
 sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
