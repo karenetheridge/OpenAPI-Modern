@@ -232,6 +232,23 @@ YAML
     'request HTTP method does not match method option',
   );
 
+  ok($openapi->find_path($options = { request => $request, method => 'PoST' }),
+    'find_path returns true');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      method => 'PoST',
+      path_template => '/foo/bar',
+      path_captures => {},
+      _path_item => { get => ignore, post => ignore },
+      operation_id => 'another-post-path',
+      operation_uri => str($doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/bar post)))),
+      errors => [],
+    },
+    'method option is uppercased',
+  );
+
   ok(!$openapi->find_path($options = { request => $request,
         path_template => '/foo/{foo_id}', path_captures => { bloop => 'bar' } }),
     'find_path returns false');
@@ -928,6 +945,22 @@ YAML
       errors => [],
     },
     'no operation_id is recorded, because one does not exist in the schema document',
+  );
+
+  ok($openapi->find_path(
+      $options = { method => 'gET', path_template => '/foo/{foo_id}', path_captures => { foo_id => 'bar' } }),
+    'find_path succeeded');
+  cmp_result(
+    $options,
+    {
+      method => 'gET',
+      path_template => '/foo/{foo_id}',
+      path_captures => { foo_id => 'bar' },
+      _path_item => { get => ignore },
+      operation_uri => str($doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get)))),
+      errors => [],
+    },
+    'method option is uppercased',
   );
 };
 
