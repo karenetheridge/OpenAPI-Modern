@@ -82,6 +82,22 @@ YAML
     'path parameter is missing',
   );
 
+  cmp_result(
+    $openapi->validate_request(request('GET', 'http://example.com/foo'), { path_captures => { foo_id => 1 } })->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/uri/path',
+          keywordLocation => jsonp(qw(/paths /foo)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo)))->to_string,
+          error => 'provided path_captures values do not match request URI',
+        },
+      ],
+    },
+    'extra path_capture value provided',
+  );
+
   $openapi = OpenAPI::Modern->new(
     openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
