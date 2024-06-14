@@ -410,7 +410,7 @@ sub find_path ($self, $options, $state = {}) {
     $options->{_path_item} //= $schema->{paths}{$path_template};
     my $path_item_path = jsonp('/paths', $path_template);
     return E({ %$state, data_path => '/request/method', schema_path => $path_item_path,
-        keyword => $method, recommended_response => [ 405, 'Method Not Allowed' ] },
+        recommended_response => [ 405, 'Method Not Allowed' ] },
         'missing operation for HTTP method "%s"', $method)
       if not exists $schema->{paths}{$path_template}{$method};
   }
@@ -447,7 +447,7 @@ sub find_path ($self, $options, $state = {}) {
       return E($state, 'templated operation does not match provided operation_id')
         if $options->{operation_id} and ($path_item->{$method}{operationId}//'') ne $options->{operation_id};
 
-      return E({ %$state, data_path => '/request/method', keyword => $method,
+      return E({ %$state, data_path => '/request/method',
           recommended_response => [ 405, 'Method Not Allowed' ] },
           'missing operation for HTTP method "%s"', $method)
         if not exists $path_item->{$method};
