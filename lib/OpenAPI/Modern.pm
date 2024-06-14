@@ -404,14 +404,6 @@ sub find_path ($self, $options, $state = {}) {
 
     return E({ %$state, data_path => '/request/uri/path', keyword => 'paths' }, 'missing path-item "%s"', $path_template)
       if not exists $schema->{paths}{$path_template};
-
-    # FIXME: follow $ref chain in path-item; we may have already determined path_item above
-    $options->{_path_item} //= $schema->{paths}{$path_template};
-    my $path_item_path = jsonp('/paths', $path_template);
-    return E({ %$state, data_path => '/request/method', schema_path => $path_item_path,
-        recommended_response => [ 405, 'Method Not Allowed' ] },
-        'missing operation for HTTP method "%s"', $method)
-      if not exists $schema->{paths}{$path_template}{$method};
   }
 
   if (not $path_template and not $options->{request}) {
@@ -454,11 +446,14 @@ sub find_path ($self, $options, $state = {}) {
         Encode::decode('UTF-8', URI::Escape::uri_unescape(substr($uri_path, $-[$_], $+[$_]-$-[$_])),
           Encode::FB_CROAK | Encode::LEAVE_SRC), 1 .. $#-;
 
+      $options->{path_template} = $path_template;
+
       # FIXME: follow $ref chain in path-item
       $state->{schema_path} = $path_item_path = jsonp('/paths', $path_template);
-      $options->{path_template} = $path_template;
       $options->{_path_item} = my $path_item = $schema->{paths}{$path_template};
 
+      # this can only happen if we were not able to derive the path_template from the provided
+      # operation_id earlier, but we still matched the request against some other path-item
       return E($state, 'templated operation does not match provided operation_id')
         if $options->{operation_id} and ($path_item->{$method}{operationId}//'') ne $options->{operation_id};
 
@@ -489,10 +484,6 @@ sub find_path ($self, $options, $state = {}) {
         $options->{path_captures} = \%path_captures;
       }
 
-      # TODO: extract 'servers' variables into $options
-      # Since we didn't take a servers url prefix into consideration when matching path templates
-      # earlier, we may have a mismatch now, which should constitute an error
-
       return 1;
     }
 
@@ -500,10 +491,44 @@ sub find_path ($self, $options, $state = {}) {
       $options->{request}->url->clone->query(undef)->fragment(undef));
   }
 
+  my $capture_values;
+  if ($options->{request}) {
+    # if we're still here, we were passed path_template in options or we calculated it from
+    # operation_id, and now we verify it against path_captures and the request URI.
+    my $uri_path = $options->{request}->url->path->to_string;
+    $uri_path = '/' if not length $uri_path;
+
+    # §3.2: "The value for these path parameters MUST NOT contain any unescaped “generic syntax”
+    # characters described by [RFC3986]: forward slashes (/), question marks (?), or hashes (#)."
+    my $path_pattern = join '',
+      map +(substr($_, 0, 1) eq '{' ? '([^/?#]*)' : quotemeta($_)), # { for the editor
+      split /(\{[^}]+\})/, $path_template;
+
+    if ($uri_path !~ m/^$path_pattern$/) {
+      delete $options->{operation_id};
+      return E({ %$state, data_path => '/request/uri/path',
+          schema_path => jsonp('/paths', $path_template, exists $options->{path_template} ? () : $method) }, 'provided %s does not match request URI',
+        exists $options->{path_template} ? 'path_template' : 'operation_id');
+    }
+
+    # perldoc perlvar, @-: $n coincides with "substr $_, $-[n], $+[n] - $-[n]" if "$-[n]" is defined
+    $capture_values = [ map
+      Encode::decode('UTF-8', URI::Escape::uri_unescape(substr($uri_path, $-[$_], $+[$_]-$-[$_])),
+        Encode::FB_CROAK | Encode::LEAVE_SRC), 1 .. $#- ];
+  }
+
+  # if we weren't passed a request, we can't verify that this matches, but we may have derived it
+  # from looking upward from the operation_id
+  $options->{path_template} = $path_template;
+
   # FIXME: follow $ref chain in path-item
   $state->{schema_path} = $path_item_path = jsonp('/paths', $path_template);
-  my $path_item = $schema->{paths}{$path_template};
-  die 'path_item unexpectedly does not exist' if not $path_item;
+  $options->{_path_item} = my $path_item = $schema->{paths}{$path_template};
+
+  return E({ %$state, data_path => '/request/method',
+      recommended_response => [ 405, 'Method Not Allowed' ] },
+      'missing operation for HTTP method "%s"', $method)
+    if not exists $path_item->{$method};
 
   # FIXME: this is not accurate if the operation lives in another document
   $options->{operation_uri} = Mojo::URL->new($state->{initial_schema_uri})->fragment($path_item_path.'/'.$method);
@@ -516,51 +541,19 @@ sub find_path ($self, $options, $state = {}) {
     if exists $options->{path_captures}
       and not is_equal([ sort keys $options->{path_captures}->%* ], [ sort @capture_names ]);
 
-  $options->{_path_item} = $path_item;
-
-  if (not $options->{request}) {
-    $options->{path_template} = $path_template;
-    return 1;
-  }
-
-  # if we're still here, we were passed path_template in options or we calculated it from
-  # operation_id, and now we verify it against path_captures and the request URI.
-  my $uri_path = $options->{request}->url->path->to_string;
-  $uri_path = '/' if not length $uri_path;
-
-  # §3.2: "The value for these path parameters MUST NOT contain any unescaped “generic syntax”
-  # characters described by [RFC3986]: forward slashes (/), question marks (?), or hashes (#)."
-  my $path_pattern = join '',
-    map +(substr($_, 0, 1) eq '{' ? '([^/?#]*)' : quotemeta($_)), # { for the editor
-    split /(\{[^}]+\})/, $path_template;
-
-  if ($uri_path !~ m/^$path_pattern$/) {
-    delete $options->@{qw(operation_id operation_uri _path_item)};
-    return E({ %$state, data_path => '/request/uri/path' }, 'provided %s does not match request URI',
-      exists $options->{path_template} ? 'path_template' : 'operation_id');
-  }
-
-  # perldoc perlvar, @-: $n coincides with "substr $_, $-[n], $+[n] - $-[n]" if "$-[n]" is defined
-  my @capture_values = map
-    Encode::decode('UTF-8', URI::Escape::uri_unescape(substr($uri_path, $-[$_], $+[$_]-$-[$_])),
-      Encode::FB_CROAK | Encode::LEAVE_SRC), 1 .. $#-;
+  return 1 if not $capture_values;
 
   if (exists $options->{path_captures}) {
     # $equal_state will contain { path => '/0' } indicating the index of the mismatch
-    if (not is_equal([ $options->{path_captures}->@{@capture_names} ], \@capture_values, my $equal_state = { stringy_numbers => 1 })) {
+    if (not is_equal([ $options->{path_captures}->@{@capture_names} ], $capture_values, my $equal_state = { stringy_numbers => 1 })) {
       return E({ %$state, data_path => '/request/uri/path' }, 'provided path_captures values do not match request URI (value for %s differs)', $capture_names[substr($equal_state->{path}, 1)]);
     }
   }
   else {
-    my %path_captures; @path_captures{@capture_names} = @capture_values;
+    my %path_captures; @path_captures{@capture_names} = @$capture_values;
     $options->{path_captures} = \%path_captures;
   }
 
-  # TODO: validate request uri against the nearest 'servers' object and extract server variables
-  # Since we didn't take a servers uri prefix into consideration earlier, we may have a mismatch
-  # now, which should constitute an error
-
-  $options->{path_template} = $path_template;
   return 1;
 }
 
