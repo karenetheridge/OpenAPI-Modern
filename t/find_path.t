@@ -191,7 +191,7 @@ YAML
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/uri/path',
-          keywordLocation => '/paths/~1foo~1bar',
+          keywordLocation => jsonp(qw(/paths /foo/bar)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
           error => 'operation does not match provided path_template',
         }),
@@ -214,7 +214,7 @@ YAML
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/method',
-          keywordLocation => '/paths/~1foo~1bar/get',
+          keywordLocation => jsonp(qw(/paths /foo/bar get)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar get)))->to_string,
           error => 'wrong HTTP method post',
         }),
@@ -259,7 +259,7 @@ YAML
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/uri/path',
-          keywordLocation => '/paths/~1foo~1{foo_id}',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id})),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
           error => 'provided path_captures names do not match path template "/foo/{foo_id}"',
         }),
@@ -837,7 +837,7 @@ YAML
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/uri/path',
-          keywordLocation => '/paths/~1foo~1{foo_id}',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id})),
           absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
           error => 'provided path_captures names do not match path template "/foo/{foo_id}"',
         }),
@@ -887,7 +887,7 @@ YAML
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/method',
-          keywordLocation => '/paths/~1foo~1{foo_id}/post',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id} post)),
           absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/{foo_id} post)))->to_string,
           error => 'missing operation for HTTP method "post"',
         }),
