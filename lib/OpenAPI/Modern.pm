@@ -1174,6 +1174,7 @@ populated if they can be successfully calculated.
 
 In addition, these values are populated in the options hash (when available):
 
+=for :list
 * C<operation_uri>: a URI indicating the document location of the operation object for the
   request, after following any references (usually something under C</paths/>, but may be in another
   document). Use C<< $openapi->evaluator->get($uri) >> to fetch this content (see
