@@ -135,7 +135,7 @@ sub validate_request ($self, $request, $options = {}) {
           $request_parameters_processed->{$param_obj->{in}}{$fc_name} = $section;
         }
 
-        $state->{data_path} = jsonp($state->{data_path},
+        $state->{data_path} = jsonp('/request',
           ((grep $param_obj->{in} eq $_, qw(path query)) ? 'uri' : ()), $param_obj->{in},
           $param_obj->{name});
         my $valid =
@@ -153,7 +153,7 @@ sub validate_request ($self, $request, $options = {}) {
     # $ref and the referencing path could be from another document and is therefore unknowable until
     # runtime.
     foreach my $path_name (sort keys $options->{path_captures}->%*) {
-      abort({ %$state, data_path => jsonp($state->{data_path}, qw(uri path), $path_name) },
+      abort({ %$state, data_path => jsonp('/request/uri/path', $path_name) },
           'missing path parameter specification for "%s"', $path_name)
         if not exists(($request_parameters_processed->{path}//{})->{$path_name});
     }
@@ -162,18 +162,18 @@ sub validate_request ($self, $request, $options = {}) {
 
     # RFC9112 §6.2-2: A sender MUST NOT send a Content-Length header field in any message that
     # contains a Transfer-Encoding header field.
-    ()= E({ %$state, data_path => jsonp($state->{data_path}, 'header', 'Content-Length') },
+    ()= E({ %$state, data_path => '/request/header/Content-Length', },
         'Content-Length cannot appear together with Transfer-Encoding')
       if defined $request->headers->content_length and $request->content->is_chunked;
 
     # RFC9112 §6.3-7: A user agent that sends a request that contains a message body MUST send
     # either a valid Content-Length header field or use the chunked transfer coding.
-    ()= E({ %$state, data_path => jsonp($state->{data_path}, 'header'),
+    ()= E({ %$state, data_path => '/request/header',
         recommended_response => [ 411, 'Length Required' ] }, 'missing header: Content-Length')
       if $request->body_size and not $request->headers->content_length
         and not $request->content->is_chunked;
 
-    $state->{data_path} = jsonp($state->{data_path}, 'body');
+    $state->{data_path} = '/request/body';
 
     if (my $body_obj = $operation->{requestBody}) {
       $state->{schema_path} = jsonp($state->{schema_path}, 'requestBody');
@@ -242,25 +242,25 @@ sub validate_response ($self, $response, $options = {}) {
     $response = _convert_response($response);   # now guaranteed to be a Mojo::Message::Response
 
     if ($response->headers->header('Transfer-Encoding')) {
-      ()= E({ %$state, data_path => jsonp($state->{data_path}, qw(header Transfer-Encoding)) },
+      ()= E({ %$state, data_path => '/response/header/Transfer-Encoding' },
         'RFC9112 §6.1-10: A server MUST NOT send a Transfer-Encoding header field in any response with a status code of 1xx (Informational) or 204 (No Content)')
         if $response->is_info or $response->code == 204;
 
       # connect method is not supported in openapi 3.1.0, but this may be possible in the future
-      ()= E({ %$state, data_path => jsonp($state->{data_path}, qw(header Transfer-Encoding)) },
+      ()= E({ %$state, data_path => '/response/header/Transfer-Encoding' },
         'RFC9112 §6.1-10: A server MUST NOT send a Transfer-Encoding header field in any 2xx (Successful) response to a CONNECT request')
         if $response->is_success and $method eq 'connect';
     }
 
     # RFC9112 §6.2-2: A sender MUST NOT send a Content-Length header field in any message that
     # contains a Transfer-Encoding header field.
-    ()= E({ %$state, data_path => jsonp($state->{data_path}, 'header', 'Content-Length') },
+    ()= E({ %$state, data_path => '/response/header/Content-Length' },
         'Content-Length cannot appear together with Transfer-Encoding')
       if defined $response->headers->content_length and $response->content->is_chunked;
 
     # RFC9112 §6.3-7: A user agent that sends a request that contains a message body MUST send
     # either a valid Content-Length header field or use the chunked transfer coding.
-    ()= E({ %$state, data_path => jsonp($state->{data_path}, 'header') }, 'missing header: Content-Length')
+    ()= E({ %$state, data_path => '/response/header' }, 'missing header: Content-Length')
       if $response->body_size and not $response->headers->content_length
         and not $response->content->is_chunked;
 
@@ -293,11 +293,11 @@ sub validate_response ($self, $response, $options = {}) {
       }
 
       ()= $self->_validate_header_parameter({ %$state,
-          data_path => jsonp($state->{data_path}, 'header', $header_name), depth => $state->{depth}+1 },
+          data_path => jsonp('/response/header', $header_name), depth => $state->{depth}+1 },
         $header_name, $header_obj, $response->headers);
     }
 
-    $self->_validate_body_content({ %$state, data_path => jsonp($state->{data_path}, 'body'), depth => $state->{depth}+1 },
+    $self->_validate_body_content({ %$state, data_path => '/response/body', depth => $state->{depth}+1 },
         $response_obj->{content}, $response)
       if exists $response_obj->{content} and $response->headers->content_length // $response->body_size;
   }
