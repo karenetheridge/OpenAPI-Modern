@@ -1231,6 +1231,41 @@ An accessor that delegates to L<JSON::Schema::Modern/get_media_type>.
 
 A setter that delegates to L<JSON::Schema::Modern/add_media_type>.
 
+=head1 CACHING
+
+=for stopwords preforking
+
+Very large OpenAPI documents may take a noticeable time to be
+loaded and parsed. You can reduce the impact to your preforking application by loading all necessary
+documents at startup, and impact can be further reduced by saving objects to cache and then
+reloading them (perhaps by using a timestamp or checksum to determine if a fresh reload is needed).
+
+  sub get_openapi (...) {
+    my $serialized_file = Path::Tiny::path($serialized_filename);
+    my $openapi_file = Path::Tiny::path($openapi_filename);
+    my $openapi;
+    if ($serialized_file->stat->mtime < $openapi_file->stat->mtime)) {
+      $openapi = OpenAPI::Modern->new(
+        openapi_uri => '/api',
+        openapi_schema => decode_json($openapi_file->slurp_raw), # your openapi document
+      );
+      $openapi->evaluator->add_schema(decode_json(...));  # any other needed schemas
+      my $frozen = Sereal::Encoder->new({ freeze_callbacks => 1 })->encode($openapi);
+      $serialized_file->spew_raw($frozen);
+    }
+    else {
+      my $frozen = $serialized_file->slurp_raw;
+      $openapi = Sereal::Decoder->new->decode($frozen);
+    }
+
+    # add custom format validations, media types and encodings here
+    $openapi->evaluator->add_media_type(...);
+
+    return $openapi;
+  }
+
+See also L<JSON::Schema::Modern/CACHING>.
+
 =head1 ON THE USE OF JSON SCHEMAS
 
 Embedded JSON Schemas, through the use of the C<schema> keyword, are fully draft2020-12-compliant,
