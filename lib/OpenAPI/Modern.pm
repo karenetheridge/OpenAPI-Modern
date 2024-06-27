@@ -334,7 +334,7 @@ sub find_path ($self, $options, $state = {}) {
   # method from options
   if (exists $options->{method}) {
     $method = lc $options->{method};
-    return E({ %$state, data_path => '/request/method' }, 'wrong HTTP method %s', $options->{request}->method)
+    return E({ %$state, data_path => '/request/method' }, 'wrong HTTP method "%s"', $options->{request}->method)
       if $options->{request} and lc $options->{request}->method ne $method;
   }
   elsif ($options->{request}) {
@@ -363,7 +363,7 @@ sub find_path ($self, $options, $state = {}) {
       if exists $options->{path_template} and $options->{path_template} ne $path_template;
 
     return E({ %$state, data_path => '/request/method', schema_path => $operation_path },
-        'wrong HTTP method %s', $options->{method})
+        'wrong HTTP method "%s"', $options->{method})
       if $options->{method} and lc $options->{method} ne $method;
 
     $options->{method} = lc $method;
