@@ -579,7 +579,7 @@ YAML
     'find_path returns successfully');
   cmp_result(
     $options,
-    {
+    $expected = {
       request => isa('Mojo::Message::Request'),
       method => 'get',
       path_template => '/foo/{foo_id}',
@@ -595,16 +595,7 @@ YAML
   ok($openapi->find_path($options = { request => request('GET', $uri) }), 'find_path returns successfully');
   cmp_result(
     $options,
-    {
-      request => isa('Mojo::Message::Request'),
-      operation_id => 'my-get-path',
-      path_captures => { foo_id => 'hello // there ಠ_ಠ!' },
-      path_template => '/foo/{foo_id}',
-      method => 'get',
-      _path_item => { get => ignore },
-      operation_uri => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get))),
-      errors => [],
-    },
+    $expected,
     'path captures can be properly extracted from the URI when some values are url-escaped',
   );
 
@@ -632,7 +623,7 @@ YAML
   ok($openapi->find_path($options = { request => $request }), 'find_path returns successfully');
   cmp_result(
     $options,
-    my $got_options = {
+    $expected = {
       request => isa('Mojo::Message::Request'),
       path_captures => {},
       path_template => '/foo/bar',
@@ -667,14 +658,14 @@ YAML
   ok($openapi->find_path($options = { request => $request, operation_id => 'concrete-foo-bar' }), 'find_path returns successfully');
   cmp_result(
     $options,
-    { %$got_options, request => isa('Mojo::Message::Request') },
+    $expected,
     'inferred (correct) path_template matches request uri',
   );
 
   $request = request('GET', 'http://example.com/foo/x.bar');
   ok($openapi->find_path($options = { request => $request }), 'find_path returns successfully');
   cmp_result(
-    $got_options = $options,
+    my $got_options = $options,
     {
       request => isa('Mojo::Message::Request'),
       path_captures => { foo_id => 'x' },
@@ -770,7 +761,7 @@ YAML
   ok($openapi->find_path($options = { request => $request }), 'find_path can match an empty uri path');
   cmp_result(
     $options,
-    {
+    $expected = {
       request => isa('Mojo::Message::Request'),
       path_template => '/',
       path_captures => {},
@@ -786,15 +777,7 @@ YAML
    'find_path can match an empty uri path when passed path_template');
   cmp_result(
     $options,
-    {
-      request => isa('Mojo::Message::Request'),
-      path_template => '/',
-      path_captures => {},
-      method => 'get',
-      _path_item => { get => ignore },
-      operation_uri => $doc_uri_rel->clone->fragment(jsonp(qw(/paths / get))),
-      errors => [],
-    },
+    $expected,
     'provided path_template verified against request uri',
   );
 };
