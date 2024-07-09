@@ -119,7 +119,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/uri/path',
+          instanceLocation => '/request',
           keywordLocation => jsonp(qw(/paths /foo/bar)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
           error => 'templated operation does not match provided operation_id',
@@ -135,7 +135,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/uri/path',
+          instanceLocation => '/request',
           keywordLocation => '/components/pathItems/my_path_item',
           absoluteKeywordLocation => $doc_uri->clone->fragment('/components/pathItems/my_path_item')->to_string,
           error => 'operation at operation_id does not match provided path_template',
@@ -151,7 +151,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/uri/path',
+          instanceLocation => '/request',
           keywordLocation => jsonp(qw(/paths /foo/bar)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
           error => 'templated operation does not match provided operation_id',
@@ -167,7 +167,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/uri/path',
+          instanceLocation => '/request',
           keywordLocation => jsonp(qw(/paths /foo/bar)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
           error => 'templated operation does not match provided operation_id',
@@ -183,7 +183,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/uri/path',
+          instanceLocation => '/request',
           keywordLocation => jsonp(qw(/paths /foo/bar)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
           error => 'templated operation does not match provided operation_id',

@@ -283,7 +283,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/uri/path',
+          instanceLocation => '/response',
           keywordLocation => '/components/pathItems/my_path_item',
           absoluteKeywordLocation => $doc_uri_rel->clone->fragment('/components/pathItems/my_path_item')->to_string,
           error => 'operation at operation_id does not match provided path_template',

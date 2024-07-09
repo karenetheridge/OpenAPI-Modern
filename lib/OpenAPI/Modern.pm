@@ -87,7 +87,8 @@ sub validate_request ($self, $request, $options = {}) {
   croak '$request and $options->{request} are inconsistent'
     if $options->{request} and $request != $options->{request};
 
-  my $state = {}; # populated by find_path
+  # mostly populated by find_path
+  my $state = { data_path => '/request' };
 
   try {
     $options->{request} //= $request;
@@ -101,7 +102,6 @@ sub validate_request ($self, $request, $options = {}) {
     # of response is likely to leave oversights in the specification go unnoticed.
     return $self->_result($state, 1) if not $path_ok;
 
-    $state->{data_path} = '/request';
     $request = $options->{request};   # now guaranteed to be a Mojo::Message::Request
 
     my $method = lc $request->method;
@@ -221,7 +221,8 @@ sub validate_response ($self, $response, $options = {}) {
     $options->{request} //= $request;
   }
 
-  my $state = {}; # populated by find_path
+  # mostly populated by find_path
+  my $state = { data_path => '/response' };
 
   try {
     # FIXME: if the operation is shared by multiple paths, path_template may not be inferrable, and
@@ -237,8 +238,6 @@ sub validate_response ($self, $response, $options = {}) {
     return $self->_result($state, 0, 1) if not exists $operation->{responses};
 
     $state->{schema_path} = jsonp($state->{schema_path}, $method);
-    $state->{data_path} = '/response';
-
     $response = _convert_response($response);   # now guaranteed to be a Mojo::Message::Response
 
     if ($response->headers->header('Transfer-Encoding')) {
@@ -318,7 +317,7 @@ sub validate_response ($self, $response, $options = {}) {
 }
 
 sub find_path ($self, $options, $state = {}) {
-  $state->{data_path} = '/request/uri/path';
+  $state->{data_path} //= '';
   $state->{initial_schema_uri} = $self->openapi_uri;   # the canonical URI as of the start or last $id, or the last traversed $ref
   $state->{traversed_schema_path} = '';    # the accumulated traversal path as of the start, or last $id, or up to the last traversed $ref
   $state->{schema_path} = '';              # the rest of the path, since the last $id or the last traversed $ref
@@ -358,7 +357,7 @@ sub find_path ($self, $options, $state = {}) {
     # FIXME: what if the operation is defined in another document? Need to look it up across
     # all documents, and localize $state->{initial_schema_uri}
     my $operation_path = $self->openapi_document->get_operationId_path($options->{operation_id});
-    return E({ %$state, keyword => 'paths' }, 'unknown operation_id "%s"', $options->{operation_id})
+    return E($state, 'unknown operation_id "%s"', $options->{operation_id})
       if not $operation_path;
 
     my @bits = unjsonp($operation_path);
@@ -403,7 +402,7 @@ sub find_path ($self, $options, $state = {}) {
   if (exists $options->{path_template}) {
     $path_template = $options->{path_template};
 
-    return E({ %$state, keyword => 'paths' }, 'missing path-item "%s"', $path_template)
+    return E({ %$state, data_path => '/request/uri/path', keyword => 'paths' }, 'missing path-item "%s"', $path_template)
       if not exists $schema->{paths}{$path_template};
 
     # FIXME: follow $ref chain in path-item; we may have already determined path_item above
@@ -461,12 +460,12 @@ sub find_path ($self, $options, $state = {}) {
       my @capture_names = ($path_template =~ m!\{([^}]+)\}!g);
 
       if (exists $options->{path_captures}) {
-        return E($state, 'provided path_captures names do not match path template "%s"', $path_template)
+        return E({ %$state, $options->{request} ? ( data_path => '/request/uri/path' ) : () }, 'provided path_captures names do not match path template "%s"', $path_template)
           if not is_equal([ sort keys $options->{path_captures}->%* ], [ sort @capture_names ]);
 
         # $equal_state will contain { path => '/0' } indicating the index of the mismatch
         if (not is_equal([ $options->{path_captures}->@{@capture_names} ], \@capture_values, my $equal_state = { stringy_numbers => 1 })) {
-          return E($state, 'provided path_captures values do not match request URI (value for %s differs)', $capture_names[substr($equal_state->{path}, 1)]);
+          return E({ %$state, data_path => '/request/uri/path' }, 'provided path_captures values do not match request URI (value for %s differs)', $capture_names[substr($equal_state->{path}, 1)]);
         }
       }
       else {
@@ -481,7 +480,7 @@ sub find_path ($self, $options, $state = {}) {
       return 1;
     }
 
-    return E({ %$state, keyword => 'paths' }, 'no match found for request URI "%s"',
+    return E({ %$state, data_path => '/request/uri/path', keyword => 'paths' }, 'no match found for request URI "%s"',
       $options->{request}->url->clone->query(undef)->fragment(undef));
   }
 
@@ -506,7 +505,7 @@ sub find_path ($self, $options, $state = {}) {
   # note: we aren't doing anything special with escaped slashes. this bit of the spec is hazy.
   # { for the editor
   my @capture_names = ($path_template =~ m!\{([^}]+)\}!g);
-  return E($state, 'provided path_captures names do not match path template "%s"', $path_template)
+  return E({ %$state, $options->{request} ? ( data_path => '/request/uri/path' ) : () }, 'provided path_captures names do not match path template "%s"', $path_template)
     if exists $options->{path_captures}
       and not is_equal([ sort keys $options->{path_captures}->%* ], [ sort @capture_names ]);
 
@@ -530,7 +529,8 @@ sub find_path ($self, $options, $state = {}) {
 
   if ($uri_path !~ m/^$path_pattern$/) {
     delete $options->@{qw(operation_id operation_uri _path_item)};
-    return E($state, 'provided %s does not match request URI', exists $options->{path_template} ? 'path_template' : 'operation_id');
+    return E({ %$state, data_path => '/request/uri/path' }, 'provided %s does not match request URI',
+      exists $options->{path_template} ? 'path_template' : 'operation_id');
   }
 
   # perldoc perlvar, @-: $n coincides with "substr $_, $-[n], $+[n] - $-[n]" if "$-[n]" is defined
@@ -541,7 +541,7 @@ sub find_path ($self, $options, $state = {}) {
   if (exists $options->{path_captures}) {
     # $equal_state will contain { path => '/0' } indicating the index of the mismatch
     if (not is_equal([ $options->{path_captures}->@{@capture_names} ], \@capture_values, my $equal_state = { stringy_numbers => 1 })) {
-      return E($state, 'provided path_captures values do not match request URI (value for %s differs)', $capture_names[substr($equal_state->{path}, 1)]);
+      return E({ %$state, data_path => '/request/uri/path' }, 'provided path_captures values do not match request URI (value for %s differs)', $capture_names[substr($equal_state->{path}, 1)]);
     }
   }
   else {

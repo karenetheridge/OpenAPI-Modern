@@ -156,9 +156,9 @@ YAML
       operation_id => 'bloop',
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/uri/path',
-          keywordLocation => '/paths',
-          absoluteKeywordLocation => $doc_uri->clone->fragment('/paths')->to_string,
+          instanceLocation => '',
+          keywordLocation => '',
+          absoluteKeywordLocation => $doc_uri->to_string,
           error => 'unknown operation_id "bloop"',
         }),
       ],
@@ -199,7 +199,7 @@ YAML
       operation_id => 'my-get-operation',
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/uri/path',
+          instanceLocation => '',
           keywordLocation => jsonp(qw(/paths /foo/bar)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
           error => 'operation at operation_id does not match provided path_template',
@@ -425,7 +425,7 @@ YAML
       operation_id => 'my-post-operation',
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/uri/path',
+          instanceLocation => '',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id})),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
           error => 'operation at operation_id does not match provided path_template',
@@ -925,7 +925,7 @@ YAML
       operation_id => 'my_components_pathItem_operation',
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/uri/path',
+          instanceLocation => '',
           keywordLocation => jsonp(qw(/paths /foo/bar)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
           error => 'templated operation does not match provided operation_id',
@@ -946,7 +946,7 @@ YAML
       operation_id => 'my_components_pathItem_operation',
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/uri/path',
+          instanceLocation => '',
           keywordLocation => '/components/pathItems/my_path_item',
           absoluteKeywordLocation => $doc_uri->clone->fragment('/components/pathItems/my_path_item')->to_string,
           error => 'operation at operation_id does not match provided path_template',
@@ -968,7 +968,7 @@ YAML
       operation_id => 'my_webhook_operation',
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/uri/path',
+          instanceLocation => '',
           keywordLocation => jsonp(qw(/paths /foo/bar)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
           error => 'templated operation does not match provided operation_id',
@@ -990,7 +990,7 @@ YAML
       operation_id => 'my_paths_pathItem_callback_operation',
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/uri/path',
+          instanceLocation => '',
           keywordLocation => jsonp(qw(/paths /foo/bar)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
           error => 'templated operation does not match provided operation_id',
@@ -1012,7 +1012,7 @@ YAML
       operation_id => 'my_components_pathItem_callback_operation',
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/uri/path',
+          instanceLocation => '',
           keywordLocation => jsonp(qw(/paths /foo/bar)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
           error => 'templated operation does not match provided operation_id',
@@ -1157,7 +1157,7 @@ YAML
       operation_uri => str($doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get)))),
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/uri/path',
+          instanceLocation => '',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id})),
           absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
           error => 'provided path_captures names do not match path template "/foo/{foo_id}"',
@@ -1253,9 +1253,9 @@ YAML
       operation_id => 'bloop',
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/uri/path',
-          keywordLocation => '/paths',
-          absoluteKeywordLocation => $doc_uri_rel->clone->fragment('/paths')->to_string,
+          instanceLocation => '',
+          keywordLocation => '',
+          absoluteKeywordLocation => $doc_uri_rel->to_string,
           error => 'unknown operation_id "bloop"',
         }),
       ],
@@ -1272,7 +1272,7 @@ YAML
       operation_id => 'my-get-operation',
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/uri/path',
+          instanceLocation => '',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id})),
           absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
           error => 'operation at operation_id does not match provided path_template',
@@ -1348,7 +1348,7 @@ YAML
       operation_id => 'my_components_pathItem_operation',
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/uri/path',
+          instanceLocation => '',
           keywordLocation => '/components/pathItems/my_path_item',
           absoluteKeywordLocation => $doc_uri_rel->clone->fragment('/components/pathItems/my_path_item')->to_string,
           error => 'operation at operation_id does not match provided path_template',
