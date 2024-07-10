@@ -105,7 +105,7 @@ YAML
         }),
       ],
     },
-    'unsuccessful path extraction results in the error being returned in the options hash; correct URI scheme is used in errors',
+    'provided path_template does not exist in /paths; URI scheme is correctly used',
   );
 
   $request = request('GET', 'http://example.com/foo/bar');
@@ -127,7 +127,7 @@ YAML
         }),
       ],
     },
-    'path template does not exist under /paths',
+    'operation_id does not exist',
   );
 
   ok(!$openapi->find_path($options = { request => $request, operation_id => 'hooky', path_captures => {} }),
@@ -258,7 +258,7 @@ YAML
         }),
       ],
     },
-    'path template does not match path captures',
+    'provided path template names do not match path capture names',
   );
 
   ok($openapi->find_path($options = { request => request('GET', 'http://example.com/foo/bar'),
@@ -276,7 +276,7 @@ YAML
       operation_uri => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/bar get))),
       errors => [],
     },
-    'path_template and operation_id can both be passed, if consistent',
+    'path_template, operation_id and path_captures can all be passed, if consistent',
   );
 
   ok(!$openapi->find_path($options = { request => request('GET', 'http://example.com/something/else'),
@@ -300,7 +300,7 @@ YAML
         }),
       ],
     },
-    'path_template is not consistent with request URI, with no captures',
+    'concrete path_template is not consistent with request URI, with no captures',
   );
 
   ok(!$openapi->find_path($options = { request => $request = request('POST', 'http://example.com/something/else'),
@@ -346,7 +346,7 @@ YAML
         }),
       ],
     },
-    'path_template is not consistent with request URI, captures not provided',
+    'path_template with variables is not consistent with request URI, captures not provided',
   );
 
   ok(!$openapi->find_path($options = { request => request('GET', 'http://example.com/something/else'),
@@ -506,7 +506,7 @@ YAML
   cmp_result(
     $options,
     $expected,
-    'path_capture values are returned as-is in the provided options hash',
+    'path_capture values are returned as-is (even ambiguous type) in the provided options hash',
   );
   # on perls >= 5.35.9, reading the string form of an integer value no longer sets the flag SVf_POK
   is(
@@ -728,7 +728,7 @@ YAML
       operation_uri => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get))),
       errors => [],
     },
-    'no path_template provided; no operation_id is recorded, because one does not exist in the schema document',
+    'no path_template provided, but is inferred; no operation_id is recorded, because one does not exist in the schema document',
   );
 
   ok($openapi->find_path($options = { request => $request, path_template => '/foo/{foo_id}' }),
@@ -770,7 +770,7 @@ YAML
       operation_uri => $doc_uri_rel->clone->fragment(jsonp(qw(/paths / get))),
       errors => [],
     },
-    'path_template inferred from request uri',
+    'path_template inferred from request uri; empty path maps to /',
   );
 
   ok($openapi->find_path($options = { request => $request, path_template => '/' }),
