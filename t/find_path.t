@@ -256,7 +256,7 @@ YAML
   );
 
   ok($openapi->find_path($options = { request => request('GET', 'http://example.com/foo/bar'),
-      path_template => '/foo/bar', operation_id => 'my-get-path', path_captures => {} }),
+      path_template => '/foo/bar', method => 'get', operation_id => 'my-get-path', path_captures => {} }),
     'find_path returns successfully');
   cmp_result(
     $options,
@@ -270,7 +270,7 @@ YAML
       operation_uri => str($doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/bar get)))),
       errors => [],
     },
-    'path_template, operation_id and path_captures can all be passed, if consistent',
+    'path_template, method, operation_id and path_captures can all be passed, if consistent',
   );
 
   ok(!$openapi->find_path($options = { request => request('GET', 'http://example.com/something/else'),
