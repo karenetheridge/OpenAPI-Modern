@@ -75,12 +75,12 @@ $openapi_preamble
 paths:
   /foo/{foo_id}:
     post:
-      operationId: my-post-path
+      operationId: my-post-operation
   /foo/bar:
     get:
-      operationId: my-get-path
+      operationId: my-get-operation
     post:
-      operationId: another-post-path
+      operationId: another-post-operation
 webhooks:
   my_hook:
     description: I like webhooks
@@ -173,7 +173,7 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { request => $request = request('POST', 'http://example.com/foo/bar'),
-      path_template => '/foo/{foo_id}', operation_id => 'my-get-path' }),
+      path_template => '/foo/{foo_id}', operation_id => 'my-get-operation' }),
     'find_path returns false');
   cmp_result(
     $options,
@@ -181,7 +181,7 @@ YAML
       request => isa('Mojo::Message::Request'),
       method => 'post',
       path_template => '/foo/{foo_id}',
-      operation_id => 'my-get-path',
+      operation_id => 'my-get-operation',
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/uri/path',
@@ -194,7 +194,7 @@ YAML
     'path_template and operation_id are inconsistent',
   );
 
-  ok(!$openapi->find_path($options = { request => $request, operation_id => 'my-get-path' }),
+  ok(!$openapi->find_path($options = { request => $request, operation_id => 'my-get-operation' }),
     'find_path returns false');
   cmp_result(
     $options,
@@ -242,7 +242,7 @@ YAML
       path_template => '/foo/bar',
       path_captures => {},
       _path_item => { get => ignore, post => ignore },
-      operation_id => 'another-post-path',
+      operation_id => 'another-post-operation',
       operation_uri => str($doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/bar post)))),
       errors => [],
     },
@@ -274,7 +274,7 @@ YAML
   );
 
   ok($openapi->find_path($options = { request => request('GET', 'http://example.com/foo/bar'),
-      path_template => '/foo/bar', method => 'get', operation_id => 'my-get-path', path_captures => {} }),
+      path_template => '/foo/bar', method => 'get', operation_id => 'my-get-operation', path_captures => {} }),
     'find_path returns successfully');
   cmp_result(
     $options,
@@ -283,7 +283,7 @@ YAML
       method => 'get',
       path_template => '/foo/bar',
       path_captures => {},
-      operation_id => 'my-get-path',
+      operation_id => 'my-get-operation',
       _path_item => { get => ignore, post => ignore },
       operation_uri => str($doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/bar get)))),
       errors => [],
@@ -358,7 +358,7 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { request => request('GET', 'http://example.com/something/else'),
-      operation_id => 'my-get-path' }),
+      operation_id => 'my-get-operation' }),
     'find_path returns false');
   cmp_result(
     $options,
@@ -378,7 +378,7 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { request => request('POST', 'http://example.com/foo/123'),
-      operation_id => 'another-post-path' }),
+      operation_id => 'another-post-operation' }),
     'find_path returns false');
   cmp_result(
     $options,
@@ -400,7 +400,7 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { request => request('POST', 'http://example.com/foo/hello'),
-      operation_id => 'my-post-path', path_captures => { foo_id => 'goodbye' } }),
+      operation_id => 'my-post-operation', path_captures => { foo_id => 'goodbye' } }),
     'find_path returns false');
   cmp_result(
     $options,
@@ -408,7 +408,7 @@ YAML
       request => isa('Mojo::Message::Request'),
       method => 'post',
       path_captures => { foo_id => 'goodbye' },
-      operation_id => 'my-post-path',
+      operation_id => 'my-post-operation',
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/uri/path',
@@ -422,7 +422,7 @@ YAML
   );
 
   ok($openapi->find_path($options = { request => request('POST', 'http://example.com/foo/123'),
-      operation_id => 'my-post-path', path_captures => { foo_id => 123 } }),
+      operation_id => 'my-post-operation', path_captures => { foo_id => 123 } }),
     'find_path returns successfully');
   cmp_result(
     $options,
@@ -432,7 +432,7 @@ YAML
       path_captures => { foo_id => 123 },
       path_template => '/foo/{foo_id}',
       _path_item => { post => ignore },
-      operation_id => 'my-post-path',
+      operation_id => 'my-post-operation',
       operation_uri => str($doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/{foo_id} post)))),
       errors => [],
     },
@@ -480,7 +480,7 @@ $openapi_preamble
 paths:
   /foo/{foo_id}:
     get:
-      operationId: my-get-path
+      operationId: my-get-operation
 YAML
 
   ok($openapi->find_path($options = { request => $request = request('GET', 'http://example.com/foo/123') }),
@@ -492,7 +492,7 @@ YAML
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => '123' },
       method => 'get',
-      operation_id => 'my-get-path',
+      operation_id => 'my-get-operation',
       _path_item => { get => ignore },
       operation_uri => str($doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get)))),
       errors => [],
@@ -552,7 +552,7 @@ YAML
   );
   is(get_type($options->{path_captures}{foo_id}), 'integer', 'passed-in path value is preserved as a number');
 
-  ok($openapi->find_path($options = { request => $request, operation_id => 'my-get-path' }),
+  ok($openapi->find_path($options = { request => $request, operation_id => 'my-get-operation' }),
     'find_path returns successfully');
   cmp_result(
     $options,
@@ -614,7 +614,7 @@ YAML
       path_captures => { foo_id => 'hello // there ಠ_ಠ!' },
       _path_item => { get => ignore },
       operation_uri => str($doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get)))),
-      operation_id => 'my-get-path',
+      operation_id => 'my-get-operation',
       errors => [],
     },
     'path_capture values are found to be consistent with the URI when some values are url-escaped',
@@ -816,7 +816,7 @@ $openapi_preamble
 paths:
   /foo/{foo_id}:
     get:
-      operationId: my-get-path
+      operationId: my-get-operation
 YAML
 
   like(
@@ -825,7 +825,7 @@ YAML
     'method can only be derived from request or operation_id',
   );
 
-  ok(!$openapi->find_path(my $options = { operation_id => 'my-get-path', method => 'POST', path_captures => {} }),
+  ok(!$openapi->find_path(my $options = { operation_id => 'my-get-operation', method => 'POST', path_captures => {} }),
     'find_path returns false');
   cmp_result(
     $options,
@@ -889,11 +889,11 @@ YAML
     'no request provided; path template does not match path captures',
   );
 
-  ok($openapi->find_path($options = { operation_id => 'my-get-path', path_captures => { foo_id => 'a' } }), 'find_path succeeded');
+  ok($openapi->find_path($options = { operation_id => 'my-get-operation', path_captures => { foo_id => 'a' } }), 'find_path succeeded');
   cmp_result(
     $options,
     {
-      operation_id => 'my-get-path',
+      operation_id => 'my-get-operation',
       path_captures => { foo_id => 'a' },
       path_template => '/foo/{foo_id}',
       method => 'get',
@@ -908,7 +908,7 @@ YAML
   cmp_result(
     $options,
     {
-      operation_id => 'my-get-path',
+      operation_id => 'my-get-operation',
       path_captures => { foo_id => 'a' },
       path_template => '/foo/{foo_id}',
       method => 'get',
