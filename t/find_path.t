@@ -62,6 +62,7 @@ YAML
 };
 
 my $type_index = 0;
+my $lots_of_options;  # populated lower down, and used in multiple subtests
 
 START:
 $::TYPE = $::TYPES[$type_index];
@@ -81,11 +82,6 @@ paths:
       operationId: my-get-operation
     post:
       operationId: another-post-operation
-webhooks:
-  my_hook:
-    description: I like webhooks
-    post:
-      operationId: hooky
 YAML
 
   my $request = request('GET', 'gopher://example.com/foo/bar');
@@ -128,26 +124,6 @@ YAML
       ],
     },
     'operation_id does not exist',
-  );
-
-  ok(!$openapi->find_path($options = { request => $request, operation_id => 'hooky' }),
-    'find_path returns false');
-  cmp_result(
-    $options,
-    {
-      request => isa('Mojo::Message::Request'),
-      method => 'get',
-      operation_id => 'hooky',
-      errors => [
-        methods(TO_JSON => {
-          instanceLocation => '/request/uri/path',
-          keywordLocation => '/webhooks/my_hook/post/operationId',
-          absoluteKeywordLocation => $doc_uri->clone->fragment('/webhooks/my_hook/post/operationId')->to_string,
-          error => 'operation id does not have an associated path',
-        }),
-      ],
-    },
-    'path template does not exist under /paths',
   );
 
   ok(!$openapi->find_path($options = { request => request('PUT', 'http://example.com/foo/bloop') }),
@@ -806,6 +782,103 @@ YAML
     $expected,
     'provided path_template verified against request uri',
   );
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => '/api',
+    openapi_schema => $lots_of_options = $yamlpp->load_string(<<YAML));
+$openapi_preamble
+components:
+  pathItems:
+    my_path_item:
+      description: good luck finding a path_template
+      post:
+        operationId: my_components_pathItem_operation
+        callbacks:
+          my_callback:
+            '{\$request.query.queryUrl}': # note this is a path-item
+              post:
+                operationId: my_components_pathItem_callback_operation
+    my_path_item2:
+      description: this should be useable, as it is \$ref'd by a /paths/<template> path item
+      post:
+        operationId: my_reffed_component_operation
+paths:
+  /foo: {}  # TODO: \$ref to #/components/pathItems/my_path_item2
+  /foo/bar:
+    post: {}
+webhooks:
+  my_hook:  # note this is a path-item
+    description: good luck here too
+    post:
+      operationId: my_webhook_operation
+YAML
+
+  $request = request('POST', 'http://example.com/foo/bar');
+  ok(!$openapi->find_path($options = { request => $request, operation_id => 'my_components_pathItem_operation' }),
+    'find_path returns false');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      method => 'post',
+      operation_id => 'my_components_pathItem_operation',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '/request/uri/path',
+          keywordLocation => '/components/pathItems/my_path_item/post/operationId',
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/pathItems/my_path_item/post/operationId')->to_string,
+          error => 'operation id does not have an associated path',
+        }),
+      ],
+    },
+    'operation is not under a path-item with a path template',
+  );
+
+  # TODO: the operation is valid, but the /paths/<template> would have to $ref to the webhook
+  ok(!$openapi->find_path($options = { request => $request, operation_id => 'my_webhook_operation' }),
+    'find_path returns false');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      method => 'post',
+      operation_id => 'my_webhook_operation',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '/request/uri/path',
+          keywordLocation => '/webhooks/my_hook/post/operationId',
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/webhooks/my_hook/post/operationId')->to_string,
+          error => 'operation id does not have an associated path',
+        }),
+      ],
+    },
+    'operation is not under a path-item with a path template',
+  );
+
+  ok(!$openapi->find_path($options = { request => $request, operation_id => 'my_components_pathItem_callback_operation' }),
+    'find_path returns false');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      method => 'post',
+      operation_id => 'my_components_pathItem_callback_operation',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '/request/uri/path',
+          keywordLocation => '/components/pathItems/my_path_item/post/callbacks/my_callback/{$request.query.queryUrl}/post/operationId',
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/pathItems/my_path_item/post/callbacks/my_callback/{$request.query.queryUrl}/post/operationId')->to_string,
+          error => 'operation id does not have an associated path',
+        }),
+      ],
+    },
+    'operation is not under a path-item with a path template',
+  );
+
+  # TODO test: operation exists, under paths, but not directly ($ref) - should be usable,
+  # we need to make sure that the URI matches the path_template above all the $refs.
+  # the destination path-item could be under /components/path_items or /webhooks.
 };
 
 subtest 'no request is provided: options are relied on as the sole source of truth' => sub {
@@ -939,6 +1012,57 @@ YAML
     'no request provided; operation does not exist for path-item',
   );
 
+  ok($openapi->find_path($options = { operation_id => 'my-get-operation' }), 'find_path succeeds');
+  cmp_result(
+    $options,
+    {
+      operation_id => 'my-get-operation',
+      operation_uri => str($doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get)))),
+      _path_item => { get => ignore },
+      # note: no path_captures
+      path_template => '/foo/{foo_id}',
+      method => 'get',
+      errors => [],
+    },
+    'method and path_item are derived from operation_id; path_captures is not found',
+  );
+
+  ok(!$openapi->find_path($options = { operation_id => 'bloop' }), 'find_path returns false');
+  cmp_result(
+    $options,
+    {
+      operation_id => 'bloop',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '/request/uri/path',
+          keywordLocation => '/paths',
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment('/paths')->to_string,
+          error => 'unknown operation_id "bloop"',
+        }),
+      ],
+    },
+    'operation id does not exist',
+  );
+
+  ok(!$openapi->find_path($options = { path_template => '/foo', operation_id => 'my-get-operation' }),
+    'find_path returns false');
+  cmp_result(
+    $options,
+    {
+      path_template => '/foo',
+      operation_id => 'my-get-operation',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '/request/uri/path',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id})),
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
+          error => 'operation does not match provided path_template',
+        }),
+      ],
+    },
+    'path_template and operation_id are inconsistent',
+  );
+
 
   $openapi = OpenAPI::Modern->new(
     openapi_uri => '/api',
@@ -980,6 +1104,72 @@ YAML
     },
     'method option is uppercased',
   );
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => '/api',
+    openapi_schema => $lots_of_options,
+  );
+
+  # TODO: this should be valid, even without the existence of a path_template
+  ok(!$openapi->find_path($options = { operation_id => 'my_components_pathItem_operation' }),
+    'find_path returns false');
+  cmp_result(
+    $options,
+    {
+      operation_id => 'my_components_pathItem_operation',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '/request/uri/path',
+          keywordLocation => '/components/pathItems/my_path_item/post/operationId',
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment('/components/pathItems/my_path_item/post/operationId')->to_string,
+          error => 'operation id does not have an associated path',
+        }),
+      ],
+    },
+    'operation is not under a path-item with a path template',
+  );
+
+  # TODO: this should be valid, even without the existence of a path_template
+  ok(!$openapi->find_path($options = { operation_id => 'my_webhook_operation' }),
+    'find_path returns false');
+  cmp_result(
+    $options,
+    {
+      operation_id => 'my_webhook_operation',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '/request/uri/path',
+          keywordLocation => '/webhooks/my_hook/post/operationId',
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment('/webhooks/my_hook/post/operationId')->to_string,
+          error => 'operation id does not have an associated path',
+        }),
+      ],
+    },
+    'operation is not under a path-item with a path template',
+  );
+
+  # TODO: this should be valid, even without the existence of a path_template
+  ok(!$openapi->find_path($options = { operation_id => 'my_components_pathItem_callback_operation' }),
+    'find_path returns false');
+  cmp_result(
+    $options,
+    {
+      operation_id => 'my_components_pathItem_callback_operation',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '/request/uri/path',
+          keywordLocation => '/components/pathItems/my_path_item/post/callbacks/my_callback/{$request.query.queryUrl}/post/operationId',
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment('/components/pathItems/my_path_item/post/callbacks/my_callback/{$request.query.queryUrl}/post/operationId')->to_string,
+          error => 'operation id does not have an associated path',
+        }),
+      ],
+    },
+    'operation is not under a path-item with a path template',
+  );
+
+  # TODO test: operation exists, under paths, but not directly ($ref) - should be usable,
+  # we need to make sure that the URI matches the path_template above all the $refs.
 };
 
 goto START if ++$type_index < @::TYPES;

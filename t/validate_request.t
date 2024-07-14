@@ -34,6 +34,107 @@ START:
 $::TYPE = $::TYPES[$type_index];
 note 'REQUEST/RESPONSE TYPE: '.$::TYPE;
 
+subtest 'path lookup' => sub {
+  my $openapi = OpenAPI::Modern->new(
+    openapi_uri => '/api',
+    openapi_schema => $yamlpp->load_string(<<YAML));
+$openapi_preamble
+components:
+  pathItems:
+    my_path_item:
+      description: good luck finding a path_template
+      post:
+        operationId: my_components_pathItem_operation
+        callbacks:
+          my_callback:
+            '{\$request.query.queryUrl}': # note this is a path-item
+              post:
+                operationId: my_components_pathItem_callback_operation
+    my_path_item2:
+      description: this should be useable, as it is \$ref'd by a /paths/<template> path item
+      post:
+        operationId: my_reffed_component_operation
+paths:
+  /foo: {}  # TODO: \$ref to #/components/pathItems/my_path_item2
+  /foo/bar: {}
+webhooks:
+  my_hook:  # note this is a path-item
+    description: good luck here too
+    post:
+      operationId: my_webhook_operation
+YAML
+
+  my $request = request('POST', 'http://example.com/foo/bar');
+
+  cmp_result(
+    $openapi->validate_request($request, { operation_id => 'my_components_pathItem_operation' })->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/uri/path',
+          keywordLocation => '/components/pathItems/my_path_item/post/operationId',
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/pathItems/my_path_item/post/operationId')->to_string,
+          error => 'operation id does not have an associated path',
+        },
+      ],
+    },
+    'operation is not under a path-item with a path template',
+  );
+
+  cmp_result(
+    $openapi->validate_request($request, { operation_id => 'my_webhook_operation' })->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/uri/path',
+          keywordLocation => '/webhooks/my_hook/post/operationId',
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/webhooks/my_hook/post/operationId')->to_string,
+          error => 'operation id does not have an associated path',
+        },
+      ],
+    },
+    'operation is not under a path-item with a path template',
+  );
+
+  cmp_result(
+    $openapi->validate_request($request, { operation_id => 'my_components_pathItem_callback_operation' })->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/uri/path',
+          keywordLocation => '/components/pathItems/my_path_item/post/callbacks/my_callback/{$request.query.queryUrl}/post/operationId',
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/pathItems/my_path_item/post/callbacks/my_callback/{$request.query.queryUrl}/post/operationId')->to_string,
+          error => 'operation id does not have an associated path',
+        },
+      ],
+    },
+    'operation is not under a path-item with a path template',
+  );
+
+  # TODO test: operation exists, under paths, but not directly ($ref) - should be usable,
+  # we need to make sure that the URI matches the path_template above all the $refs.
+  # see t/find-path.t
+
+  cmp_result(
+    $openapi->validate_request(request('GET', 'http://example.com/bloop/blah'))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/uri/path',
+          keywordLocation => '/paths',
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/paths')->to_string,
+          error => 'no match found for URI "http://example.com/bloop/blah"',
+        },
+      ],
+    },
+    'no matching entry under /paths for URI',
+  );
+};
+
 subtest 'validation errors, request uri paths' => sub {
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => '/api',
