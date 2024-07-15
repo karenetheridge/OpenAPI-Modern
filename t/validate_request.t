@@ -133,6 +133,22 @@ YAML
     },
     'no matching entry under /paths for URI',
   );
+
+  cmp_result(
+    $openapi->validate_request($request, { path_template => '/foo/baz' })->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/uri/path',
+          keywordLocation => '/paths',
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/paths')->to_string,
+          error => 'missing path-item "/foo/baz"',
+        },
+      ],
+    },
+    'provided path_template does not exist in /paths',
+  );
 };
 
 subtest 'validation errors, request uri paths' => sub {
@@ -150,22 +166,6 @@ paths:
         schema:
           pattern: ^[0-9]+\$
 YAML
-
-  cmp_result(
-    $openapi->validate_request(request('GET', 'http://example.com/foo/bar'), { path_template => '/foo/baz' })->TO_JSON,
-    {
-      valid => false,
-      errors => [
-        {
-          instanceLocation => '/request/uri/path',
-          keywordLocation => '/paths',
-          absoluteKeywordLocation => $doc_uri->clone->fragment('/paths')->to_string,
-          error => 'missing path-item "/foo/baz"',
-        },
-      ],
-    },
-    'error in find_path',
-  );
 
   cmp_result(
     $openapi->validate_request(request('GET', 'http://example.com/foo'))->TO_JSON,

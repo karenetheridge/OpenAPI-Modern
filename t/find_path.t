@@ -84,8 +84,29 @@ paths:
       operationId: another-post-operation
 YAML
 
-  my $request = request('GET', 'gopher://example.com/foo/bar');
-  ok(!$openapi->find_path(my $options = { request => $request, path_template => '/foo/baz' }),
+  my $request = request('GET', 'gopher://example.com/boop');
+  ok(!$openapi->find_path(my $options = { request => $request, path_template => '/blurp' }),
+    'find_path returns false');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      path_template => '/blurp',
+      method => 'get',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '/request/uri/path',
+          keywordLocation => '/paths',
+          absoluteKeywordLocation => $doc_uri->clone->scheme('gopher')->fragment('/paths')->to_string,
+          error => 'missing path-item "/blurp"',
+        }),
+      ],
+    },
+    'provided path_template does not exist in /paths; URI scheme is correctly used',
+  );
+
+  ok(!$openapi->find_path($options = { request => request('GET', 'http://example.com/foo/bar'),
+      path_template => '/foo/baz' }),
     'find_path returns false');
   cmp_result(
     $options,
@@ -97,12 +118,12 @@ YAML
         methods(TO_JSON => {
           instanceLocation => '/request/uri/path',
           keywordLocation => '/paths',
-          absoluteKeywordLocation => $doc_uri->clone->scheme('gopher')->fragment('/paths')->to_string,
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/paths')->to_string,
           error => 'missing path-item "/foo/baz"',
         }),
       ],
     },
-    'provided path_template does not exist in /paths; URI scheme is correctly used',
+    'provided path_template does not exist in /paths, even if request matches something else',
   );
 
   $request = request('GET', 'http://example.com/foo/bar');
@@ -249,6 +270,28 @@ YAML
     'provided path template names do not match path capture names',
   );
 
+  ok(!$openapi->find_path($options = { request => $request, path_captures => { bloop => 'bar' } }),
+    'find_path returns false');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      method => 'post',
+      path_template => '/foo/bar',
+      path_captures => { bloop => 'bar' },
+      _path_item => { get => ignore, post => ignore },
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '/request/uri/path',
+          keywordLocation => jsonp(qw(/paths /foo/bar)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
+          error => 'provided path_captures values do not match request URI',
+        }),
+      ],
+    },
+    'inferred path template does not match path captures',
+  );
+
   ok($openapi->find_path($options = { request => request('GET', 'http://example.com/foo/bar'),
       path_template => '/foo/bar', method => 'get', operation_id => 'my-get-operation', path_captures => {} }),
     'find_path returns successfully');
@@ -331,6 +374,48 @@ YAML
       ],
     },
     'path_template with variables is not consistent with request URI, captures not provided',
+  );
+
+  ok(!$openapi->find_path($options = { request => request('GET', 'http://example.com/foo/123'), path_template => '/foo/bar' }),
+    'find_path returns false');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      method => 'get',
+      path_template => '/foo/bar',
+      _path_item => ignore,
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '/request/uri/path',
+          keywordLocation => jsonp(qw(/paths /foo/bar)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
+          error => 'provided path_template does not match request URI',
+        }),
+      ],
+    },
+    'a path matches this request URI, but not the path_template we provided',
+  );
+
+  ok(!$openapi->find_path($options = { request => request('POST', 'http://example.com/foo/123'), path_template => '/foo/bar', operation_id => 'my-post-operation' }),
+    'find_path returns false');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      method => 'post',
+      path_template => '/foo/bar',
+      operation_id => 'my-post-operation',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '/request/uri/path',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id})),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
+          error => 'operation does not match provided path_template',
+        }),
+      ],
+    },
+    'operation id matches URI, and a path matches this request URI, but not the path_template we provided',
   );
 
   ok(!$openapi->find_path($options = { request => request('GET', 'http://example.com/something/else'),
@@ -477,15 +562,6 @@ YAML
   );
   is(get_type($options->{path_captures}{foo_id}), 'string', 'captured path value is parsed as a string');
 
-  ok($openapi->find_path($options = { request => $request, path_template => '/foo/{foo_id}' }),
-    'find_path returns successfully');
-  cmp_result(
-    $options,
-    $expected,
-    'path capture values and method are extracted from the path template and request uri',
-  );
-  is(get_type($options->{path_captures}{foo_id}), 'string', 'captured path value is parsed as a string');
-
   ok($openapi->find_path($options = { request => $request, path_captures => { foo_id => '123' } }),
     'find_path returns successfully');
   cmp_result(
@@ -517,23 +593,6 @@ YAML
     get_type($options->{path_captures}{foo_id}),
     "$]" >= 5.035009 ? 'integer' : 'ambiguous type',
     'passed-in path value is preserved as a dualvar',
-  );
-
-  ok($openapi->find_path($options = { request => $request, path_captures => { foo_id => 123 } }),
-    'find_path returns successfully');
-  cmp_result(
-    $options,
-    $expected,
-    'path_capture values are returned as-is in the provided options hash',
-  );
-  is(get_type($options->{path_captures}{foo_id}), 'integer', 'passed-in path value is preserved as a number');
-
-  ok($openapi->find_path($options = { request => $request, operation_id => 'my-get-operation' }),
-    'find_path returns successfully');
-  cmp_result(
-    $options,
-    $expected,
-    'path capture values are extracted from the operation id and request uri',
   );
 
   ok(!$openapi->find_path($options = { request => $request, path_captures => { foo_id => 'a' } }),
@@ -893,6 +952,12 @@ paths:
 YAML
 
   like(
+    exception { ()= $openapi->find_path(my $options = { path_template => '/foo/{foo_id}' }) },
+    qr/^at least one of \$options->\{request\}, \$options->\{method\} and \$options->\{operation_id\} must be provided/,
+    'method can only be derived from request or operation_id',
+  );
+
+  like(
     exception { ()= $openapi->find_path(my $options = { path_captures => {} }) },
     qr/^at least one of \$options->\{request\}, \$options->\{method\} and \$options->\{operation_id\} must be provided/,
     'method can only be derived from request or operation_id',
@@ -921,6 +986,12 @@ YAML
     exception { ()= $openapi->find_path($options = { method => 'get', path_captures => {} }) },
     qr/^at least one of \$options->\{request\}, \$options->\{path_template\} and \$options->\{operation_id\} must be provided/,
     'path_template can only be derived from request or operation_id',
+  );
+
+  like(
+    exception { ()= $openapi->find_path($options = {}) },
+    qr/^at least one of \$options->\{request\}, \$options->\{method\} and \$options->\{operation_id\} must be provided/,
+    'cannot do any lookup when provided no options',
   );
 
   ok(!$openapi->find_path($options = { path_template => '/foo/bar', method => 'get' }), 'find_path failed');
@@ -989,7 +1060,22 @@ YAML
       operation_uri => str($doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get)))),
       errors => [],
     },
-    'no request provided; operation_id are extracted from method and path_template',
+    'no request provided; operation_id is extracted from method and path_template',
+  );
+
+  ok($openapi->find_path($options = { method => 'get', path_template => '/foo/{foo_id}' }), 'find_path succeeded');
+  cmp_result(
+    $options,
+    {
+      operation_id => 'my-get-operation',
+      path_template => '/foo/{foo_id}',
+      # note: no path_captures
+      method => 'get',
+      _path_item => { get => ignore },
+      operation_uri => str($doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get)))),
+      errors => [],
+    },
+    'no request provided; path_captures is not required for verification',
   );
 
   ok(!$openapi->find_path($options = { path_template => '/foo/{foo_id}', path_captures => { foo_id => 'a' }, method => 'post' }), 'find_path failed');
