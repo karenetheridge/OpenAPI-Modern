@@ -562,7 +562,7 @@ YAML
   );
 
   $request = request('POST', 'http://example.com/foo', [ Alpha => 1, Beta => 1 ]);
-  query_params($request, [alpha => 1, epsilon => '{"foo":42}']);
+  query_params($request, [ alpha => 1, epsilon => '{"foo":42}' ]);
   cmp_result(
     $openapi->validate_request($request)->TO_JSON,
     {
@@ -654,7 +654,7 @@ paths:
 YAML
 
   $request = request('GET', 'http://example.com/foo', [ 'Header1' => '{corrupt json' ]); # } for vim
-  query_params($request, [query1 => '{corrupt json']); # } for vim
+  query_params($request, [ query1 => '{corrupt json' ]); # } for vim
   cmp_result(
     $openapi->validate_request($request)->TO_JSON,
     {
@@ -678,7 +678,7 @@ YAML
   );
 
   $request = request('GET', 'http://example.com/foo', [ 'Header1' => '{"hello":"there"}' ]);
-  query_params($request, [query1 => '{"hello":"there"}']);
+  query_params($request, [ query1 => '{"hello":"there"}' ]);
   cmp_result(
     $openapi->validate_request($request)->TO_JSON,
     {
@@ -1354,7 +1354,6 @@ YAML
     'missing Content-Length does not prevent the request body from being checked',
   );
 
-
   $request = request('POST', 'http://example.com/foo', [ 'Content-Type' => 'text/plain' ]);
   cmp_result(
     $openapi->validate_request($request)->TO_JSON,
@@ -1787,14 +1786,14 @@ paths:
           const: 'one , two  , three'
 YAML
 
-  my $request = request('GET', 'http://example.com/foo', [ SingleValue => '  mystring  ']);
+  my $request = request('GET', 'http://example.com/foo', [ SingleValue => '  mystring  ' ]);
   cmp_result(
     $openapi->validate_request($request)->TO_JSON,
     { valid => true },
     'a single header value has its leading and trailing whitespace stripped',
   );
 
-  $request = request('GET', 'http://example.com/foo', [ MultipleValuesAsRawString => '  one , two  , three  ']);
+  $request = request('GET', 'http://example.com/foo', [ MultipleValuesAsRawString => '  one , two  , three  ' ]);
   cmp_result(
     $openapi->validate_request($request)->TO_JSON,
     { valid => true },
@@ -1810,13 +1809,13 @@ YAML
   local $TODO = 'HTTP::Message::to_psgi fetches all headers as a single concatenated string'
     if $::TYPE eq 'plack' or $::TYPE eq 'catalyst';
   cmp_result(
-    $openapi->validate_request($request, { path_template => '/foo', path_captures => {} })->TO_JSON,
+    $openapi->validate_request($request)->TO_JSON,
     { valid => true },
     'multiple headers on separate lines are validated as a string, with leading and trailing whitespace stripped',
   );
   }
 
-  $request = request('GET', 'http://example.com/foo', [ MultipleValuesAsArray => '  one, two, three  ']);
+  $request = request('GET', 'http://example.com/foo', [ MultipleValuesAsArray => '  one, two, three  ' ]);
   cmp_result(
     $openapi->validate_request($request)->TO_JSON,
     { valid => true },
@@ -2069,7 +2068,7 @@ SKIP: {
   cmp_result(
     do {
       my $x = allow_patterns(qr/^parse error when converting HTTP::Request/) if $::TYPE eq 'lwp';
-      $openapi->validate_request(request($_, 'http://example.com/foo', [ 'Content-Length' => 1]));
+      $openapi->validate_request(request($_, 'http://example.com/foo', [ 'Content-Length' => 1 ]));
     }->TO_JSON,
     {
       valid => false,
@@ -2088,7 +2087,7 @@ SKIP: {
   cmp_result(
     do {
       my $x = allow_patterns(qr/^parse error when converting HTTP::Request/) if $::TYPE eq 'lwp';
-      $openapi->validate_request(request('POST', 'http://example.com/foo', [ 'Content-Length' => 1]));
+      $openapi->validate_request(request('POST', 'http://example.com/foo', [ 'Content-Length' => 1 ]));
     }->TO_JSON,
     { valid => true },
     'no errors from POST with Content-Length',

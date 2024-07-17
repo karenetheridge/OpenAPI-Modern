@@ -108,7 +108,6 @@ YAML
     'unsuccessful path extraction results in the error being returned in the options hash; correct URI scheme is used in errors',
   );
 
-
   $request = request('GET', 'http://example.com/foo/bar');
   ok(!$openapi->find_path($options = { request => $request, operation_id => 'bloop', path_captures => {} }),
     'find_path returns false');
@@ -131,7 +130,6 @@ YAML
     'path template does not exist under /paths',
   );
 
-
   ok(!$openapi->find_path($options = { request => $request, operation_id => 'hooky', path_captures => {} }),
     'find_path returns false');
   cmp_result(
@@ -152,7 +150,6 @@ YAML
     },
     'path template does not exist under /paths',
   );
-
 
   ok(!$openapi->find_path($options = { request => request('GET', 'http://example.com/foo/bloop') }),
     'find_path returns false');
@@ -175,7 +172,6 @@ YAML
     },
     'operation does not exist under /paths/<path_template>/<method>',
   );
-
 
   ok(!$openapi->find_path($options = { request => $request = request('POST', 'http://example.com/foo/bar'),
       path_template => '/foo/{foo_id}', operation_id => 'my-get-path', path_captures => {} }),
@@ -200,7 +196,6 @@ YAML
     'path_template and operation_id are inconsistent',
   );
 
-
   ok(!$openapi->find_path($options = { request => $request,
       operation_id => 'my-get-path', path_captures => {} }),
     'find_path returns false');
@@ -223,8 +218,7 @@ YAML
     'request HTTP method does not match operation',
   );
 
-
-  ok(!$openapi->find_path($options = { request => $request, method => 'GET'}),
+  ok(!$openapi->find_path($options = { request => $request, method => 'GET' }),
     'find_path returns false');
   cmp_result(
     $options,
@@ -242,7 +236,6 @@ YAML
     },
     'request HTTP method does not match method option',
   );
-
 
   ok(!$openapi->find_path($options = { request => $request,
         path_template => '/foo/{foo_id}', path_captures => { bloop => 'bar' } }),
@@ -268,7 +261,6 @@ YAML
     'path template does not match path captures',
   );
 
-
   ok($openapi->find_path($options = { request => request('GET', 'http://example.com/foo/bar'),
       path_template => '/foo/bar', operation_id => 'my-get-path', path_captures => {} }),
     'find_path returns successfully');
@@ -286,7 +278,6 @@ YAML
     },
     'path_template and operation_id can both be passed, if consistent',
   );
-
 
   ok(!$openapi->find_path($options = { request => request('GET', 'http://example.com/something/else'),
       path_template => '/foo/bar', path_captures => {} }),
@@ -312,7 +303,6 @@ YAML
     'path_template is not consistent with request URI, with no captures',
   );
 
-
   ok(!$openapi->find_path($options = { request => $request = request('POST', 'http://example.com/something/else'),
       path_template => '/foo/{foo_id}', path_captures => { foo_id => 123 } }),
     'find_path returns false');
@@ -337,9 +327,7 @@ YAML
     'path_template is not consistent with request URI, with captures',
   );
 
-
-  ok(!$openapi->find_path($options = { request => $request,
-      path_template => '/foo/{foo_id}' }),
+  ok(!$openapi->find_path($options = { request => $request, path_template => '/foo/{foo_id}' }),
     'find_path returns false');
   cmp_result(
     $options,
@@ -360,7 +348,6 @@ YAML
     },
     'path_template is not consistent with request URI, captures not provided',
   );
-
 
   ok(!$openapi->find_path($options = { request => request('GET', 'http://example.com/something/else'),
       operation_id => 'my-get-path', path_captures => {} }),
@@ -383,7 +370,6 @@ YAML
     },
     'operation_id is not consistent with request URI',
   );
-
 
   ok(!$openapi->find_path($options = { request => request('POST', 'http://example.com/foo/hello'),
       operation_id => 'my-post-path', path_captures => { foo_id => 'goodbye' } }),
@@ -546,7 +532,6 @@ YAML
     'path capture values are extracted from the operation id and request uri',
   );
 
-
   ok(!$openapi->find_path($options = { request => $request, path_captures => { foo_id => 'a' } }),
     'find_path returns false');
   cmp_result(
@@ -569,7 +554,6 @@ YAML
     'request URI is inconsistent with provided path captures',
   );
 
-
   ok(!$openapi->find_path($options = { request => request('GET', 'http://example.com/bloop/blah') }),
     'find_path returns false');
   cmp_result(
@@ -588,7 +572,6 @@ YAML
     },
     'failure to extract path template and capture values from the request uri',
   );
-
 
   my $uri = uri('http://example.com', '', 'foo', 'hello // there ಠ_ಠ!');
   ok($openapi->find_path($options = { request => request('GET', $uri),
@@ -609,7 +592,7 @@ YAML
     'path_capture values are found to be consistent with the URI when some values are url-escaped',
   );
 
-  ok($openapi->find_path($options = { request => request('GET', $uri) } ), 'find_path returns successfully');
+  ok($openapi->find_path($options = { request => request('GET', $uri) }), 'find_path returns successfully');
   cmp_result(
     $options,
     {
@@ -646,7 +629,7 @@ paths:
 YAML
 
   $request = request('GET', 'http://example.com/foo/bar');
-  ok($openapi->find_path($options = { request => $request } ), 'find_path returns successfully');
+  ok($openapi->find_path($options = { request => $request }), 'find_path returns successfully');
   cmp_result(
     $options,
     my $got_options = {
@@ -662,7 +645,7 @@ YAML
     'paths with dots are not treated as regex wildcards when matching against URIs',
   );
 
-  ok(!$openapi->find_path($options = { operation_id => 'dotted-foo-bar', request => $request } ), 'find_path fails');
+  ok(!$openapi->find_path($options = { request => $request, operation_id => 'dotted-foo-bar' }), 'find_path fails');
   cmp_result(
     $options,
     {
@@ -681,16 +664,15 @@ YAML
     'provided operation_id and inferred path_template does not match request uri',
   );
 
-  ok($openapi->find_path($options = { operation_id => 'concrete-foo-bar', request => $request } ), 'find_path returns successfully');
+  ok($openapi->find_path($options = { request => $request, operation_id => 'concrete-foo-bar' }), 'find_path returns successfully');
   cmp_result(
     $options,
     { %$got_options, request => isa('Mojo::Message::Request') },
     'inferred (correct) path_template matches request uri',
   );
 
-
   $request = request('GET', 'http://example.com/foo/x.bar');
-  ok($openapi->find_path($options = { request => $request } ), 'find_path returns successfully');
+  ok($openapi->find_path($options = { request => $request }), 'find_path returns successfully');
   cmp_result(
     $got_options = $options,
     {
@@ -706,7 +688,7 @@ YAML
     'capture values are still captured when using dots in path template',
   );
 
-  ok(!$openapi->find_path($options = { operation_id => 'all-dots', request => $request } ), 'find_path fails');
+  ok(!$openapi->find_path($options = { request => $request, operation_id => 'all-dots' }), 'find_path fails');
   cmp_result(
     $options,
     {
@@ -725,7 +707,7 @@ YAML
     'provided operation_id and inferred path_template does not match request uri',
   );
 
-  ok($openapi->find_path($options = { operation_id => 'templated-foo-bar', request => $request } ), 'find_path returns successfully');
+  ok($openapi->find_path($options = { request => $request, operation_id => 'templated-foo-bar' }), 'find_path returns successfully');
   cmp_result(
     $options,
     { %$got_options, request => isa('Mojo::Message::Request') },
@@ -743,8 +725,7 @@ paths:
 YAML
 
   $request = request('GET', 'http://example.com/foo/bar');
-  ok($openapi->find_path($options = { request => $request }),
-    'find_path returns successfully');
+  ok($openapi->find_path($options = { request => $request }), 'find_path returns successfully');
   cmp_result(
     $options,
     {
@@ -758,7 +739,6 @@ YAML
     },
     'no path_template provided; no operation_id is recorded, because one does not exist in the schema document',
   );
-
 
   ok($openapi->find_path($options = { request => $request, path_template => '/foo/{foo_id}' }),
     'find_path returns successfully');
