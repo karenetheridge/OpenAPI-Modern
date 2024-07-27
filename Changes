@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.067     2024-07-27 23:55:46Z
           - fix path template regex to allow for [/?#] characters in capture
             names
 
