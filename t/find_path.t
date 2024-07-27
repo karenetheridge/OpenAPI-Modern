@@ -87,14 +87,13 @@ webhooks:
 YAML
 
   my $request = request('GET', 'gopher://example.com/foo/bar');
-  ok(!$openapi->find_path(my $options = { request => $request, path_template => '/foo/baz', path_captures => {} }),
+  ok(!$openapi->find_path(my $options = { request => $request, path_template => '/foo/baz' }),
     'find_path returns false');
   cmp_result(
     $options,
     {
       request => isa('Mojo::Message::Request'),
       path_template => '/foo/baz',
-      path_captures => {},
       method => 'get',
       errors => [
         methods(TO_JSON => {
@@ -109,14 +108,13 @@ YAML
   );
 
   $request = request('GET', 'http://example.com/foo/bar');
-  ok(!$openapi->find_path($options = { request => $request, operation_id => 'bloop', path_captures => {} }),
+  ok(!$openapi->find_path($options = { request => $request, operation_id => 'bloop' }),
     'find_path returns false');
   cmp_result(
     $options,
     {
       request => isa('Mojo::Message::Request'),
       method => 'get',
-      path_captures => {},
       operation_id => 'bloop',
       errors => [
         methods(TO_JSON => {
@@ -130,14 +128,13 @@ YAML
     'operation_id does not exist',
   );
 
-  ok(!$openapi->find_path($options = { request => $request, operation_id => 'hooky', path_captures => {} }),
+  ok(!$openapi->find_path($options = { request => $request, operation_id => 'hooky' }),
     'find_path returns false');
   cmp_result(
     $options,
     {
       request => isa('Mojo::Message::Request'),
       method => 'get',
-      path_captures => {},
       operation_id => 'hooky',
       errors => [
         methods(TO_JSON => {
@@ -174,7 +171,7 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { request => $request = request('POST', 'http://example.com/foo/bar'),
-      path_template => '/foo/{foo_id}', operation_id => 'my-get-path', path_captures => {} }),
+      path_template => '/foo/{foo_id}', operation_id => 'my-get-path' }),
     'find_path returns false');
   cmp_result(
     $options,
@@ -182,7 +179,6 @@ YAML
       request => isa('Mojo::Message::Request'),
       method => 'post',
       path_template => '/foo/{foo_id}',
-      path_captures => {},
       operation_id => 'my-get-path',
       errors => [
         methods(TO_JSON => {
@@ -196,15 +192,13 @@ YAML
     'path_template and operation_id are inconsistent',
   );
 
-  ok(!$openapi->find_path($options = { request => $request,
-      operation_id => 'my-get-path', path_captures => {} }),
+  ok(!$openapi->find_path($options = { request => $request, operation_id => 'my-get-path' }),
     'find_path returns false');
   cmp_result(
     $options,
     {
       request => isa('Mojo::Message::Request'),
       method => 'post',
-      path_captures => {},
       operation_id => 'my-get-path',
       errors => [
         methods(TO_JSON => {
@@ -280,7 +274,7 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { request => request('GET', 'http://example.com/something/else'),
-      path_template => '/foo/bar', path_captures => {} }),
+      path_template => '/foo/bar' }),
     'find_path returns false');
   cmp_result(
     $options,
@@ -288,7 +282,6 @@ YAML
       request => isa('Mojo::Message::Request'),
       method => 'get',
       path_template => '/foo/bar',
-      path_captures => {},
       _path_item => { get => ignore },
       operation_uri => str($doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/bar get)))),
       errors => [
@@ -350,14 +343,13 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { request => request('GET', 'http://example.com/something/else'),
-      operation_id => 'my-get-path', path_captures => {} }),
+      operation_id => 'my-get-path' }),
     'find_path returns false');
   cmp_result(
     $options,
     {
       request => isa('Mojo::Message::Request'),
       method => 'get',
-      path_captures => {},
       operation_id => 'my-get-path',
       errors => [
         methods(TO_JSON => {
@@ -501,7 +493,7 @@ YAML
   is(get_type($options->{path_captures}{foo_id}), 'integer', 'passed-in path value is preserved as a number');
 
   my $val = 123; my $str = sprintf("%s\n", $val);
-  ok($openapi->find_path($options = { request => $request, path_template => '/foo/{foo_id}', path_captures => { foo_id => $val } }),
+  ok($openapi->find_path($options = { request => $request, path_captures => { foo_id => $val } }),
     'find_path returns successfully');
   cmp_result(
     $options,

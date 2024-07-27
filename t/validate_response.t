@@ -354,7 +354,7 @@ YAML
     MultipleValuesAsArray => ' three ',
   ]);
   cmp_result(
-    $openapi->validate_response($response, { path_template => '/foo', path_captures => {}, method => 'get' })->TO_JSON,
+    $openapi->validate_response($response, { path_template => '/foo', method => 'get' })->TO_JSON,
     {
       valid => false,
       errors => [
