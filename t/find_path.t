@@ -993,18 +993,18 @@ YAML
     'cannot do any lookup when provided no options',
   );
 
-  ok(!$openapi->find_path($options = { path_template => '/foo/bar', method => 'get' }), 'find_path failed');
+  ok(!$openapi->find_path($options = { path_template => '/blurp', method => 'get' }), 'find_path failed');
   cmp_result(
     $options,
     {
-      path_template => '/foo/bar',
+      path_template => '/blurp',
       method => 'get',
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/uri/path',
           keywordLocation => '/paths',
           absoluteKeywordLocation => $doc_uri_rel->clone->fragment('/paths')->to_string,
-          error => 'missing path-item "/foo/bar"',
+          error => 'missing path-item "/blurp"',
         }),
       ],
     },
