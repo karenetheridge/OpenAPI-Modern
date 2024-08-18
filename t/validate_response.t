@@ -12,6 +12,7 @@ use utf8;
 use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 
 use JSON::Schema::Modern::Utilities 'jsonp';
+use Test::Fatal;
 use Test::Warnings 0.033 qw(:no_end_test allow_patterns);
 
 use lib 't/lib';
@@ -29,7 +30,7 @@ my $doc_uri_rel = Mojo::URL->new('/api');
 my $doc_uri = $doc_uri_rel->to_abs(Mojo::URL->new('http://example.com'));
 my $yamlpp = YAML::PP->new(boolean => 'JSON::PP');
 
-subtest 'bad conversion to Mojo::Message::Request or ::Response' => sub {
+subtest 'missing or invalid arguments' => sub {
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
@@ -37,10 +38,78 @@ $openapi_preamble
 paths:
   /:
     get:
+      operationId: my_op
       responses:
         default:
           description: foo
 YAML
+
+  like(
+    exception { $openapi->validate_response(undef) },
+    qr/^missing response/,
+    'response must be passed',
+  );
+
+  package Bespoke::Response {
+    sub request { shift->{request} }
+  }
+
+  cmp_result(
+    $openapi->validate_response(bless({}, 'Bespoke::Response'), { operation_id => 'my_op' })->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/response',
+          keywordLocation => jsonp(qw(/paths / get)),
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/paths / get)))->to_string,
+          error => 'Failed to parse response: unknown type Bespoke::Response',
+        },
+      ],
+    },
+    'response must be a recognized type',
+  );
+
+  cmp_result(
+    $openapi->validate_response(bless({ request => bless({}, 'Bespoke::Request') }, 'Bespoke::Response'))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request',
+          keywordLocation => '',
+          absoluteKeywordLocation => $doc_uri_rel->to_string,
+          error => 'Failed to parse request: unknown type Bespoke::Request',
+        },
+      ],
+    },
+    'request on response object, if passed, must be a recognized type',
+  );
+
+  cmp_deeply(
+    $openapi->validate_response(bless({}, 'Bespoke::Response'), { request => bless({}, 'Bespoke::Request') })->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request',
+          keywordLocation => '',
+          absoluteKeywordLocation => $doc_uri_rel->to_string,
+          error => 'Failed to parse request: unknown type Bespoke::Request',
+        },
+      ],
+    },
+    'request in options, if passed, must be a recognized type',
+  );
+
+  like(
+    exception {
+      $openapi->validate_response(bless({ request => bless({}, 'Bespoke::Request') }, 'Bespoke::Response'), { request => bless({}, 'Bespoke::Request') })
+    },
+    qr/^\$response->request and \$options->\{request\} are inconsistent/,
+    'if request is passed twice, it must be the same object (not just the same values)',
+  );
+
 
   test_needs 'HTTP::Request', 'HTTP::Response';
   cmp_result(
@@ -113,6 +182,54 @@ webhooks:
 YAML
 
   my $res = Mojo::Message::Response->new->code(400);
+
+  cmp_result(
+    $openapi->validate_response($res, { path_template => '/' })->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '',
+          keywordLocation => '',
+          absoluteKeywordLocation => $doc_uri_rel->to_string,
+          error => 'at least one of $options->{request}, $options->{method} and $options->{operation_id} must be provided',
+        },
+      ],
+    },
+    'no request information was passed: need operation_id or path_template AND method',
+  );
+
+  cmp_result(
+    $openapi->validate_response($res, { method => 'get' })->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '',
+          keywordLocation => '',
+          absoluteKeywordLocation => $doc_uri_rel->to_string,
+          error => 'at least one of $options->{request}, $options->{path_template} and $options->{operation_id} must be provided',
+        },
+      ],
+    },
+    'no request information was passed: need operation_id or path_template AND method',
+  );
+
+  cmp_result(
+    $openapi->validate_response($res)->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '',
+          keywordLocation => '',
+          absoluteKeywordLocation => $doc_uri_rel->to_string,
+          error => 'at least one of $options->{request}, $options->{method} and $options->{operation_id} must be provided',
+        },
+      ],
+    },
+    'no request information was passed: need operation_id or path_template AND method',
+  );
 
   # TODO: this should be valid, even without the existence of a path_template
   cmp_result(

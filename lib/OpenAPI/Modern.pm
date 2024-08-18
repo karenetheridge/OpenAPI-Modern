@@ -82,8 +82,10 @@ around BUILDARGS => sub ($orig, $class, @args) {
 };
 
 sub validate_request ($self, $request, $options = {}) {
+  croak 'missing request' if not $request;
+
   croak '$request and $options->{request} are inconsistent'
-    if $request and $options->{request} and $request != $options->{request};
+    if $options->{request} and $request != $options->{request};
 
   my $state = {}; # populated by find_path
 
@@ -202,7 +204,7 @@ sub validate_request ($self, $request, $options = {}) {
       push @{$state->{errors}}, $e;
     }
     else {
-      ()= E($state, 'EXCEPTION: '.$e);
+      ()= E({ %$state, exception => 1 }, 'EXCEPTION: '.$e);
     }
   }
 
@@ -210,6 +212,8 @@ sub validate_request ($self, $request, $options = {}) {
 }
 
 sub validate_response ($self, $response, $options = {}) {
+  croak 'missing response' if not $response;
+
   # handle the existence of HTTP::Response::request
   if (my $request = $response->$_call_if_can('request')) {
     croak '$response->request and $options->{request} are inconsistent'
@@ -305,7 +309,7 @@ sub validate_response ($self, $response, $options = {}) {
       push @{$state->{errors}}, $e;
     }
     else {
-      ()= E($state, 'EXCEPTION: '.$e);
+      ()= E({ %$state, exception => 1 }, 'EXCEPTION: '.$e);
     }
   }
 
@@ -313,25 +317,27 @@ sub validate_response ($self, $response, $options = {}) {
 }
 
 sub find_path ($self, $options, $state = {}) {
-  # now guaranteed to be a Mojo::Message::Request
-  $options->{request} = _convert_request($options->{request}) if $options->{request};
-
   $state->{data_path} = '/request/uri/path';
   $state->{initial_schema_uri} = $self->openapi_uri;   # the canonical URI as of the start or last $id, or the last traversed $ref
   $state->{traversed_schema_path} = '';    # the accumulated traversal path as of the start, or last $id, or up to the last traversed $ref
   $state->{schema_path} = '';              # the rest of the path, since the last $id or the last traversed $ref
   $state->{errors} = $options->{errors} //= [];
-  $state->{effective_base_uri} = Mojo::URL->new
-      ->scheme($options->{request}->url->to_abs->scheme)
-      ->host($options->{request}->headers->host)
-    if $options->{request};
   $state->{annotations} //= [];
   $state->{depth} = 0;
 
-  # requests don't have response codes, so if 'error' is set, it is some sort of parsing error
-  if ($options->{request} and my $error = $options->{request}->error) {
-    ()= E({ %$state, data_path => '/request' }, 'Failed to parse request: %s', $error->{message});
-    return $self->_result($state);
+  # now guaranteed to be a Mojo::Message::Request
+  if ($options->{request}) {
+    $options->{request} = _convert_request($options->{request});
+
+    $state->{effective_base_uri} = Mojo::URL->new
+      ->scheme($options->{request}->url->to_abs->scheme)
+      ->host($options->{request}->headers->host);
+
+    # requests don't have response codes, so if 'error' is set, it is some sort of parsing error
+    if (my $error = $options->{request}->error) {
+      ()= E({ %$state, data_path => '/request' }, 'Failed to parse request: %s', $error->{message});
+      return $self->_result($state);
+    }
   }
 
   my ($method, $path_template, $path_item_path);
@@ -378,7 +384,7 @@ sub find_path ($self, $options, $state = {}) {
 
   # TODO: support passing $options->{operation_uri}
 
-  croak 'at least one of $options->{request}, $options->{method} and $options->{operation_id} must be provided'
+  return E({ %$state, data_path => '', exception => 1 }, 'at least one of $options->{request}, $options->{method} and $options->{operation_id} must be provided')
     if not $method;
 
   # path_template from options
@@ -464,7 +470,7 @@ sub find_path ($self, $options, $state = {}) {
   }
 
   # FIXME: operation_id alone is insufficient to infer path_template, but we may not need it
-  croak 'at least one of $options->{request}, $options->{path_template} and $options->{operation_id} must be provided'
+  return E({ %$state, data_path => '', exception => 1 }, 'at least one of $options->{request}, $options->{path_template} and $options->{operation_id} must be provided')
     if not $path_template;
 
   # FIXME: follow $ref chain in path-item
@@ -875,7 +881,7 @@ sub _convert_request ($request) {
     $req->url(Mojo::URL->new($request->env->{REQUEST_URI})) if exists $request->env->{REQUEST_URI};
   }
   else {
-    croak 'unknown type '.ref($request);
+    return $req->error({ message => 'unknown type '.ref($request) });
   }
 
   # we could call $req->fix_headers here to add a missing Content-Length, but proper requests from
@@ -908,7 +914,7 @@ sub _convert_response ($response) {
     $res->body($body) if length $body;
   }
   else {
-    croak 'unknown type '.ref($response);
+    return $res->error({ message => 'unknown type '.ref($response) });
   }
 
   # we could call $res->fix_headers here to add a missing Content-Length, but proper responses from

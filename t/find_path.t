@@ -30,9 +30,7 @@ my $doc_uri_rel = Mojo::URL->new('/api');
 my $doc_uri = $doc_uri_rel->to_abs(Mojo::URL->new('http://example.com'));
 my $yamlpp = YAML::PP->new(boolean => 'JSON::PP');
 
-subtest 'bad conversion to Mojo::Message::Request' => sub {
-  test_needs('HTTP::Request', 'URI');
-
+subtest 'invalid request type, bad conversion to Mojo::Message::Request' => sub {
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(<<YAML));
@@ -40,9 +38,30 @@ $openapi_preamble
 paths: {}
 YAML
 
+  ok(!$openapi->find_path(my $options = { request => bless({}, 'Bespoke::Request') }),
+    'find_path returns false');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '/request',
+          keywordLocation => '',
+          absoluteKeywordLocation => '/api',
+          error => 'Failed to parse request: unknown type Bespoke::Request',
+        }),
+      ],
+    },
+    'invalid request object is detected early',
+  );
+
+
+  test_needs('HTTP::Request', 'URI');
+
   # start line is missing "HTTP/1.1"
   my $request = HTTP::Request->new(GET => 'http://example.com/', [ Host => 'example.com' ]);
-  ok(!$openapi->find_path(my $options = { request => $request }),
+  ok(!$openapi->find_path($options = { request => $request }),
     'find_path returns false');
   cmp_result(
     $options,
@@ -951,19 +970,43 @@ paths:
       operationId: my-get-operation
 YAML
 
-  like(
-    exception { ()= $openapi->find_path(my $options = { path_template => '/foo/{foo_id}' }) },
-    qr/^at least one of \$options->\{request\}, \$options->\{method\} and \$options->\{operation_id\} must be provided/,
+  ok(!$openapi->find_path(my $options = { path_template => '/foo/{foo_id}' }),
+    'find_path returns false');
+  cmp_result(
+    $options,
+    {
+      path_template => '/foo/{foo_id}',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '',
+          keywordLocation => '',
+          absoluteKeywordLocation => $doc_uri_rel->to_string,
+          error => 'at least one of $options->{request}, $options->{method} and $options->{operation_id} must be provided',
+        }),
+      ],
+    },
     'method can only be derived from request or operation_id',
   );
 
-  like(
-    exception { ()= $openapi->find_path(my $options = { path_captures => {} }) },
-    qr/^at least one of \$options->\{request\}, \$options->\{method\} and \$options->\{operation_id\} must be provided/,
+  ok(!$openapi->find_path($options = { path_captures => {} }),
+    'find_path returns false');
+  cmp_result(
+    $options,
+    {
+      path_captures => {},
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '',
+          keywordLocation => '',
+          absoluteKeywordLocation => $doc_uri_rel->to_string,
+          error => 'at least one of $options->{request}, $options->{method} and $options->{operation_id} must be provided',
+        }),
+      ],
+    },
     'method can only be derived from request or operation_id',
   );
 
-  ok(!$openapi->find_path(my $options = { operation_id => 'my-get-operation', method => 'POST' }),
+  ok(!$openapi->find_path($options = { operation_id => 'my-get-operation', method => 'POST' }),
     'find_path returns false');
   cmp_result(
     $options,
@@ -981,15 +1024,36 @@ YAML
     'no request provided; operation method does not match passed-in method',
   );
 
-  like(
-    exception { ()= $openapi->find_path($options = { method => 'get' }) },
-    qr/^at least one of \$options->\{request\}, \$options->\{path_template\} and \$options->\{operation_id\} must be provided/,
+  ok(!$openapi->find_path($options = { method => 'get' }), 'find_path returns false');
+  cmp_result(
+    $options,
+    {
+      method => 'get',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '',
+          keywordLocation => '',
+          absoluteKeywordLocation => $doc_uri_rel->to_string,
+          error => 'at least one of $options->{request}, $options->{path_template} and $options->{operation_id} must be provided',
+        }),
+      ],
+    },
     'path_template can only be derived from request or operation_id',
   );
 
-  like(
-    exception { ()= $openapi->find_path($options = {}) },
-    qr/^at least one of \$options->\{request\}, \$options->\{method\} and \$options->\{operation_id\} must be provided/,
+  ok(!$openapi->find_path($options = {}), 'find_path returns false');
+  cmp_result(
+    $options,
+    {
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '',
+          keywordLocation => '',
+          absoluteKeywordLocation => $doc_uri_rel->to_string,
+          error => 'at least one of $options->{request}, $options->{method} and $options->{operation_id} must be provided',
+        }),
+      ],
+    },
     'cannot do any lookup when provided no options',
   );
 

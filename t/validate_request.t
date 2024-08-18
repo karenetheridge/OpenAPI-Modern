@@ -12,6 +12,7 @@ use utf8;
 use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 
 use JSON::Schema::Modern::Utilities qw(jsonp get_type);
+use Test::Fatal;
 use Test::Warnings 0.033 qw(:no_end_test allow_patterns);
 
 use lib 't/lib';
@@ -33,6 +34,46 @@ my $type_index = 0;
 START:
 $::TYPE = $::TYPES[$type_index];
 note 'REQUEST/RESPONSE TYPE: '.$::TYPE;
+
+subtest 'missing or invalid arguments' => sub {
+  my $openapi = OpenAPI::Modern->new(
+    openapi_uri => '/api',
+    openapi_schema => $yamlpp->load_string(<<YAML));
+$openapi_preamble
+paths: {}
+YAML
+
+  like(
+    exception { $openapi->validate_request(undef) },
+    qr/^missing request/,
+    'request must be passed',
+  );
+
+  cmp_result(
+    $openapi->validate_request(bless({}, 'Bespoke::Request'))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request',
+          keywordLocation => '',
+          absoluteKeywordLocation => '/api',
+          error => 'Failed to parse request: unknown type Bespoke::Request',
+        },
+      ],
+    },
+    'request must be a recognized type',
+  );
+
+  like(
+    exception {
+      $openapi->validate_request(
+        request('GET', 'http://example.com/foo'), { request => request('GET', 'http://example.com/foo') })
+    },
+    qr/^\$request and \$options->\{request\} are inconsistent/,
+    'if request is passed twice, it must be the same object (not just the same values)',
+  );
+};
 
 subtest 'path lookup' => sub {
   my $openapi = OpenAPI::Modern->new(
