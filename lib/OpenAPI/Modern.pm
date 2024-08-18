@@ -359,10 +359,14 @@ sub find_path ($self, $options, $state = {}) {
     my $operation_path = $self->openapi_document->get_operationId_path($options->{operation_id});
     return E({ %$state, keyword => 'paths' }, 'unknown operation_id "%s"', $options->{operation_id})
       if not $operation_path;
-    return E({ %$state, schema_path => $operation_path, keyword => 'operationId' },
-      'operation id does not have an associated path') if $operation_path !~ m{^/paths/};
+
     my @bits = unjsonp($operation_path);
     ($path_template, $method) = @bits[-2,-1];
+
+    # reject anything not directly under /paths (FIXME: does not support $refs to path-items)
+    return E({ %$state, schema_path => $operation_path, keyword => 'operationId' },
+      'operation id does not have an associated path') if $operation_path ne jsonp('/paths', $path_template, $method);
+
     pop @bits;
     $path_item_path = jsonp(@bits);
 
@@ -476,6 +480,7 @@ sub find_path ($self, $options, $state = {}) {
   # FIXME: follow $ref chain in path-item
   $path_item_path = jsonp('/paths', $path_template);
   my $path_item = $self->openapi_document->get($path_item_path);
+  die 'path_item unexpectedly does not exist' if not $path_item;
 
   # note: we aren't doing anything special with escaped slashes. this bit of the spec is hazy.
   # { for the editor
