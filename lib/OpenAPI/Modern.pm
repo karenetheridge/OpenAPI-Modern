@@ -317,7 +317,7 @@ sub find_path ($self, $options, $state = {}) {
   $state->{schema_path} = '';              # the rest of the path, since the last $id or the last traversed $ref
   $state->{errors} = $options->{errors} //= [];
   $state->{effective_base_uri} = Mojo::URL->new
-      ->scheme($options->{request}->url->to_abs->scheme // 'https')
+      ->scheme($options->{request}->url->to_abs->scheme)
       ->host($options->{request}->headers->host)
     if $options->{request};
   $state->{annotations} //= [];
