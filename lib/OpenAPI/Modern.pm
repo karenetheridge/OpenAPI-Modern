@@ -768,16 +768,16 @@ sub _validate_media_type ($self, $state, $content_obj, $media_type, $media_type_
 }
 
 # wrap a result object around the errors
-sub _result ($self, $state, $exception = 0, $response = 0) {
+sub _result ($self, $state, $is_exception = 0, $is_response = 0) {
   return JSON::Schema::Modern::Result->new(
     output_format => $self->evaluator->output_format,
     formatted_annotations => 0,
     valid => !$state->{errors}->@*,
-    $exception ? ( exception => 1 ) : (), # -> recommended_response: [ 500, 'Internal Server Error' ]
+    $is_exception ? ( exception => 1 ) : (), # -> recommended_response: [ 500, 'Internal Server Error' ]
     !$state->{errors}->@*
       ? (annotations => $state->{annotations}//[])
       : (errors => $state->{errors}),
-    $response ? ( recommended_response => undef ) : (),
+    $is_response ? ( recommended_response => undef ) : (),
   );
 }
 
