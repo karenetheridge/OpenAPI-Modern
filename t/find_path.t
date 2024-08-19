@@ -53,7 +53,7 @@ YAML
           instanceLocation => '/request',
           keywordLocation => '',
           absoluteKeywordLocation => $doc_uri->to_string,
-          error => 'Bad request start-line',
+          error => 'Failed to parse request: Bad request start-line',
         }),
       ],
     },

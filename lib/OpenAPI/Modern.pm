@@ -260,6 +260,11 @@ sub validate_response ($self, $response, $options = {}) {
       if $response->body_size and not $response->headers->content_length
         and not $response->content->is_chunked;
 
+    if (not $response->code) {
+      ()= E($state, 'Failed to parse response: %s', $response->error->{message});
+      return $self->_result($state, 0, 1);
+    }
+
     my $response_name = first { exists $operation->{responses}{$_} }
       $response->code, substr(sprintf('%03s', $response->code), 0, -2).'XX', 'default';
 
@@ -325,7 +330,7 @@ sub find_path ($self, $options, $state = {}) {
 
   # requests don't have response codes, so if 'error' is set, it is some sort of parsing error
   if ($options->{request} and my $error = $options->{request}->error) {
-    ()= E({ %$state, data_path => '/request' }, $error->{message});
+    ()= E({ %$state, data_path => '/request' }, 'Failed to parse request: %s', $error->{message});
     return $self->_result($state);
   }
 

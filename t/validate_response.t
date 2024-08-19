@@ -53,7 +53,7 @@ YAML
           instanceLocation => '/request',
           keywordLocation => '',
           absoluteKeywordLocation => $doc_uri->to_string,
-          error => 'Bad request start-line',
+          error => 'Failed to parse request: Bad request start-line',
         },
       ],
     },
@@ -72,13 +72,13 @@ YAML
           instanceLocation => '/response',
           keywordLocation => jsonp(qw(/paths / get)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths / get)))->to_string,
-          error => re(qr/EXCEPTION/),
+          error => 'Failed to parse response: Bad response start-line',
         },
       ],
     },
-    # we can't do much about this because there is no reliable flag on the response object telling
-    # us that parsing failed
-    'sadly, invalid response object is not detected gracefully',
+    # checking definedness of $response->code is only a proxy to detecting errors, since
+    # $response->error is overloaded with the long form of the HTTP response code
+    'invalid response object is detected',
   );
 };
 
