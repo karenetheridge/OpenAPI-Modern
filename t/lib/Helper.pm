@@ -64,6 +64,7 @@ sub request ($method, $uri_string, $headers = [], $body_content = undef) {
 
     if ($TYPE eq 'catalyst') {
       test_needs('Catalyst::Request', 'Catalyst::Log');
+
       $req = Catalyst::Request->new(
         _log => Catalyst::Log->new,
         method => $method,
@@ -120,6 +121,7 @@ sub response ($code, $headers = [], $body_content = undef) {
   }
   elsif ($TYPE eq 'catalyst') {
     test_needs('Catalyst::Response');
+
     $res = Catalyst::Response->new(status => $code, body => $body_content);
     $res->headers->push_header(@$_) foreach pairs @$headers;
     $res->headers->header('Content-Length' => length $body_content)
@@ -138,6 +140,7 @@ sub uri ($uri_string, @path_parts) {
 
   my $uri;
   if ($TYPE eq 'lwp' or $TYPE eq 'plack' or $TYPE eq 'catalyst') {
+    test_needs('URI');
     $uri = URI->new($uri_string);
     $uri->path_segments(@path_parts) if @path_parts;
   }
