@@ -26,7 +26,7 @@ use Feature::Compat::Try;
 use Encode 2.89 ();
 use URI::Escape ();
 use JSON::Schema::Modern 0.560;
-use JSON::Schema::Modern::Utilities 0.531 qw(jsonp unjsonp canonical_uri E abort is_equal is_elements_unique);
+use JSON::Schema::Modern::Utilities 0.585 qw(jsonp unjsonp canonical_uri E abort is_equal is_elements_unique);
 use JSON::Schema::Modern::Document::OpenAPI;
 use MooX::TypeTiny 0.002002;
 use Types::Standard 'InstanceOf';
