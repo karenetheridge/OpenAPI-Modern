@@ -243,6 +243,12 @@ sub cmp_result ($got, $expected, $test_name) {
   context_do {
     my $ctx = shift;
     my ($got, $expected, $test_name) = @_;
+
+    # dirty hack to check we always set operation_uri on success
+    $ctx->fail('missing operation_uri on successful call')
+      if $expected->{errors} and $expected->{method} and not $expected->{errors}->@*
+      and not exists $expected->{operation_uri};
+
     my ($equal, $stack) = Test::Deep::cmp_details($got, $expected);
     if ($equal) {
       $ctx->pass($test_name);
