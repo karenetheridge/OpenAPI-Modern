@@ -384,6 +384,8 @@ sub find_path ($self, $options, $state = {}) {
     }
 
     $options->{method} = lc $method;
+    $options->{_path_item} = $self->openapi_document->get($path_item_path);
+    $options->{operation_uri} = Mojo::URL->new($state->{initial_schema_uri})->fragment(jsonp($path_item_path, $method));
   }
 
   # TODO: support passing $options->{operation_uri}
@@ -511,7 +513,7 @@ sub find_path ($self, $options, $state = {}) {
     split /(\{[^}]+\})/, $path_template;
 
   if ($uri_path !~ m/^$path_pattern$/) {
-    delete $options->@{qw(operation_id operation_uri)};
+    delete $options->@{qw(operation_id operation_uri _path_item)};
     return E({ %$state, keyword => 'paths', _schema_path_suffix => $path_template },
       'provided %s does not match request URI', exists $options->{path_template} ? 'path_template' : 'operation_id');
   }
