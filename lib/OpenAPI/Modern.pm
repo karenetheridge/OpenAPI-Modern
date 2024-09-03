@@ -787,6 +787,7 @@ sub _validate_media_type ($self, $state, $content_obj, $media_type, $media_type_
 
 # wrap a result object around the errors
 sub _result ($self, $state, $is_exception = 0, $is_response = 0) {
+  croak 'no errors provided for exception' if $is_exception and not $state->{errors}->@*;
   return JSON::Schema::Modern::Result->new(
     output_format => $self->evaluator->output_format,
     formatted_annotations => 0,
