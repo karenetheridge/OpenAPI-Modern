@@ -120,9 +120,9 @@ YAML
       errors => [
         {
           instanceLocation => '/request/uri/path',
-          keywordLocation => '/components/pathItems/my_path_item/post/operationId',
-          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/pathItems/my_path_item/post/operationId')->to_string,
-          error => 'operation id does not have an associated path',
+          keywordLocation => jsonp(qw(/paths /foo/bar)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
+          error => 'templated operation does not match provided operation_id',
         },
       ],
     },
@@ -136,9 +136,9 @@ YAML
       errors => [
         {
           instanceLocation => '/request/uri/path',
-          keywordLocation => '/webhooks/my_hook/post/operationId',
-          absoluteKeywordLocation => $doc_uri->clone->fragment('/webhooks/my_hook/post/operationId')->to_string,
-          error => 'operation id does not have an associated path',
+          keywordLocation => jsonp(qw(/paths /foo/bar)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
+          error => 'templated operation does not match provided operation_id',
         },
       ],
     },
@@ -152,9 +152,9 @@ YAML
       errors => [
         {
           instanceLocation => '/request/uri/path',
-          keywordLocation => jsonp(qw(/paths /foo/bar post callbacks my_callback {$request.query.queryUrl} post operationId)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar post callbacks my_callback {$request.query.queryUrl} post operationId)))->to_string,
-          error => 'operation id does not have an associated path',
+          keywordLocation => jsonp(qw(/paths /foo/bar)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
+          error => 'templated operation does not match provided operation_id',
         },
       ],
     },
@@ -168,18 +168,20 @@ YAML
       errors => [
         {
           instanceLocation => '/request/uri/path',
-          keywordLocation => '/components/pathItems/my_path_item/post/callbacks/my_callback/{$request.query.queryUrl}/post/operationId',
-          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/pathItems/my_path_item/post/callbacks/my_callback/{$request.query.queryUrl}/post/operationId')->to_string,
-          error => 'operation id does not have an associated path',
+          keywordLocation => jsonp(qw(/paths /foo/bar)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
+          error => 'templated operation does not match provided operation_id',
         },
       ],
     },
     'operation is not under a path-item with a path template',
   );
 
-  # TODO test: operation exists, under paths, but not directly ($ref) - should be usable,
+  # TODO test: path-item exists, under paths with a template, but a $ref is followed before finding
+  # the actual definition: should be usable.
   # we need to make sure that the URI matches the path_template above all the $refs.
-  # see t/find-path.t
+  # the destination path-item could be under /components/pathItems or /webhooks or in a callback,
+  # or shared by a path-item in another /path/<path_template>.
 
   cmp_result(
     $openapi->validate_request(request('GET', 'http://example.com/bloop/blah'))->TO_JSON,

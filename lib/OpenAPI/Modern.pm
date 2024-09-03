@@ -364,19 +364,16 @@ sub find_path ($self, $options, $state = {}) {
     my @bits = unjsonp($operation_path);
     ($path_template, $method) = @bits[-2,-1];
 
-    # reject anything not directly under /paths (FIXME: does not support $refs to path-items)
-    return E({ %$state, schema_path => $operation_path, keyword => 'operationId' },
-      'operation id does not have an associated path') if $operation_path ne jsonp('/paths', $path_template, $method);
+    # path_template not found if path is not directly under /paths (FIXME: does not support $refs to
+    # path-items - in this case we will do a URI -> path_template lookup later on)
+    undef $path_template if $operation_path ne jsonp('/paths', $path_template, $method);
 
-    pop @bits;
+    pop @bits;  # remove method from operation_path to get path-item path
     $path_item_path = jsonp(@bits);
 
-    # FIXME: the path_template is not correct if there was a $ref from the original /paths/ entry to
-    # get to this path-item and operation. We need to look up the path_template from the request as
-    # normal, below.
     return E({ %$state, schema_path => jsonp('/paths', $path_template) },
         'operation does not match provided path_template')
-      if exists $options->{path_template} and $options->{path_template} ne $path_template;
+      if $path_template and exists $options->{path_template} and $options->{path_template} ne $path_template;
 
     if ($options->{method} and lc $options->{method} ne $method) {
       delete $options->{operation_id};
@@ -391,8 +388,9 @@ sub find_path ($self, $options, $state = {}) {
 
   # TODO: support passing $options->{operation_uri}
 
-  return E({ %$state, data_path => '', exception => 1 }, 'at least one of $options->{request}, $options->{method} and $options->{operation_id} must be provided')
-    if not $method;
+  # by now we will have extracted method from request or operation_id
+  return E({ %$state, data_path => '', exception => 1 }, 'at least one of $options->{request}, ($options->{path_template} and $options->{method}), or $options->{operation_id} must be provided')
+    if not $options->{request} and not ($options->{path_template} and $method) and not $options->{operation_id};
 
   # path_template from options
   if (exists $options->{path_template}) {
@@ -437,12 +435,18 @@ sub find_path ($self, $options, $state = {}) {
         Encode::decode('UTF-8', URI::Escape::uri_unescape(substr($uri_path, $-[$_], $+[$_]-$-[$_])),
           Encode::FB_CROAK | Encode::LEAVE_SRC), 1 .. $#-;
 
-      $options->{path_template} = $path_template;
-
       # FIXME: follow $ref chain in path-item
-      $path_item_path = jsonp('/paths', $path_template);
-      $options->{_path_item} = $self->openapi_document->get($path_item_path);
-      $state->{schema_path} = $path_item_path;
+      $state->{schema_path} = $path_item_path = jsonp('/paths', $path_template);
+      $options->{path_template} = $path_template;
+      $options->{_path_item} = my $path_item = $self->openapi_document->get($path_item_path);
+
+      return E($state, 'templated operation does not match provided operation_id')
+        if $options->{operation_id} and ($path_item->{$method}{operationId}//'') ne $options->{operation_id};
+
+      return E({ %$state, data_path => '/request/method', keyword => $method,
+          recommended_response => [ 405, 'Method Not Allowed' ] },
+          'missing operation for HTTP method "%s"', $method)
+        if not exists $path_item->{$method};
 
       # { for the editor
       my @capture_names = ($path_template =~ m!\{([^}]+)\}!g);
@@ -455,11 +459,6 @@ sub find_path ($self, $options, $state = {}) {
       else {
         $options->{path_captures} = \%path_captures;
       }
-
-      return E({ %$state, data_path => '/request/method', keyword => $method,
-          recommended_response => [ 405, 'Method Not Allowed' ] },
-          'missing operation for HTTP method "%s"', $method)
-        if not exists $options->{_path_item}{$method};
 
       $options->{operation_uri} = Mojo::URL->new($state->{initial_schema_uri})->fragment($path_item_path.'/'.$method);
       $options->{operation_id} = $options->{_path_item}{$method}{operationId};
@@ -476,9 +475,10 @@ sub find_path ($self, $options, $state = {}) {
       $options->{request}->url->clone->query(undef)->fragment(undef));
   }
 
-  # FIXME: operation_id alone is insufficient to infer path_template, but we may not need it
-  return E({ %$state, data_path => '', exception => 1 }, 'at least one of $options->{request}, $options->{path_template} and $options->{operation_id} must be provided')
-    if not $path_template;
+  if (not $path_template) {
+    $state->{schema_path} = $path_item_path;
+    return 1;
+  }
 
   # FIXME: follow $ref chain in path-item
   $path_item_path = jsonp('/paths', $path_template);

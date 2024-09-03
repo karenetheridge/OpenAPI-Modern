@@ -167,10 +167,19 @@ components:
             '{\$request.query.queryUrl}': # note this is a path-item
               post:
                 operationId: my_components_pathItem_callback_operation
+                responses:
+                  200:
+                    description: success
+        responses:
+          200:
+            description: success
     my_path_item2:
       description: this should be useable, as it is \$ref'd by a /paths/<template> path item
       post:
         operationId: my_reffed_component_operation
+        responses:
+          200:
+            description: success
 paths:
   /foo: {}  # TODO: \$ref to #/components/pathItems/my_path_item2
   /foo/bar:
@@ -180,11 +189,17 @@ paths:
           '{\$request.query.queryUrl}': # note this is a path-item
             post:
               operationId: my_paths_pathItem_callback_operation
+              responses:
+                200:
+                  description: success
 webhooks:
   my_hook:  # note this is a path-item
     description: good luck here too
     post:
       operationId: my_webhook_operation
+      responses:
+        200:
+          description: success
 YAML
 
   my $res = Mojo::Message::Response->new->code(400);
@@ -198,7 +213,7 @@ YAML
           instanceLocation => '',
           keywordLocation => '',
           absoluteKeywordLocation => $doc_uri_rel->to_string,
-          error => 'at least one of $options->{request}, $options->{method} and $options->{operation_id} must be provided',
+          error => 'at least one of $options->{request}, ($options->{path_template} and $options->{method}), or $options->{operation_id} must be provided',
         },
       ],
     },
@@ -214,7 +229,7 @@ YAML
           instanceLocation => '',
           keywordLocation => '',
           absoluteKeywordLocation => $doc_uri_rel->to_string,
-          error => 'at least one of $options->{request}, $options->{path_template} and $options->{operation_id} must be provided',
+          error => 'at least one of $options->{request}, ($options->{path_template} and $options->{method}), or $options->{operation_id} must be provided',
         },
       ],
     },
@@ -230,79 +245,111 @@ YAML
           instanceLocation => '',
           keywordLocation => '',
           absoluteKeywordLocation => $doc_uri_rel->to_string,
-          error => 'at least one of $options->{request}, $options->{method} and $options->{operation_id} must be provided',
+          error => 'at least one of $options->{request}, ($options->{path_template} and $options->{method}), or $options->{operation_id} must be provided',
         },
       ],
     },
     'no request information was passed: need operation_id or path_template AND method',
   );
 
-  # TODO: this should be valid, even without the existence of a path_template
   cmp_result(
-    $openapi->validate_response($res, { operation_id => 'my_components_pathItem_operation' })->TO_JSON,
+    $openapi->validate_response($res, my $options = { operation_id => 'my_components_pathItem_operation' })->TO_JSON,
     {
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/uri/path',
-          keywordLocation => '/components/pathItems/my_path_item/post/operationId',
-          absoluteKeywordLocation => $doc_uri_rel->clone->fragment('/components/pathItems/my_path_item/post/operationId')->to_string,
-          error => 'operation id does not have an associated path',
+          instanceLocation => '/response/code',
+          keywordLocation => '/components/pathItems/my_path_item/post/responses',
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment('/components/pathItems/my_path_item/post/responses')->to_string,
+          error => 'no response object found for code 400',
         },
       ],
     },
-    'operation is not under a path-item with a path template',
+    'response is processed',
+  );
+  cmp_result(
+    $options,
+    {
+      method => 'post',
+      operation_id => 'my_components_pathItem_operation',
+      operation_uri => str($doc_uri_rel->clone->fragment('/components/pathItems/my_path_item/post')),
+    },
+    'operation is not under a path-item with a path template, but still exists',
   );
 
-  # TODO: this should be valid, even without the existence of a path_template
   cmp_result(
-    $openapi->validate_response($res, { operation_id => 'my_webhook_operation' })->TO_JSON,
+    $openapi->validate_response($res, $options = { operation_id => 'my_webhook_operation' })->TO_JSON,
     {
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/uri/path',
-          keywordLocation => '/webhooks/my_hook/post/operationId',
-          absoluteKeywordLocation => $doc_uri_rel->clone->fragment('/webhooks/my_hook/post/operationId')->to_string,
-          error => 'operation id does not have an associated path',
+          instanceLocation => '/response/code',
+          keywordLocation => '/webhooks/my_hook/post/responses',
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment('/webhooks/my_hook/post/responses')->to_string,
+          error => 'no response object found for code 400',
         },
       ],
     },
-    'operation is not under a path-item with a path template',
+    'response is processed',
+  );
+  cmp_result(
+    $options,
+    {
+      method => 'post',
+      operation_id => 'my_webhook_operation',
+      operation_uri => str($doc_uri_rel->clone->fragment('/webhooks/my_hook/post')),
+    },
+    'operation is not under a path-item with a path template, but still exists',
   );
 
-  # TODO: this should be valid, even without the existence of a path_template
   cmp_result(
-    $openapi->validate_response($res, { operation_id => 'my_paths_pathItem_callback_operation' })->TO_JSON,
+    $openapi->validate_response($res, $options = { operation_id => 'my_paths_pathItem_callback_operation' })->TO_JSON,
     {
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/uri/path',
-          keywordLocation => jsonp(qw(/paths /foo/bar post callbacks my_callback {$request.query.queryUrl} post operationId)),
-          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/bar post callbacks my_callback {$request.query.queryUrl} post operationId)))->to_string,
-          error => 'operation id does not have an associated path',
+          instanceLocation => '/response/code',
+          keywordLocation => jsonp(qw(/paths /foo/bar post callbacks my_callback {$request.query.queryUrl} post responses)),
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/bar post callbacks my_callback {$request.query.queryUrl} post responses)))->to_string,
+          error => 'no response object found for code 400',
         },
       ],
     },
-    'operation is not directly under a path-item with a path template',
+    'response is processed',
+  );
+  cmp_result(
+    $options,
+    {
+      method => 'post',
+      operation_id => 'my_paths_pathItem_callback_operation',
+      operation_uri => str($doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/bar post callbacks my_callback {$request.query.queryUrl} post)))),
+    },
+    'operation is not directly under a path-item with a path template, but still exists',
   );
 
-  # TODO: this should be valid, even without the existence of a path_template
   cmp_result(
-    $openapi->validate_response($res, { operation_id => 'my_components_pathItem_callback_operation' })->TO_JSON,
+    $openapi->validate_response($res, $options = { operation_id => 'my_components_pathItem_callback_operation' })->TO_JSON,
     {
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/uri/path',
-          keywordLocation => '/components/pathItems/my_path_item/post/callbacks/my_callback/{$request.query.queryUrl}/post/operationId',
-          absoluteKeywordLocation => $doc_uri_rel->clone->fragment('/components/pathItems/my_path_item/post/callbacks/my_callback/{$request.query.queryUrl}/post/operationId')->to_string,
-          error => 'operation id does not have an associated path',
+          instanceLocation => '/response/code',
+          keywordLocation => '/components/pathItems/my_path_item/post/callbacks/my_callback/{$request.query.queryUrl}/post/responses',
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment('/components/pathItems/my_path_item/post/callbacks/my_callback/{$request.query.queryUrl}/post/responses')->to_string,
+          error => 'no response object found for code 400',
         },
       ],
     },
-    'operation is not under a path-item with a path template',
+    'response is processed',
+  );
+  cmp_result(
+    $options,
+    {
+      method => 'post',
+      operation_id => 'my_components_pathItem_callback_operation',
+      operation_uri => str($doc_uri_rel->clone->fragment('/components/pathItems/my_path_item/post/callbacks/my_callback/{$request.query.queryUrl}/post')),
+    },
+    'operation is not under a path-item with a path template, but still exists',
   );
 };
 
