@@ -407,7 +407,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/response',
+          instanceLocation => '/response/code',
           keywordLocation => jsonp(qw(/paths /foo post responses)),
           absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo post responses)))->to_string,
           error => 'no response object found for code 404',

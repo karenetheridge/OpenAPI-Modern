@@ -273,7 +273,8 @@ sub validate_response ($self, $response, $options = {}) {
       $response->code, substr(sprintf('%03s', $response->code), 0, -2).'XX', 'default';
 
     if (not $response_name) {
-      ()= E({ %$state, keyword => 'responses' }, 'no response object found for code %s', $response->code);
+      ()= E({ %$state, keyword => 'responses', data_path => jsonp($state->{data_path}, 'code') },
+        'no response object found for code %s', $response->code);
       return $self->_result($state, 0, 1);
     }
 
