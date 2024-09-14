@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.068     2024-09-14 23:35:47Z
           - path-item+operation lookup can now be performed by operation_id
             alone (a valid usecase for response validation)
