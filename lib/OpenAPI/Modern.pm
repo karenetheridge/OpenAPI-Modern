@@ -1334,6 +1334,10 @@ Only certain permutations of OpenAPI documents are supported at this time:
   of each parameter name is considered, and C<allowEmptyValue> and C<allowReserved> are not checked
 * cookie parameters are not checked at all yet
 * C<application/x-www-form-urlencoded> and C<multipart/*> messages are not yet supported
+* C<server> fields in definitions are completely ignored, and not considered when parsing request URIs.
+* OpenAPI descriptions must be contained in a single document; C<$ref>erences to other documents are
+  not fully supported at this time.
+* The use of C<$ref> within a path-item object is not permitted.
 
 =head1 SEE ALSO
 
