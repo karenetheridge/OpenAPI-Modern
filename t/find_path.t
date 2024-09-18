@@ -202,7 +202,7 @@ YAML
           instanceLocation => '/request/uri/path',
           keywordLocation => jsonp(qw(/paths /foo/bar)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
-          error => 'operation does not match provided path_template',
+          error => 'operation at operation_id does not match provided path_template',
         }),
       ],
     },
@@ -425,7 +425,7 @@ YAML
           instanceLocation => '/request/uri/path',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id})),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
-          error => 'operation does not match provided path_template',
+          error => 'operation at operation_id does not match provided path_template',
         }),
       ],
     },
@@ -913,6 +913,27 @@ YAML
     'operation is not under a path-item with a path template',
   );
 
+  ok(!$openapi->find_path($options = { request => $request, path_template => '/foo/bar', operation_id => 'my_components_pathItem_operation' }),
+    'find_path returns false');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      path_template => '/foo/bar',
+      method => 'post',
+      operation_id => 'my_components_pathItem_operation',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '/request/uri/path',
+          keywordLocation => '/components/pathItems/my_path_item',
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/pathItems/my_path_item')->to_string,
+          error => 'operation at operation_id does not match provided path_template',
+        }),
+      ],
+    },
+    'providing a path template will never work here',
+  );
+
   ok(!$openapi->find_path($options = { request => $request, operation_id => 'my_webhook_operation' }),
     'find_path returns false');
   cmp_result(
@@ -1234,7 +1255,7 @@ YAML
           instanceLocation => '/request/uri/path',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id})),
           absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
-          error => 'operation does not match provided path_template',
+          error => 'operation at operation_id does not match provided path_template',
         }),
       ],
     },
@@ -1296,6 +1317,25 @@ YAML
       errors => [],
     },
     'operation is not under a path-item with a path template, but still exists',
+  );
+
+  ok(!$openapi->find_path($options = { path_template => '/foo/bar', operation_id => 'my_components_pathItem_operation' }),
+    'find_path returns false');
+  cmp_result(
+    $options,
+    {
+      path_template => '/foo/bar',
+      operation_id => 'my_components_pathItem_operation',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '/request/uri/path',
+          keywordLocation => '/components/pathItems/my_path_item',
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment('/components/pathItems/my_path_item')->to_string,
+          error => 'operation at operation_id does not match provided path_template',
+        }),
+      ],
+    },
+    'providing a path template will never work here',
   );
 
   ok($openapi->find_path($options = { operation_id => 'my_webhook_operation' }),

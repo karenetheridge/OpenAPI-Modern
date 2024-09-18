@@ -130,6 +130,22 @@ YAML
   );
 
   cmp_result(
+    $openapi->validate_request($request, { path_template => '/foo/bar', operation_id => 'my_components_pathItem_operation' })->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/uri/path',
+          keywordLocation => '/components/pathItems/my_path_item',
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/pathItems/my_path_item')->to_string,
+          error => 'operation at operation_id does not match provided path_template',
+        },
+      ],
+    },
+    'providing a path template will never work here',
+  );
+
+  cmp_result(
     $openapi->validate_request($request, { operation_id => 'my_webhook_operation' })->TO_JSON,
     {
       valid => false,

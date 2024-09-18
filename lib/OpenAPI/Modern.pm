@@ -365,15 +365,20 @@ sub find_path ($self, $options, $state = {}) {
     ($path_template, $method) = @bits[-2,-1];
 
     # path_template not found if path is not directly under /paths (FIXME: does not support $refs to
-    # path-items - in this case we will do a URI -> path_template lookup later on)
+    # path-items - in this case we will do a URI -> path_template lookup later on, if the operation
+    # does not correspond to a webhook or callback)
     undef $path_template if $operation_path ne jsonp('/paths', $path_template, $method);
 
     pop @bits;  # remove method from operation_path to get path-item path
     $path_item_path = jsonp(@bits);
 
-    return E({ %$state, schema_path => jsonp('/paths', $path_template) },
-        'operation does not match provided path_template')
-      if $path_template and exists $options->{path_template} and $options->{path_template} ne $path_template;
+    # the path_template need not be provided, but if it is, the operation must be located at the
+    # path-item directly underneath that /paths/<path_template>.
+    # TODO: revise for 3.1.1, as provided path_template may be correct but require resolving $refs
+    # in order to verify the operation matches (which we will do later on)
+    return E({ %$state, schema_path => $path_item_path },
+        'operation at operation_id does not match provided path_template')
+      if exists $options->{path_template} and $options->{path_template} ne ($path_template//'');
 
     if ($options->{method} and lc $options->{method} ne $method) {
       delete $options->{operation_id};
