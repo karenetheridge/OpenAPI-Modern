@@ -337,7 +337,7 @@ sub _add_vocab_and_default_schemas ($self) {
     my ($filename, $uri) = @$pairs;
     my $document = $js->add_schema($uri,
       $js->_json_decoder->decode(path(dist_dir('OpenAPI-Modern'), $filename)->slurp_raw));
-    $js->add_schema($uri.'/latest', $document) if $uri =~ /schema(-base)?$/;
+    $js->${$JSON::Schema::Modern::VERSION < 0.591 ? \'add_schema' : \'add_document'}($uri.'/latest', $document) if $uri =~ /schema(-base)?$/;
   }
 }
 

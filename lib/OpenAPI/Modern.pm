@@ -76,7 +76,7 @@ around BUILDARGS => sub ($orig, $class, @args) {
   );
 
   # if there were errors, this will die with a JSON::Schema::Modern::Result object
-  $args->{evaluator}->add_schema($args->{openapi_document});
+  $args->{evaluator}->${$JSON::Schema::Modern::VERSION < 0.591 ? \'add_schema' : \'add_document'}($args->{openapi_document});
 
   return $args;
 };
