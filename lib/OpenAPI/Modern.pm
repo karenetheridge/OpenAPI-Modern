@@ -1073,8 +1073,8 @@ errors! But you never do C<if ($@) { ... }>, right?
 The URI that identifies the OpenAPI document.
 Ignored if L</openapi_document> is provided.
 
-If it is not absolute, it is resolved at runtime against the request's C<Host> header (when available)
-and scheme (e.g. C<https>).
+It is used at runtime as the base for absolute URIs used in L<JSON::Schema::Modern::Result> objects,
+along with the request's C<Host> header and scheme (e.g. C<https>), when available.
 
 =head2 openapi_schema
 
@@ -1138,6 +1138,10 @@ Validates an L<HTTP::Request>, L<Plack::Request>, L<Catalyst::Request> or L<Mojo
 object against the corresponding OpenAPI v3.1 document, returning a
 L<JSON::Schema::Modern::Result> object.
 
+Absolute URIs in the result object are constructed by resolving the openapi document path against
+the L</openapi_uri>, as well as the C<Host> header of the request if a host component is not
+included in the L</openapi_uri>.
+
 The second argument is an optional hashref that contains extra information about the request,
 corresponding to the values expected by L</find_path> below. It is populated with some information
 about the request:
@@ -1157,6 +1161,10 @@ to improve performance.
 Validates an L<HTTP::Response>, L<Plack::Response>, L<Catalyst::Response> or L<Mojo::Message::Response>
 object against the corresponding OpenAPI v3.1 document, returning a
 L<JSON::Schema::Modern::Result> object.
+
+Absolute URIs in the result object are constructed by resolving the openapi document path against
+the L</openapi_uri>, as well as the C<Host> header of the request if the request is provided and if a
+host component is not included in the L</openapi_uri>.
 
 The second argument is an optional hashref that contains extra information about the request
 corresponding to the response, as in L</find_path>.
