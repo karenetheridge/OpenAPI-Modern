@@ -1346,6 +1346,8 @@ Only certain permutations of OpenAPI documents are supported at this time:
 * OpenAPI descriptions must be contained in a single document; C<$ref>erences to other documents are
   not fully supported at this time.
 * The use of C<$ref> within a path-item object is not permitted.
+* Security schemes in the OpenAPI description, and the use of any C<Authorization> headers in
+  requests, are not currently supported.
 
 =head1 SEE ALSO
 
