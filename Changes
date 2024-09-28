@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.069     2024-09-28 23:34:35Z
           - adjust for changes in JSON::Schema::Modern 0.591 (which deprecate
             form of "add_schema")
