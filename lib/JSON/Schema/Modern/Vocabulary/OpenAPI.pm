@@ -15,7 +15,7 @@ use if "$]" >= 5.022, experimental => 're_strict';
 no if "$]" >= 5.031009, feature => 'indirect';
 no if "$]" >= 5.033001, feature => 'multidimensional';
 no if "$]" >= 5.033006, feature => 'bareword_filehandles';
-use JSON::Schema::Modern::Utilities 0.583 qw(assert_keyword_type annotate_self E is_type jsonp);
+use JSON::Schema::Modern::Utilities qw(assert_keyword_type annotate_self E is_type jsonp);
 use namespace::clean;
 
 with 'JSON::Schema::Modern::Vocabulary';
