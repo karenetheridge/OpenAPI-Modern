@@ -1,6 +1,7 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - fix tests that changed their output with JSON::Schema::Modern 0.592
 
 0.070     2024-10-07 20:57:24Z
           - fix use of document traversal for changes in JSON::Schema::Modern 0.591
