@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.073     2024-11-02 23:33:29Z
           - fix test that would break with the latest JSON::Schema::Modern (0.594)
 
 0.072     2024-10-24 16:36:44Z
