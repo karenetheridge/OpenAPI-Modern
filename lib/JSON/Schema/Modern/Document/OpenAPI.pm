@@ -156,7 +156,7 @@ sub traverse ($self, $evaluator) {
 
   # evaluate the document against its metaschema to find any errors, to identify all schema
   # resources within to add to the global resource index, and to extract all operationIds
-  my (@json_schema_paths, @operation_paths, @path_item_refs, @servers_paths);
+  my (@json_schema_paths, @operation_paths, %bad_path_item_refs, @servers_paths);
   my $result = $self->evaluator->evaluate(
     $schema, $self->metaschema_uri,
     {
@@ -183,8 +183,13 @@ sub traverse ($self, $evaluator) {
           push @operation_paths, [ $data->{operationId} => $state->{data_path} ]
             if $schema->{'$ref'} eq '#/$defs/operation' and defined $data->{operationId};
 
-          # for now, we will reject all uses of $ref in a path-item
-          push @path_item_refs, $state->{data_path} if $entity and $entity eq 'path-item' and exists $data->{'$ref'};
+          # path-items are weird and allow mixing of fields adjacent to a $ref, which is burdensome
+          # to properly support (see https://github.com/OAI/OpenAPI-Specification/issues/3734)
+          if ($entity and $entity eq 'path-item' and exists $data->{'$ref'}) {
+            my %path_item = $data->%*;
+            delete @path_item{qw(summary description $ref)};
+            $bad_path_item_refs{$state->{data_path}} = join(', ', sort keys %path_item) if keys %path_item;
+          }
 
           # will contain duplicates; filter out later
           push @servers_paths, ($state->{data_path} =~ s{/[0-9]+$}{}r)
@@ -225,10 +230,10 @@ sub traverse ($self, $evaluator) {
     $seen_path{$normalized} = $path;
   }
 
-  foreach my $path_item (sort @path_item_refs) {
+  foreach my $path_item (sort keys %bad_path_item_refs) {
     ()= E({ %$state, data_path => $path_item,
-      initial_schema_uri => Mojo::URL->new(DEFAULT_METASCHEMA) },
-      'use of $ref in a path-item is not currently supported');
+        initial_schema_uri => Mojo::URL->new(DEFAULT_METASCHEMA) },
+      'invalid keywords used adjacent to $ref in a path-item: %s', $bad_path_item_refs{$path_item});
   }
 
   my %seen_servers;
