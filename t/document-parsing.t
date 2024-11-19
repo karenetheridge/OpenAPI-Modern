@@ -141,6 +141,13 @@ components:
                   \$id: pathItem0_get_responses3_id
           default:
             \$ref: '#/components/responses/my_response4'
+        callbacks:
+          my_callback:
+            '{\$request.query.queryUrl}':
+              post: {}
+webhooks:
+  foo: {}
+  bar: {}
 YAML
 
   cmp_result([$doc->errors], [], 'no errors during traversal');
@@ -231,6 +238,8 @@ YAML
       '/components/parameters/my_param2' => 2,
       '/components/parameters/my_param2/content/media_type_0/schema' => 0,
       '/components/pathItems/path0' => 9,
+      '/components/pathItems/path0/get/callbacks/my_callback' => 8,
+      '/components/pathItems/path0/get/callbacks/my_callback/{$request.query.queryUrl}' => 9,
       '/components/pathItems/path0/get/parameters/0' => 2,
       '/components/pathItems/path0/get/parameters/0/schema' => 0,
       '/components/pathItems/path0/get/requestBody' => 4,
@@ -245,6 +254,8 @@ YAML
       '/components/responses/my_response4/content/media_type_4/schema' => 0,
       '/components/schemas/beta_schema' => 0,
       '/components/schemas/beta_schema/not' => 0,
+      '/webhooks/foo' => 9,
+      '/webhooks/bar' => 9,
     },
     'all entity locations are identified',
   );
