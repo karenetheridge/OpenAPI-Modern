@@ -352,4 +352,48 @@ YAML
 ERRORS
 };
 
+subtest 'disallowed $refs in path-items' => sub {
+  my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
+    canonical_uri => 'http://localhost:1234/api',
+    metaschema_uri => 'https://spec.openapis.org/oas/3.1/schema',
+    evaluator => my $js = JSON::Schema::Modern->new(validate_formats => 1),
+    schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
+paths:
+  /foo/alpha: {}
+  /foo/beta: {}
+YAML
+
+  cmp_result([$doc->errors], [], 'no errors during traversal');
+
+  $doc = JSON::Schema::Modern::Document::OpenAPI->new(
+    canonical_uri => 'http://localhost:1234/api',
+    metaschema_uri => 'https://spec.openapis.org/oas/3.1/schema',
+    evaluator => $js,
+    schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
+components:
+  callbacks:
+    my_callback0:
+      '{$request.query.queryUrl}': # note this is a path-item
+        $ref: '#/components/pathItems/path0'
+  pathItems:
+    path0:
+      $ref: '#/components/pathItems/path1'
+    path1:
+      description: my second path
+paths:
+  /foo/{foo_id}:
+    $ref: '#/components/pathItems/path0'
+webhooks:
+  my_webhook0:
+    $ref: '#/components/pathItems/path0'
+YAML
+
+  is(document_result($doc), substr(<<'ERRORS', 0, -1), 'stringified errors');
+'/components/callbacks/my_callback0/{$request.query.queryUrl}': use of $ref in a path-item is not currently supported
+'/components/pathItems/path0': use of $ref in a path-item is not currently supported
+'/paths/~1foo~1{foo_id}': use of $ref in a path-item is not currently supported
+'/webhooks/my_webhook0': use of $ref in a path-item is not currently supported
+ERRORS
+};
+
 done_testing;

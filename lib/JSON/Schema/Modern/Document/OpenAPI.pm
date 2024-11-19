@@ -156,7 +156,7 @@ sub traverse ($self, $evaluator) {
 
   # evaluate the document against its metaschema to find any errors, to identify all schema
   # resources within to add to the global resource index, and to extract all operationIds
-  my (@json_schema_paths, @operation_paths, @servers_paths);
+  my (@json_schema_paths, @operation_paths, @path_item_refs, @servers_paths);
   my $result = $self->evaluator->evaluate(
     $schema, $self->metaschema_uri,
     {
@@ -179,6 +179,9 @@ sub traverse ($self, $evaluator) {
 
           push @operation_paths, [ $data->{operationId} => $state->{data_path} ]
             if $schema->{'$ref'} eq '#/$defs/operation' and defined $data->{operationId};
+
+          # for now, we will reject all uses of $ref in a path-item
+          push @path_item_refs, $state->{data_path} if $entity and $entity eq 'path-item' and exists $data->{'$ref'};
 
           # will contain duplicates; filter out later
           push @servers_paths, ($state->{data_path} =~ s{/[0-9]+$}{}r)
@@ -217,6 +220,12 @@ sub traverse ($self, $evaluator) {
       next;
     }
     $seen_path{$normalized} = $path;
+  }
+
+  foreach my $path_item (sort @path_item_refs) {
+    ()= E({ %$state, data_path => $path_item,
+      initial_schema_uri => Mojo::URL->new(DEFAULT_METASCHEMA) },
+      'use of $ref in a path-item is not currently supported');
   }
 
   my %seen_servers;
