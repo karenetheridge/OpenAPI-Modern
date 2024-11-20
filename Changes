@@ -1,6 +1,8 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - some adjustments to error messages and locations when matching a
+            provided request uri against /paths/* entries in an openapi document
 
 0.073     2024-11-02 23:33:29Z
           - fix test that would break with the latest JSON::Schema::Modern (0.594)
