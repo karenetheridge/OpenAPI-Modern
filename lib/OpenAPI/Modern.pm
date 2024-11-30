@@ -385,7 +385,7 @@ sub find_path ($self, $options, $state = {}) {
         'wrong HTTP method "%s"', $options->{method});
     }
 
-    $options->{method} = lc $method;
+    $options->{method} = $method;
   }
 
   # TODO: support passing $options->{operation_uri}
