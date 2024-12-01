@@ -414,8 +414,24 @@ sub find_path ($self, $options, $state = {}) {
       if not exists $schema->{paths}{$path_template}{$method};
   }
 
-  # path_template from request URI
+  if (not $path_template and not $options->{request}) {
+    # some operations don't exist directly under a /paths/$path_template - e.g. webhooks or
+    # callbacks, but they are still usable
+    # TODO: only return successfully here if the operation corresponds to a webhook or callback,
+    # or we were not provided a request object.
+    # otherwise, we need to continue on and match the request uri against /paths/* and possibly fail
+    # if there is no match found.
+    $state->{schema_path} = $path_item_path;
+    $options->{_path_item} = $self->openapi_document->get($path_item_path);
+
+    # FIXME: this is not accurate if the operation lives in another document
+    $options->{operation_uri} = Mojo::URL->new($state->{initial_schema_uri})->fragment($path_item_path.'/'.$method);
+    return 1;
+  }
+
   if (not $path_template and $options->{request}) {
+    # derive path_template and capture values from request URI
+
     my $uri_path = $options->{request}->url->path->to_string;
     $uri_path = '/' if not length $uri_path;
 
@@ -482,15 +498,6 @@ sub find_path ($self, $options, $state = {}) {
 
     return E({ %$state, data_path => '/request/uri/path', keyword => 'paths' }, 'no match found for request URI "%s"',
       $options->{request}->url->clone->query(undef)->fragment(undef));
-  }
-
-  if (not $path_template) {
-    $state->{schema_path} = $path_item_path;
-    $options->{_path_item} = $self->openapi_document->get($path_item_path);
-
-    # FIXME: this is not accurate if the operation lives in another document
-    $options->{operation_uri} = Mojo::URL->new($state->{initial_schema_uri})->fragment($path_item_path.'/'.$method);
-    return 1;
   }
 
   # FIXME: follow $ref chain in path-item
