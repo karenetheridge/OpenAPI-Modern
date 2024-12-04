@@ -390,7 +390,9 @@ sub find_path ($self, $options, $state = {}) {
 
   # by now we will have extracted method from request or operation_id
   return E({ %$state, data_path => '', exception => 1 }, 'at least one of $options->{request}, ($options->{path_template} and $options->{method}), or $options->{operation_id} must be provided')
-    if not $options->{request} and not ($options->{path_template} and $method) and not $options->{operation_id};
+    if not $options->{request}
+      and not ($options->{path_template} and $method)
+      and not $options->{operation_id};
 
   # path_template from options
   if (exists $options->{path_template}) {
