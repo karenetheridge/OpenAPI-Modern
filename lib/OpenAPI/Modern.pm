@@ -464,8 +464,10 @@ sub find_path ($self, $options, $state = {}) {
         return E($state, 'provided path_captures names do not match path template "%s"', $path_template)
           if not is_equal([ sort keys $options->{path_captures}->%* ], [ sort @capture_names ]);
 
-        return E($state, 'provided path_captures values do not match request URI')
-          if not is_equal([ $options->{path_captures}->@{@capture_names} ], \@capture_values, { stringy_numbers => 1 });
+        # $equal_state will contain { path => '/0' } indicating the index of the mismatch
+        if (not is_equal([ $options->{path_captures}->@{@capture_names} ], \@capture_values, my $equal_state = { stringy_numbers => 1 })) {
+          return E($state, 'provided path_captures values do not match request URI (value for %s differs)', $capture_names[substr($equal_state->{path}, 1)]);
+        }
       }
       else {
         my %path_captures; @path_captures{@capture_names} = @capture_values;
@@ -537,8 +539,10 @@ sub find_path ($self, $options, $state = {}) {
       Encode::FB_CROAK | Encode::LEAVE_SRC), 1 .. $#-;
 
   if (exists $options->{path_captures}) {
-    return E($state, 'provided path_captures values do not match request URI')
-      if not is_equal([ $options->{path_captures}->@{@capture_names} ], \@capture_values, { stringy_numbers => 1 });
+    # $equal_state will contain { path => '/0' } indicating the index of the mismatch
+    if (not is_equal([ $options->{path_captures}->@{@capture_names} ], \@capture_values, my $equal_state = { stringy_numbers => 1 })) {
+      return E($state, 'provided path_captures values do not match request URI (value for %s differs)', $capture_names[substr($equal_state->{path}, 1)]);
+    }
   }
   else {
     my %path_captures; @path_captures{@capture_names} = @capture_values;
