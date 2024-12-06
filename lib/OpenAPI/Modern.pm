@@ -422,31 +422,16 @@ sub find_path ($self, $options, $state = {}) {
   }
 
   if (not $path_template and $options->{request}) {
-    # derive path_template and capture values from request URI
-
-    my $uri_path = $options->{request}->url->path->to_string;
-    $uri_path = '/' if not length $uri_path;
+    # derive path_template and capture values from the request URI
 
     # sorting (ascii-wise) gives us the desired results that concrete path components sort ahead of
     # templated components, except when the concrete component is a non-ascii character or matches
     # 0x7c (pipe), 0x7d (close-brace) or 0x7e (tilde)
-    foreach $path_template (sort keys(($schema->{paths}//{})->%*)) {
-      # §3.2: "The value for these path parameters MUST NOT contain any unescaped “generic syntax”
-      # characters described by [RFC3986]: forward slashes (/), question marks (?), or hashes (#)."
-      my $path_pattern = join '',
-        map +(substr($_, 0, 1) eq '{' ? '([^/?#]*)' : quotemeta($_)), # { for the editor
-        split /(\{[^}]+\})/, $path_template;
+    foreach my $pt (sort keys(($schema->{paths}//{})->%*)) {
+      my $capture_values = $self->_match_uri($options->{request}->url, $pt);
+      next if not $capture_values;
 
-      # TODO: consider 'servers' fields when matching request URIs: this requires looking at
-      # path prefixes present in server urls
-      next if $uri_path !~ m/^$path_pattern$/;
-
-      # perldoc perlvar, @-: $n coincides with "substr $_, $-[n], $+[n] - $-[n]" if "$-[n]" is defined
-      my @capture_values = map
-        Encode::decode('UTF-8', URI::Escape::uri_unescape(substr($uri_path, $-[$_], $+[$_]-$-[$_])),
-          Encode::FB_CROAK | Encode::LEAVE_SRC), 1 .. $#-;
-
-      $options->{path_template} = $path_template;
+      $options->{path_template} = $path_template = $pt;
 
       # FIXME: follow $ref chain in path-item
       $state->{schema_path} = $path_item_path = jsonp('/paths', $path_template);
@@ -475,12 +460,12 @@ sub find_path ($self, $options, $state = {}) {
           if not is_equal([ sort keys $options->{path_captures}->%* ], [ sort @capture_names ]);
 
         # $equal_state will contain { path => '/0' } indicating the index of the mismatch
-        if (not is_equal([ $options->{path_captures}->@{@capture_names} ], \@capture_values, my $equal_state = { stringy_numbers => 1 })) {
+        if (not is_equal([ $options->{path_captures}->@{@capture_names} ], $capture_values, my $equal_state = { stringy_numbers => 1 })) {
           return E({ %$state, data_path => '/request/uri/path' }, 'provided path_captures values do not match request URI (value for %s differs)', $capture_names[substr($equal_state->{path}, 1)]);
         }
       }
       else {
-        my %path_captures; @path_captures{@capture_names} = @capture_values;
+        my %path_captures; @path_captures{@capture_names} = @$capture_values;
         $options->{path_captures} = \%path_captures;
       }
 
@@ -495,27 +480,14 @@ sub find_path ($self, $options, $state = {}) {
   if ($options->{request}) {
     # we were passed path_template in options or we calculated it from operation_id, and now we
     # verify it against path_captures and the request URI.
+    $capture_values = $self->_match_uri($options->{request}->url, $path_template);
 
-    my $uri_path = $options->{request}->url->path->to_string;
-    $uri_path = '/' if not length $uri_path;
-
-    # §3.2: "The value for these path parameters MUST NOT contain any unescaped “generic syntax”
-    # characters described by [RFC3986]: forward slashes (/), question marks (?), or hashes (#)."
-    my $path_pattern = join '',
-      map +(substr($_, 0, 1) eq '{' ? '([^/?#]*)' : quotemeta($_)), # { for the editor
-      split /(\{[^}]+\})/, $path_template;
-
-    if ($uri_path !~ m/^$path_pattern$/) {
+    if (not $capture_values) {
       delete $options->{operation_id};
       return E({ %$state, data_path => '/request/uri/path',
           schema_path => jsonp('/paths', $path_template, exists $options->{path_template} ? () : $method) }, 'provided %s does not match request URI',
         exists $options->{path_template} ? 'path_template' : 'operation_id');
     }
-
-    # perldoc perlvar, @-: $n coincides with "substr $_, $-[n], $+[n] - $-[n]" if "$-[n]" is defined
-    $capture_values = [ map
-      Encode::decode('UTF-8', URI::Escape::uri_unescape(substr($uri_path, $-[$_], $+[$_]-$-[$_])),
-        Encode::FB_CROAK | Encode::LEAVE_SRC), 1 .. $#- ];
   }
 
   # if we weren't passed a request, we can't verify that the path_template matches, but we may have
@@ -586,6 +558,27 @@ sub recursive_get ($self, $uri_reference, $entity_type = undef) {
 }
 
 ######## NO PUBLIC INTERFACES FOLLOW THIS POINT ########
+
+# given a request uri and a path_template, check that these match, and extract capture values.
+sub _match_uri ($self, $uri, $path_template) {
+  my $uri_path = $uri->path->to_string;
+  $uri_path = '/' if not length $uri_path;
+
+  # §3.2: "The value for these path parameters MUST NOT contain any unescaped “generic syntax”
+  # characters described by [RFC3986]: forward slashes (/), question marks (?), or hashes (#)."
+  my $path_pattern = join '',
+    map +(substr($_, 0, 1) eq '{' ? '([^/?#]*)' : quotemeta($_)), # { for the editor
+    split /(\{[^}]+\})/, $path_template;
+
+  # TODO: consider 'servers' fields when matching request URIs: this requires looking at
+  # path prefixes present in server urls
+  return if $uri_path !~ m/^$path_pattern$/;
+
+  # perldoc perlvar, @-: $n coincides with "substr $_, $-[n], $+[n] - $-[n]" if "$-[n]" is defined
+  return [ map
+    Encode::decode('UTF-8', URI::Escape::uri_unescape(substr($uri_path, $-[$_], $+[$_]-$-[$_])),
+      Encode::FB_CROAK | Encode::LEAVE_SRC), 1 .. $#- ];
+}
 
 sub _validate_path_parameter ($self, $state, $param_obj, $path_captures) {
   # 'required' is always true for path parameters
