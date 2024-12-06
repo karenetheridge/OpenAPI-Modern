@@ -421,6 +421,8 @@ sub find_path ($self, $options, $state = {}) {
     return 1;
   }
 
+  my $capture_values;
+
   if (not $path_template and $options->{request}) {
     # derive path_template and capture values from the request URI
 
@@ -428,56 +430,18 @@ sub find_path ($self, $options, $state = {}) {
     # templated components, except when the concrete component is a non-ascii character or matches
     # 0x7c (pipe), 0x7d (close-brace) or 0x7e (tilde)
     foreach my $pt (sort keys(($schema->{paths}//{})->%*)) {
-      my $capture_values = $self->_match_uri($options->{request}->url, $pt);
-      next if not $capture_values;
+      $capture_values = $self->_match_uri($options->{request}->url, $pt);
 
-      $options->{path_template} = $path_template = $pt;
-
-      # FIXME: follow $ref chain in path-item
-      $state->{schema_path} = $path_item_path = jsonp('/paths', $path_template);
-      $options->{_path_item} = my $path_item = $schema->{paths}{$path_template};
-
-      # this can only happen if we were not able to derive the path_template from the provided
-      # operation_id earlier, but we still matched the request against some other path-item
-      return E($state, 'templated operation does not match provided operation_id')
-        if $options->{operation_id} and ($path_item->{$method}{operationId}//'') ne $options->{operation_id};
-
-      return E({ %$state, data_path => '/request/method',
-          recommended_response => [ 405, 'Method Not Allowed' ] },
-          'missing operation for HTTP method "%s"', $method)
-        if not exists $path_item->{$method};
-
-      # FIXME: this is not accurate if the operation lives in another document
-      $options->{operation_uri} = Mojo::URL->new($state->{initial_schema_uri})->fragment($path_item_path.'/'.$method);
-      $options->{operation_id} = $path_item->{$method}{operationId} if exists $path_item->{$method}{operationId};
-
-      # note: we aren't doing anything special with escaped slashes. this bit of the spec is hazy.
-      # { for the editor
-      my @capture_names = ($path_template =~ m!\{([^}]+)\}!g);
-
-      if (exists $options->{path_captures}) {
-        return E({ %$state, $options->{request} ? ( data_path => '/request/uri/path' ) : () }, 'provided path_captures names do not match path template "%s"', $path_template)
-          if not is_equal([ sort keys $options->{path_captures}->%* ], [ sort @capture_names ]);
-
-        # $equal_state will contain { path => '/0' } indicating the index of the mismatch
-        if (not is_equal([ $options->{path_captures}->@{@capture_names} ], $capture_values, my $equal_state = { stringy_numbers => 1 })) {
-          return E({ %$state, data_path => '/request/uri/path' }, 'provided path_captures values do not match request URI (value for %s differs)', $capture_names[substr($equal_state->{path}, 1)]);
-        }
-      }
-      else {
-        my %path_captures; @path_captures{@capture_names} = @$capture_values;
-        $options->{path_captures} = \%path_captures;
-      }
-
-      return 1;
+      # this might not be the intended match, as multiple templates can match the same URI
+      $path_template = $pt, last if $capture_values;
     }
 
     return E({ %$state, data_path => '/request/uri/path', keyword => 'paths' }, 'no match found for request URI "%s"',
-      $options->{request}->url->clone->query(undef)->fragment(undef));
+        $options->{request}->url->clone->query(undef)->fragment(undef))
+      if not $capture_values;
   }
 
-  my $capture_values;
-  if ($options->{request}) {
+  elsif ($options->{request}) {
     # we were passed path_template in options or we calculated it from operation_id, and now we
     # verify it against path_captures and the request URI.
     $capture_values = $self->_match_uri($options->{request}->url, $path_template);
@@ -497,6 +461,11 @@ sub find_path ($self, $options, $state = {}) {
   # FIXME: follow $ref chain in path-item
   $state->{schema_path} = $path_item_path = jsonp('/paths', $path_template);
   $options->{_path_item} = my $path_item = $schema->{paths}{$path_template};
+
+  # this can only happen if we were not able to derive the path_template from the provided
+  # operation_id earlier, but we still matched the request against some other path-item
+  return E($state, 'templated operation does not match provided operation_id')
+    if $options->{operation_id} and ($path_item->{$method}{operationId}//'') ne $options->{operation_id};
 
   return E({ %$state, data_path => '/request/method',
       recommended_response => [ 405, 'Method Not Allowed' ] },
