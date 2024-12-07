@@ -693,7 +693,7 @@ YAML
   cmp_result(
     $options,
     $expected,
-    'path captures can be properly extracted from the URI when some values are url-escaped',
+    'path captures can be properly derived from the URI when some values are url-escaped',
   );
 
 
@@ -1179,7 +1179,7 @@ YAML
       operation_uri => str($doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get)))),
       errors => [],
     },
-    'no request provided; path_template and method are extracted from operation_id',
+    'no request provided; path_captures and method are derived from operation_id',
   );
 
   ok($openapi->find_path($options = { method => 'get', path_template => '/foo/{foo_id}', path_captures => { foo_id => 'a' } }), 'find_path succeeded');
@@ -1194,7 +1194,7 @@ YAML
       operation_uri => str($doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get)))),
       errors => [],
     },
-    'no request provided; operation_id is extracted from method and path_template',
+    'no request provided; operation_id is derived from method and path_template',
   );
 
   ok($openapi->find_path($options = { method => 'get', path_template => '/foo/{foo_id}' }), 'find_path succeeded');
