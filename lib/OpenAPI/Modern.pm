@@ -481,7 +481,7 @@ sub find_path ($self, $options, $state = {}) {
       return 1;
     }
 
-    return E({ %$state, keyword => 'paths' }, 'no match found for URI "%s"',
+    return E({ %$state, keyword => 'paths' }, 'no match found for request URI "%s"',
       $options->{request}->url->clone->query(undef)->fragment(undef));
   }
 
