@@ -493,8 +493,9 @@ sub find_path ($self, $options, $state = {}) {
 
   my $capture_values;
   if ($options->{request}) {
-    # if we're still here, we were passed path_template in options or we calculated it from
-    # operation_id, and now we verify it against path_captures and the request URI.
+    # we were passed path_template in options or we calculated it from operation_id, and now we
+    # verify it against path_captures and the request URI.
+
     my $uri_path = $options->{request}->url->path->to_string;
     $uri_path = '/' if not length $uri_path;
 
@@ -517,8 +518,8 @@ sub find_path ($self, $options, $state = {}) {
         Encode::FB_CROAK | Encode::LEAVE_SRC), 1 .. $#- ];
   }
 
-  # if we weren't passed a request, we can't verify that this matches, but we may have derived it
-  # from looking upward from the operation_id
+  # if we weren't passed a request, we can't verify that the path_template matches, but we may have
+  # derived it from looking upward from the operation_id
   $options->{path_template} = $path_template;
 
   # FIXME: follow $ref chain in path-item
