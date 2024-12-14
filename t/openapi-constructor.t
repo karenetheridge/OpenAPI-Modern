@@ -108,7 +108,7 @@ subtest 'document errors' => sub {
         {
           instanceLocation => '',
           keywordLocation => '/type',
-          absoluteKeywordLocation => 'https://spec.openapis.org/oas/3.1/schema/2022-10-07#/type',
+          absoluteKeywordLocation => DEFAULT_METASCHEMA.'#/type',
           error => 'got array, not object',
         },
       ],

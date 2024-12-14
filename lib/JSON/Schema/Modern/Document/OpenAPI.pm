@@ -28,8 +28,6 @@ use namespace::clean;
 
 extends 'JSON::Schema::Modern::Document';
 
-use constant DEFAULT_DIALECT => 'https://spec.openapis.org/oas/3.1/dialect/base';
-
 use constant DEFAULT_SCHEMAS => {
   # local filename => identifier to add the schema as
   'oas/dialect/base.schema.json' => 'https://spec.openapis.org/oas/3.1/dialect/base', # metaschema for json schemas contained within openapi documents
@@ -40,6 +38,7 @@ use constant DEFAULT_SCHEMAS => {
   'strict-dialect.json' => 'https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/strict-dialect.json',
 };
 
+use constant DEFAULT_DIALECT => 'https://spec.openapis.org/oas/3.1/dialect/base';
 use constant DEFAULT_BASE_METASCHEMA => 'https://spec.openapis.org/oas/3.1/schema-base/2022-10-07';
 use constant DEFAULT_METASCHEMA => 'https://spec.openapis.org/oas/3.1/schema/2022-10-07';
 

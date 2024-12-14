@@ -14,9 +14,6 @@ use JSON::Schema::Modern::Utilities 'jsonp';
 use lib 't/lib';
 use Helper;
 
-# the document where most constraints are defined
-use constant SCHEMA => 'https://spec.openapis.org/oas/3.1/schema/2022-10-07';
-
 my $yamlpp = YAML::PP->new(boolean => 'JSON::PP');
 
 subtest 'extract operationIds and identify duplicates' => sub {
@@ -94,7 +91,7 @@ YAML
     [ map +{
         instanceLocation => $_.'/operationId',
         keywordLocation => '',
-        absoluteKeywordLocation => SCHEMA,
+        absoluteKeywordLocation => DEFAULT_METASCHEMA,
         error => 'duplicate of operationId at /components/callbacks/callback_a/$url_a/patch/callbacks/callback_z/$url_z/delete',
       },
       (

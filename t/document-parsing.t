@@ -14,9 +14,6 @@ use Test::Fatal;
 use lib 't/lib';
 use Helper;
 
-# the document where most constraints are defined
-use constant SCHEMA => 'https://spec.openapis.org/oas/3.1/schema/2022-10-07';
-
 my $yamlpp = YAML::PP->new(boolean => 'JSON::PP');
 my $openapi_preamble = <<'YAML';
 ---
@@ -32,7 +29,7 @@ subtest 'bad subschemas' => sub {
     evaluator => my $js = JSON::Schema::Modern->new(validate_formats => 1),
     schema => {
       $yamlpp->load_string($openapi_preamble)->%*,
-      jsonSchemaDialect => JSON::Schema::Modern::Document::OpenAPI->DEFAULT_DIALECT,
+      jsonSchemaDialect => DEFAULT_DIALECT,
       components => {
         schemas => {
           alpha_schema => {
@@ -316,31 +313,31 @@ YAML
         methods(TO_JSON => {
           instanceLocation => $_.'/servers/0/variables/version/default',
           keywordLocation => '',
-          absoluteKeywordLocation => SCHEMA,
+          absoluteKeywordLocation => DEFAULT_METASCHEMA,
           error => 'servers default is not a member of enum',
         }),
         methods(TO_JSON => {
           instanceLocation => $_.'/servers/1/url',
           keywordLocation => '',
-          absoluteKeywordLocation => SCHEMA,
+          absoluteKeywordLocation => DEFAULT_METASCHEMA,
           error => 'duplicate of templated server url "https://example.com/{version}/{greeting}"',
         }),
         methods(TO_JSON => {
           instanceLocation => $_.'/servers/1',
           keywordLocation => '',
-          absoluteKeywordLocation => SCHEMA,
+          absoluteKeywordLocation => DEFAULT_METASCHEMA,
           error => '"variables" property is required for templated server urls',
         }),
         methods(TO_JSON => {
           instanceLocation => $_.'/servers/2/variables',
           keywordLocation => '',
-          absoluteKeywordLocation => SCHEMA,
+          absoluteKeywordLocation => DEFAULT_METASCHEMA,
           error => 'missing "variables" definition for templated variable "foo"',
         }),
         methods(TO_JSON => {
           instanceLocation => $_.'/servers/3/variables/version/default',
           keywordLocation => '',
-          absoluteKeywordLocation => SCHEMA,
+          absoluteKeywordLocation => DEFAULT_METASCHEMA,
           error => 'servers default is not a member of enum',
         }),
       ), '', '/components/pathItems/path0', '/components/pathItems/path0/get',
