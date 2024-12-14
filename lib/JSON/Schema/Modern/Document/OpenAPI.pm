@@ -28,19 +28,20 @@ use namespace::clean;
 
 extends 'JSON::Schema::Modern::Document';
 
-use constant DEFAULT_SCHEMAS => {
-  # local filename => identifier to add the schema as
-  'oas/dialect/base.schema.json' => 'https://spec.openapis.org/oas/3.1/dialect/base', # metaschema for json schemas contained within openapi documents
-  'oas/meta/base.schema.json' => 'https://spec.openapis.org/oas/3.1/meta/base',  # vocabulary definition
-  'oas/schema-base.json' => 'https://spec.openapis.org/oas/3.1/schema-base',  # the main openapi document schema + draft2020-12 jsonSchemaDialect
-  'oas/schema.json' => 'https://spec.openapis.org/oas/3.1/schema', # the main openapi document schema + permissive jsonSchemaDialect
-  'strict-schema.json' => 'https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/strict-schema.json',
-  'strict-dialect.json' => 'https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/strict-dialect.json',
-};
+# schema files to add by default
+# these are also available as URIs with 'latest' instead of the timestamp.
+use constant DEFAULT_SCHEMAS => [
+  'oas/dialect/base.schema.json', # metaschema for json schemas contained within openapi documents
+  'oas/meta/base.schema.json',    # vocabulary definition
+  'oas/schema-base.json',         # the main openapi document schema + draft2020-12 jsonSchemaDialect
+  'oas/schema.json',              # the main openapi document schema + permissive jsonSchemaDialect
+  'strict-schema.json',
+  'strict-dialect.json',
+];
 
-use constant DEFAULT_DIALECT => 'https://spec.openapis.org/oas/3.1/dialect/base';
-use constant DEFAULT_BASE_METASCHEMA => 'https://spec.openapis.org/oas/3.1/schema-base/2022-10-07';
-use constant DEFAULT_METASCHEMA => 'https://spec.openapis.org/oas/3.1/schema/2022-10-07';
+use constant DEFAULT_DIALECT => 'https://spec.openapis.org/oas/3.1/dialect/2024-10-25';
+use constant DEFAULT_BASE_METASCHEMA => 'https://spec.openapis.org/oas/3.1/schema-base/2024-11-14';
+use constant DEFAULT_METASCHEMA => 'https://spec.openapis.org/oas/3.1/schema/2024-11-14';
 
 # warning: this is weak_ref'd, so it may not exist after construction/traverse time
 has '+evaluator' => (
@@ -162,7 +163,7 @@ sub traverse ($self, $evaluator) {
       short_circuit => 1,
       collect_annotations => 0,
       callbacks => {
-        # Note that if we are using the default metaschema https://spec.openapis.org/oas/3.1/schema,
+        # Note that if we are using the default metaschema https://spec.openapis.org/oas/3.1/schema/latest,
         # we will only find the root of each schema, not all subschemas. We will traverse each
         # of these schemas later using jsonSchemaDialect to find all subschemas and their $ids.
         '$dynamicRef' => sub ($, $schema, $state) {
@@ -339,11 +340,14 @@ sub _add_vocab_and_default_schemas ($self) {
   $js->add_format_validation(double => +{ type => 'number', sub => sub ($x) { 1 } });
   $js->add_format_validation(password => +{ type => 'string', sub => sub ($) { 1 } });
 
-  foreach my $pairs (pairs DEFAULT_SCHEMAS->%*) {
-    my ($filename, $uri) = @$pairs;
-    my $document = $js->add_schema($uri,
-      $js->_json_decoder->decode(path(dist_dir('OpenAPI-Modern'), $filename)->slurp_raw));
-    $js->add_document($uri.'/latest', $document) if $uri =~ /schema(-base)?$/;
+  foreach my $filename (DEFAULT_SCHEMAS->@*) {
+    my $document = $js->add_schema($js->_json_decoder->decode(path(dist_dir('OpenAPI-Modern'), $filename)->slurp_raw));
+
+    if ($document->canonical_uri =~ m{/\d{4}-\d{2}-\d{2}$}) {
+      my $base = $`;
+      $js->add_document($base, $document) if $base =~ m{/schema$};
+      $js->add_document($base.'/latest', $document);
+    }
   }
 }
 
