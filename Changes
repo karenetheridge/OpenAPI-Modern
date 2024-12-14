@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.074     2024-12-14 18:07:54Z
           - some adjustments to error messages and locations when matching a
             provided request uri against /paths/* entries in an openapi document
