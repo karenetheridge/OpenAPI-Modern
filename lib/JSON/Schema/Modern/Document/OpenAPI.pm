@@ -206,7 +206,6 @@ sub traverse ($self, $evaluator) {
         ()= E({ %$state, data_path => jsonp('/paths', $path),
           initial_schema_uri => Mojo::URL->new(DEFAULT_METASCHEMA) },
           'duplicate path template variable "%s"', $name);
-        $state->{errors}[-1]->mode('evaluate');
       }
     }
 
@@ -215,7 +214,6 @@ sub traverse ($self, $evaluator) {
       ()= E({ %$state, data_path => jsonp('/paths', $path),
         initial_schema_uri => Mojo::URL->new(DEFAULT_METASCHEMA) },
         'duplicate of templated path "%s"', $first_path);
-      $state->{errors}[-1]->mode('evaluate');
       next;
     }
     $seen_path{$normalized} = $path;
@@ -236,7 +234,6 @@ sub traverse ($self, $evaluator) {
         ()= E({ %$state, data_path => jsonp($servers_location, $server_idx, 'url'),
           initial_schema_uri => Mojo::URL->new(DEFAULT_METASCHEMA) },
           'duplicate of templated server url "%s"', $first_url);
-        $state->{errors}[-1]->mode('evaluate');
       }
       $seen_url{$normalized} = $servers->[$server_idx]{url};
 
@@ -246,7 +243,6 @@ sub traverse ($self, $evaluator) {
         ()= E({ %$state, data_path => jsonp($servers_location, $server_idx),
           initial_schema_uri => Mojo::URL->new(DEFAULT_METASCHEMA) },
           '"variables" property is required for templated server urls');
-        $state->{errors}[-1]->mode('evaluate');
         next;
       }
 
@@ -258,7 +254,6 @@ sub traverse ($self, $evaluator) {
           ()= E({ %$state, data_path => jsonp($servers_location, $server_idx, 'variables', $varname, 'default'),
             initial_schema_uri => Mojo::URL->new(DEFAULT_METASCHEMA) },
             'servers default is not a member of enum');
-          $state->{errors}[-1]->mode('evaluate');
         }
       }
 
@@ -268,12 +263,14 @@ sub traverse ($self, $evaluator) {
           initial_schema_uri => Mojo::URL->new(DEFAULT_METASCHEMA) },
           'missing "variables" definition for templated variable%s "%s"',
           @missing_definitions > 1 ? 's' : '', join('", "', @missing_definitions));
-        $state->{errors}[-1]->mode('evaluate');
       }
     }
   }
 
-  return $state if $state->{errors}->@*;
+  if ($state->{errors}->@*) {
+    $_->mode('evaluate') foreach $state->{errors}->@*;
+    return $state;
+  }
 
   # disregard paths that are not the root of each embedded subschema.
   # Because the callbacks are executed after the keyword has (recursively) finished evaluating,

@@ -48,11 +48,7 @@ subtest 'bad subschemas' => sub {
     'subschemas identified, and error found',
   );
 
-  is(
-    index(document_result($doc), "'/components/schemas/alpha_schema/not/minimum': got string, not number\n"), 0,
-    'errors serialize using the instance locations within the document',
-  );
-  is(document_result($doc), substr(<<'ERRORS', 0, -1), 'stringified errors');
+  is(document_result($doc), substr(<<'ERRORS', 0, -1), 'stringified errors use the instance locations');
 '/components/schemas/alpha_schema/not/minimum': got string, not number
 '/components/schemas/alpha_schema/not': not all properties are valid
 '/components/schemas/alpha_schema/not': subschema 3 is not valid
@@ -336,6 +332,24 @@ YAML
     ],
     'all issues with server entries found',
   );
+
+  is(document_result($doc), substr(<<'ERRORS', 0, -1), 'stringified errors use the instance locations');
+'/servers/0/variables/version/default': servers default is not a member of enum
+'/servers/1/url': duplicate of templated server url "https://example.com/{version}/{greeting}"
+'/servers/1': "variables" property is required for templated server urls
+'/servers/2/variables': missing "variables" definition for templated variable "foo"
+'/servers/3/variables/version/default': servers default is not a member of enum
+'/components/pathItems/path0/servers/0/variables/version/default': servers default is not a member of enum
+'/components/pathItems/path0/servers/1/url': duplicate of templated server url "https://example.com/{version}/{greeting}"
+'/components/pathItems/path0/servers/1': "variables" property is required for templated server urls
+'/components/pathItems/path0/servers/2/variables': missing "variables" definition for templated variable "foo"
+'/components/pathItems/path0/servers/3/variables/version/default': servers default is not a member of enum
+'/components/pathItems/path0/get/servers/0/variables/version/default': servers default is not a member of enum
+'/components/pathItems/path0/get/servers/1/url': duplicate of templated server url "https://example.com/{version}/{greeting}"
+'/components/pathItems/path0/get/servers/1': "variables" property is required for templated server urls
+'/components/pathItems/path0/get/servers/2/variables': missing "variables" definition for templated variable "foo"
+'/components/pathItems/path0/get/servers/3/variables/version/default': servers default is not a member of enum
+ERRORS
 };
 
 done_testing;
