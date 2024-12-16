@@ -563,7 +563,7 @@ sub _validate_path_parameter ($self, $state, $param_obj, $path_captures) {
   return E({ %$state, keyword => 'style' }, 'only style: simple is supported in path parameters')
     if ($param_obj->{style}//'simple') ne 'simple';
 
-  my $types = $self->_type_in_schema($param_obj->{schema}, { %$state, schema_path => jsonp($state->{schema_path}) });
+  my $types = $self->_type_in_schema($param_obj->{schema}, { %$state, schema_path => jsonp($state->{schema_path}, 'schema') });
   if (grep $_ eq 'array', @$types or grep $_ eq 'object', @$types) {
     return E($state, 'deserializing to non-primitive types is not yet supported in path parameters');
   }
@@ -601,7 +601,7 @@ sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
   return E({ %$state, keyword => 'style' }, 'only style: form is supported in query parameters')
     if ($param_obj->{style}//'form') ne 'form';
 
-  my $types = $self->_type_in_schema($param_obj->{schema}, { %$state, schema_path => jsonp($state->{schema_path}) });
+  my $types = $self->_type_in_schema($param_obj->{schema}, { %$state, schema_path => jsonp($state->{schema_path}, 'schema') });
   if (grep $_ eq 'array', @$types or grep $_ eq 'object', @$types) {
     return E($state, 'deserializing to non-primitive types is not yet supported in query parameters');
   }
