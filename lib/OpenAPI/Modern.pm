@@ -176,7 +176,7 @@ sub validate_request ($self, $request, $options = {}) {
     $state->{data_path} = '/request/body';
 
     if (my $body_obj = $operation->{requestBody}) {
-      $state->{schema_path} = jsonp($state->{schema_path}, 'requestBody');
+      $state->{schema_path} = $state->{schema_path}.'/requestBody';
 
       while (my $ref = $body_obj->{'$ref'}) {
         $body_obj = $self->_resolve_ref('request-body', $ref, $state);
@@ -272,7 +272,7 @@ sub validate_response ($self, $response, $options = {}) {
       $response->code, substr(sprintf('%03s', $response->code), 0, -2).'XX', 'default';
 
     if (not $response_name) {
-      ()= E({ %$state, keyword => 'responses', data_path => jsonp($state->{data_path}, 'code') },
+      ()= E({ %$state, keyword => 'responses', data_path => $state->{data_path}.'/code' },
         'no response object found for code %s', $response->code);
       return $self->_result($state, 0, 1);
     }
@@ -563,12 +563,12 @@ sub _validate_path_parameter ($self, $state, $param_obj, $path_captures) {
   return E({ %$state, keyword => 'style' }, 'only style: simple is supported in path parameters')
     if ($param_obj->{style}//'simple') ne 'simple';
 
-  my $types = $self->_type_in_schema($param_obj->{schema}, { %$state, schema_path => jsonp($state->{schema_path}, 'schema') });
+  my $types = $self->_type_in_schema($param_obj->{schema}, { %$state, schema_path => $state->{schema_path}.'/schema' });
   if (grep $_ eq 'array', @$types or grep $_ eq 'object', @$types) {
     return E($state, 'deserializing to non-primitive types is not yet supported in path parameters');
   }
 
-  $self->_evaluate_subschema(\$value, $param_obj->{schema}, { %$state, schema_path => jsonp($state->{schema_path}, 'schema'), stringy_numbers => 1, depth => $state->{depth}+1 });
+  $self->_evaluate_subschema(\$value, $param_obj->{schema}, { %$state, schema_path => $state->{schema_path}.'/schema', stringy_numbers => 1, depth => $state->{depth}+1 });
 }
 
 sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
@@ -601,12 +601,12 @@ sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
   return E({ %$state, keyword => 'style' }, 'only style: form is supported in query parameters')
     if ($param_obj->{style}//'form') ne 'form';
 
-  my $types = $self->_type_in_schema($param_obj->{schema}, { %$state, schema_path => jsonp($state->{schema_path}, 'schema') });
+  my $types = $self->_type_in_schema($param_obj->{schema}, { %$state, schema_path => $state->{schema_path}.'/schema' });
   if (grep $_ eq 'array', @$types or grep $_ eq 'object', @$types) {
     return E($state, 'deserializing to non-primitive types is not yet supported in query parameters');
   }
 
-  $state = { %$state, schema_path => jsonp($state->{schema_path}, 'schema'), stringy_numbers => 1, depth => $state->{depth}+1 };
+  $state = { %$state, schema_path => $state->{schema_path}.'/schema', stringy_numbers => 1, depth => $state->{depth}+1 };
   $self->_evaluate_subschema(\ $query_params->{$param_obj->{name}}, $param_obj->{schema}, $state);
 }
 
@@ -630,7 +630,7 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
   # line value from a field line."
   my @values = map s/^\s*//r =~ s/\s*$//r, map split(/,/, $_), $headers->every_header($header_name)->@*;
 
-  my $types = $self->_type_in_schema($header_obj->{schema}, { %$state, schema_path => jsonp($state->{schema_path}, 'schema') });
+  my $types = $self->_type_in_schema($header_obj->{schema}, { %$state, schema_path => $state->{schema_path}.'/schema' });
 
   # RFC9112 §5.3-1: "A recipient MAY combine multiple field lines within a field section that have
   # the same field name into one field line, without changing the semantics of the message, by
@@ -658,7 +658,7 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
     $data = join ', ', map s/^\s*//r =~ s/\s*$//r, $headers->every_header($header_name)->@*;
   }
 
-  $state = { %$state, schema_path => jsonp($state->{schema_path}, 'schema'), stringy_numbers => 1, depth => $state->{depth}+1 };
+  $state = { %$state, schema_path => $state->{schema_path}.'/schema', stringy_numbers => 1, depth => $state->{depth}+1 };
   $self->_evaluate_subschema(\ $data, $header_obj->{schema}, $state);
 }
 
@@ -782,7 +782,7 @@ sub _resolve_ref ($self, $entity_type, $ref, $state) {
     if $schema_info->{document}->get_entity_at_location($schema_info->{document_path}) ne $entity_type;
 
   $state->{initial_schema_uri} = $schema_info->{canonical_uri};
-  $state->{traversed_schema_path} = $state->{traversed_schema_path}.$state->{schema_path}.jsonp('/$ref');
+  $state->{traversed_schema_path} = $state->{traversed_schema_path}.$state->{schema_path}.'/$ref';
   $state->{schema_path} = '';
 
   return $schema_info->{schema};
