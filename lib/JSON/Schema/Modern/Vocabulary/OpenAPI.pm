@@ -118,7 +118,7 @@ __END__
 
 Implementation of the JSON Schema "OpenAPI" vocabulary, indicated in metaschemas
 with the URI C<https://spec.openapis.org/oas/3.1/vocab/base> and formally specified in
-L<https://spec.openapis.org/oas/v3.1.0#schema-object>.
+L<https://spec.openapis.org/oas/v3.1#schema-object>.
 
 This vocabulary is normally made available by using the metaschema
 L<https://spec.openapis.org/oas/3.1/dialect/base>.
@@ -133,7 +133,7 @@ L<https://spec.openapis.org/oas/3.1/dialect/base>.
 * L<https://json-schema.org>
 * L<https://www.openapis.org/>
 * L<https://learn.openapis.org/>
-* L<https://spec.openapis.org/oas/v3.1.0>
+* L<https://spec.openapis.org/oas/v3.1>
 
 =head1 COPYRIGHT AND LICENCE
 

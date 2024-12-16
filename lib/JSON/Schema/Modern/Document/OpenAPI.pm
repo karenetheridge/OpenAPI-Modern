@@ -130,7 +130,7 @@ sub traverse ($self, $evaluator) {
     return $state;
   }
 
-  # /jsonSchemaDialect: https://spec.openapis.org/oas/v3.1.0#specifying-schema-dialects
+  # /jsonSchemaDialect: https://spec.openapis.org/oas/v3.1#specifying-schema-dialects
   {
     my $json_schema_dialect = $self->json_schema_dialect // $schema->{jsonSchemaDialect};
 
@@ -351,7 +351,7 @@ sub _add_vocab_and_default_schemas ($self) {
   }
 }
 
-# https://spec.openapis.org/oas/v3.1.0#schema-object
+# https://spec.openapis.org/oas/v3.1#schema-object
 sub _traverse_schema ($self, $schema, $state) {
   return if not is_plain_hashref($schema) or not keys %$schema;
 
@@ -409,7 +409,7 @@ request and response validation, code generation or form generation.
 The provided document must be a valid OpenAPI document, as specified by the schema identified by
 C<https://spec.openapis.org/oas/3.1/schema-base/latest> (an alias for the latest document available)
 
-and the L<OpenAPI v3.1 specification|https://spec.openapis.org/oas/v3.1.0>.
+and the L<OpenAPI v3.1 specification|https://spec.openapis.org/oas/v3.1>.
 
 =head1 ATTRIBUTES
 
@@ -468,7 +468,7 @@ document.
 * L<https://json-schema.org>
 * L<https://www.openapis.org/>
 * L<https://learn.openapis.org/>
-* L<https://spec.openapis.org/oas/v3.1.0>
+* L<https://spec.openapis.org/oas/v3.1>
 
 =head1 COPYRIGHT AND LICENCE
 
