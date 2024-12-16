@@ -17,7 +17,7 @@ subtest '/paths correctness' => sub {
     canonical_uri => 'http://localhost:1234/api',
     evaluator => my $js = JSON::Schema::Modern->new(validate_formats => 1),
     schema => {
-      openapi => '3.1.0',
+      openapi => OAS_VERSION,
       info => {
         title => 'my title',
         version => '1.2.3',

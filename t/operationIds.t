@@ -17,12 +17,7 @@ use Helper;
 my $yamlpp = YAML::PP->new(boolean => 'JSON::PP');
 
 subtest 'extract operationIds and identify duplicates' => sub {
-  my $yaml = <<'YAML';
----
-openapi: 3.1.0
-info:
-  title: Test API
-  version: 1.2.3
+  my $yaml = OPENAPI_PREAMBLE.<<'YAML';
 components:
   callbacks:
     callback_a:

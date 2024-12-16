@@ -15,7 +15,7 @@ use lib 't/lib';
 use Helper;
 
 my $preamble = {
-  openapi => '3.1.0',
+  openapi => OAS_VERSION,
   info => {
     title => 'my title',
     version => '1.2.3',

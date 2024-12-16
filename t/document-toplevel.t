@@ -17,7 +17,7 @@ subtest 'basic construction' => sub {
     canonical_uri => 'http://localhost:1234/api',
     evaluator => my $js = JSON::Schema::Modern->new(validate_formats => 1),
     schema => {
-      openapi => '3.1.0',
+      openapi => OAS_VERSION,
       info => {
         title => 'my title',
         version => '1.2.3',
@@ -97,7 +97,7 @@ subtest 'top level document fields' => sub {
     canonical_uri => 'http://localhost:1234/api',
     evaluator => $js,
     schema => {
-      openapi => '3.1.0',
+      openapi => OAS_VERSION,
       info => {},
       paths => {},
     },
@@ -158,7 +158,7 @@ ERRORS
     canonical_uri => 'http://localhost:1234/api',
     evaluator => $js,
     schema => {
-      openapi => '3.1.0',
+      openapi => OAS_VERSION,
       info => {
         title => 'my title',
         version => '1.2.3',
@@ -202,7 +202,7 @@ ERRORS
     canonical_uri => 'http://localhost:1234/api',
     evaluator => $js,
     schema => {
-      openapi => '3.1.0',
+      openapi => OAS_VERSION,
       info => {
         title => 'my title',
         version => '1.2.3',
@@ -240,7 +240,7 @@ ERRORS
     canonical_uri => 'http://localhost:1234/api',
     evaluator => $js,
     schema => {
-      openapi => '3.1.0',
+      openapi => OAS_VERSION,
       info => {
         title => 'my title',
         version => '1.2.3',
@@ -297,7 +297,7 @@ ERRORS
     canonical_uri => 'http://localhost:1234/api',
     evaluator => $js,
     schema => {
-      openapi => '3.1.0',
+      openapi => OAS_VERSION,
       info => {
         title => 'my title',
         version => '1.2.3',
@@ -336,7 +336,7 @@ ERRORS
     canonical_uri => 'http://localhost:1234/api',
     evaluator => $js,
     schema => {
-      openapi => '3.1.0',
+      openapi => OAS_VERSION,
       info => {
         title => 'my title',
         version => '1.2.3',
@@ -399,7 +399,7 @@ ERRORS
     canonical_uri => 'http://localhost:1234/api',
     evaluator => $js,
     schema => {
-      openapi => '3.1.0',
+      openapi => OAS_VERSION,
       info => {
         title => 'my title',
         version => '1.2.3',

@@ -31,6 +31,16 @@ use constant DEFAULT_BASE_METASCHEMA => JSON::Schema::Modern::Document::OpenAPI:
 use constant DEFAULT_METASCHEMA => JSON::Schema::Modern::Document::OpenAPI::DEFAULT_METASCHEMA;
 use constant OAS_VOCABULARY => 'https://spec.openapis.org/oas/3.1/meta/2024-10-25';
 
+use constant OAS_VERSION => '3.1.0';
+
+use constant OPENAPI_PREAMBLE => <<'YAML';
+---
+openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.2.3
+YAML
+
 # type can be
 # 'mojo': classes of type Mojo::URL, Mojo::Headers, Mojo::Message::Request, Mojo::Message::Response
 # 'lwp': classes of type URI, HTTP::Headers, HTTP::Request, HTTP::Response

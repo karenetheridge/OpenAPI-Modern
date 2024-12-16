@@ -15,20 +15,13 @@ use lib 't/lib';
 use Helper;
 
 my $yamlpp = YAML::PP->new(boolean => 'JSON::PP');
-my $openapi_preamble = <<'YAML';
----
-openapi: 3.1.0
-info:
-  title: Test API
-  version: 1.2.3
-YAML
 
 subtest 'bad subschemas' => sub {
   my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
     evaluator => my $js = JSON::Schema::Modern->new(validate_formats => 1),
     schema => {
-      $yamlpp->load_string($openapi_preamble)->%*,
+      $yamlpp->load_string(OPENAPI_PREAMBLE)->%*,
       jsonSchemaDialect => DEFAULT_DIALECT,
       components => {
         schemas => {
@@ -78,69 +71,68 @@ subtest 'identify subschemas and other entities' => sub {
     canonical_uri => 'http://localhost:1234/api',
     metaschema_uri => 'https://spec.openapis.org/oas/3.1/schema/latest',
     evaluator => my $js = JSON::Schema::Modern->new(validate_formats => 1),
-    schema => $yamlpp->load_string(<<YAML));
-$openapi_preamble
+    schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
 components:
   schemas:
     beta_schema:
-      \$id: beta
+      $id: beta
       not:
-        \$id: gamma
-        \$schema: https://json-schema.org/draft/2019-09/schema
+        $id: gamma
+        $schema: https://json-schema.org/draft/2019-09/schema
   parameters:
     my_param1:
       name: param1
       in: query
       schema:
-        \$id: parameter1_id
+        $id: parameter1_id
     my_param2:
       name: param2
       in: query
       content:
         media_type_0:
           schema:
-            \$id: parameter2_id
+            $id: parameter2_id
   responses:
     my_response4:
       description: bad response
       content:
         media_type_4:
           schema:
-            \$comment: nothing to see here
+            $comment: nothing to see here
   pathItems:
     path0:
       parameters:
         - name: param0
           in: query
           schema:
-            \$id: pathItem0_param_id
+            $id: pathItem0_param_id
         # TODO param2 with content/media_type_0
       get:
         parameters:
           - name: param1
             in: query
             schema:
-              \$id: pathItem0_get_param_id
+              $id: pathItem0_get_param_id
         requestBody:
           content:
             media_type_1:
               schema:
-                \$id: pathItem0_get_requestBody_id
+                $id: pathItem0_get_requestBody_id
         responses:
           200:
             description: normal response
             content:
               media_type_2:
                 schema:
-                  \$id: pathItem0_get_responses2_id
+                  $id: pathItem0_get_responses2_id
               media_type_3:
                 schema:
-                  \$id: pathItem0_get_responses3_id
+                  $id: pathItem0_get_responses3_id
           default:
-            \$ref: '#/components/responses/my_response4'
+            $ref: '#/components/responses/my_response4'
         callbacks:
           my_callback:
-            '{\$request.query.queryUrl}':
+            '{$request.query.queryUrl}':
               post: {}
 paths:
   /foo/alpha: {}
@@ -264,7 +256,7 @@ YAML
 };
 
 subtest 'invalid servers entries' => sub {
-  my $servers = $yamlpp->load_string(<<YAML);
+  my $servers = $yamlpp->load_string(<<'YAML');
 servers:
   - url: https://example.com/{version}/{greeting}
     variables:
@@ -293,7 +285,7 @@ YAML
     # server urls (via the uri-reference format requirement).
     evaluator => my $js = JSON::Schema::Modern->new(validate_formats => 0),
     schema => {
-      $yamlpp->load_string($openapi_preamble)->%*,
+      $yamlpp->load_string(OPENAPI_PREAMBLE)->%*,
       %$servers,
       components => {
         pathItems => {
