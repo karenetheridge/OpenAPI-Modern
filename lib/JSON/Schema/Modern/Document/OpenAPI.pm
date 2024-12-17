@@ -114,6 +114,7 @@ sub traverse ($self, $evaluator) {
     $schema, $top_schema,
     {
       effective_base_uri => DEFAULT_METASCHEMA,
+      collect_annotations => 0,
       callbacks => {
         pattern => sub ($data, $schema, $state) {
           return $data =~ /^3\.1\.[0-9]+(-.+)?$/ ? 1 : E($state, 'unrecognized openapi version %s', $data);
@@ -158,6 +159,7 @@ sub traverse ($self, $evaluator) {
     $schema, $self->metaschema_uri,
     {
       short_circuit => 1,
+      collect_annotations => 0,
       callbacks => {
         # Note that if we are using the default metaschema https://spec.openapis.org/oas/3.1/schema,
         # we will only find the root of each schema, not all subschemas. We will traverse each
