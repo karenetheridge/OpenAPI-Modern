@@ -63,7 +63,7 @@ subtest recursive_get => sub {
     },
   );
 
-  is($doc->errors, 0, 'no errors during traversal');
+  cmp_result([$doc->errors], [], 'no errors during traversal');
 
   my $openapi = OpenAPI::Modern->new(
     openapi_document => $doc,
@@ -87,7 +87,7 @@ subtest recursive_get => sub {
     },
   );
 
-  is($doc2->errors, 0, 'no errors during traversal');
+  cmp_result([$doc2->errors], [], 'no errors during traversal');
   $openapi->evaluator->add_document($doc2);
 
   like(

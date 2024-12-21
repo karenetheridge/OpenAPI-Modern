@@ -138,7 +138,7 @@ subtest 'construct with document' => sub {
     },
   );
 
-  is($doc->errors, 0, 'no errors during traversal');
+  cmp_result([$doc->errors], [], 'no errors during traversal');
 
   my $openapi = OpenAPI::Modern->new(
     openapi_document => $doc,

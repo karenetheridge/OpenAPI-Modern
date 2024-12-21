@@ -143,7 +143,7 @@ components:
             \$ref: '#/components/responses/my_response4'
 YAML
 
-  is($doc->errors, 0, 'no errors during traversal');
+  cmp_result([$doc->errors], [], 'no errors during traversal');
   cmp_deeply(
     my $index = { $doc->resource_index },
     {
