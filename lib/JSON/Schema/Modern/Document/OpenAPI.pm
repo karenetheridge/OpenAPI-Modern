@@ -163,10 +163,13 @@ sub traverse ($self, $evaluator) {
       short_circuit => 1,
       collect_annotations => 0,
       callbacks => {
-        # Note that if we are using the default metaschema https://spec.openapis.org/oas/3.1/schema/2024-10-25,
-        # we will only find the root of each schema, not all subschemas. We will traverse each
-        # of these schemas later using jsonSchemaDialect to find all subschemas and their $ids.
+        # we avoid producing errors here so we don't create extra errors for "not all additional
+        # properties are valid" etc
         '$dynamicRef' => sub ($, $schema, $state) {
+          # Note that if we are using the default metaschema
+          # https://spec.openapis.org/oas/3.1/schema/2024-10-25, we will only find the root of each
+          # schema, not all subschemas. We will traverse each of these schemas later using
+          # jsonSchemaDialect to find all subschemas and their $ids.
           push @json_schema_paths, $state->{data_path} if $schema->{'$dynamicRef'} eq '#meta';
           return 1;
         },
