@@ -874,7 +874,8 @@ components:
       post:
         operationId: my_reffed_component_operation
 paths:
-  /foo: {}  # TODO: $ref to #/components/pathItems/my_path_item2
+  /foo:
+    $ref: '#/components/pathItems/my_path_item2'
   /foo/bar:
     post:
       callbacks:
@@ -919,20 +920,23 @@ YAML
     {
       request => isa('Mojo::Message::Request'),
       path_template => '/foo/bar',
+      _path_item => { post => ignore },
       method => 'post',
       operation_id => 'my_components_pathItem_operation',
       errors => [
         methods(TO_JSON => {
           instanceLocation => '',
-          keywordLocation => '/components/pathItems/my_path_item',
-          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/pathItems/my_path_item')->to_string,
-          error => 'operation at operation_id does not match provided path_template',
+          keywordLocation => jsonp(qw(/paths /foo/bar)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
+          error => 'templated operation does not match provided operation_id',
         }),
       ],
     },
-    'providing a path template will never work here',
+    'this operation cannot be reached by using this path template',
   );
 
+  # TODO: no way at present to match a webhook request to its path-item (and OpenAPI 3.1 does not
+  # provide for specifying a path_template for webhooks)
   ok(!$openapi->find_path($options = { request => $request, operation_id => 'my_webhook_operation' }),
     to_str($request).': find_path returns false');
   cmp_result(
@@ -955,6 +959,8 @@ YAML
     'operation is not under a path-item with a path template',
   );
 
+  # TODO: no way at present to match a callback request to its path-item embedded under the
+  # operation, rather than to the top level /paths/*
   ok(!$openapi->find_path($options = { request => $request, operation_id => 'my_paths_pathItem_callback_operation' }),
     to_str($request).': find_path returns false');
   cmp_result(
@@ -999,18 +1005,86 @@ YAML
     'operation is not under a path-item with a path template',
   );
 
-  # TODO test: path-item exists, under paths with a template, but a $ref is followed before finding
-  # the actual definition: should be usable.
-  # we need to make sure that the URI matches the path_template above all the $refs.
-  # the destination path-item could be under /components/pathItems or /webhooks or in a callback,
-  # or shared by a path-item in another /path/<path_template>.
+  $request = request('POST', 'http://example.com/foo');
+
+  ok($openapi->find_path($options = { request => $request }), to_str($request).': find_path succeeded');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      operation_id => 'my_reffed_component_operation',
+      path_captures => {},
+      path_template => '/foo',
+      method => 'post',
+      _path_item => { description => ignore, post => { operationId => 'my_reffed_component_operation' }},
+      operation_uri => str($doc_uri_rel->clone->fragment('/components/pathItems/my_path_item2/post')),
+      errors => [],
+    },
+    'found path-item on the far side of a $ref using the request uri',
+  );
+
+  ok($openapi->find_path($options = { request => $request, operation_id => 'my_reffed_component_operation' }), to_str($request).': find_path succeeded');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      operation_id => 'my_reffed_component_operation',
+      path_captures => {},
+      path_template => '/foo',
+      method => 'post',
+      _path_item => { description => ignore, post => { operationId => 'my_reffed_component_operation' }},
+      operation_uri => str($doc_uri_rel->clone->fragment('/components/pathItems/my_path_item2/post')),
+      errors => [],
+    },
+    'found path-item on the far side of a $ref using an operationId, and verified against the request uri',
+  );
+
+  ok($openapi->find_path($options = { request => $request, path_template => '/foo' }), to_str($request).': find_path succeeded');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      operation_id => 'my_reffed_component_operation',
+      path_captures => {},
+      path_template => '/foo',
+      method => 'post',
+      _path_item => { description => ignore, post => { operationId => 'my_reffed_component_operation' }},
+      operation_uri => str($doc_uri_rel->clone->fragment('/components/pathItems/my_path_item2/post')),
+      errors => [],
+    },
+    'found path-item and method on the far side of a $ref using path_template, and verified against the request uri',
+  );
+
+  ok($openapi->find_path($options = { request => $request, path_template => '/foo', operation_id => 'my_reffed_component_operation' }),
+    to_str($request).': find_path returns success');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      _path_item => { description => ignore, post => { operationId => 'my_reffed_component_operation' }},
+      path_template => '/foo',
+      path_captures => {},
+      method => 'post',
+      operation_id => 'my_reffed_component_operation',
+      operation_uri => str($doc_uri_rel->clone->fragment('/components/pathItems/my_path_item2/post')),
+      errors => [],
+    },
+    'can find a path-item by operation_id, and then verify the provided path_template against the request despite there being a $ref in the way',
+  );
 };
 
 subtest 'no request is provided: options are relied on as the sole source of truth' => sub {
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => '/api',
     openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
+components:
+  pathItems:
+    my_path_item:
+      post:
+        operationId: my_reffed_component_operation
 paths:
+  /foo:
+    $ref: '#/components/pathItems/my_path_item'
   /foo/{foo_id}:
     get:
       operationId: my-get-operation
@@ -1258,6 +1332,34 @@ YAML
     'path_template and operation_id are inconsistent',
   );
 
+  ok($openapi->find_path($options = { operation_id => 'my_reffed_component_operation' }), 'find_path succeeded');
+  cmp_result(
+    $options,
+    {
+      operation_id => 'my_reffed_component_operation',
+      # note: no path_captures or path_template
+      method => 'post',
+      _path_item => { post => { operationId => 'my_reffed_component_operation' }},
+      operation_uri => str($doc_uri_rel->clone->fragment('/components/pathItems/my_path_item/post')),
+      errors => [],
+    },
+    'found path_item on the far side of a $ref using operation_id',
+  );
+
+  ok($openapi->find_path($options = { path_template => '/foo', method => 'post' }), 'find_path succeeded');
+  cmp_result(
+    $options,
+    {
+      operation_id => 'my_reffed_component_operation',
+      # note: no path_captures
+      path_template => '/foo',
+      method => 'post',
+      _path_item => { post => { operationId => 'my_reffed_component_operation' }},
+      operation_uri => str($doc_uri_rel->clone->fragment('/components/pathItems/my_path_item/post')),
+      errors => [],
+    },
+    'found path_item on the far side of a $ref using path_template and method',
+  );
 
   $openapi = OpenAPI::Modern->new(
     openapi_uri => '/api',
@@ -1320,17 +1422,19 @@ YAML
     $options,
     {
       path_template => '/foo/bar',
+      _path_item => { post => ignore },
+      method => 'post',
       operation_id => 'my_components_pathItem_operation',
       errors => [
         methods(TO_JSON => {
           instanceLocation => '',
-          keywordLocation => '/components/pathItems/my_path_item',
-          absoluteKeywordLocation => $doc_uri_rel->clone->fragment('/components/pathItems/my_path_item')->to_string,
-          error => 'operation at operation_id does not match provided path_template',
+          keywordLocation => jsonp(qw(/paths /foo/bar)),
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
+          error => 'templated operation does not match provided operation_id',
         }),
       ],
     },
-    'providing a path template will never work here',
+    'this operation cannot be reached by using this path template',
   );
 
   ok($openapi->find_path($options = { operation_id => 'my_webhook_operation' }),
@@ -1374,12 +1478,6 @@ YAML
     },
     'operation is not under a path-item with a path template, but still exists',
   );
-
-  # TODO test: path-item exists, under paths with a template, but a $ref is followed before finding
-  # the actual definition: should be usable.
-  # the destination path-item could be under /components/pathItems or /webhooks or in a callback,
-  # or shared by a path-item in another /path/<path_template>.
-  # (test both operation_id and path_template+method)
 };
 
 goto START if ++$type_index < @::TYPES;

@@ -174,10 +174,15 @@ components:
       post:
         operationId: my_reffed_component_operation
         responses:
-          200:
-            description: success
+          default:
+            description: my response
+            headers:
+              Alpha:
+                required: true
+                schema: {}
 paths:
-  /foo: {}  # TODO: $ref to #/components/pathItems/my_path_item2
+  /foo:
+    $ref: '#/components/pathItems/my_path_item2'
   /foo/bar:
     post:
       callbacks:
@@ -280,21 +285,24 @@ YAML
       errors => [
         {
           instanceLocation => '/response',
-          keywordLocation => '/components/pathItems/my_path_item',
-          absoluteKeywordLocation => $doc_uri_rel->clone->fragment('/components/pathItems/my_path_item')->to_string,
-          error => 'operation at operation_id does not match provided path_template',
+          keywordLocation => jsonp(qw(/paths /foo/bar)),
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
+          error => 'templated operation does not match provided operation_id',
         },
       ],
     },
     'response is processed',
   );
+
   cmp_result(
     $options,
     {
       path_template => '/foo/bar',
+      _path_item => { post => ignore },
+      method => 'post',
       operation_id => 'my_components_pathItem_operation',
     },
-    'providing a path template will never work here',
+    'operation is not under a path-item with a path template',
   );
 
   cmp_result(
@@ -360,7 +368,7 @@ YAML
         },
       ],
     },
-    'response is processed',
+    to_str($res).': response is processed',
   );
   cmp_result(
     $options,
@@ -370,6 +378,22 @@ YAML
       operation_uri => str($doc_uri_rel->clone->fragment('/components/pathItems/my_path_item/post/callbacks/my_callback/{$request.query.queryUrl}/post')),
     },
     'operation is not under a path-item with a path template, but still exists',
+  );
+
+  cmp_result(
+    $openapi->validate_response($res, { path_template => '/foo', method => 'post' })->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/response/header/Alpha',
+          keywordLocation => jsonp(qw(/paths /foo $ref post responses default headers Alpha required)),
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment('/components/pathItems/my_path_item2/post/responses/default/headers/Alpha/required')->to_string,
+          error => 'missing header: Alpha',
+        },
+      ],
+    },
+    'path specification was correctly found on the far side of a $ref; error locations are correct',
   );
 };
 
