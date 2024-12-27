@@ -94,7 +94,7 @@ sub traverse ($self, $evaluator) {
     depth => 0,
   };
 
-  # this is an abridged form of https://spec.openapis.org/oas/3.1/schema/latest
+  # this is an abridged form of https://spec.openapis.org/oas/3.1/schema/2024-10-25
   # just to validate the parts of the document we need to verify before parsing jsonSchemaDialect
   # and switching to the real metaschema for this document
   state $top_schema = {
@@ -163,7 +163,7 @@ sub traverse ($self, $evaluator) {
       short_circuit => 1,
       collect_annotations => 0,
       callbacks => {
-        # Note that if we are using the default metaschema https://spec.openapis.org/oas/3.1/schema/latest,
+        # Note that if we are using the default metaschema https://spec.openapis.org/oas/3.1/schema/2024-10-25,
         # we will only find the root of each schema, not all subschemas. We will traverse each
         # of these schemas later using jsonSchemaDialect to find all subschemas and their $ids.
         '$dynamicRef' => sub ($, $schema, $state) {
@@ -413,7 +413,7 @@ Provides structured parsing of an OpenAPI document, suitable as the base for mor
 request and response validation, code generation or form generation.
 
 The provided document must be a valid OpenAPI document, as specified by the schema identified by
-C<https://spec.openapis.org/oas/3.1/schema-base/latest> (an alias for the latest document available)
+L<https://spec.openapis.org/oas/3.1/schema-base/2024-10-25>.
 
 and the L<OpenAPI v3.1 specification|https://spec.openapis.org/oas/v3.1>.
 
@@ -436,8 +436,7 @@ schemas in the document, either manually or perhaps via a web framework plugin (
 =head2 metaschema_uri
 
 The URI of the schema that describes the OpenAPI document itself. Defaults to
-C<https://spec.openapis.org/oas/3.1/schema-base/latest> (an alias for the latest document
-available).
+L<https://spec.openapis.org/oas/3.1/schema-base/2024-10-25>.
 
 =head2 json_schema_dialect
 
