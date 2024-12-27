@@ -235,6 +235,11 @@ my $encoder = JSON::Schema::Modern::_JSON_BACKEND()->new
   ->indent_length(2);
 
 *UNIVERSAL::TO_JSON = sub ($obj) { $obj.'' };
+*Mojo::Message::Request::TO_JSON = sub ($obj) { $obj->to_string };
+*Mojo::Message::Response = sub ($obj) { $obj->to_string };
+*HTTP::Request::TO_JSON = sub ($obj) { $obj->as_string };
+*HTTP::Response::TO_JSON = sub ($obj) { $obj->as_string };
+# Plack and Catalyst don't have serializers
 
 # deep comparison, with strict typing
 sub is_equal ($got, $expected, $test_name = undef) {
