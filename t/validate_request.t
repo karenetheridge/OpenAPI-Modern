@@ -116,7 +116,7 @@ YAML
         },
       ],
     },
-    'operation is not under a path-item with a path template',
+    to_str($request).': operation is not under a path-item with a path template',
   );
 
   cmp_result(
@@ -148,7 +148,7 @@ YAML
         },
       ],
     },
-    'operation is not under a path-item with a path template',
+    to_str($request).': operation is not under a path-item with a path template',
   );
 
   cmp_result(
@@ -164,7 +164,7 @@ YAML
         },
       ],
     },
-    'operation is not directly under a path-item with a path template',
+    to_str($request).': operation is not directly under a path-item with a path template',
   );
 
   cmp_result(
@@ -180,7 +180,7 @@ YAML
         },
       ],
     },
-    'operation is not under a path-item with a path template',
+    to_str($request).': operation is not under a path-item with a path template',
   );
 
   # TODO test: path-item exists, under paths with a template, but a $ref is followed before finding
@@ -202,7 +202,7 @@ YAML
         },
       ],
     },
-    'no matching entry under /paths for URI',
+    to_str($request).': no matching entry under /paths for URI',
   );
 
   cmp_result(
@@ -218,7 +218,7 @@ YAML
         },
       ],
     },
-    'provided path_template does not exist in /paths',
+    to_str($request).': provided path_template does not exist in /paths',
   );
 };
 

@@ -310,7 +310,7 @@ YAML
         },
       ],
     },
-    'response is processed',
+    to_str($res).': response is processed',
   );
   cmp_result(
     $options,
