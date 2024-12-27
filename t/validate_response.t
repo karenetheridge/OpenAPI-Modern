@@ -142,6 +142,12 @@ YAML
   );
 };
 
+my $type_index = 0;
+
+START:
+$::TYPE = $::TYPES[$type_index];
+note 'REQUEST/RESPONSE TYPE: '.$::TYPE;
+
 subtest 'subset of options provided for operation lookup' => sub {
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => '/api',
@@ -192,7 +198,7 @@ webhooks:
           description: success
 YAML
 
-  my $res = Mojo::Message::Response->new->code(400);
+  my $res = response(400);
 
   cmp_result(
     $openapi->validate_response($res, { path_template => '/' })->TO_JSON,
@@ -366,12 +372,6 @@ YAML
     'operation is not under a path-item with a path template, but still exists',
   );
 };
-
-my $type_index = 0;
-
-START:
-$::TYPE = $::TYPES[$type_index];
-note 'REQUEST/RESPONSE TYPE: '.$::TYPE;
 
 subtest 'validation errors in responses' => sub {
   my $openapi = OpenAPI::Modern->new(
