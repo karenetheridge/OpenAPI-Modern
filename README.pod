@@ -8,7 +8,7 @@ OpenAPI::Modern - Validate HTTP requests and responses against an OpenAPI v3.1 d
 
 =head1 VERSION
 
-version 0.075
+version 0.076
 
 =head1 SYNOPSIS
 
@@ -443,7 +443,7 @@ OpenAPI descriptions must be contained in a single document; C<$ref>erences to o
 
 =item *
 
-The use of C<$ref> within a path-item object is not permitted.
+The use of C<$ref> within a path-item object is only allowed when not adjacent to any other path-item properties ('parameters', 'servers', request methods)
 
 =item *
 
