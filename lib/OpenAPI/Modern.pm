@@ -533,6 +533,9 @@ sub recursive_get ($self, $uri_reference, $entity_type = undef) {
 # given a request uri and a path_template, check that these match, and extract capture values.
 sub _match_uri ($self, $uri, $path_template) {
   my $uri_path = $uri->path->to_string;
+
+  # RFC9112 §3.2.1-3: If the target URI's path component is empty, the client MUST send "/" as the
+  # path within the origin-form of request-target.
   $uri_path = '/' if not length $uri_path;
 
   # §3.2: "The value for these path parameters MUST NOT contain any unescaped “generic syntax”
@@ -634,7 +637,7 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
 
   my $types = $self->_type_in_schema($header_obj->{schema}, { %$state, schema_path => $state->{schema_path}.'/schema' });
 
-  # RFC9112 §5.3-1: "A recipient MAY combine multiple field lines within a field section that have
+  # RFC9110 §5.3-1: "A recipient MAY combine multiple field lines within a field section that have
   # the same field name into one field line, without changing the semantics of the message, by
   # appending each subsequent field line value to the initial field line value in order, separated
   # by a comma (",") and optional whitespace (OWS, defined in Section 5.6.3). For consistency, use
