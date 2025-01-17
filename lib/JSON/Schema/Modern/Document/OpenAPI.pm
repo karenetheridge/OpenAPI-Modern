@@ -17,6 +17,7 @@ no if "$]" >= 5.031009, feature => 'indirect';
 no if "$]" >= 5.033001, feature => 'multidimensional';
 no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 use JSON::Schema::Modern::Utilities qw(E canonical_uri jsonp);
+use Carp 'croak';
 use Safe::Isa;
 use File::ShareDir 'dist_dir';
 use Path::Tiny;
@@ -74,7 +75,10 @@ has _operationIds => (
 sub get_operationId_path { $_[0]->_operationIds->{$_[1]} }
 sub _add_operationId { $_[0]->_operationIds->{$_[1]} = Str->($_[2]) }
 
-sub traverse ($self, $evaluator) {
+sub traverse ($self, $evaluator, $config_override = {}) {
+  croak join(', ', sort keys %$config_override), ' not supported as a config override in traverse'
+    if keys %$config_override;
+
   $self->_add_vocab_and_default_schemas;
 
   my $schema = $self->schema;
