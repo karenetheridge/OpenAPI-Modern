@@ -85,7 +85,7 @@ sub traverse ($self, $evaluator) {
     data_path => '',
     errors => [],
     evaluator => $evaluator,
-    identifiers => [],
+    identifiers => {},
     configs => {},
     # note that this is the JSON Schema specification version, not OpenAPI
     spec_version => $evaluator->SPECIFICATION_VERSION_DEFAULT,
@@ -365,7 +365,7 @@ sub _traverse_schema ($self, $schema, $state) {
   push $state->{errors}->@*, $subschema_state->{errors}->@*;
   return if $subschema_state->{errors}->@*;
 
-  push $state->{identifiers}->@*, $subschema_state->{identifiers}->@*;
+  $state->{identifiers}->@{keys $subschema_state->{identifiers}->%*} = values $subschema_state->{identifiers}->%*;
   push $state->{subschemas}->@*, $subschema_state->{subschemas}->@*;
 }
 
