@@ -589,7 +589,7 @@ YAML
           instanceLocation => '/response',
           keywordLocation => jsonp(qw(/paths /foo post responses 303 $ref $ref)),
           absoluteKeywordLocation => $doc_uri_rel->clone->fragment('/components/responses/foo/$ref')->to_string,
-          error => 'EXCEPTION: unable to find resource /api#/i_do_not_exist',
+          error => 'EXCEPTION: unable to find resource "/api#/i_do_not_exist"',
         },
       ],
     },

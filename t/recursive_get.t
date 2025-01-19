@@ -92,7 +92,7 @@ subtest recursive_get => sub {
 
   like(
     exception { $openapi->recursive_get('#/paths/~1foo/post/parameters/0') },
-    qr'^unable to find resource http://localhost:1234/api#/i_do_not_exist',
+    qr'^unable to find resource "http://localhost:1234/api#/i_do_not_exist"',
     'failure to resolve $ref',
   );
 

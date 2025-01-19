@@ -513,7 +513,7 @@ sub recursive_get ($self, $uri_reference, $entity_type = undef) {
 
     my $schema_info = $self->evaluator->_fetch_from_uri($uri);
 
-    die('unable to find resource ', $uri) if not $schema_info;
+    die('unable to find resource "', $uri, '"') if not $schema_info;
     die sprintf('bad $ref to %s: not a%s "%s"', $schema_info->{canonical_uri}, ($entity_type =~ /^[aeiou]/ ? 'n' : ''), $entity_type)
       if $entity_type
         and $schema_info->{document}->get_entity_at_location($schema_info->{document_path}) ne $entity_type;
@@ -777,7 +777,7 @@ sub _result ($self, $state, $is_exception = 0, $is_response = 0) {
 sub _resolve_ref ($self, $entity_type, $ref, $state) {
   my $uri = Mojo::URL->new($ref)->to_abs($state->{initial_schema_uri});
   my $schema_info = $self->evaluator->_fetch_from_uri($uri);
-  abort({ %$state, keyword => '$ref' }, 'EXCEPTION: unable to find resource %s', $uri)
+  abort({ %$state, keyword => '$ref' }, 'EXCEPTION: unable to find resource "%s"', $uri)
     if not $schema_info;
 
   abort({ %$state, keyword => '$ref' }, 'EXCEPTION: maximum evaluation depth exceeded')
