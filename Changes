@@ -1,6 +1,7 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - fix use of error modes for changes in JSON::Schema::Modern 0.600
 
 0.078     2025-01-27 05:41:19Z
           - remove use of prototypes combined with signatures (unstable on
