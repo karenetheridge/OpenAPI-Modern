@@ -68,6 +68,66 @@ subtest 'identify subschemas and other entities' => sub {
     schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
 components:
   schemas:
+    alpha:
+      properties:
+        alpha1:
+          $id: alpha_id
+        alpha2:
+          $comment: this collision will be found by JSM as it is in the same subschema
+          $id: alpha_id
+        alpha3:
+          $anchor: alpha_anchor
+        alpha4:
+          $comment: this collision will be found by JSM as it is in the same subschema
+          $anchor: alpha_anchor
+    beta:
+      properties:
+        beta1:
+          $comment: this collision will not be found until JSMDO combines extracted identifiers together
+          $id: alpha_id
+        beta2:
+          $comment: ditto
+          $anchor: alpha_anchor
+YAML
+
+  cmp_deeply(
+    [ $doc->errors ],
+    [
+      methods(
+        instance_location => '',
+        keyword_location => '/components/schemas/alpha/properties/alpha2/$id',
+        error => 'duplicate canonical uri "http://localhost:1234/alpha_id" found (original at path "/components/schemas/alpha/properties/alpha1")',
+        mode => 'traverse',
+      ),
+      methods(
+        instance_location => '',
+        keyword_location => '/components/schemas/alpha/properties/alpha4/$anchor',
+        error => 'duplicate anchor uri "http://localhost:1234/api#alpha_anchor" found (original at path "/components/schemas/alpha/properties/alpha3")',
+        mode => 'traverse',
+      ),
+      methods(
+        instance_location => '',
+        keyword_location => '/components/schemas/beta/properties/beta1',
+        error => 'duplicate canonical uri "http://localhost:1234/alpha_id" found (original at path "/components/schemas/alpha/properties/alpha1")',
+        mode => 'traverse',
+      ),
+      methods(
+        instance_location => '',
+        keyword_location => '/components/schemas/beta/properties/beta2',
+        error => 'duplicate anchor uri "http://localhost:1234/api#alpha_anchor" found (original at path "/components/schemas/alpha/properties/alpha3")',
+        mode => 'traverse',
+      ),
+    ],
+    'identifier collisions within the document are found, even those between subschemas',
+  );
+
+  $doc = JSON::Schema::Modern::Document::OpenAPI->new(
+    canonical_uri => 'http://localhost:1234/api',
+    metaschema_uri => 'https://spec.openapis.org/oas/3.1/schema/latest',
+    evaluator => $js = JSON::Schema::Modern->new(validate_formats => 1),
+    schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
+components:
+  schemas:
     beta_schema:
       $id: beta
       not:

@@ -368,10 +368,18 @@ sub _traverse_schema ($self, $state) {
   });
 
   push $state->{errors}->@*, $subschema_state->{errors}->@*;
-  return if $subschema_state->{errors}->@*;
-
-  $state->{identifiers}->@{keys $subschema_state->{identifiers}->%*} = values $subschema_state->{identifiers}->%*;
   push $state->{subschemas}->@*, $subschema_state->{subschemas}->@*;
+
+  foreach my $new (sort keys $subschema_state->{identifiers}->%*) {
+    if (my $existing = $state->{identifiers}{$new}) {
+      ()= E({ %$state, schema_path => $subschema_state->{identifiers}{$new}{path} },
+        'duplicate %s uri "%s" found (original at path "%s")',
+        ($new eq $existing->{canonical_uri} ? 'canonical' : 'anchor'),
+        $new, $existing->{path});
+      next;
+    }
+    $state->{identifiers}{$new} = $subschema_state->{identifiers}{$new};
+  }
 }
 
 # callback hook for Sereal::Decoder
