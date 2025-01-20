@@ -245,6 +245,7 @@ sub traverse ($self, $evaluator) {
 
     foreach my $server_idx (0 .. $servers->$#*) {
       my $normalized = $servers->[$server_idx]{url} =~ s/\{[^}]+\}/\x00/r;
+      # { for the editor
       my @url_variables = $servers->[$server_idx]{url} =~ /\{([^}]+)\}/g;
 
       if (my $first_url = $seen_url{$normalized}) {
