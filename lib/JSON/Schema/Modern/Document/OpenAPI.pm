@@ -294,9 +294,9 @@ sub traverse ($self, $evaluator, $config_override = {}) {
         eq $real_json_schema_paths[-1].'/';
 
     push @real_json_schema_paths, $json_schema_paths[$idx];
-    $self->_traverse_schema($self->get($json_schema_paths[$idx]), { %$state, schema_path => $json_schema_paths[$idx] });
   }
 
+  $self->_traverse_schema($self->get($_), { %$state, schema_path => $_}) foreach reverse @real_json_schema_paths;
   $self->_add_entity_location($_, 'schema') foreach $state->{subschemas}->@*;
 
   foreach my $pair (@operation_paths) {
