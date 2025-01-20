@@ -296,7 +296,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     push @real_json_schema_paths, $json_schema_paths[$idx];
   }
 
-  $self->_traverse_schema($self->get($_), { %$state, schema_path => $_}) foreach reverse @real_json_schema_paths;
+  $self->_traverse_schema({ %$state, schema_path => $_ }) foreach reverse @real_json_schema_paths;
   $self->_add_entity_location($_, 'schema') foreach $state->{subschemas}->@*;
 
   foreach my $pair (@operation_paths) {
@@ -357,7 +357,8 @@ sub _add_vocab_and_default_schemas ($self) {
 }
 
 # https://spec.openapis.org/oas/v3.1#schema-object
-sub _traverse_schema ($self, $schema, $state) {
+sub _traverse_schema ($self, $state) {
+  my $schema = $self->get($state->{schema_path});
   return if not is_plain_hashref($schema) or not keys %$schema;
 
   my $subschema_state = $self->evaluator->traverse($schema, {
