@@ -16,7 +16,7 @@ use if "$]" >= 5.022, experimental => 're_strict';
 no if "$]" >= 5.031009, feature => 'indirect';
 no if "$]" >= 5.033001, feature => 'multidimensional';
 no if "$]" >= 5.033006, feature => 'bareword_filehandles';
-use JSON::Schema::Modern::Utilities qw(E canonical_uri jsonp);
+use JSON::Schema::Modern::Utilities qw(E canonical_uri jsonp is_equal);
 use Carp 'croak';
 use Safe::Isa;
 use File::ShareDir 'dist_dir';
@@ -371,15 +371,35 @@ sub _traverse_schema ($self, $state) {
   push $state->{errors}->@*, $subschema_state->{errors}->@*;
   push $state->{subschemas}->@*, $subschema_state->{subschemas}->@*;
 
-  foreach my $new (sort keys $subschema_state->{identifiers}->%*) {
-    if (my $existing = $state->{identifiers}{$new}) {
-      ()= E({ %$state, schema_path => $subschema_state->{identifiers}{$new}{path} },
-        'duplicate %s uri "%s" found (original at path "%s")',
-        ($new eq $existing->{canonical_uri} ? 'canonical' : 'anchor'),
-        $new, $existing->{path});
+  foreach my $new_uri (sort keys $subschema_state->{identifiers}->%*) {
+    if (not $state->{identifiers}{$new_uri}) {
+      $state->{identifiers}{$new_uri} = $subschema_state->{identifiers}{$new_uri};
       next;
     }
-    $state->{identifiers}{$new} = $subschema_state->{identifiers}{$new};
+
+    my $existing = $state->{identifiers}{$new_uri};
+    my $new = $subschema_state->{identifiers}{$new_uri};
+
+    if (not is_equal(
+        { canonical_uri => $new->{canonical_uri}.'', map +($_ => $new->{$_}), qw(path specification_version vocabularies configs) },
+        { canonical_uri => $existing->{canonical_uri}.'', map +($_ => $existing->{$_}), qw(path specification_version vocabularies configs) })) {
+      ()= E({ %$state, schema_path => $new->{path} },
+        'duplicate canonical uri "%s" found (original at path "%s")',
+        $new_uri, $existing->{path});
+      next;
+    }
+
+    foreach my $anchor (sort keys $new->{anchors}->%*) {
+      if (my $existing_anchor = $existing->{anchors}{$anchor}) {
+        ()= E({ %$state, schema_path => $new->{anchors}{$anchor}{path} },
+          'duplicate anchor uri "%s" found (original at path "%s")',
+          $new->{canonical_uri}->clone->fragment($anchor),
+          $existing->{anchors}{$anchor}{path});
+        next;
+      }
+
+      $existing->{anchors}{$anchor} = $new->{anchors}{$anchor};
+    }
   }
 }
 

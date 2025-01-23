@@ -88,6 +88,16 @@ components:
         beta2:
           $comment: ditto
           $anchor: alpha_anchor
+        beta3:
+          $id: beta_id
+    gamma:
+      properties:
+        gamma1:
+          $comment: this will collide with beta3
+          $id: beta_id
+        gamma2:
+          $comment: this will collide with alpha3
+          $anchor: alpha_anchor
 YAML
 
   cmp_deeply(
@@ -117,9 +127,22 @@ YAML
         error => 'duplicate anchor uri "http://localhost:1234/api#alpha_anchor" found (original at path "/components/schemas/alpha/properties/alpha3")',
         mode => 'traverse',
       ),
+      methods(
+        instance_location => '',
+        keyword_location => '/components/schemas/gamma/properties/gamma2',
+        error => 'duplicate anchor uri "http://localhost:1234/api#alpha_anchor" found (original at path "/components/schemas/alpha/properties/alpha3")',
+        mode => 'traverse',
+      ),
+      methods(
+        instance_location => '',
+        keyword_location => '/components/schemas/gamma/properties/gamma1',
+        error => 'duplicate canonical uri "http://localhost:1234/beta_id" found (original at path "/components/schemas/beta/properties/beta3")',
+        mode => 'traverse',
+      ),
     ],
     'identifier collisions within the document are found, even those between subschemas',
   );
+
 
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
@@ -133,12 +156,19 @@ components:
       not:
         $id: gamma
         $schema: https://json-schema.org/draft/2019-09/schema
+    anchor1:
+      $anchor: anchor1
+    anchor2:
+      $anchor: anchor2
   parameters:
     my_param1:
       name: param1
       in: query
       schema:
         $id: parameter1_id
+        properties:
+          foo:
+            $anchor: anchor3
     my_param2:
       name: param2
       in: query
@@ -207,6 +237,16 @@ YAML
         vocabularies => bag(map 'JSON::Schema::Modern::Vocabulary::'.$_,
           qw(Core Applicator Validation FormatAnnotation Content MetaData Unevaluated OpenAPI)),
         configs => {},
+        anchors => {
+          anchor1 => {
+            path => '/components/schemas/anchor1',
+            canonical_uri => str('http://localhost:1234/api#/components/schemas/anchor1'),
+          },
+          anchor2 => {
+            path => '/components/schemas/anchor2',
+            canonical_uri => str('http://localhost:1234/api#/components/schemas/anchor2'),
+          },
+        },
       },
       'http://localhost:1234/beta' => {
         path => '/components/schemas/beta_schema',
@@ -231,6 +271,12 @@ YAML
         vocabularies => bag(map 'JSON::Schema::Modern::Vocabulary::'.$_,
           qw(Core Applicator Validation FormatAnnotation Content MetaData Unevaluated OpenAPI)),
         configs => {},
+        anchors => {
+          anchor3 => {
+            path => '/components/parameters/my_param1/schema/properties/foo',
+            canonical_uri => str('http://localhost:1234/parameter1_id#/properties/foo'),
+          },
+        },
       },
       'http://localhost:1234/parameter2_id' => {
         path => '/components/parameters/my_param2/content/media_type_0/schema',
@@ -281,6 +327,7 @@ YAML
     {
       '/components/parameters/my_param1' => 2,
       '/components/parameters/my_param1/schema' => 0,
+      '/components/parameters/my_param1/schema/properties/foo' => 0,
       '/components/parameters/my_param2' => 2,
       '/components/parameters/my_param2/content/media_type_0/schema' => 0,
       '/components/pathItems/path0' => 9,
@@ -298,12 +345,14 @@ YAML
       '/components/pathItems/path0/parameters/0/schema' => 0,
       '/components/responses/my_response4' => 1,
       '/components/responses/my_response4/content/media_type_4/schema' => 0,
+      '/components/schemas/anchor1' => 0,
+      '/components/schemas/anchor2' => 0,
       '/components/schemas/beta_schema' => 0,
       '/components/schemas/beta_schema/not' => 0,
       '/paths/~1foo~1alpha' => 9,
       '/paths/~1foo~1beta' => 9,
-      '/webhooks/foo' => 9,
       '/webhooks/bar' => 9,
+      '/webhooks/foo' => 9,
     },
     'all entity locations are identified',
   );
