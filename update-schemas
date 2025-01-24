@@ -64,5 +64,5 @@ foreach my $uri (values %files) {
   my $document = $js->_fetch_from_uri($uri)->{document};
   my $result = $js->evaluate($document->schema, $document->metaschema_uri);
 
-  die $js->_json_decoder->pretty->encode($result) if not $result;
+  die $js->_json_decoder->pretty->encode($result) if not $result->valid;
 }

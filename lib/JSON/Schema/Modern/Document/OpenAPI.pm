@@ -124,7 +124,7 @@ sub traverse ($self, $evaluator) {
       },
     },
   );
-  if (not $top_result) {
+  if (not $top_result->valid) {
     $_->mode('evaluate') foreach $top_result->errors;
     push $state->{errors}->@*, $top_result->errors;
     return $state;
@@ -201,7 +201,7 @@ sub traverse ($self, $evaluator) {
     },
   );
 
-  if (not $result) {
+  if (not $result->valid) {
     $_->mode('evaluate') foreach $result->errors;
     push $state->{errors}->@*, $result->errors;
     return $state;

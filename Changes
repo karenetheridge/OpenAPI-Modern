@@ -1,6 +1,8 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - fix usage of JSON::Schema::Modern::Result objects, in preparation
+            for an upcoming deprecation of boolean overloads
 
 0.076     2024-12-27 22:25:32Z
           - now supporting $refs in path-item objects (e.g. those under

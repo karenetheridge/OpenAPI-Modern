@@ -335,8 +335,7 @@ sub find_path ($self, $options, $state = {}) {
 
     # requests don't have response codes, so if 'error' is set, it is some sort of parsing error
     if (my $error = $options->{request}->error) {
-      ()= E({ %$state, data_path => '/request' }, 'Failed to parse request: %s', $error->{message});
-      return $self->_result($state);
+      return E({ %$state, data_path => '/request' }, 'Failed to parse request: %s', $error->{message});
     }
   }
 
@@ -1037,9 +1036,8 @@ than features that seem to work but actually cut corners for simplicity.
 =head1 CONSTRUCTOR ARGUMENTS
 
 If construction of the object is not successful, for example the document has a syntax error, the
-call to C<new()> will throw an exception. Be careful about examining this exception, for it might be
-a L<JSON::Schema::Modern::Result> object, which has a boolean overload of false when it contains
-errors! But you never do C<if ($@) { ... }>, right?
+call to C<new()> will throw an exception, which will likely be a L<JSON::Schema::Modern::Result>
+object containing details.
 
 =head2 openapi_uri
 
@@ -1173,11 +1171,9 @@ efficiently than if they were provided). All passed-in values MUST be consistent
 the request URI.
 
 When successful, the options hash will be populated with keys C<path_template>, C<path_captures>,
-C<method>, and C<operation_id>,
-and the return value is true.
+C<method>, and C<operation_id>, and the return value is true.
 When not successful, the options hash will be populated with key C<errors>, an arrayref containing
-a L<JSON::Schema::Modern::Error> object, and the return value is false. Other values may also be
-populated if they can be successfully calculated.
+a L<JSON::Schema::Modern::Error> object, and the return value is false.
 
 In addition, these values are populated in the options hash (when available):
 
