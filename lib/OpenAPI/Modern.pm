@@ -302,7 +302,7 @@ sub validate_response ($self, $response, $options = {}) {
   }
   catch ($e) {
     if ($e->$_isa('JSON::Schema::Modern::Result')) {
-      $e->recommended_response(undef);
+      $e->recommended_response(undef);  # responses don't have responses
       return $e;
     }
     elsif ($e->$_isa('JSON::Schema::Modern::Error')) {
@@ -770,7 +770,7 @@ sub _result ($self, $state, $is_exception = 0, $is_response = 0) {
     !$state->{errors}->@*
       ? (annotations => $state->{annotations}//[])
       : (errors => $state->{errors}),
-    $is_response ? ( recommended_response => undef ) : (),
+    $is_response ? ( recommended_response => undef ) : (),  # responses don't have responses
   );
 }
 
