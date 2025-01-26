@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.077     2025-01-26 21:05:06Z
           - fix usage of JSON::Schema::Modern::Result objects, in preparation
             for an upcoming deprecation of boolean overloads
