@@ -310,7 +310,7 @@ sub cmp_result ($got, $expected, $test_name) {
   } $got, $expected, $test_name;
 }
 
-sub lives_result :prototype(&$) ($sub, $test_name) {
+sub lives_result ($sub, $test_name) {
   my $ok = ok(lives(\&$sub), $test_name);
   if (not $ok) {
     context_do {
@@ -324,7 +324,7 @@ sub lives_result :prototype(&$) ($sub, $test_name) {
   }
 }
 
-sub die_result :prototype(&$$) ($sub, $pattern, $test_name) {
+sub die_result ($sub, $pattern, $test_name) {
   eval { $sub->() };
   my $result = $@;
   if (defined $result) {
@@ -340,8 +340,8 @@ sub die_result :prototype(&$$) ($sub, $pattern, $test_name) {
   }
 }
 
-sub exception :prototype(&) ($sub) {
-  eval { $sub->() };
+sub exception :prototype(&) {
+  eval { $_[0]->() };
   return $@ eq '' ? undef : $@;
 }
 

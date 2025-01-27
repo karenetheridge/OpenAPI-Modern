@@ -1,6 +1,8 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - remove use of prototypes combined with signatures (unstable on
+            perls 5.22 through 5.26)
 
 0.077     2025-01-26 21:05:06Z
           - fix usage of JSON::Schema::Modern::Result objects, in preparation
