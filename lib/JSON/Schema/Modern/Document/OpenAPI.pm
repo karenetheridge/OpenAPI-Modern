@@ -145,6 +145,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     my $check_metaschema_state = $evaluator->traverse({}, {
       metaschema_uri => $json_schema_dialect,
       initial_schema_uri => $self->canonical_uri->clone->fragment('/jsonSchemaDialect'),
+      traversed_schema_path => '/jsonSchemaDialect',
     });
 
     # we cannot continue if the metaschema is invalid
