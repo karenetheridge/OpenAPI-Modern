@@ -414,7 +414,7 @@ __END__
     metaschema_uri => 'https://example.com/my_custom_dialect',
   );
 
-=for Pod::Coverage THAW get_entity_at_location
+=for Pod::Coverage THAW
 
 =head1 DESCRIPTION
 
