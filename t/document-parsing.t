@@ -513,6 +513,9 @@ servers:
         default: v1
         enum: [v2, v3]
   - url: http://example.com/literal2
+  - url: http://example.com/
+  - url: http://example.com?foo=1
+  - url: http://example.com#bar
 YAML
 
   my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
@@ -572,6 +575,15 @@ YAML
           absoluteKeywordLocation => 'http://localhost:1234/api#'.$_.'/servers/3/variables/version/default',
           error => 'servers default is not a member of enum',
         },
+        do {
+          my $base = $_;
+          map +{
+            instanceLocation => '',
+            keywordLocation => $base.'/servers/'.$_.'/url',
+            absoluteKeywordLocation => 'http://localhost:1234/api#'.$base.'/servers/'.$_.'/url',
+            error => 'server url cannot end in / or contain query or fragment components',
+          }, 5,6,7
+        }
       ), '', '/components/pathItems/path0', '/components/pathItems/path0/get',
     ],
     'all issues with server entries found',
@@ -584,18 +596,27 @@ YAML
 '/servers/2/variables': missing "variables" definition for servers template variable "foo"
 '/servers/2': duplicate servers template variable "foo"
 '/servers/3/variables/version/default': servers default is not a member of enum
+'/servers/5/url': server url cannot end in / or contain query or fragment components
+'/servers/6/url': server url cannot end in / or contain query or fragment components
+'/servers/7/url': server url cannot end in / or contain query or fragment components
 '/components/pathItems/path0/servers/0/variables/version/default': servers default is not a member of enum
 '/components/pathItems/path0/servers/1/url': duplicate of templated server url "https://example.com/{version}/{greeting}"
 '/components/pathItems/path0/servers/1': "variables" property is required for templated server urls
 '/components/pathItems/path0/servers/2/variables': missing "variables" definition for servers template variable "foo"
 '/components/pathItems/path0/servers/2': duplicate servers template variable "foo"
 '/components/pathItems/path0/servers/3/variables/version/default': servers default is not a member of enum
+'/components/pathItems/path0/servers/5/url': server url cannot end in / or contain query or fragment components
+'/components/pathItems/path0/servers/6/url': server url cannot end in / or contain query or fragment components
+'/components/pathItems/path0/servers/7/url': server url cannot end in / or contain query or fragment components
 '/components/pathItems/path0/get/servers/0/variables/version/default': servers default is not a member of enum
 '/components/pathItems/path0/get/servers/1/url': duplicate of templated server url "https://example.com/{version}/{greeting}"
 '/components/pathItems/path0/get/servers/1': "variables" property is required for templated server urls
 '/components/pathItems/path0/get/servers/2/variables': missing "variables" definition for servers template variable "foo"
 '/components/pathItems/path0/get/servers/2': duplicate servers template variable "foo"
 '/components/pathItems/path0/get/servers/3/variables/version/default': servers default is not a member of enum
+'/components/pathItems/path0/get/servers/5/url': server url cannot end in / or contain query or fragment components
+'/components/pathItems/path0/get/servers/6/url': server url cannot end in / or contain query or fragment components
+'/components/pathItems/path0/get/servers/7/url': server url cannot end in / or contain query or fragment components
 ERRORS
 
   memory_cycle_ok($doc, 'no leaks in the document object');
