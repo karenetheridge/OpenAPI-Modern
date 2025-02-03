@@ -82,8 +82,8 @@ sub _eval_keyword_discriminator ($self, $data, $schema, $state) {
     );
   }
   else {
-    # If the discriminator value does not match an implicit or explicit mapping, no schema can be
-    # determined and validation SHOULD fail.
+    # §4.8.25.4: If the discriminator value does not match an implicit or explicit mapping, no
+    # schema can be determined and validation SHOULD fail.
     return E({ %$state, data_path => jsonp($state->{data_path}, $discriminator_key) },
       'invalid %s: "%s"', $discriminator_key, $discriminator_value);
   }

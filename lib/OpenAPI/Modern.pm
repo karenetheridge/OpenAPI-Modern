@@ -147,8 +147,8 @@ sub validate_request ($self, $request, $options = {}) {
       }
     }
 
-    # 3.2 "Each template expression in the path MUST correspond to a path parameter that is included in
-    # the Path Item itself and/or in each of the Path Item’s Operations."
+    # §3.5: "Each template expression in the path MUST correspond to a path parameter that is
+    # included in the Path Item itself and/or in each of the Path Item’s Operations."
     # We could validate this at document parse time, except the path-item can also be reached via a
     # $ref and the referencing path could be from another document and is therefore unknowable until
     # runtime.
@@ -537,7 +537,7 @@ sub _match_uri ($self, $uri, $path_template) {
   # path within the origin-form of request-target.
   $uri_path = '/' if not length $uri_path;
 
-  # §3.2: "The value for these path parameters MUST NOT contain any unescaped “generic syntax”
+  # §3.5: "The value for these path parameters MUST NOT contain any unescaped “generic syntax”
   # characters described by [RFC3986]: forward slashes (/), question marks (?), or hashes (#)."
   my $path_pattern = join '',
     map +(substr($_, 0, 1) eq '{' ? '([^/?#]*)' : quotemeta($_)), # { for the editor
@@ -588,7 +588,7 @@ sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
   return $self->_validate_parameter_content({ %$state, depth => $state->{depth}+1 }, $param_obj, \ $query_params->{$param_obj->{name}})
     if exists $param_obj->{content};
 
-  # §4.8.12.2: "If `true`, clients MAY pass a zero-length string value in place of parameters that
+  # §4.8.12.2.1: "If `true`, clients MAY pass a zero-length string value in place of parameters that
   # would otherwise be omitted entirely, which the server SHOULD interpret as the parameter being
   # unused."
   return if $param_obj->{allowEmptyValue}
@@ -695,12 +695,12 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
       'incorrect Content-Type "%s"', $content_type)
     if not defined $media_type;
 
-  # §4.8.14.1 "The encoding object SHALL only apply to requestBody objects when the media type is
-  # multipart or application/x-www-form-urlencoded."
+  # §4.8.14.1: "The encoding field SHALL only apply to Request Body Objects, and only when the media
+  # type is multipart or application/x-www-form-urlencoded."
   if ($content_type =~ m{^\Fmultipart/} or fc($content_type) eq 'application/x-www-form-urlencoded') {
     if (exists $content_obj->{$media_type}{encoding}) {
       my $state = { %$state, schema_path => jsonp($state->{schema_path}, 'content', $media_type) };
-      # 4.8.14.1 "The key, being the property name, MUST exist in the schema as a property."
+      # §4.8.14.1: "The key, being the property name, MUST exist in the schema as a property."
       foreach my $property (sort keys $content_obj->{$media_type}{encoding}->%*) {
         ()= E({ $state, schema_path => jsonp($state->{schema_path}, 'schema', 'properties', $property) },
             'encoding property "%s" requires a matching property definition in the schema')
