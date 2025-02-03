@@ -67,7 +67,7 @@ sub _eval_keyword_discriminator ($self, $data, $schema, $state) {
     # use 'mapping' to determine which schema to use.
     # Note that the spec uses an example that assumes that the mapping value can be appended to
     # /components/schemas/, _as well as_ being treated as a uri-reference, but this is ambiguous.
-    # For now we will handle it by preprending '#/components/schemas' if it is not already a
+    # For now we will handle it by prepending '#/components/schemas' if it is not already a
     # fragment-only uri reference.
     my $mapping = $schema->{discriminator}{mapping}{$discriminator_value};
 
