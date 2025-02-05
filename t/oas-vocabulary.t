@@ -17,11 +17,9 @@ use lib 't/lib';
 use Helper;
 
 my $accepter = Test::JSON::Schema::Acceptance->new(
-  include_optional => 1,
   verbose => 1,
   test_schemas => 0,  # some schemas are not valid, as we are testing error handling in traverse()
   specification => 'draft2020-12',
-  include_optional => 0,
   test_dir => 't/oas-vocabulary',
 );
 $accepter->json_decoder->allow_bignum if Test::JSON::Schema::Acceptance->VERSION < '1.022';
