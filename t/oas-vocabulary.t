@@ -29,7 +29,7 @@ my $js = JSON::Schema::Modern->new(
   validate_formats => 1,
 );
 
-# construct a minimal document in order to get the vocabulary and formats added
+# construct a minimal document in order to get the vocabulary and formats loaded
 my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
   evaluator => $js,
   schema => {
@@ -64,3 +64,5 @@ path('t/results/oas-vocabulary.txt')->spew_utf8($accepter->results_text)
   if -d '.git' or $ENV{AUTHOR_TESTING} or $ENV{RELEASE_TESTING};
 
 done_testing;
+__END__
+see t/results/oas-vocabulary.txt for test results
