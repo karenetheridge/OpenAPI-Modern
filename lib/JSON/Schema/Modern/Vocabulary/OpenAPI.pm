@@ -32,7 +32,7 @@ sub _traverse_keyword_discriminator ($self, $schema, $state) {
   return if not assert_keyword_type($state, $schema, 'object');
 
   # "the discriminator field MUST be a required field"
-  return E($state, 'missing required field propertyName')
+  return E($state, 'missing required property "propertyName"')
     if not exists $schema->{discriminator}{propertyName};
   return E({ %$state, _schema_path_suffix => 'propertyName' }, 'discriminator propertyName is not a string')
     if not is_type('string', $schema->{discriminator}{propertyName});
@@ -58,7 +58,7 @@ sub _eval_keyword_discriminator ($self, $data, $schema, $state) {
   my $discriminator_key = $schema->{discriminator}{propertyName};
 
   # property with name <propertyName> MUST be present in the data payload
-  return E($state, 'missing required discriminator field "%s"', $discriminator_key)
+  return E($state, 'missing required discriminator property "%s"', $discriminator_key)
     if not exists $data->{$discriminator_key};
 
   my $discriminator_value = $data->{$discriminator_key};
