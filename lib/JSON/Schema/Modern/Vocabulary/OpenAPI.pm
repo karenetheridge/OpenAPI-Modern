@@ -48,7 +48,7 @@ sub _traverse_keyword_discriminator ($self, $schema, $state) {
     }
   }
 
-  return 1;
+  return $valid;
 }
 
 sub _eval_keyword_discriminator ($self, $data, $schema, $state) {

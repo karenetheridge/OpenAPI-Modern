@@ -3,6 +3,8 @@ Revision history for OpenAPI-Modern
 {{$NEXT}}
           - fix incorrect discriminator test, that was added for a change
             reverted before the OpenAPI v3.1.1 release
+          - fix incorrect traversal semantics that new checks in
+            JSON::Schema::Modern 0.602 would surface
 
 0.079     2025-01-31 23:33:40Z
           - fix use of error modes for changes in JSON::Schema::Modern 0.600
