@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.080     2025-02-07 06:24:48Z
           - fix incorrect discriminator test, that was added for a change
             reverted before the OpenAPI v3.1.1 release
           - fix incorrect traversal semantics that new checks in
