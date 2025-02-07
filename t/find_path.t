@@ -192,8 +192,8 @@ YAML
       errors => [
         methods(TO_JSON => {
           instanceLocation => '',
-          keywordLocation => jsonp(qw(/paths /foo/bar)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
+          keywordLocation => jsonp(qw(/paths /foo/bar get operationId)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar get operationId)))->to_string,
           error => 'operation at operation_id does not match provided path_template',
         }),
       ],
@@ -418,8 +418,8 @@ YAML
       errors => [
         methods(TO_JSON => {
           instanceLocation => '',
-          keywordLocation => jsonp(qw(/paths /foo/{foo_id})),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id} post operationId)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} post operationId)))->to_string,
           error => 'operation at operation_id does not match provided path_template',
         }),
       ],
@@ -1331,8 +1331,8 @@ YAML
       errors => [
         methods(TO_JSON => {
           instanceLocation => '',
-          keywordLocation => jsonp(qw(/paths /foo/{foo_id})),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id} get operationId)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get operationId)))->to_string,
           error => 'operation at operation_id does not match provided path_template',
         }),
       ],

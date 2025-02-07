@@ -383,7 +383,7 @@ sub find_path ($self, $options, $state = {}) {
     else {
       # the path_template need not be provided, but if it is, the operation must be located at the
       # path-item directly underneath that /paths/<path_template>.
-      return E({ %$state, schema_path => $path_item_path, recommended_response => [ 500 ] },
+      return E({ %$state, schema_path => $path_item_path.'/'.$method.'/operationId', recommended_response => [ 500 ] },
           'operation at operation_id does not match provided path_template')
         if exists $options->{path_template} and $options->{path_template} ne $path_template;
     }
