@@ -360,20 +360,17 @@ sub find_path ($self, $options, $state = {}) {
     $method = $options->{method} = lc $options->{request}->method;
   }
 
-  my ($path_template, $path_item_path);
+  my ($path_template, $operation_path);
 
   # path_template and method from operation_id from options
   if (exists $options->{operation_id}) {
     # FIXME: what if the operation is defined in another document? Need to look it up across
     # all documents, and localize $state->{initial_schema_uri}
-    my $operation_path = $self->openapi_document->get_operationId_path($options->{operation_id});
+    $operation_path = $self->openapi_document->get_operationId_path($options->{operation_id});
     return E({ %$state, recommended_response => [ 500 ] }, 'unknown operation_id "%s"', $options->{operation_id})
       if not $operation_path;
 
-    my @bits = unjsonp($operation_path);
-    ($path_template, $method) = @bits[-2,-1];
-    pop @bits;  # remove method from operation_path to get path-item path
-    $path_item_path = jsonp(@bits); # perhaps ('', 'paths', $path_template)
+    ($path_template, $method) = (unjsonp($operation_path))[-2,-1];
 
     # The path_template cannot be found if the operation path is not directly under /paths (such as
     # for path-items reached by a $ref): we will do a URI -> path_template lookup later on,
@@ -385,7 +382,7 @@ sub find_path ($self, $options, $state = {}) {
     else {
       # the path_template need not be provided, but if it is, the operation must be located at the
       # path-item directly underneath that /paths/<path_template>.
-      return E({ %$state, schema_path => $path_item_path.'/'.$method.'/operationId', recommended_response => [ 500 ] },
+      return E({ %$state, schema_path => $operation_path.'/operationId', recommended_response => [ 500 ] },
           'operation at operation_id does not match provided path_template')
         if exists $options->{path_template} and $options->{path_template} ne $path_template;
     }
@@ -420,11 +417,13 @@ sub find_path ($self, $options, $state = {}) {
   if (not $path_template and not $options->{request}) {
     # some operations don't exist directly under a /paths/$path_template - e.g. webhooks or
     # callbacks, but they are still usable
+    my $path_item_path = $operation_path =~ s{/$method$}{}r;
     $state->{schema_path} = $path_item_path;
     $options->{_path_item} = $self->document_get($path_item_path);
 
     # FIXME: this is not accurate if the operation lives in another document
-    $options->{operation_uri} = $state->{initial_schema_uri}->clone->fragment($path_item_path.'/'.$method);
+    # (and in that case, get_operation_uri_by_id can be returned as-is)
+    $options->{operation_uri} = $state->{initial_schema_uri}->clone->fragment($operation_path);
     return 1;
   }
 
