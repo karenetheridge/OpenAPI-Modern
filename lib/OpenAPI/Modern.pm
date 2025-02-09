@@ -347,7 +347,7 @@ sub find_path ($self, $options, $state = {}) {
     }
   }
 
-  my ($method, $path_template, $path_item_path);
+  my $method;
 
   # method from options
   if (exists $options->{method}) {
@@ -359,6 +359,8 @@ sub find_path ($self, $options, $state = {}) {
   elsif ($options->{request}) {
     $method = $options->{method} = lc $options->{request}->method;
   }
+
+  my ($path_template, $path_item_path);
 
   # path_template and method from operation_id from options
   if (exists $options->{operation_id}) {
@@ -419,7 +421,7 @@ sub find_path ($self, $options, $state = {}) {
     # some operations don't exist directly under a /paths/$path_template - e.g. webhooks or
     # callbacks, but they are still usable
     $state->{schema_path} = $path_item_path;
-    $options->{_path_item} = $self->openapi_document->get($path_item_path);
+    $options->{_path_item} = $self->document_get($path_item_path);
 
     # FIXME: this is not accurate if the operation lives in another document
     $options->{operation_uri} = $state->{initial_schema_uri}->clone->fragment($path_item_path.'/'.$method);
@@ -465,10 +467,9 @@ sub find_path ($self, $options, $state = {}) {
 
   # TODO: possibly support looking for paths in other documents?
   my $path_item = $schema->{paths}{$path_template};
-  $state->{schema_path} = $path_item_path = jsonp('/paths', $path_template);
+  $state->{schema_path} = jsonp('/paths', $path_template);
   while (my $ref = $path_item->{'$ref'}) {
     $path_item = $self->_resolve_ref('path-item', $ref, $state);
-    $path_item_path = $state->{initial_schema_uri}->fragment; # FIXME include full document location
   }
   $options->{_path_item} = $path_item;
 
@@ -481,8 +482,11 @@ sub find_path ($self, $options, $state = {}) {
       'missing operation for HTTP method "%s"', $method)
     if not exists $path_item->{$method};
 
-  # FIXME: this is not accurate if the operation lives in another document
-  $options->{operation_uri} = $state->{initial_schema_uri}->clone->fragment($path_item_path.'/'.$method);
+  # if initial_schema_uri still points to the head of the entry document, then we have not followed
+  # a $ref and the path-item is located at /paths/<path_template>
+  $options->{operation_uri} = $state->{initial_schema_uri}->clone
+    ->fragment(($state->{initial_schema_uri}->fragment // $state->{schema_path}).'/'.$method);
+
   $options->{operation_id} = $path_item->{$method}{operationId} if exists $path_item->{$method}{operationId};
 
   # note: we aren't doing anything special with escaped slashes. this bit of the spec is hazy.
