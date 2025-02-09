@@ -436,59 +436,87 @@ sub find_path ($self, $options, $state = {}) {
     # templated components, except when the concrete component is a non-ascii character or matches
     # 0x7c (pipe), 0x7d (close-brace) or 0x7e (tilde)
     foreach my $pt (sort keys(($schema->{paths}//{})->%*)) {
-      $capture_values = $self->_match_uri($options->{request}->url, $pt, $state);
+      $state->{path_item} = $schema->{paths}{$pt};
+      $state->{schema_path} = jsonp('/paths', $pt);
+      $capture_values = $self->_match_uri($options->{request}->method, $options->{request}->url, $pt, $state);
 
-      # this might not be the intended match, as multiple templates can match the same URI
+      # note: this might not be the intended match, as multiple templates can match the same URI
       $path_template = $pt, last if $capture_values;
+
+      # the initial match succeeded, but something else went wrong
+      if ($state->{errors}->@*) {
+        $options->{path_template} = $pt;
+        $options->{_path_item} = $state->{path_item};
+        return;
+      }
     }
 
-    return E({ %$state, data_path => '/request/uri', keyword => 'paths' }, 'no match found for request URI "%s"',
-        $options->{request}->url->clone->query('')->fragment(undef))
+    return E({ %$state, data_path => '/request', schema_path => '', keyword => 'paths' },
+        'no match found for request %s "%s"',
+        $options->{request}->method, $options->{request}->url->clone->query('')->fragment(undef))
       if not $capture_values;
   }
 
   elsif ($options->{request}) {
     # we were passed path_template in options or we calculated it from operation_id, and now we
     # verify it against path_captures and the request URI.
-    $capture_values = $self->_match_uri($options->{request}->url, $path_template, $state);
+    $state->{path_item} = $schema->{paths}{$path_template};
+    $state->{schema_path} = jsonp('/paths', $path_template);
+    $capture_values = $self->_match_uri($options->{request}->method, $options->{request}->url, $path_template, $state);
 
     if (not $capture_values) {
       delete $options->{operation_id};
-      return E({ %$state, data_path => '/request/uri', schema_path => jsonp('/paths', $path_template,
-          exists $options->{path_template} ? () : ($method, 'operationId')),
-          recommended_response => [ 500 ] },
-        'provided %s does not match request URI',
-        exists $options->{path_template} ? 'path_template' : 'operation_id');
+
+      # the initial match succeeded, but something else went wrong
+      if ($state->{errors}->@*) {
+        $options->{path_template} = $path_template;
+        $options->{_path_item} = $state->{path_item};
+        return;
+      }
+
+      if (exists $options->{path_template}) {
+        return E({ %$state, data_path => '/request/uri',
+            schema_path => jsonp('/paths', $path_template), recommended_response => [ 500 ] },
+          'provided path_template does not match request URI "%s"',
+          $options->{request}->url->clone->query('')->fragment(undef));
+      }
+      else {
+        return E({ %$state, data_path => '/request/uri',
+            schema_path => jsonp('/paths', $path_template, $method, 'operationId'), recommended_response => [ 500 ] },
+          'provided operation_id does not match request %s %s',
+          $options->{request}->method, $options->{request}->url->clone->query('')->fragment(undef));
+      }
+    }
+  }
+
+  else {
+    $state->{path_item} = $schema->{paths}{$path_template};
+    $state->{schema_path} = jsonp('/paths', $path_template);
+    while (my $ref = $state->{path_item}{'$ref'}) {
+      $state->{path_item} = $self->_resolve_ref('path-item', $ref, $state);
     }
   }
 
   # if we weren't passed a request, we can't verify that the path_template matches, but we may have
   # derived it from looking upward from the operation_id
   $options->{path_template} = $path_template;
-
-  # TODO: possibly support looking for paths in other documents?
-  my $path_item = $schema->{paths}{$path_template};
-  $state->{schema_path} = jsonp('/paths', $path_template);
-  while (my $ref = $path_item->{'$ref'}) {
-    $path_item = $self->_resolve_ref('path-item', $ref, $state);
-  }
-  $options->{_path_item} = $path_item;
+  $options->{_path_item} = $state->{path_item};
 
   # this can only happen if we were not able to derive the path_template from the provided
   # operation_id earlier, but we still matched the request against some other path-item
   return E({ %$state, recommended_response => [ 500 ] }, 'templated operation does not match provided operation_id')
-    if $options->{operation_id} and ($path_item->{$method}{operationId}//'') ne $options->{operation_id};
+    if $options->{operation_id} and ($options->{_path_item}{$method}{operationId}//'') ne $options->{operation_id};
 
   return E({ %$state, data_path => '/request/method', recommended_response => [ 405 ] },
-      'missing operation for HTTP method "%s"', $method)
-    if not exists $path_item->{$method};
+      'missing operation for HTTP method "%s" under "%s"', uc $method, $path_template)
+    if not exists $options->{_path_item}{$method};
 
   # if initial_schema_uri still points to the head of the entry document, then we have not followed
   # a $ref and the path-item is located at /paths/<path_template>
   $options->{operation_uri} = $state->{initial_schema_uri}->clone
     ->fragment(($state->{initial_schema_uri}->fragment // $state->{schema_path}).'/'.$method);
 
-  $options->{operation_id} = $path_item->{$method}{operationId} if exists $path_item->{$method}{operationId};
+  $options->{operation_id} = $options->{_path_item}{$method}{operationId} if exists $options->{_path_item}{$method}{operationId};
 
   # note: we aren't doing anything special with escaped slashes. this bit of the spec is hazy.
   # { for the editor
@@ -544,7 +572,8 @@ sub recursive_get ($self, $uri_reference, $entity_type = undef) {
 ######## NO PUBLIC INTERFACES FOLLOW THIS POINT ########
 
 # given a request uri and a path_template, check that these match, and extract capture values.
-sub _match_uri ($self, $uri, $path_template, $state) {
+# returns false on error, possibly adding errors to $state.
+sub _match_uri ($self, $method, $uri, $path_template, $state) {
   my $uri_path = $uri->path->to_string;
 
   # RFC9112 §3.2.1-3: "If the target URI's path component is empty, the client MUST send "/" as the
@@ -566,9 +595,22 @@ sub _match_uri ($self, $uri, $path_template, $state) {
   return if $uri_path !~ m/^$path_pattern$/;
 
   # perldoc perlvar, @-: $n coincides with "substr $_, $-[n], $+[n] - $-[n]" if "$-[n]" is defined
-  return [ map
+  my $capture_values = [ map
     Encode::decode('UTF-8', url_unescape(substr($uri_path, $-[$_], $+[$_]-$-[$_])),
       Encode::FB_CROAK | Encode::LEAVE_SRC), 1 .. $#- ];
+
+  while (my $ref = $state->{path_item}{'$ref'}) {
+    $state->{path_item} = $self->_resolve_ref('path-item', $ref, $state);
+  }
+
+  # §4.8.8.1: "In case of ambiguous matching, it’s up to the tooling to decide which one to use."
+  # There could be another paths entry that matches this URI that does have this method
+  # implemented, so we return false and keep searching. Since we may still match to the wrong URI,
+  # the correct operation can be forced to match by explicitly passing the corresponding
+  # path_template or (preferrably) operationId to be used in the search.
+  return if not exists $state->{path_item}{lc $method};
+
+  return $capture_values;
 }
 
 sub _validate_path_parameter ($self, $state, $param_obj, $path_captures) {
