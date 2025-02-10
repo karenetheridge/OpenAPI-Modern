@@ -437,9 +437,9 @@ YAML
       method => 'get',
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/uri/path',
-          keywordLocation => jsonp(qw(/paths /foo/bar get)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar get)))->to_string,
+          instanceLocation => '/request/uri',
+          keywordLocation => jsonp(qw(/paths /foo/bar get operationId)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar get operationId)))->to_string,
           error => 'provided operation_id does not match request URI',
         }),
       ],
@@ -459,9 +459,9 @@ YAML
       # operation_id does not match, so is deleted
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/uri/path',
-          keywordLocation => jsonp(qw(/paths /foo/bar post)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar post)))->to_string,
+          instanceLocation => '/request/uri',
+          keywordLocation => jsonp(qw(/paths /foo/bar post operationId)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar post operationId)))->to_string,
           error => 'provided operation_id does not match request URI',
         }),
       ],
@@ -728,9 +728,9 @@ YAML
       method => 'get',
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/uri/path',
-          keywordLocation => jsonp(qw(/paths /foo.bar get)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo.bar get)))->to_string,
+          instanceLocation => '/request/uri',
+          keywordLocation => jsonp(qw(/paths /foo.bar get operationId)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo.bar get operationId)))->to_string,
           error => 'provided operation_id does not match request URI',
         }),
       ],
@@ -770,9 +770,9 @@ YAML
       method => 'get',
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/uri/path',
-          keywordLocation => jsonp(qw(/paths /foo/..... get)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/..... get)))->to_string,
+          instanceLocation => '/request/uri',
+          keywordLocation => jsonp(qw(/paths /foo/..... get operationId)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/..... get operationId)))->to_string,
           error => 'provided operation_id does not match request URI',
         }),
       ],

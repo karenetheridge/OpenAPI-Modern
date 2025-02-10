@@ -454,8 +454,9 @@ sub find_path ($self, $options, $state = {}) {
 
     if (not $capture_values) {
       delete $options->{operation_id};
-      return E({ %$state, data_path => '/request/uri/path',
-          schema_path => jsonp('/paths', $path_template, exists $options->{path_template} ? () : $method), recommended_response => [ 500 ] }, 'provided %s does not match request URI',
+      return E({ %$state, data_path => '/request/uri'.(exists $options->{path_template} ? '/path' : ''),
+          schema_path => jsonp('/paths', $path_template, exists $options->{path_template} ? () : ($method, 'operationId')), recommended_response => [ 500 ] },
+        'provided %s does not match request URI',
         exists $options->{path_template} ? 'path_template' : 'operation_id');
     }
   }
