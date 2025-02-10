@@ -211,9 +211,9 @@ YAML
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/method',
-          keywordLocation => jsonp(qw(/paths /foo/bar get)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar get)))->to_string,
-          error => 'wrong HTTP method "post"',
+          keywordLocation => jsonp(qw(/paths /foo/bar get operationId)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar get operationId)))->to_string,
+          error => 'operation at operation_id does not match HTTP method "post"',
         }),
       ],
     },
@@ -1142,9 +1142,9 @@ YAML
       errors => [
         methods(TO_JSON => {
           instanceLocation => '',
-          keywordLocation => jsonp(qw(/paths /foo/{foo_id} get)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get)))->to_string,
-          error => 'wrong HTTP method "POST"',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id} get operationId)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get operationId)))->to_string,
+          error => 'operation at operation_id does not match HTTP method "POST"',
         }),
       ],
     },

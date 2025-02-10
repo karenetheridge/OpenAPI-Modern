@@ -389,8 +389,8 @@ sub find_path ($self, $options, $state = {}) {
 
     if ($options->{method} and lc $options->{method} ne $method) {
       delete $options->{operation_id};
-      return E({ %$state, ($options->{request} ? ( data_path => '/request/method' ) : ()), schema_path => $operation_path },
-        'wrong HTTP method "%s"', $options->{method});
+      return E({ %$state, ($options->{request} ? ( data_path => '/request/method' ) : ()), schema_path => $operation_path.'/operationId' },
+        'operation at operation_id does not match HTTP method "%s"', $options->{method});
     }
 
     $options->{method} = $method;
