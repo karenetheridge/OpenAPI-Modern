@@ -84,12 +84,12 @@ subtest $::TYPE.': request is parsed to get path information' => sub {
     openapi_uri => $doc_uri,
     openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
 paths:
-  /foo/{foo_id}:
-    post:
-      operationId: my-post-operation
   /foo/bar:
     get:
       operationId: my-get-operation
+    post:
+      operationId: my-post-operation
+  /foo/{foo_id}:
     post:
       operationId: another-post-operation
 YAML
@@ -249,7 +249,7 @@ YAML
       path_template => '/foo/bar',
       path_captures => {},
       _path_item => { get => ignore, post => ignore },
-      operation_id => 'another-post-operation',
+      operation_id => 'my-post-operation',
       operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar post)))),
       errors => [],
     },
@@ -267,7 +267,7 @@ YAML
       path_template => '/foo/{foo_id}',
       path_captures => { bloop => 'bar' },
       _path_item => { post => ignore },
-      operation_id => 'my-post-operation',
+      operation_id => 'another-post-operation',
       operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} post)))),
       errors => [
         methods(TO_JSON => {
@@ -291,7 +291,7 @@ YAML
       path_template => '/foo/bar',
       path_captures => { bloop => 'bar' },
       _path_item => { get => ignore, post => ignore },
-      operation_id => 'another-post-operation',
+      operation_id => 'my-post-operation',
       operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar post)))),
       errors => [
         methods(TO_JSON => {
@@ -406,7 +406,7 @@ YAML
     'a path matches this request URI, but not the path_template we provided',
   );
 
-  ok(!$openapi->find_path($options = { request => request('POST', 'http://example.com/foo/123'), path_template => '/foo/bar', operation_id => 'my-post-operation' }),
+  ok(!$openapi->find_path($options = { request => request('POST', 'http://example.com/foo/123'), path_template => '/foo/bar', operation_id => 'another-post-operation' }),
     to_str($request).': find_path returns false');
   cmp_result(
     $options,
@@ -414,7 +414,7 @@ YAML
       request => isa('Mojo::Message::Request'),
       method => 'post',
       path_template => '/foo/bar',
-      operation_id => 'my-post-operation',
+      operation_id => 'another-post-operation',
       errors => [
         methods(TO_JSON => {
           instanceLocation => '',
@@ -448,7 +448,7 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { request => request('POST', 'http://example.com/foo/123'),
-      operation_id => 'another-post-operation' }),
+      operation_id => 'my-post-operation' }),
     to_str($request).': find_path returns false');
   cmp_result(
     $options,
@@ -470,7 +470,7 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { request => request('POST', 'http://example.com/foo/hello'),
-      operation_id => 'my-post-operation', path_captures => { foo_id => 'goodbye' } }),
+      operation_id => 'another-post-operation', path_captures => { foo_id => 'goodbye' } }),
     to_str($request).': find_path returns false');
   cmp_result(
     $options,
@@ -479,7 +479,7 @@ YAML
       path_template => '/foo/{foo_id}',
       method => 'post',
       path_captures => { foo_id => 'goodbye' },
-      operation_id => 'my-post-operation',
+      operation_id => 'another-post-operation',
       operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} post)))),
       _path_item => { post => ignore },
       errors => [
@@ -495,7 +495,7 @@ YAML
   );
 
   ok($openapi->find_path($options = { request => request('POST', 'http://example.com/foo/123'),
-      operation_id => 'my-post-operation', path_captures => { foo_id => 123 } }),
+      operation_id => 'another-post-operation', path_captures => { foo_id => 123 } }),
     to_str($request).': find_path returns successfully');
   cmp_result(
     $options,
@@ -505,7 +505,7 @@ YAML
       path_captures => { foo_id => 123 },
       path_template => '/foo/{foo_id}',
       _path_item => { post => ignore },
-      operation_id => 'my-post-operation',
+      operation_id => 'another-post-operation',
       operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} post)))),
       errors => [],
     },
@@ -524,7 +524,7 @@ YAML
       path_captures => { foo_id => 123 },
       path_template => '/foo/{foo_id}',
       _path_item => { post => ignore },
-      operation_id => 'my-post-operation',
+      operation_id => 'another-post-operation',
       operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} post)))),
       errors => [],
     },
