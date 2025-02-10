@@ -1,6 +1,7 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - bump a prereq to work around a mysterious XS bug (RT#159140)
 
 0.081     2025-02-08 19:12:50Z
           - fix a prereq declaration
