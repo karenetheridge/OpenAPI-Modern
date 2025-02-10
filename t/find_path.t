@@ -166,14 +166,15 @@ YAML
       method => 'put',
       path_template => '/foo/{foo_id}',
       _path_item => { post => ignore },
-      errors => [
-        methods(TO_JSON => {
+      errors => [ methods(
+        TO_JSON => {
           instanceLocation => '/request/method',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id})),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
           error => 'missing operation for HTTP method "put"',
-        }),
-      ],
+        },
+        recommended_response => [ 405, 'Method Not Allowed' ],
+      )],
     },
     'operation does not exist under /paths/<path_template>/<method>',
   );
@@ -552,14 +553,15 @@ YAML
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => 'blah' },
       _path_item => { get => ignore },
-      errors => [
-        methods(TO_JSON => {
+      errors => [ methods(
+        TO_JSON => {
           instanceLocation => '/request/method',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id})),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
           error => 'missing operation for HTTP method "post"',
-        }),
-      ],
+        },
+        recommended_response => [ 405, 'Method Not Allowed' ],
+      )],
     },
     'operation does not exist under /paths/<path-template>',
   );
@@ -1274,14 +1276,15 @@ YAML
       path_template => '/foo/{foo_id}',
       method => 'post',
       _path_item => { get => ignore },
-      errors => [
-        methods(TO_JSON => {
+      errors => [ methods(
+        TO_JSON => {
           instanceLocation => '/request/method',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id})),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
           error => 'missing operation for HTTP method "post"',
-        }),
-      ],
+        },
+        recommended_response => [ 405, 'Method Not Allowed' ],
+      )],
     },
     'no request provided; operation does not exist for path-item',
   );
