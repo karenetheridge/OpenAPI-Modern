@@ -904,13 +904,19 @@ sub _convert_response ($response) {
   return $res;
 }
 
+# callback hook for Sereal::Encoder
+sub FREEZE ($self, $serializer) { +{ %$self } }
+
 # callback hook for Sereal::Decoder
 sub THAW ($class, $serializer, $data) {
+  my $self = bless($data, $class);
+
   foreach my $attr (qw(openapi_document evaluator)) {
     die "serialization missing attribute '$attr': perhaps your serialized data was produced for an older version of $class?"
-      if not exists $class->{$attr};
+      if not exists $self->{$attr};
   }
-  bless($data, $class);
+
+  return $self;
 }
 
 1;
@@ -1021,7 +1027,7 @@ prints:
     "valid" : true
   }
 
-=for Pod::Coverage BUILDARGS THAW
+=for Pod::Coverage BUILDARGS FREEZE THAW
 
 =for stopwords schemas jsonSchemaDialect metaschema subschema perlish operationId openapi Mojolicious
 

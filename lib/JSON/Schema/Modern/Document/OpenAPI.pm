@@ -408,13 +408,18 @@ sub _traverse_schema ($self, $state) {
   }
 }
 
+# FREEZE is defined by parent class
+
 # callback hook for Sereal::Decoder
 sub THAW ($class, $serializer, $data) {
+  my $self = bless($data, $class);
+
   foreach my $attr (qw(schema evaluator _entities)) {
     die "serialization missing attribute '$attr': perhaps your serialized data was produced for an older version of $class?"
-      if not exists $class->{$attr};
+      if not exists $self->{$attr};
   }
-  bless($data, $class);
+
+  return $self;
 }
 
 1;
