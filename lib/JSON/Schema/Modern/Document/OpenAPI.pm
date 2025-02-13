@@ -141,7 +141,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
       },
       jsonSchemaDialect => {
         type => 'string',
-        format => 'uri',
+        format => 'uri-reference',
       },
     },
   };
@@ -190,10 +190,13 @@ sub traverse ($self, $evaluator, $config_override = {}) {
 
   # /jsonSchemaDialect: https://spec.openapis.org/oas/v3.1#specifying-schema-dialects
   {
-
     # §4.8.24.5: "If [jsonSchemaDialect] is not set, then the OAS dialect schema id MUST be used for
     # these Schema Objects."
-    my $json_schema_dialect = $schema->{jsonSchemaDialect} // DEFAULT_DIALECT;
+    # §4.6: "Unless specified otherwise, all fields that are URIs MAY be relative references as
+    # defined by [RFC3986] Section 4.2."
+    my $json_schema_dialect = exists $schema->{jsonSchemaDialect}
+      ? Mojo::URL->new($schema->{jsonSchemaDialect})->to_abs($self->canonical_uri)
+      : DEFAULT_DIALECT;
 
     # traverse an empty schema with this metaschema uri to confirm it is valid, and add an entry in
     # the evaluator's _metaschema_vocabulary_classes
