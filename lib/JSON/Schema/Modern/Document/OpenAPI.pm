@@ -141,7 +141,8 @@ sub traverse ($self, $evaluator, $config_override = {}) {
   {
     my $json_schema_dialect = $self->json_schema_dialect // $schema->{jsonSchemaDialect};
 
-    # "If [jsonSchemaDialect] is not set, then the OAS dialect schema id MUST be used for these Schema Objects."
+    # §4.8.24.5: "If [jsonSchemaDialect] is not set, then the OAS dialect schema id MUST be used for
+    # these Schema Objects."
     $json_schema_dialect //= DEFAULT_DIALECT;
 
     # traverse an empty schema with this metaschema uri to confirm it is valid
@@ -213,8 +214,8 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     return $state;
   }
 
-  # "Templated paths with the same hierarchy but different templated names MUST NOT exist as they
-  # are identical."
+  # §4.8.8.1: "Templated paths with the same hierarchy but different templated names MUST NOT exist
+  # as they are identical."
   my %seen_path;
   foreach my $path (sort keys(($schema->{paths}//{})->%*)) {
     my %seen_names;
