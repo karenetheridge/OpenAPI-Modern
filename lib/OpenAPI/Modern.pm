@@ -1167,8 +1167,8 @@ include:
 * C<operation_id>: a string corresponding to the
   L<operationId|https://learn.openapis.org/specification/paths.html#the-endpoints-list>
   at a particular path-template and HTTP location under C</paths>
-* C<path_captures>: a hashref mapping placeholders in the path to their actual values in the request
-  URI
+* C<path_captures>: a hashref mapping placeholders in the path template to their actual values in
+  the request URI
 * C<method>: the HTTP method used by the request (used case-insensitively)
 
 All of these values are optional (unless C<request> is omitted), and will be derived from the
@@ -1176,8 +1176,9 @@ request URI as needed (albeit less
 efficiently than if they were provided). All passed-in values MUST be consistent with each other and
 the request URI.
 
-When successful, the options hash will be populated with keys C<path_template>, C<path_captures>,
-C<method>, and C<operation_id>, and the return value is true.
+When successful, the options hash will be populated (or updated) with keys C<path_template>,
+C<path_captures>, C<method>, C<operation_id> and C<operation_uri> (see below), and the return value
+is true.
 When not successful, the options hash will be populated with key C<errors>, an arrayref containing
 a L<JSON::Schema::Modern::Error> object, and the return value is false.
 
