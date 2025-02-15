@@ -1168,8 +1168,8 @@ corresponds to this response (as not all HTTP libraries link to the request in t
   $result = $self->find_path($options);
 
 Uses information in the request to determine the relevant parts of the OpenAPI specification.
-C<request> should be provided if available, but additional data can be used instead
-(which is populated by earlier L</validate_request> or L</find_path> calls to the same request).
+C<request> should be provided if available, but instead of or in addition to this,
+additional data can also be provided.
 
 The single argument is a hashref that contains information about the request. Possible values
 include:
@@ -1180,15 +1180,18 @@ include:
   C</pets/{petId}>); see L<https://spec.openapis.org/oas/v3.1#paths-object>.
 * C<operation_id>: a string corresponding to the
   L<operationId|https://learn.openapis.org/specification/paths.html#the-endpoints-list>
-  at a particular path-template and HTTP location under C</paths>
+  at a particular path-template and HTTP location under C</paths>. In the case of ambiguous matches
+  (such as the possibility of more than one C<path_template> matching the request URI), providing
+  this value will serve to unambiguously state which path-item and operation are intended, and is
+  also more efficient as not all path-item entries need to be searched to find a match.
 * C<path_captures>: a hashref mapping placeholders in the path template to their actual values in
   the request URI
 * C<method>: the HTTP method used by the request (used case-insensitively)
 
 All of these values are optional (unless C<request> is omitted), and will be derived from the
-request URI as needed (albeit less
+request as needed (albeit less
 efficiently than if they were provided). All passed-in values MUST be consistent with each other and
-the request URI.
+the request or the return value from this method is false.
 
 When successful, the options hash will be populated (or updated) with keys C<path_template>,
 C<path_captures>, C<method>, C<operation_id> and C<operation_uri> (see below), and the return value
