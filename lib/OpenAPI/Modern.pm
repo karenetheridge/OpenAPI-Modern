@@ -427,7 +427,7 @@ sub find_path ($self, $options, $state = {}) {
     return 1;
   }
 
-  my $capture_values;
+  my $captures;  # hashref of template variable names -> concrete values from the uri
 
   if (not $path_template and $options->{request}) {
     # derive path_template and capture values from the request URI
@@ -438,10 +438,10 @@ sub find_path ($self, $options, $state = {}) {
     foreach my $pt (sort keys(($schema->{paths}//{})->%*)) {
       $state->{path_item} = $schema->{paths}{$pt};
       $state->{schema_path} = jsonp('/paths', $pt);
-      $capture_values = $self->_match_uri($options->{request}->method, $options->{request}->url, $pt, $state);
+      $captures = $self->_match_uri($options->{request}->method, $options->{request}->url, $pt, $state);
 
       # note: this might not be the intended match, as multiple templates can match the same URI
-      $path_template = $pt, last if $capture_values;
+      $path_template = $pt, last if $captures;
 
       # the initial match succeeded, but something else went wrong
       if ($state->{errors}->@*) {
@@ -454,7 +454,7 @@ sub find_path ($self, $options, $state = {}) {
     return E({ %$state, data_path => '/request', schema_path => '', keyword => 'paths' },
         'no match found for request %s "%s"',
         $options->{request}->method, $options->{request}->url->clone->query('')->fragment(undef))
-      if not $capture_values;
+      if not $captures;
   }
 
   elsif ($options->{request}) {
@@ -462,9 +462,9 @@ sub find_path ($self, $options, $state = {}) {
     # verify it against path_captures and the request URI.
     $state->{path_item} = $schema->{paths}{$path_template};
     $state->{schema_path} = jsonp('/paths', $path_template);
-    $capture_values = $self->_match_uri($options->{request}->method, $options->{request}->url, $path_template, $state);
+    $captures = $self->_match_uri($options->{request}->method, $options->{request}->url, $path_template, $state);
 
-    if (not $capture_values) {
+    if (not $captures) {
       delete $options->{operation_id};
 
       # the initial match succeeded, but something else went wrong
@@ -520,23 +520,22 @@ sub find_path ($self, $options, $state = {}) {
 
   # note: we aren't doing anything special with escaped slashes. this bit of the spec is hazy.
   # { for the editor
-  my @capture_names = ($path_template =~ m!\{([^}]+)\}!g);
+  my @path_capture_names = ($path_template =~ m!\{([^}]+)\}!g);
   return E({ %$state, $options->{request} ? ( data_path => '/request/uri' ) : (), recommended_response => [ 500 ] }, 'provided path_captures names do not match path template "%s"', $path_template)
     if exists $options->{path_captures}
-      and not is_equal([ sort keys $options->{path_captures}->%* ], [ sort @capture_names ]);
+      and not is_equal([ sort keys $options->{path_captures}->%* ], [ sort @path_capture_names ]);
 
-  return 1 if not $capture_values;
+  return 1 if not $captures;
 
   if (exists $options->{path_captures}) {
     # $equal_state will contain { path => '/0' } indicating the index of the mismatch
-    if (not is_equal([ $options->{path_captures}->@{@capture_names} ], $capture_values, my $equal_state = { stringy_numbers => 1 })) {
+    if (not is_equal([ $options->{path_captures}->@{@path_capture_names} ], [ $captures->@{@path_capture_names} ], my $equal_state = { stringy_numbers => 1 })) {
       return E({ %$state, data_path => '/request/uri', recommended_response => [ 500 ] },
-        'provided path_captures values do not match request URI (value for %s differs)', $capture_names[substr($equal_state->{path}, 1)]);
+        'provided path_captures values do not match request URI (value for %s differs)', $path_capture_names[substr($equal_state->{path}, 1)]);
     }
   }
   else {
-    my %path_captures; @path_captures{@capture_names} = @$capture_values;
-    $options->{path_captures} = \%path_captures;
+    $options->{path_captures} = $captures;
   }
 
   return 1;
@@ -595,9 +594,9 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
   return if $uri_path !~ m/^$path_pattern$/;
 
   # perldoc perlvar, @-: $n coincides with "substr $_, $-[n], $+[n] - $-[n]" if "$-[n]" is defined
-  my $capture_values = [ map
+  my @path_capture_values = map
     Encode::decode('UTF-8', url_unescape(substr($uri_path, $-[$_], $+[$_]-$-[$_])),
-      Encode::FB_CROAK | Encode::LEAVE_SRC), 1 .. $#- ];
+      Encode::FB_CROAK | Encode::LEAVE_SRC), 1 .. $#-;
 
   while (my $ref = $state->{path_item}{'$ref'}) {
     $state->{path_item} = $self->_resolve_ref('path-item', $ref, $state);
@@ -610,7 +609,13 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
   # path_template or (preferrably) operationId to be used in the search.
   return if not exists $state->{path_item}{lc $method};
 
-  return $capture_values;
+  # note: we aren't doing anything special with escaped slashes. this bit of the spec is hazy.
+  # { for the editor
+  my @path_capture_names = ($path_template =~ m!\{([^}]+)\}!g);
+
+  my %captures;
+  @captures{@path_capture_names} = @path_capture_values;
+  return \%captures;
 }
 
 sub _validate_path_parameter ($self, $state, $param_obj, $path_captures) {
