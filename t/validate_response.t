@@ -692,7 +692,7 @@ YAML
           instanceLocation => '/response/header/Transfer-Encoding',
           keywordLocation => jsonp(qw(/paths /foo get)),
           absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo get)))->to_string,
-          error => 'RFC9112 §6.1-10: A server MUST NOT send a Transfer-Encoding header field in any response with a status code of 1xx (Informational) or 204 (No Content)',
+          error => 'RFC9112 §6.1-10: "A server MUST NOT send a Transfer-Encoding header field in any response with a status code of 1xx (Informational) or 204 (No Content)"',
         },
       ],
     },

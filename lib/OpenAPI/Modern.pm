@@ -160,14 +160,14 @@ sub validate_request ($self, $request, $options = {}) {
 
     $state->{schema_path} = jsonp($state->{schema_path}, $method);
 
-    # RFC9112 §6.2-2: A sender MUST NOT send a Content-Length header field in any message that
-    # contains a Transfer-Encoding header field.
+    # RFC9112 §6.2-2: "A sender MUST NOT send a Content-Length header field in any message that
+    # contains a Transfer-Encoding header field."
     ()= E({ %$state, data_path => '/request/header/Content-Length', },
         'Content-Length cannot appear together with Transfer-Encoding')
       if defined $request->headers->content_length and $request->content->is_chunked;
 
-    # RFC9112 §6.3-7: A user agent that sends a request that contains a message body MUST send
-    # either a valid Content-Length header field or use the chunked transfer coding.
+    # RFC9112 §6.3-7: "A user agent that sends a request that contains a message body MUST send
+    # either a valid Content-Length header field or use the chunked transfer coding."
     ()= E({ %$state, data_path => '/request/header',
         recommended_response => [ 411, 'Length Required' ] }, 'missing header: Content-Length')
       if $request->body_size and not $request->headers->content_length
@@ -242,23 +242,23 @@ sub validate_response ($self, $response, $options = {}) {
 
     if ($response->headers->header('Transfer-Encoding')) {
       ()= E({ %$state, data_path => '/response/header/Transfer-Encoding' },
-        'RFC9112 §6.1-10: A server MUST NOT send a Transfer-Encoding header field in any response with a status code of 1xx (Informational) or 204 (No Content)')
+        'RFC9112 §6.1-10: "A server MUST NOT send a Transfer-Encoding header field in any response with a status code of 1xx (Informational) or 204 (No Content)"')
         if $response->is_info or $response->code == 204;
 
       # connect method is not supported in openapi 3.1.1, but this may be possible in the future
       ()= E({ %$state, data_path => '/response/header/Transfer-Encoding' },
-        'RFC9112 §6.1-10: A server MUST NOT send a Transfer-Encoding header field in any 2xx (Successful) response to a CONNECT request')
+        'RFC9112 §6.1-10: "A server MUST NOT send a Transfer-Encoding header field in any 2xx (Successful) response to a CONNECT request"')
         if $response->is_success and $method eq 'connect';
     }
 
-    # RFC9112 §6.2-2: A sender MUST NOT send a Content-Length header field in any message that
-    # contains a Transfer-Encoding header field.
+    # RFC9112 §6.2-2: "A sender MUST NOT send a Content-Length header field in any message that
+    # contains a Transfer-Encoding header field."
     ()= E({ %$state, data_path => '/response/header/Content-Length' },
         'Content-Length cannot appear together with Transfer-Encoding')
       if defined $response->headers->content_length and $response->content->is_chunked;
 
-    # RFC9112 §6.3-7: A user agent that sends a request that contains a message body MUST send
-    # either a valid Content-Length header field or use the chunked transfer coding.
+    # RFC9112 §6.3-7: "A user agent that sends a request that contains a message body MUST send
+    # either a valid Content-Length header field or use the chunked transfer coding."
     ()= E({ %$state, data_path => '/response/header' }, 'missing header: Content-Length')
       if $response->body_size and not $response->headers->content_length
         and not $response->content->is_chunked;
@@ -533,8 +533,8 @@ sub recursive_get ($self, $uri_reference, $entity_type = undef) {
 sub _match_uri ($self, $uri, $path_template) {
   my $uri_path = $uri->path->to_string;
 
-  # RFC9112 §3.2.1-3: If the target URI's path component is empty, the client MUST send "/" as the
-  # path within the origin-form of request-target.
+  # RFC9112 §3.2.1-3: "If the target URI's path component is empty, the client MUST send "/" as the
+  # path within the origin-form of request-target."
   $uri_path = '/' if not length $uri_path;
 
   # §3.5: "The value for these path parameters MUST NOT contain any unescaped “generic syntax”
