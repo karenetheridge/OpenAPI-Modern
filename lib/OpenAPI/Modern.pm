@@ -1073,7 +1073,9 @@ Ignored if L</openapi_document> is provided. Optional.
 
 =head2 openapi_uri
 
-The URI that identifies the OpenAPI document.
+The URI that identifies the OpenAPI document. This URI will be used to resolve relative URIs used in
+the OpenAPI document, such as for C<jsonSchemaDialect> or C<servers url> values, as well as used
+for locations in L<JSON::Schema::Modern::Result> objects (see below).
 
 =head2 openapi_schema
 
@@ -1096,7 +1098,7 @@ L</recursive_get>.
 
 =head2 evaluator
 
-The L<JSON::Schema::Modern> object to use for all URI resolution and JSON Schema evaluation.
+The L<JSON::Schema::Modern> object to use for all URI retrieval and JSON Schema evaluation.
 
 =head2 validate_request
 
