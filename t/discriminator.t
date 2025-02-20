@@ -12,11 +12,12 @@ use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 use lib 't/lib';
 use Helper;
 
+my $doc_uri = Mojo::URL->new('http://example.com/api');
 my $yamlpp = YAML::PP->new(boolean => 'JSON::PP');
 
 subtest 'use discriminator to determine petType' => sub {
   my $openapi = OpenAPI::Modern->new(
-    openapi_uri => '/api',
+    openapi_uri => $doc_uri,
     openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
   description: 'runtime: use discriminator to determine petType'
 components:
@@ -51,7 +52,7 @@ YAML
   cmp_result(
     $openapi->evaluator->evaluate(
       { meow => true },
-      Mojo::URL->new('/api#/components/schemas/pet'),
+      $doc_uri->clone->fragment('/components/schemas/pet'),
     )->TO_JSON,
     {
       valid => false,
@@ -59,7 +60,7 @@ YAML
         {
           instanceLocation => '',
           keywordLocation => '/discriminator',
-          absoluteKeywordLocation => '/api#/components/schemas/pet/discriminator',
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/schemas/pet/discriminator')->to_string,
           error => 'missing required discriminator property "petType"',
         },
       ],
@@ -73,7 +74,7 @@ YAML
           petType => 'cat',
           meow => false,
       },
-      Mojo::URL->new('/api#/components/schemas/pet'),
+      $doc_uri->clone->fragment('/components/schemas/pet'),
     )->TO_JSON,
     {
       valid => false,
@@ -81,13 +82,13 @@ YAML
         {
           instanceLocation => '/meow',
           keywordLocation => '/anyOf/0/$ref/properties/meow/const',
-          absoluteKeywordLocation => '/api#/components/schemas/cat/properties/meow/const',
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/schemas/cat/properties/meow/const')->to_string,
           error => 'value does not match',
         },
         {
           instanceLocation => '/meow',
           keywordLocation => '/discriminator/propertyName/properties/meow/const',
-          absoluteKeywordLocation => '/api#/components/schemas/cat/properties/meow/const',
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/schemas/cat/properties/meow/const')->to_string,
           error => 'value does not match',
         },
       ),
@@ -101,7 +102,7 @@ YAML
           petType => 'cat',
           meow => true,
       },
-      Mojo::URL->new('/api#/components/schemas/pet'),
+      $doc_uri->clone->fragment('/components/schemas/pet'),
     )->TO_JSON,
     { valid => true },
     'petType exists in /components/schemas/; true result',
@@ -113,7 +114,7 @@ YAML
         petType => 'fish',
         swims => false,
       },
-      Mojo::URL->new('/api#/components/schemas/pet'),
+      $doc_uri->clone->fragment('/components/schemas/pet'),
     )->TO_JSON,
     {
       valid => false,
@@ -121,13 +122,13 @@ YAML
         {
           instanceLocation => '/swims',
           keywordLocation => '/anyOf/1/$ref/properties/swims/const',
-          absoluteKeywordLocation => '/api#/components/schemas/definitions/$defs/aquatic/properties/swims/const',
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/schemas/definitions/$defs/aquatic/properties/swims/const')->to_string,
           error => 'value does not match',
         },
         {
           instanceLocation => '/swims',
           keywordLocation => '/discriminator/mapping/fish/properties/swims/const',
-          absoluteKeywordLocation => '/api#/components/schemas/definitions/$defs/aquatic/properties/swims/const',
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/schemas/definitions/$defs/aquatic/properties/swims/const')->to_string,
           error => 'value does not match',
         },
       ),
@@ -141,7 +142,7 @@ YAML
         petType => 'fish',
         swims => true,
       },
-      Mojo::URL->new('/api#/components/schemas/pet'),
+      $doc_uri->clone->fragment('/components/schemas/pet'),
     )->TO_JSON,
     { valid => true },
     'petType does not exist in /components/schemas/, but a mapping exists; true result',
@@ -153,7 +154,7 @@ YAML
         petType => 'dog',
         barks => true,
       },
-      Mojo::URL->new('/api#/components/schemas/pet'),
+      $doc_uri->clone->fragment('/components/schemas/pet'),
     )->TO_JSON,
     {
       valid => false,
@@ -161,7 +162,7 @@ YAML
         {
           instanceLocation => '/petType',
           keywordLocation => '/discriminator',
-          absoluteKeywordLocation => '/api#/components/schemas/pet/discriminator',
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/schemas/pet/discriminator')->to_string,
           error => 'invalid petType: "dog"',
         },
       ),
@@ -172,7 +173,7 @@ YAML
 
 subtest 'discriminator in a parent definition' => sub {
   my $openapi = OpenAPI::Modern->new(
-    openapi_uri => '/api',
+    openapi_uri => $doc_uri,
     openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
   description: 'runtime: use discriminator to determine petType'
 components:
@@ -231,7 +232,7 @@ YAML
   cmp_result(
     $openapi->evaluator->evaluate(
       { petType => 'Cat', sound => 'meow' },
-      Mojo::URL->new('/api#/components/schemas/petType'),
+      $doc_uri->clone->fragment('/components/schemas/petType'),
     )->TO_JSON,
     { valid => true },
     'discriminator can be defined in the base class',
@@ -240,7 +241,7 @@ YAML
   cmp_result(
     $openapi->evaluator->evaluate(
       { petType => 'dog', sound => 'yipyip' },
-      Mojo::URL->new('/api#/components/schemas/petType'),
+      $doc_uri->clone->fragment('/components/schemas/petType'),
     )->TO_JSON,
     {
       valid => false,
@@ -248,19 +249,19 @@ YAML
         {
           instanceLocation => '/sound',
           keywordLocation => '/discriminator/mapping/dog/allOf/1/properties/sound/const',
-          absoluteKeywordLocation => '/api#/components/schemas/Dog/allOf/1/properties/sound/const',
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/schemas/Dog/allOf/1/properties/sound/const')->to_string,
           error => 'value does not match',
         },
         {
           instanceLocation => '',
           keywordLocation => '/discriminator/mapping/dog/allOf/1/properties',
-          absoluteKeywordLocation => '/api#/components/schemas/Dog/allOf/1/properties',
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/schemas/Dog/allOf/1/properties')->to_string,
           error => 'not all properties are valid',
         },
         {
           instanceLocation => '',
           keywordLocation => '/discriminator/mapping/dog/allOf',
-          absoluteKeywordLocation => '/api#/components/schemas/Dog/allOf',
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/schemas/Dog/allOf')->to_string,
           error => 'subschema 1 is not valid',
         },
       ],
