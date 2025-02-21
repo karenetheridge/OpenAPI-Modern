@@ -76,7 +76,7 @@ YAML
     'request on response object, if passed, must be a recognized type',
   );
 
-  cmp_deeply(
+  cmp_result(
     $openapi->validate_response(bless({}, 'Bespoke::Response'), { request => bless({}, 'Bespoke::Request') })->TO_JSON,
     {
       valid => false,

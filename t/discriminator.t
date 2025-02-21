@@ -48,7 +48,7 @@ components:
               const: true
 YAML
 
-  cmp_deeply(
+  cmp_result(
     $openapi->evaluator->evaluate(
       { meow => true },
       Mojo::URL->new('/api#/components/schemas/pet'),
@@ -67,7 +67,7 @@ YAML
     'missing required discriminator property "petType"',
   );
 
-  cmp_deeply(
+  cmp_result(
     $openapi->evaluator->evaluate(
       {
           petType => 'cat',
@@ -95,7 +95,7 @@ YAML
     'petType exists in /components/schemas/; false result',
   );
 
-  cmp_deeply(
+  cmp_result(
     $openapi->evaluator->evaluate(
       {
           petType => 'cat',
@@ -107,7 +107,7 @@ YAML
     'petType exists in /components/schemas/; true result',
   );
 
-  cmp_deeply(
+  cmp_result(
     $openapi->evaluator->evaluate(
       {
         petType => 'fish',
@@ -135,7 +135,7 @@ YAML
     'petType does not exist in /components/schemas/, but a mapping exists; false result',
   );
 
-  cmp_deeply(
+  cmp_result(
     $openapi->evaluator->evaluate(
       {
         petType => 'fish',
@@ -147,7 +147,7 @@ YAML
     'petType does not exist in /components/schemas/, but a mapping exists; true result',
   );
 
-  cmp_deeply(
+  cmp_result(
     $openapi->evaluator->evaluate(
       {
         petType => 'dog',
@@ -228,7 +228,7 @@ components:
             const: 'null'
 YAML
 
-  cmp_deeply(
+  cmp_result(
     $openapi->evaluator->evaluate(
       { petType => 'Cat', sound => 'meow' },
       Mojo::URL->new('/api#/components/schemas/petType'),
@@ -237,7 +237,7 @@ YAML
     'discriminator can be defined in the base class',
   );
 
-  cmp_deeply(
+  cmp_result(
     $openapi->evaluator->evaluate(
       { petType => 'dog', sound => 'yipyip' },
       Mojo::URL->new('/api#/components/schemas/petType'),
