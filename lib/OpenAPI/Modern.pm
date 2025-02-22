@@ -413,7 +413,7 @@ sub find_path ($self, $options, $state = {}) {
     $options->{_path_item} = $self->openapi_document->get($path_item_path);
 
     # FIXME: this is not accurate if the operation lives in another document
-    $options->{operation_uri} = Mojo::URL->new($state->{initial_schema_uri})->fragment($path_item_path.'/'.$method);
+    $options->{operation_uri} = Mojo::URL->new($state->{initial_schema_uri})->to_abs($state->{effective_base_uri})->fragment($path_item_path.'/'.$method);
     return 1;
   }
 
@@ -474,7 +474,7 @@ sub find_path ($self, $options, $state = {}) {
     if not exists $path_item->{$method};
 
   # FIXME: this is not accurate if the operation lives in another document
-  $options->{operation_uri} = Mojo::URL->new($state->{initial_schema_uri})->fragment($path_item_path.'/'.$method);
+  $options->{operation_uri} = Mojo::URL->new($state->{initial_schema_uri})->to_abs($state->{effective_base_uri})->fragment($path_item_path.'/'.$method);
   $options->{operation_id} = $path_item->{$method}{operationId} if exists $path_item->{$method}{operationId};
 
   # note: we aren't doing anything special with escaped slashes. this bit of the spec is hazy.
