@@ -169,7 +169,7 @@ sub validate_request ($self, $request, $options = {}) {
     # RFC9112 §6.3-7: "A user agent that sends a request that contains a message body MUST send
     # either a valid Content-Length header field or use the chunked transfer coding."
     ()= E({ %$state, data_path => '/request/header',
-        recommended_response => [ 411, 'Length Required' ] }, 'missing header: Content-Length')
+        recommended_response => [ 411 ] }, 'missing header: Content-Length')
       if $request->body_size and not $request->headers->content_length
         and not $request->content->is_chunked;
 
@@ -335,7 +335,7 @@ sub find_path ($self, $options, $state = {}) {
 
     # requests don't have response codes, so if 'error' is set, it is some sort of parsing error
     if (my $error = $options->{request}->error) {
-      return E({ %$state, data_path => '/request' }, 'Failed to parse request: %s', $error->{message});
+      return E({ %$state, data_path => '/request', recommended_response => [ 500 ] }, 'Failed to parse request: %s', $error->{message});
     }
   }
 
@@ -344,7 +344,8 @@ sub find_path ($self, $options, $state = {}) {
   # method from options
   if (exists $options->{method}) {
     $method = lc $options->{method};
-    return E({ %$state, data_path => '/request/method' }, 'wrong HTTP method "%s"', $options->{request}->method)
+    return E({ %$state, data_path => '/request/method', recommended_response => [ 500 ] },
+        'wrong HTTP method "%s"', $options->{request}->method)
       if $options->{request} and lc $options->{request}->method ne $method;
   }
   elsif ($options->{request}) {
@@ -356,7 +357,7 @@ sub find_path ($self, $options, $state = {}) {
     # FIXME: what if the operation is defined in another document? Need to look it up across
     # all documents, and localize $state->{initial_schema_uri}
     my $operation_path = $self->openapi_document->get_operationId_path($options->{operation_id});
-    return E($state, 'unknown operation_id "%s"', $options->{operation_id})
+    return E({ %$state, recommended_response => [ 500 ] }, 'unknown operation_id "%s"', $options->{operation_id})
       if not $operation_path;
 
     my @bits = unjsonp($operation_path);
@@ -374,7 +375,7 @@ sub find_path ($self, $options, $state = {}) {
     else {
       # the path_template need not be provided, but if it is, the operation must be located at the
       # path-item directly underneath that /paths/<path_template>.
-      return E({ %$state, schema_path => $path_item_path },
+      return E({ %$state, schema_path => $path_item_path, recommended_response => [ 500 ] },
           'operation at operation_id does not match provided path_template')
         if exists $options->{path_template} and $options->{path_template} ne $path_template;
     }
@@ -391,7 +392,7 @@ sub find_path ($self, $options, $state = {}) {
   # TODO: support passing $options->{operation_uri}
 
   # by now we will have extracted method from request or operation_id
-  return E({ %$state, data_path => '', exception => 1 }, 'at least one of $options->{request}, ($options->{path_template} and $options->{method}), or $options->{operation_id} must be provided')
+  return E({ %$state, data_path => '', exception => 1, recommended_response => [ 500 ] }, 'at least one of $options->{request}, ($options->{path_template} and $options->{method}), or $options->{operation_id} must be provided')
     if not $options->{request}
       and not ($options->{path_template} and $method)
       and not $options->{operation_id};
@@ -445,7 +446,7 @@ sub find_path ($self, $options, $state = {}) {
     if (not $capture_values) {
       delete $options->{operation_id};
       return E({ %$state, data_path => '/request/uri/path',
-          schema_path => jsonp('/paths', $path_template, exists $options->{path_template} ? () : $method) }, 'provided %s does not match request URI',
+          schema_path => jsonp('/paths', $path_template, exists $options->{path_template} ? () : $method), recommended_response => [ 500 ] }, 'provided %s does not match request URI',
         exists $options->{path_template} ? 'path_template' : 'operation_id');
     }
   }
@@ -465,11 +466,10 @@ sub find_path ($self, $options, $state = {}) {
 
   # this can only happen if we were not able to derive the path_template from the provided
   # operation_id earlier, but we still matched the request against some other path-item
-  return E($state, 'templated operation does not match provided operation_id')
+  return E({ %$state, recommended_response => [ 500 ] }, 'templated operation does not match provided operation_id')
     if $options->{operation_id} and ($path_item->{$method}{operationId}//'') ne $options->{operation_id};
 
-  return E({ %$state, data_path => '/request/method',
-      recommended_response => [ 405, 'Method Not Allowed' ] },
+  return E({ %$state, data_path => '/request/method', recommended_response => [ 405 ] },
       'missing operation for HTTP method "%s"', $method)
     if not exists $path_item->{$method};
 
@@ -480,7 +480,7 @@ sub find_path ($self, $options, $state = {}) {
   # note: we aren't doing anything special with escaped slashes. this bit of the spec is hazy.
   # { for the editor
   my @capture_names = ($path_template =~ m!\{([^}]+)\}!g);
-  return E({ %$state, $options->{request} ? ( data_path => '/request/uri/path' ) : () }, 'provided path_captures names do not match path template "%s"', $path_template)
+  return E({ %$state, $options->{request} ? ( data_path => '/request/uri/path' ) : (), recommended_response => [ 500 ] }, 'provided path_captures names do not match path template "%s"', $path_template)
     if exists $options->{path_captures}
       and not is_equal([ sort keys $options->{path_captures}->%* ], [ sort @capture_names ]);
 
@@ -489,7 +489,8 @@ sub find_path ($self, $options, $state = {}) {
   if (exists $options->{path_captures}) {
     # $equal_state will contain { path => '/0' } indicating the index of the mismatch
     if (not is_equal([ $options->{path_captures}->@{@capture_names} ], $capture_values, my $equal_state = { stringy_numbers => 1 })) {
-      return E({ %$state, data_path => '/request/uri/path' }, 'provided path_captures values do not match request URI (value for %s differs)', $capture_names[substr($equal_state->{path}, 1)]);
+      return E({ %$state, data_path => '/request/uri/path', recommended_response => [ 500 ]  },
+        'provided path_captures values do not match request URI (value for %s differs)', $capture_names[substr($equal_state->{path}, 1)]);
     }
   }
   else {
@@ -691,7 +692,7 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
   my $media_type = (first { fc($content_type) eq fc } keys $content_obj->%*)
     // (first { m{([^/]+)/\*$} && fc($content_type) =~ m{^\F\Q$1\E/[^/]+$} } keys $content_obj->%*);
   $media_type //= '*/*' if exists $content_obj->{'*/*'};
-  return E({ %$state, keyword => 'content', recommended_response => [ 415, 'Unsupported Media Type' ] },
+  return E({ %$state, keyword => 'content', recommended_response => [ 415 ] },
       'incorrect Content-Type "%s"', $content_type)
     if not defined $media_type;
 
