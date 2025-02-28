@@ -17,7 +17,8 @@ use Test::Warnings 0.033 qw(:no_end_test allow_patterns);
 use lib 't/lib';
 use Helper;
 
-my $doc_uri = Mojo::URL->new('http://example.com/api');
+my $doc_uri_rel = Mojo::URL->new('/api');
+my $doc_uri = $doc_uri_rel->to_abs(Mojo::URL->new('http://example.com'));
 my $yamlpp = YAML::PP->new(boolean => 'JSON::PP');
 
 my $type_index = 0;
@@ -2333,6 +2334,52 @@ YAML
       ],
     },
     'custom error message when the entity is not permitted',
+  );
+};
+
+subtest $::TYPE.' multiple documents' => sub {
+  my $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri_rel,
+    evaluator => JSON::Schema::Modern->new(validate_formats => 1),
+    openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
+paths:
+  /foo/{foo_id}:
+    get:
+      parameters:
+      - name: foo_id
+        in: path
+        required: true
+        schema:
+          minimum: 4
+          $ref: https://otherdoc.com#my_schema
+YAML
+
+  $openapi->evaluator->add_schema({
+    '$id' => 'https://otherdoc.com',
+    '$anchor' => 'my_schema',
+    minimum => 5,
+  });
+
+  cmp_result(
+    $openapi->validate_request(request('GET', 'http://mycorp.com/foo/1'))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/uri/path/foo_id',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id} get parameters 0 schema $ref minimum)),
+          absoluteKeywordLocation => 'https://otherdoc.com#/minimum',
+          error => 'value is less than 5',
+        },
+        {
+          instanceLocation => '/request/uri/path/foo_id',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id} get parameters 0 schema minimum)),
+          absoluteKeywordLocation => Mojo::URL->new('http://mycorp.com/api')->fragment(jsonp(qw(/paths /foo/{foo_id} get parameters 0 schema minimum)))->to_string,
+          error => 'value is less than 4',
+        },
+      ],
+    },
+    'correct error location is used when $ref goes to another document',
   );
 };
 
