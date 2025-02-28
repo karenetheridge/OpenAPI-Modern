@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.083     2025-02-28 23:48:29Z
           - fix Sereal serialization and deserialization hooks
           - operation_uri is now resolved against the document uri and request
