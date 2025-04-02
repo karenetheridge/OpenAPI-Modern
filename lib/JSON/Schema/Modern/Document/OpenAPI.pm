@@ -453,12 +453,13 @@ L<https://spec.openapis.org/oas/3.1/schema-base/2024-10-25>.
 
 and the L<OpenAPI v3.1 specification|https://spec.openapis.org/oas/v3.1>.
 
-=head1 ATTRIBUTES
+=head1 CONSTRUCTOR ARGUMENTS
 
-These values are all passed as arguments to the constructor.
+Unless otherwise noted, these are also available as read-only accessors.
 
-This class inherits all options from L<JSON::Schema::Modern::Document> and implements the following
-new ones:
+=head2 schema
+
+The actual raw data representing the OpenAPI document. Required.
 
 =head2 evaluator
 
@@ -468,6 +469,12 @@ A L<JSON::Schema::Modern> object. Unlike in the parent class, this is B<REQUIRED
 vocabularies, metaschemas and resource identifiers must be stored here as they are discovered in the
 OpenAPI document. This is the object that will be used for subsequent evaluation of data against
 schemas in the document, either manually or perhaps via a web framework plugin (coming soon).
+
+=head2 canonical_uri
+
+This is the identifier that the document is known by, which is used to resolve any relative C<$ref>
+keywords in the document (unless overridden by a subsequent C<$id> in a schema).
+See L<§4.6/https://spec.openapis.org/oas/v3.1.1#relative-references-in-api-description-uris>.
 
 =head2 metaschema_uri
 
@@ -494,10 +501,12 @@ longer be assumed.
 
 =head1 METHODS
 
+This class inherits all methods from L<JSON::Schema::Modern::Document>. In addition:
+
 =head2 get_operationId_path
 
 Returns the json pointer location of the operation containing the provided C<operationId> (suitable
-for passing to C<< $document->get(..) >>), or C<undef> if the location does not exist in the
+for passing to C<< $document->get(..) >>), or C<undef> if the operation does not exist in the
 document.
 
 =head1 SEE ALSO
@@ -506,6 +515,7 @@ document.
 * L<Mojolicious::Plugin::OpenAPI::Modern>
 * L<OpenAPI::Modern>
 * L<JSON::Schema::Modern>
+* L<JSON::Schema::Modern::Document>
 * L<https://json-schema.org>
 * L<https://www.openapis.org/>
 * L<https://learn.openapis.org/>
