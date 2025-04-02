@@ -511,8 +511,4 @@ document.
 * L<https://learn.openapis.org/>
 * L<https://spec.openapis.org/oas/v3.1>
 
-=head1 COPYRIGHT AND LICENCE
-
-Some schema files have their own licence, in share/oas/LICENSE.
-
 =cut

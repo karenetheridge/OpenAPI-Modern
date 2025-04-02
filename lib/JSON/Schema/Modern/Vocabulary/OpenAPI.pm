@@ -135,8 +135,4 @@ L<https://spec.openapis.org/oas/3.1/dialect/base>.
 * L<https://learn.openapis.org/>
 * L<https://spec.openapis.org/oas/v3.1>
 
-=head1 COPYRIGHT AND LICENCE
-
-Some schema files have their own licence, in share/oas/LICENSE.
-
 =cut
