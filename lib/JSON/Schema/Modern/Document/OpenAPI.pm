@@ -51,6 +51,10 @@ has '+evaluator' => (
   required => 1,
 );
 
+has '+schema' => (
+  isa => HashRef,
+);
+
 has '+metaschema_uri' => (
   lazy => 1,
   default => DEFAULT_BASE_METASCHEMA,
@@ -113,6 +117,11 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     type => 'object',
     required => ['openapi'],
     properties => {
+      '$self' => {
+        type => 'string',
+        format => 'uri-reference',
+        pattern => '',  # just here for the callback so we can customize the error
+      },
       openapi => {
         type => 'string',
         pattern => '',  # just here for the callback so we can customize the error
@@ -131,7 +140,11 @@ sub traverse ($self, $evaluator, $config_override = {}) {
       validate_formats => 1,
       callbacks => {
         pattern => sub ($data, $schema, $state) {
-          return $data =~ /^3\.1\.[0-9]+(-.+)?$/ ? 1 : E($state, 'unrecognized openapi version %s', $data);
+          return E($state, 'unrecognized openapi version %s', $data)
+            if $state->{data_path} eq '/openapi' and $data !~ /^3\.1\.[0-9]+(-.+)?$/;
+          return E($state, '$self cannot contain a fragment')
+            if $state->{data_path} eq '/$self' and $data =~ /#/;
+          return 1;
         },
       },
     },
@@ -141,8 +154,9 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     return $state;
   }
 
-  # in v3.2, we will use the resolved form of the uri in '$self'
-  $self->_set_canonical_uri($state->{initial_schema_uri} = $self->original_uri);
+  # determine canonical uri using rules from §?? (v3.2) "Establishing the Base URI"
+  $self->_set_canonical_uri($state->{initial_schema_uri} =
+    Mojo::URL->new($schema->{'$self'}//())->to_abs($self->retrieval_uri));
 
   # /jsonSchemaDialect: https://spec.openapis.org/oas/v3.1#specifying-schema-dialects
   {
@@ -171,6 +185,14 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     $self->_set_metaschema_uri($self->_dynamic_metaschema_uri($json_schema_dialect))
       if not $self->_has_metaschema_uri and $json_schema_dialect ne DEFAULT_DIALECT;
   }
+
+  $state->{identifiers}{$state->{initial_schema_uri}} = {
+    path => '',
+    canonical_uri => $state->{initial_schema_uri},
+    specification_version => $state->{spec_version},
+    vocabularies => $state->{vocabularies}, # reference, not copy
+    configs => {},
+  };
 
   # evaluate the document against its metaschema to find any errors, to identify all schema
   # resources within to add to the global resource index, and to extract all operationIds
@@ -370,6 +392,14 @@ sub _add_vocab_and_default_schemas ($self) {
       $js->add_document($base.'/latest', $document);
     }
   }
+
+  # dirty hack! patch in support for $self, until v3.2
+  $js->{_resource_index}{'https://spec.openapis.org/oas/3.1/schema/2024-11-14'}{document}->schema->{properties}{'$self'} = {
+    type => 'string',
+    format => 'uri-reference',
+    '$comment' => 'MUST NOT be empty, and MUST NOT contain a fragment',
+    pattern => '^[^#]+$',
+  } if exists $self->schema->{'$self'};
 }
 
 # https://spec.openapis.org/oas/v3.1#schema-object
@@ -407,7 +437,7 @@ sub _traverse_schema ($self, $state) {
     }
 
     foreach my $anchor (sort keys $new->{anchors}->%*) {
-      if (my $existing_anchor = $existing->{anchors}{$anchor}) {
+      if (my $existing_anchor = ($existing->{anchors}//{})->{$anchor}) {
         ()= E({ %$state, schema_path => $new->{anchors}{$anchor}{path} },
           'duplicate anchor uri "%s" found (original at path "%s")',
           $new->{canonical_uri}->clone->fragment($anchor),
@@ -415,6 +445,7 @@ sub _traverse_schema ($self, $state) {
         next;
       }
 
+      use autovivification 'store';
       $existing->{anchors}{$anchor} = $new->{anchors}{$anchor};
     }
   }

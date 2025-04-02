@@ -42,36 +42,23 @@ subtest 'basic construction' => sub {
   );
 };
 
-subtest 'top level document fields' => sub {
-  my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
-    canonical_uri => 'http://localhost:1234/api',
-    evaluator => my $js = JSON::Schema::Modern->new,
-    schema => 1,
-  );
-
-  cmp_result(
-    [ map $_->TO_JSON, $doc->errors ],
-    [
-      {
-        instanceLocation => '',
-        keywordLocation => '/type',
-        absoluteKeywordLocation => DEFAULT_METASCHEMA.'#/type',
-        error => 'got integer, not object',
-      },
-    ],
+subtest 'top level document checks' => sub {
+  die_result(
+    sub {
+      JSON::Schema::Modern::Document::OpenAPI->new(
+        canonical_uri => 'http://localhost:1234/api',
+        evaluator => JSON::Schema::Modern->new,
+        schema => 1,
+      );
+    },
+    qr/^Value "1" did not pass type constraint "HashRef"/,
     'document is wrong type',
   );
 
-  is(
-    document_result($doc),
-    q!'': got integer, not object!,
-    'stringified errors',
-  );
 
-
-  $doc = JSON::Schema::Modern::Document::OpenAPI->new(
+  my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
-    evaluator => $js = JSON::Schema::Modern->new,
+    evaluator => my $js = JSON::Schema::Modern->new,
     schema => {},
   );
   cmp_result(
@@ -188,6 +175,45 @@ ERRORS
 '/jsonSchemaDialect': got null, not string
 '': not all properties are valid
 ERRORS
+
+
+  $doc = JSON::Schema::Modern::Document::OpenAPI->new(
+    canonical_uri => 'http://localhost:1234/api',
+    evaluator => $js,
+    schema => {
+      openapi => OAS_VERSION,
+      info => {
+        title => 'my title',
+        version => '1.2.3',
+      },
+      '$self' => '#frag\\ment',
+    },
+  );
+
+  cmp_result(
+    [ map $_->TO_JSON, $doc->errors ],
+    [
+      {
+        instanceLocation => '/$self',
+        keywordLocation => '/properties/$self/pattern',
+        absoluteKeywordLocation => DEFAULT_METASCHEMA.'#/properties/$self/pattern',
+        error => '$self cannot contain a fragment',
+      },
+      {
+        instanceLocation => '/$self',
+        keywordLocation => '/properties/$self/format',
+        absoluteKeywordLocation => DEFAULT_METASCHEMA.'#/properties/$self/format',
+        error => 'not a valid uri-reference string',
+      },
+      {
+        instanceLocation => '',
+        keywordLocation => '/properties',
+        absoluteKeywordLocation => DEFAULT_METASCHEMA.'#/properties',
+        error => 'not all properties are valid',
+      },
+    ],
+    'invalid $self uri, with custom error message',
+  );
 
 
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
@@ -462,6 +488,138 @@ ERRORS
       },
     }),
     'dialect resources are properly stored on the evaluator',
+  );
+
+
+  # relative $self, absolute original_uri - $self is resolved with original_uri
+  $doc = JSON::Schema::Modern::Document::OpenAPI->new(
+    canonical_uri => 'http://localhost:1234/foo/api.json',
+    evaluator => $js,
+    schema => {
+      openapi => OAS_VERSION,
+      info => {
+        title => 'my title',
+        version => '1.2.3',
+      },
+      '$self' => 'user/api.json',  # the 'user' family of APIs
+      paths => {},
+    },
+  );
+
+  is($doc->original_uri, 'http://localhost:1234/foo/api.json', 'retrieval uri');
+  is($doc->canonical_uri, 'http://localhost:1234/foo/user/api.json', 'canonical uri is $self resolved against retrieval uri');
+  cmp_deeply(
+    $doc->{resource_index},
+    {
+      'http://localhost:1234/foo/user/api.json' => {
+        canonical_uri => str('http://localhost:1234/foo/user/api.json'),
+        path => '',
+        specification_version => 'draft2020-12',
+        vocabularies => bag(map 'JSON::Schema::Modern::Vocabulary::'.$_,
+          qw(Core Applicator Validation FormatAnnotation Content MetaData Unevaluated OpenAPI)),
+        configs => {},
+      },
+    },
+    'resource is properly indexed',
+  );
+
+
+  # absolute $self, absolute original_uri - $self is used as is
+  $doc = JSON::Schema::Modern::Document::OpenAPI->new(
+    canonical_uri => 'http://localhost:1234/foo/api.json',
+    evaluator => $js,
+    schema => {
+      openapi => OAS_VERSION,
+      info => {
+        title => 'my title',
+        version => '1.2.3',
+      },
+      '$self' => 'http://localhost:5555/user/api.json',  # the 'user' family of APIs
+      paths => {},
+    },
+  );
+
+  is($doc->original_uri, 'http://localhost:1234/foo/api.json', 'retrieval uri');
+  is($doc->canonical_uri, 'http://localhost:5555/user/api.json', 'canonical uri is $self, already absolute');
+  cmp_deeply(
+    $doc->{resource_index},
+    {
+      'http://localhost:5555/user/api.json' => {
+        canonical_uri => str('http://localhost:5555/user/api.json'),
+        path => '',
+        specification_version => 'draft2020-12',
+        vocabularies => bag(map 'JSON::Schema::Modern::Vocabulary::'.$_,
+          qw(Core Applicator Validation FormatAnnotation Content MetaData Unevaluated OpenAPI)),
+        configs => {},
+      },
+    },
+    'resource is properly indexed',
+  );
+
+
+  # relative $self, relative original_uri - $self is resolved with original_uri
+  $doc = JSON::Schema::Modern::Document::OpenAPI->new(
+    canonical_uri => 'foo/api.json',
+    evaluator => $js,
+    schema => {
+      openapi => OAS_VERSION,
+      info => {
+        title => 'my title',
+        version => '1.2.3',
+      },
+      '$self' => 'user/api.json',  # the 'user' family of APIs
+      paths => {},
+    },
+  );
+
+  is($doc->original_uri, 'foo/api.json', 'retrieval uri');
+  is($doc->canonical_uri, 'foo/user/api.json', 'canonical uri is $self resolved against retrieval uri');
+  cmp_deeply(
+    $doc->{resource_index},
+    {
+      'foo/user/api.json' => {
+        canonical_uri => str('foo/user/api.json'),
+        path => '',
+        specification_version => 'draft2020-12',
+        vocabularies => bag(map 'JSON::Schema::Modern::Vocabulary::'.$_,
+          qw(Core Applicator Validation FormatAnnotation Content MetaData Unevaluated OpenAPI)),
+        configs => {},
+      },
+    },
+    'resource is properly indexed',
+  );
+
+
+  # absolute $self, relative original_uri - $self is used as is
+  $doc = JSON::Schema::Modern::Document::OpenAPI->new(
+    canonical_uri => 'foo/api.json',
+    evaluator => $js,
+    schema => {
+      openapi => OAS_VERSION,
+      info => {
+        title => 'my title',
+        version => '1.2.3',
+      },
+      '$self' => 'http://localhost:5555/user/api.json',  # the 'user' family of APIs
+      paths => {},
+    },
+  );
+
+  is($doc->original_uri, 'foo/api.json', 'retrieval uri');
+  is($doc->canonical_uri, 'http://localhost:5555/user/api.json', 'canonical uri is $self, already absolute');
+  cmp_deeply(
+    $doc->{resource_index},
+    {
+      'http://localhost:5555/user/api.json' => {
+        canonical_uri => str('http://localhost:5555/user/api.json'),
+        path => '',
+        specification_version => 'draft2020-12',
+        vocabularies => bag(map 'JSON::Schema::Modern::Vocabulary::'.$_,
+          qw(Core Applicator Validation FormatAnnotation Content MetaData Unevaluated OpenAPI)),
+        configs => {},
+      },
+    },
+    'resource is properly indexed',
   );
 };
 
