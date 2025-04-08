@@ -14,6 +14,102 @@ use Helper;
 
 my $yamlpp = YAML::PP->new(boolean => 'JSON::PP');
 
+subtest 'basic document validation' => sub {
+  my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
+    canonical_uri => 'http://localhost:1234/api',
+    evaluator => my $js = JSON::Schema::Modern->new(validate_formats => 1),
+    schema => {
+      openapi => OAS_VERSION,
+      info => {
+        title => 'my title',
+        version => '1.2.3',
+      },
+      map +($_ => 'not an object'), qw(servers security tags externalDocs),
+    },
+  );
+  my $iter = 0;
+  cmp_deeply(
+    [ map $_->TO_JSON, $doc->errors ],
+    [
+      (map +{
+        instanceLocation => '',
+        keywordLocation => '/$ref/anyOf/'.$iter.'/required',
+        absoluteKeywordLocation => DEFAULT_METASCHEMA.'#/anyOf/'.$iter++.'/required',
+        error => 'object is missing property: '.$_,
+      }, qw(paths components webhooks)),
+      {
+        instanceLocation => '',
+        keywordLocation => '/$ref/anyOf',
+        absoluteKeywordLocation => DEFAULT_METASCHEMA.'#/anyOf',
+        error => 'no subschemas are valid',
+      },
+      (map +{
+        instanceLocation => '/'.$_,
+        keywordLocation => ignore,  # a $defs somewhere
+        absoluteKeywordLocation => ignore,
+        error => re(qr/^got string, not (object|array)$/),
+      }, qw(externalDocs security servers tags)),
+      {
+        instanceLocation => '',
+        keywordLocation => "/\$ref/properties",
+        absoluteKeywordLocation => DEFAULT_METASCHEMA.'#/properties',
+        error => 'not all properties are valid',
+      },
+    ],
+    'missing paths (etc), and bad types for top level fields',
+  );
+
+  is(document_result($doc), substr(<<'ERRORS', 0, -1), 'stringified errors');
+'': object is missing property: paths
+'': object is missing property: components
+'': object is missing property: webhooks
+'': no subschemas are valid
+'/externalDocs': got string, not object
+'/security': got string, not array
+'/servers': got string, not array
+'/tags': got string, not array
+'': not all properties are valid
+ERRORS
+
+
+  $doc = JSON::Schema::Modern::Document::OpenAPI->new(
+    canonical_uri => 'http://localhost:1234/api',
+    evaluator => $js,
+    schema => {
+      openapi => OAS_VERSION,
+      info => {
+        title => 'my title',
+        version => '1.2.3',
+      },
+      map +($_ => 'not an object'), qw(paths webhooks components),
+    },
+  );
+  cmp_deeply(
+    [ map $_->TO_JSON, $doc->errors ],
+    [
+      (map +{
+        instanceLocation => '/'.$_,
+        keywordLocation => ignore,  # a $defs somewhere
+        absoluteKeywordLocation => ignore,
+        error => 'got string, not object',
+      }, qw(components paths webhooks)),
+      {
+        instanceLocation => '',
+        keywordLocation => '/$ref/properties',
+        absoluteKeywordLocation => DEFAULT_METASCHEMA.'#/properties',
+        error => 'not all properties are valid',
+      },
+    ],
+    'bad types for paths, webhooks, components',
+  );
+  is(document_result($doc), substr(<<'ERRORS', 0, -1), 'stringified errors');
+'/components': got string, not object
+'/paths': got string, not object
+'/webhooks': got string, not object
+'': not all properties are valid
+ERRORS
+};
+
 subtest 'bad subschemas' => sub {
   my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
