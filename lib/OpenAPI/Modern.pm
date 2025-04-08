@@ -896,6 +896,7 @@ sub _convert_response ($response) {
   }
   elsif ($response->isa('Catalyst::Response')) {
     $res->code($response->status);
+    HTTP::Headers->VERSION('6.07');
     $res->headers->add(@$_) foreach pairs $response->headers->flatten;
     my $body = $response->body;
     $res->body($body) if length $body;
