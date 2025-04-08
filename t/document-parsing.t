@@ -384,9 +384,7 @@ YAML
   my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
     metaschema_uri => 'https://spec.openapis.org/oas/3.1/schema/latest',
-    # Note: OpenAPI::Modern sets this value to true, but the current 3.1 schema disallows templated
-    # server urls (via the uri-reference format requirement).
-    evaluator => my $js = JSON::Schema::Modern->new(validate_formats => 0),
+    evaluator => my $js = JSON::Schema::Modern->new(validate_formats => 1),
     schema => {
       $yamlpp->load_string(OPENAPI_PREAMBLE)->%*,
       %$servers,
