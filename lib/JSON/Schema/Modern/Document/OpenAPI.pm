@@ -125,6 +125,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     {
       effective_base_uri => DEFAULT_METASCHEMA,
       collect_annotations => 0,
+      validate_formats => 1,
       callbacks => {
         pattern => sub ($data, $schema, $state) {
           return $data =~ /^3\.1\.[0-9]+(-.+)?$/ ? 1 : E($state, 'unrecognized openapi version %s', $data);
@@ -170,6 +171,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     {
       short_circuit => 1,
       collect_annotations => 0,
+      validate_formats => 1,
       callbacks => {
         # we avoid producing errors here so we don't create extra errors for "not all additional
         # properties are valid" etc

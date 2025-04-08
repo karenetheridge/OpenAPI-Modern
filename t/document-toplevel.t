@@ -15,7 +15,7 @@ use Helper;
 subtest 'basic construction' => sub {
   my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
-    evaluator => my $js = JSON::Schema::Modern->new(validate_formats => 1),
+    evaluator => my $js = JSON::Schema::Modern->new,
     schema => {
       openapi => OAS_VERSION,
       info => {
@@ -45,7 +45,7 @@ subtest 'basic construction' => sub {
 subtest 'top level document fields' => sub {
   my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
-    evaluator => my $js = JSON::Schema::Modern->new(validate_formats => 1),
+    evaluator => my $js = JSON::Schema::Modern->new,
     schema => 1,
   );
 
@@ -71,7 +71,7 @@ subtest 'top level document fields' => sub {
 
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
-    evaluator => $js = JSON::Schema::Modern->new(validate_formats => 1),
+    evaluator => $js = JSON::Schema::Modern->new,
     schema => {},
   );
   cmp_result(
@@ -190,6 +190,39 @@ ERRORS
 ERRORS
 
 
+  $doc = JSON::Schema::Modern::Document::OpenAPI->new(
+    canonical_uri => 'http://localhost:1234/api',
+    evaluator => $js,
+    schema => {
+      openapi => OAS_VERSION,
+      info => {
+        title => 'my title',
+        version => '1.2.3',
+      },
+      jsonSchemaDialect => '/foo',
+    },
+  );
+
+  cmp_result(
+    [ map $_->TO_JSON, $doc->errors ],
+    [
+      {
+        instanceLocation => '/jsonSchemaDialect',
+        keywordLocation => '/properties/jsonSchemaDialect/format',
+        absoluteKeywordLocation => DEFAULT_METASCHEMA.'#/properties/jsonSchemaDialect/format',
+        error => 'not a valid uri string',
+      },
+      {
+        instanceLocation => '',
+        keywordLocation => '/properties',
+        absoluteKeywordLocation => DEFAULT_METASCHEMA.'#/properties',
+        error => 'not all properties are valid',
+      },
+    ],
+    'invalid jsonSchemaDialect uri',
+  );
+
+
   $js->add_schema({
     '$id' => 'https://metaschema/with/wrong/spec',
     '$vocabulary' => {
@@ -303,7 +336,7 @@ ERRORS
   );
 
 
-  $js = JSON::Schema::Modern->new(validate_formats => 1);
+  $js = JSON::Schema::Modern->new;
   my $mymetaschema_doc = $js->add_schema({
     '$id' => 'https://mymetaschema',
     '$vocabulary' => {

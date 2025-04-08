@@ -17,12 +17,13 @@ my $yamlpp = YAML::PP->new(boolean => 'JSON::PP');
 subtest 'basic document validation' => sub {
   my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
-    evaluator => my $js = JSON::Schema::Modern->new(validate_formats => 1),
+    evaluator => my $js = JSON::Schema::Modern->new,
     schema => {
       openapi => OAS_VERSION,
       info => {
         title => 'my title',
         version => '1.2.3',
+        contact => { url => '/foo' },
       },
       map +($_ => 'not an object'), qw(servers security tags externalDocs),
     },
@@ -43,12 +44,34 @@ subtest 'basic document validation' => sub {
         absoluteKeywordLocation => DEFAULT_METASCHEMA.'#/anyOf',
         error => 'no subschemas are valid',
       },
-      (map +{
-        instanceLocation => '/'.$_,
-        keywordLocation => ignore,  # a $defs somewhere
-        absoluteKeywordLocation => ignore,
-        error => re(qr/^got string, not (object|array)$/),
-      }, qw(externalDocs security servers tags)),
+      do {
+        my @e = (map +{
+          instanceLocation => '/'.$_,
+          keywordLocation => ignore,  # a $defs somewhere
+          absoluteKeywordLocation => ignore,
+          error => re(qr/^got string, not (object|array)$/),
+        }, qw(externalDocs security servers tags));
+        splice @e, 1, 0,
+          {
+            instanceLocation => '/info/contact/url',
+            keywordLocation => ignore,  # a $defs somewhere
+            absoluteKeywordLocation => ignore,
+            error => 'not a valid uri string',
+          },
+          {
+            instanceLocation => '/info/contact',
+            keywordLocation => ignore,  # a $defs somewhere
+            absoluteKeywordLocation => ignore,
+            error => 'not all properties are valid',
+          },
+          {
+            instanceLocation => '/info',
+            keywordLocation => ignore,  # a $defs somewhere
+            absoluteKeywordLocation => ignore,
+            error => 'not all properties are valid',
+          };
+        @e;
+      },
       {
         instanceLocation => '',
         keywordLocation => "/\$ref/properties",
@@ -65,6 +88,9 @@ subtest 'basic document validation' => sub {
 '': object is missing property: webhooks
 '': no subschemas are valid
 '/externalDocs': got string, not object
+'/info/contact/url': not a valid uri string
+'/info/contact': not all properties are valid
+'/info': not all properties are valid
 '/security': got string, not array
 '/servers': got string, not array
 '/tags': got string, not array
