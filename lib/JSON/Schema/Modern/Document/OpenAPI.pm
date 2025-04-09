@@ -86,7 +86,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
 
   my $schema = $self->schema;
   my $state = {
-    initial_schema_uri => $self->canonical_uri,
+    # initial_schema_uri calculated from '$self' below
     traversed_schema_path => '',
     schema_path => '',
     data_path => '',
@@ -137,6 +137,9 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     push $state->{errors}->@*, $top_result->errors;
     return $state;
   }
+
+  # in v3.2, we will use the resolved form of the uri in '$self'
+  $self->_set_canonical_uri($state->{initial_schema_uri} = $self->original_uri);
 
   # /jsonSchemaDialect: https://spec.openapis.org/oas/v3.1#specifying-schema-dialects
   {
@@ -478,6 +481,8 @@ This is the identifier that the document is known by, which is used to resolve a
 keywords in the document (unless overridden by a subsequent C<$id> in a schema).
 See L<§4.6/https://spec.openapis.org/oas/v3.1.1#relative-references-in-api-description-uris>.
 
+See also L</retrieval_uri>.
+
 =head2 metaschema_uri
 
 The URI of the schema that describes the OpenAPI document itself. Defaults to
@@ -504,6 +509,14 @@ longer be assumed.
 =head1 METHODS
 
 This class inherits all methods from L<JSON::Schema::Modern::Document>. In addition:
+
+=head2 retrieval_uri
+
+Also available as L<JSON::Schema::Modern::Document/original_uri>, this is known as the "retrieval
+URI" in the OAS specification: the URL the document was originally sourced from, or the URI that
+was used to add the document to the L<OpenAPI::Modern> instance.
+
+In OpenAPI version 3.1.x, this is the same as L</canonical_uri>.
 
 =head2 get_operationId_path
 
