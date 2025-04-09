@@ -49,7 +49,7 @@ subtest 'top level document fields' => sub {
     schema => 1,
   );
 
-  cmp_deeply(
+  cmp_result(
     [ map $_->TO_JSON, $doc->errors ],
     [
       {
@@ -74,7 +74,7 @@ subtest 'top level document fields' => sub {
     evaluator => $js = JSON::Schema::Modern->new(validate_formats => 1),
     schema => {},
   );
-  cmp_deeply(
+  cmp_result(
     [ map $_->TO_JSON, $doc->errors ],
     [
       {
@@ -102,7 +102,7 @@ subtest 'top level document fields' => sub {
       paths => {},
     },
   );
-  cmp_deeply(
+  cmp_result(
     [ map $_->TO_JSON, $doc->errors ],
     [
       {
@@ -134,7 +134,7 @@ ERRORS
     },
   );
 
-  cmp_deeply(
+  cmp_result(
     [ map $_->TO_JSON, $doc->errors ],
     [
       {
@@ -166,7 +166,7 @@ ERRORS
       jsonSchemaDialect => undef,
     },
   );
-  cmp_deeply(
+  cmp_result(
     [ map $_->TO_JSON, $doc->errors ],
     [
       {
@@ -211,7 +211,7 @@ ERRORS
     },
   );
 
-  cmp_deeply(
+  cmp_result(
     [ map $_->TO_JSON, $doc->errors ],
     [
       {
@@ -250,7 +250,7 @@ ERRORS
     },
   );
 
-  cmp_deeply([ $doc->errors ], [], 'no errors with default jsonSchemaDialect');
+  cmp_result([ $doc->errors ], [], 'no errors with default jsonSchemaDialect');
   is($doc->json_schema_dialect, DEFAULT_DIALECT, 'default jsonSchemaDialect is saved in the document');
 
   $js->add_document($doc);
@@ -325,7 +325,7 @@ ERRORS
     },
     metaschema_uri => DEFAULT_METASCHEMA, # '#meta' is now just {"type": ["object","boolean"]}
   );
-  cmp_deeply([], [ map $_->TO_JSON, $doc->errors ], 'no errors with a custom jsonSchemaDialect');
+  cmp_result([ $doc->errors ], [], 'no errors with a custom jsonSchemaDialect');
   is($doc->json_schema_dialect, 'https://mymetaschema', 'custom jsonSchemaDialect is saved in the document');
 
   $js->add_document($doc);

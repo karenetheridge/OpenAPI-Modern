@@ -28,7 +28,7 @@ subtest 'basic document validation' => sub {
     },
   );
   my $iter = 0;
-  cmp_deeply(
+  cmp_result(
     [ map $_->TO_JSON, $doc->errors ],
     [
       (map +{
@@ -84,7 +84,7 @@ ERRORS
       map +($_ => 'not an object'), qw(paths webhooks components),
     },
   );
-  cmp_deeply(
+  cmp_result(
     [ map $_->TO_JSON, $doc->errors ],
     [
       (map +{
@@ -495,40 +495,40 @@ YAML
     },
   );
 
-  cmp_deeply(
-    [ $doc->errors ],
+  cmp_result(
+    [ map $_->TO_JSON, $doc->errors ],
     [
       map +(
-        methods(TO_JSON => {
+        {
           instanceLocation => '',
           keywordLocation => $_.'/servers/0/variables/version/default',
           absoluteKeywordLocation => 'http://localhost:1234/api#'.$_.'/servers/0/variables/version/default',
           error => 'servers default is not a member of enum',
-        }),
-        methods(TO_JSON => {
+        },
+        {
           instanceLocation => '',
           keywordLocation => $_.'/servers/1/url',
           absoluteKeywordLocation => 'http://localhost:1234/api#'.$_.'/servers/1/url',
           error => 'duplicate of templated server url "https://example.com/{version}/{greeting}"',
-        }),
-        methods(TO_JSON => {
+        },
+        {
           instanceLocation => '',
           keywordLocation => $_.'/servers/1',
           absoluteKeywordLocation => 'http://localhost:1234/api#'.$_.'/servers/1',
           error => '"variables" property is required for templated server urls',
-        }),
-        methods(TO_JSON => {
+        },
+        {
           instanceLocation => '',
           keywordLocation => $_.'/servers/2/variables',
           absoluteKeywordLocation => 'http://localhost:1234/api#'.$_.'/servers/2/variables',
           error => 'missing "variables" definition for templated variable "foo"',
-        }),
-        methods(TO_JSON => {
+        },
+        {
           instanceLocation => '',
           keywordLocation => $_.'/servers/3/variables/version/default',
           absoluteKeywordLocation => 'http://localhost:1234/api#'.$_.'/servers/3/variables/version/default',
           error => 'servers default is not a member of enum',
-        }),
+        },
       ), '', '/components/pathItems/path0', '/components/pathItems/path0/get',
     ],
     'all issues with server entries found',
