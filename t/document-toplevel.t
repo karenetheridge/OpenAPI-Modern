@@ -376,7 +376,7 @@ ERRORS
         vocabularies => [ map 'JSON::Schema::Modern::Vocabulary::'.$_, qw(Core Applicator) ],
         configs => {},
       },
-      (map +($_ => {
+      'https://mymetaschema' => {
         canonical_uri => str('https://mymetaschema'),
         path => '',
         specification_version => 'draft2020-12',
@@ -384,7 +384,7 @@ ERRORS
         vocabularies => bag(map 'JSON::Schema::Modern::Vocabulary::'.$_,
           qw(Core Applicator Validation FormatAnnotation Content MetaData Unevaluated)),
         configs => {},
-      }), 'https://mymetaschema'),
+      },
     }),
     'dialect resources are properly stored on the evaluator',
   );
