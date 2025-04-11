@@ -505,7 +505,7 @@ __END__
     metaschema_uri => 'https://example.com/my_custom_dialect',
   );
 
-=for Pod::Coverage THAW
+=for Pod::Coverage THAW DEFAULT_BASE_METASCHEMA DEFAULT_DIALECT DEFAULT_METASCHEMA DEFAULT_SCHEMAS
 
 =head1 DESCRIPTION
 
