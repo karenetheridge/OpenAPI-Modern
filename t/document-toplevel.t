@@ -273,7 +273,8 @@ ERRORS
         path => '',
         specification_version => 'draft2020-12',
         document => ignore,
-        vocabularies => ignore,
+        vocabularies => bag(map 'JSON::Schema::Modern::Vocabulary::'.$_,
+          qw(Core Applicator Validation FormatAnnotation Content MetaData Unevaluated)),
         configs => {},
         anchors => {
           meta => {
@@ -287,7 +288,8 @@ ERRORS
         path => '',
         specification_version => 'draft2020-12',
         document => ignore,
-        vocabularies => ignore,
+        vocabularies => bag(map 'JSON::Schema::Modern::Vocabulary::'.$_,
+          qw(Core Applicator Validation FormatAnnotation Content MetaData Unevaluated)),
         configs => {},
         anchors => {
           meta => {
@@ -302,7 +304,7 @@ ERRORS
 
 
   $js = JSON::Schema::Modern->new(validate_formats => 1);
-  $js->add_schema({
+  my $mymetaschema_doc = $js->add_schema({
     '$id' => 'https://mymetaschema',
     '$vocabulary' => {
       'https://json-schema.org/draft/2020-12/vocab/core' => true,
@@ -345,8 +347,9 @@ ERRORS
         canonical_uri => str('https://mymetaschema'),
         path => '',
         specification_version => 'draft2020-12',
-        document => ignore,
-        vocabularies => ignore,
+        document => shallow($mymetaschema_doc),
+        vocabularies => bag(map 'JSON::Schema::Modern::Vocabulary::'.$_,
+          qw(Core Applicator Validation FormatAnnotation Content MetaData Unevaluated)),
         configs => {},
       }), 'https://mymetaschema'),
     }),
