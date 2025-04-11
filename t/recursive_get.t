@@ -23,7 +23,6 @@ my $preamble = {
 subtest recursive_get => sub {
   my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
-    metaschema_uri => 'https://spec.openapis.org/oas/3.1/schema/latest',
     evaluator => my $js = JSON::Schema::Modern->new(validate_formats => 1),
     schema => {
       %$preamble,
@@ -69,7 +68,6 @@ subtest recursive_get => sub {
 
   my $doc2 = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://far_far_away/api2',
-    metaschema_uri => 'https://spec.openapis.org/oas/3.1/schema/latest',
     evaluator => $js,
     schema => {
       %$preamble,

@@ -185,7 +185,6 @@ ERRORS
 subtest 'identify subschemas and other entities' => sub {
   my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
-    metaschema_uri => 'https://spec.openapis.org/oas/3.1/schema/latest',
     evaluator => my $js = JSON::Schema::Modern->new(validate_formats => 1),
     schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
 components:
@@ -268,7 +267,7 @@ YAML
 
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
-    metaschema_uri => 'https://spec.openapis.org/oas/3.1/schema/latest',
+    metaschema_uri => 'https://spec.openapis.org/oas/3.1/schema/latest',  # needed to override $schema
     evaluator => $js = JSON::Schema::Modern->new(validate_formats => 1),
     schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
 components:
@@ -505,7 +504,6 @@ YAML
 
   my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
-    metaschema_uri => 'https://spec.openapis.org/oas/3.1/schema/latest',
     evaluator => my $js = JSON::Schema::Modern->new(validate_formats => 1),
     schema => {
       $yamlpp->load_string(OPENAPI_PREAMBLE)->%*,
@@ -582,7 +580,6 @@ ERRORS
 subtest 'disallowed fields adjacent to $refs in path-items' => sub {
   my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
-    metaschema_uri => 'https://spec.openapis.org/oas/3.1/schema',
     evaluator => my $js = JSON::Schema::Modern->new(validate_formats => 1),
     schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
 paths:
@@ -594,7 +591,6 @@ YAML
 
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
-    metaschema_uri => 'https://spec.openapis.org/oas/3.1/schema',
     evaluator => $js,
     schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
 components:
