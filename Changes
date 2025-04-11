@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.084     2025-04-11 21:10:20Z
           - no longer require the user to define a custom metaschema when
             changing jsonSchemaDialect (we dynamically create one for you)
