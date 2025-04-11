@@ -1091,7 +1091,7 @@ YAML
 subtest $::TYPE.': unevaluatedProperties and annotations' => sub {
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => $doc_uri,
-    evaluator => JSON::Schema::Modern->new(validate_formats => 1),
+    evaluator => JSON::Schema::Modern->new,
     openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
 paths:
   /foo:
@@ -1136,7 +1136,7 @@ YAML
 subtest $::TYPE.': writeOnly' => sub {
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => $doc_uri,
-    evaluator => JSON::Schema::Modern->new(validate_formats => 1),
+    evaluator => JSON::Schema::Modern->new,
     openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
 paths:
   /foo:
@@ -1178,7 +1178,7 @@ YAML
 subtest $::TYPE.': custom error messages for false schemas' => sub {
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => $doc_uri,
-    evaluator => JSON::Schema::Modern->new(validate_formats => 1),
+    evaluator => JSON::Schema::Modern->new,
     openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
 paths:
   /foo:

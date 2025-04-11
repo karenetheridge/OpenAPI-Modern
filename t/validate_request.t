@@ -2083,7 +2083,7 @@ YAML
 subtest $::TYPE.': max_depth' => sub {
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => $doc_uri,
-    evaluator => JSON::Schema::Modern->new(max_traversal_depth => 15, validate_formats => 1),
+    evaluator => JSON::Schema::Modern->new(max_traversal_depth => 15),
     openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
 components:
   parameters:
@@ -2119,7 +2119,7 @@ YAML
 subtest $::TYPE.': unevaluatedProperties and annotations' => sub {
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => $doc_uri,
-    evaluator => JSON::Schema::Modern->new(validate_formats => 1),
+    evaluator => JSON::Schema::Modern->new,
     openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
 paths:
   /foo:
@@ -2161,7 +2161,7 @@ YAML
 subtest $::TYPE.': readOnly' => sub {
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => $doc_uri,
-    evaluator => JSON::Schema::Modern->new(validate_formats => 1),
+    evaluator => JSON::Schema::Modern->new,
     openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
 paths:
   /foo:
@@ -2211,7 +2211,7 @@ YAML
 subtest $::TYPE.': no bodies in GET or HEAD requests without requestBody' => sub {
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => $doc_uri,
-    evaluator => JSON::Schema::Modern->new(validate_formats => 1),
+    evaluator => JSON::Schema::Modern->new,
     openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
 paths:
   /foo:
@@ -2278,7 +2278,7 @@ SKIP: {
 subtest $::TYPE.': custom error messages for false schemas' => sub {
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => $doc_uri,
-    evaluator => JSON::Schema::Modern->new(validate_formats => 1),
+    evaluator => JSON::Schema::Modern->new,
     openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
 paths:
   /foo/{foo_id}:
@@ -2340,7 +2340,7 @@ YAML
 subtest $::TYPE.': multiple documents' => sub {
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => $doc_uri_rel,
-    evaluator => JSON::Schema::Modern->new(validate_formats => 1),
+    evaluator => JSON::Schema::Modern->new,
     openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
 paths:
   /foo/{foo_id}:
