@@ -19,6 +19,8 @@ no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 use JSON::Schema::Modern::Utilities qw(E canonical_uri jsonp is_equal);
 use Carp 'croak';
 use Safe::Isa;
+use Digest::MD5 'md5_hex';
+use Storable 'dclone';
 use File::ShareDir 'dist_dir';
 use Path::Tiny;
 use List::Util 'pairs';
@@ -50,6 +52,7 @@ has '+evaluator' => (
 );
 
 has '+metaschema_uri' => (
+  lazy => 1,
   default => DEFAULT_BASE_METASCHEMA,
 );
 
@@ -164,6 +167,9 @@ sub traverse ($self, $evaluator, $config_override = {}) {
 
     $state->@{qw(spec_version vocabularies)} = $check_metaschema_state->@{qw(spec_version vocabularies)};
     $self->_set_json_schema_dialect($json_schema_dialect);
+
+    $self->_set_metaschema_uri($self->_dynamic_metaschema_uri($json_schema_dialect))
+      if not $self->_has_metaschema_uri and $json_schema_dialect ne DEFAULT_DIALECT;
   }
 
   # evaluate the document against its metaschema to find any errors, to identify all schema
@@ -414,6 +420,28 @@ sub _traverse_schema ($self, $state) {
   }
 }
 
+# given a jsonSchemaDialect uri, generate a new schema that wraps the standard OAD schema
+# to set the jsonSchemaDialect value for the #meta dynamic reference.
+sub _dynamic_metaschema_uri ($self, $json_schema_dialect) {
+  my $dialect_uri = 'https://custom-dialect.example.com/' . md5_hex($json_schema_dialect);
+  return $dialect_uri if $self->evaluator->_get_resource($dialect_uri);
+
+  # we use the definition of share/oas/schema-base.json but swap out the dialect reference.
+  my $schema = dclone($self->evaluator->_get_resource(DEFAULT_BASE_METASCHEMA)->{document}->schema);
+  $schema->{'$id'} = $dialect_uri;
+  $schema->{'$defs'}{dialect}{const} = $json_schema_dialect;
+  $schema->{'$defs'}{schema}{'$ref'} = $json_schema_dialect;
+
+  $self->evaluator->add_document(
+    Mojo::URL->new($dialect_uri),
+    JSON::Schema::Modern::Document->new(
+      schema => $schema,
+      evaluator => $self->evaluator,
+    ));
+
+  return $dialect_uri;
+}
+
 # FREEZE is defined by parent class
 
 # callback hook for Sereal::Decoder
@@ -483,11 +511,6 @@ See L<§4.6/https://spec.openapis.org/oas/v3.1.1#relative-references-in-api-desc
 
 See also L</retrieval_uri>.
 
-=head2 metaschema_uri
-
-The URI of the schema that describes the OpenAPI document itself. Defaults to
-L<https://spec.openapis.org/oas/3.1/schema-base/2024-10-25>.
-
 =head2 json_schema_dialect
 
 The URI of the metaschema to use for all embedded L<JSON Schemas|https://json-schema.org/> in the
@@ -500,11 +523,17 @@ If you specify your own dialect here or in C<jsonSchemaDialect>, then you need t
 vocabularies and schemas to the implementation yourself. (see C<JSON::Schema::Modern/add_vocabulary>
 and C<JSON::Schema::Modern/add_schema>).
 
-Note this is B<NOT> the same as L<JSON::Schema::Modern::Document/metaschema_uri>, which contains the
-URI describing the entire document (and is not a metaschema in this case, as the entire document is
-not a JSON Schema). Note that you may need to explicitly set that attribute as well if you change
-C<json_schema_dialect>, as the default metaschema used by the default C<metaschema_uri> can no
-longer be assumed.
+Note this is B<NOT> the same as L<JSON::Schema::Modern::Document/metaschema_uri>
+(and C<metaschema_uri> below), which contains the
+URI of the schema describing the entire document (and is not a metaschema in this case, as the
+entire document is not a JSON Schema).
+
+=head2 metaschema_uri
+
+The URI of the schema that describes the OpenAPI document itself. Defaults to
+L<https://spec.openapis.org/oas/3.1/schema-base/2024-10-25> when the json schema dialect is not
+changed; otherwise defaults to a dynamically generated metaschema that uses the correct
+value of C<jsonSchemaDialect>, so you don't need to write one yourself.
 
 =head1 METHODS
 
