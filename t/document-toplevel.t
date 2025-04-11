@@ -356,12 +356,19 @@ ERRORS
         version => '1.2.3',
       },
       jsonSchemaDialect => 'https://mymetaschema',
-      paths => {},
+      components => {
+        schemas => {
+          Foo => {
+            maxLength => false,  # this is a bad schema, but our custom dialect does not detect that
+          },
+        },
+      },
     },
     metaschema_uri => DEFAULT_METASCHEMA, # '#meta' is now just {"type": ["object","boolean"]}
   );
   cmp_result([ $doc->errors ], [], 'no errors with a custom jsonSchemaDialect');
   is($doc->json_schema_dialect, 'https://mymetaschema', 'custom jsonSchemaDialect is saved in the document');
+  is($doc->metaschema_uri, DEFAULT_METASCHEMA, 'custom metaschema is saved');
 
   $js->add_document($doc);
   cmp_deeply(
