@@ -233,7 +233,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/header/Alpha',
+          instanceLocation => '/request/header',
           keywordLocation => jsonp(qw(/paths /foo $ref post parameters 0 required)),
           absoluteKeywordLocation => $doc_uri->clone->fragment('/components/pathItems/my_path_item2/post/parameters/0/required')->to_string,
           error => 'missing header: Alpha',
@@ -265,7 +265,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/uri/path/foo_id',
+          instanceLocation => '/request/uri/path',
           keywordLocation => jsonp(qw(/paths /foo get parameters 0 required)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo get parameters 0 required)))->to_string,
           error => 'missing path parameter: foo_id',
@@ -702,19 +702,19 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/uri/query/alpha',
+          instanceLocation => '/request/uri/query',
           keywordLocation => jsonp(qw(/paths /foo post parameters 0 required)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post parameters 0 required)))->to_string,
           error => 'missing query parameter: alpha',
         },
         {
-          instanceLocation => '/request/header/Alpha',
+          instanceLocation => '/request/header',
           keywordLocation => jsonp(qw(/paths /foo post parameters 1 $ref required)),
           absoluteKeywordLocation => $doc_uri->clone->fragment('/components/parameters/foo-header/required')->to_string,
           error => 'missing header: Alpha',
         },
         {
-          instanceLocation => '/request/header/Beta',
+          instanceLocation => '/request/header',
           keywordLocation => jsonp(qw(/paths /foo post parameters 7 $ref $ref required)),
           absoluteKeywordLocation => $doc_uri->clone->fragment('/components/parameters/bar-header/required')->to_string,
           error => 'missing header: Beta',
@@ -991,7 +991,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/body',
+          instanceLocation => '/request',
           keywordLocation => jsonp(qw(/paths /foo get requestBody $ref)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo get requestBody $ref)))->to_string,
           error => 'EXCEPTION: unable to find resource "'.$doc_uri.'#/i_do_not_exist"',
@@ -1047,7 +1047,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/body',
+          instanceLocation => '/request',
           keywordLocation => jsonp(qw(/paths /foo post requestBody required)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody required)))->to_string,
           error => 'request body is required but missing',
@@ -1515,7 +1515,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/header/Content-Type',
+          instanceLocation => '/request/header',
           keywordLocation => jsonp(qw(/paths /foo post requestBody content)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content)))->to_string,
           error => 'missing header: Content-Type',

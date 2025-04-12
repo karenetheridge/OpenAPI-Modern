@@ -80,7 +80,7 @@ YAML
               error => 'pattern does not match',
             },
             {
-              instanceLocation => '/request/body',
+              instanceLocation => '/request',
               keywordLocation => jsonp(qw(/paths /foo/{foo_id} post requestBody required)),
               absoluteKeywordLocation => $doc_uri->clone->host($host)->fragment(jsonp(qw(/paths /foo/{foo_id} post requestBody required)))->to_string,
               error => 'request body is required but missing',

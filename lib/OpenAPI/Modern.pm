@@ -173,8 +173,6 @@ sub validate_request ($self, $request, $options = {}) {
       if $request->body_size and not $request->headers->content_length
         and not $request->content->is_chunked;
 
-    $state->{data_path} = '/request/body';
-
     if (my $body_obj = $operation->{requestBody}) {
       $state->{schema_path} = $state->{schema_path}.'/requestBody';
 
@@ -183,6 +181,7 @@ sub validate_request ($self, $request, $options = {}) {
       }
 
       if ($request->body_size) {
+        $state->{data_path} = '/request/body';
         $self->_validate_body_content({ %$state, depth => $state->{depth}+1 }, $body_obj->{content}, $request);
       }
       elsif ($body_obj->{required}) {
@@ -190,6 +189,7 @@ sub validate_request ($self, $request, $options = {}) {
       }
     }
     else {
+      $state->{data_path} = '/request/body';
       # we presume that no body specification for GET and HEAD requests -> no body is expected
       ()= E($state, 'unspecified body is present in %s request', uc $method)
         if ($method eq 'get' or $method eq 'head')
@@ -556,7 +556,8 @@ sub _match_uri ($self, $uri, $path_template) {
 
 sub _validate_path_parameter ($self, $state, $param_obj, $path_captures) {
   # 'required' is always true for path parameters
-  return E({ %$state, keyword => 'required' }, 'missing path parameter: %s', $param_obj->{name})
+  return E({ %$state, data_path => $state->{data_path} =~ s{/$param_obj->{name}$}{}r, keyword => 'required' },
+      'missing path parameter: %s', $param_obj->{name})
     if not exists $path_captures->{$param_obj->{name}};
 
   my $value = $path_captures->{$param_obj->{name}};
@@ -581,7 +582,8 @@ sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
   my $query_params = +{ $uri->query->pairs->@* };
 
   if (not exists $query_params->{$param_obj->{name}}) {
-    return E({ %$state, keyword => 'required' }, 'missing query parameter: %s', $param_obj->{name})
+    return E({ %$state, data_path => $state->{data_path} =~ s{/$param_obj->{name}$}{}r, keyword => 'required' },
+        'missing query parameter: %s', $param_obj->{name})
       if $param_obj->{required};
     return 1;
   }
@@ -620,7 +622,8 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
   return 1 if grep fc $header_name eq fc $_, qw(Accept Content-Type Authorization);
 
   if (not $headers->every_header($header_name)->@*) {
-    return E({ %$state, keyword => 'required' }, 'missing header: %s', $header_name)
+    return E({ %$state, data_path => $state->{data_path} =~ s{/$header_name$}{}r,
+        keyword => 'required' }, 'missing header: %s', $header_name)
       if $header_obj->{required};
     return 1;
   }
@@ -685,7 +688,7 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
   # strip charset from Content-Type
   my $content_type = (split(/;/, $message->headers->content_type//'', 2))[0] // '';
 
-  return E({ %$state, data_path => $state->{data_path} =~ s{body}{header/Content-Type}r, keyword => 'content' },
+  return E({ %$state, data_path => $state->{data_path} =~ s{body}{header}r, keyword => 'content' },
       'missing header: Content-Type')
     if not length $content_type;
 
