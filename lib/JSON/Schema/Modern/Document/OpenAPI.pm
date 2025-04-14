@@ -454,6 +454,7 @@ sub _traverse_schema ($self, $state) {
 # given a jsonSchemaDialect uri, generate a new schema that wraps the standard OAD schema
 # to set the jsonSchemaDialect value for the #meta dynamic reference.
 sub _dynamic_metaschema_uri ($self, $json_schema_dialect) {
+  $json_schema_dialect .= '';
   my $dialect_uri = 'https://custom-dialect.example.com/' . md5_hex($json_schema_dialect);
   return $dialect_uri if $self->evaluator->_get_resource($dialect_uri);
 
