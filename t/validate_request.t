@@ -2379,7 +2379,198 @@ YAML
         },
       ],
     },
-    'correct error location is used when $ref goes to another document',
+    'correct error location is used when json schema $ref goes to another document',
+  );
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => '/mydoc/api',  # intentionally relative, to see how uris resolve
+    evaluator => JSON::Schema::Modern->new,
+    openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
+paths:
+  /alpha:
+    $ref: /otherdoc/api/definitions#/components/pathItems/alpha_path
+  /beta:
+    get:
+      parameters:
+      - $ref: /otherdoc/api/definitions#/components/parameters/beta_parameter
+      requestBody:
+        $ref: /otherdoc/api/definitions#/components/requestBodies/beta_requestBody
+components:
+  requestBodies:
+    alpha_requestBody:
+      required: true
+      content:
+        'text/plain':
+          schema: {}
+YAML
+
+  $openapi->evaluator->add_schema({
+    '$id' => 'https://mymetaschema',
+    '$vocabulary' => {
+      'https://json-schema.org/draft/2020-12/vocab/core' => true,
+      'https://json-schema.org/draft/2020-12/vocab/applicator' => true,
+    },
+  });
+
+  $openapi->evaluator->add_media_type('application/yaml' => sub ($dataref) { \ $yamlpp->load_string($$dataref) });
+
+  $openapi->evaluator->add_document(
+    JSON::Schema::Modern::Document::OpenAPI->new(
+      canonical_uri => '/otherdoc/api/definitions', # intentionally relative, to see how uris resolve
+      evaluator => $openapi->evaluator,
+      json_schema_dialect => 'https://mymetaschema',
+      metaschema_uri => DEFAULT_METASCHEMA, # more lax, as we use multiple different keyword syntaxes
+      schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML')));
+components:
+  pathItems:
+    alpha_path:
+      get:
+        parameters:
+        - name: Blah
+          in: header
+          required: true
+          schema: {}
+        requestBody:
+          $ref: '/mydoc/api#/components/requestBodies/alpha_requestBody'
+  parameters:
+    beta_parameter:
+      name: Blah
+      in: header
+      required: true
+      schema: {}
+  requestBodies:
+    beta_requestBody:
+      content:
+        'application/json':
+          schema:
+            $id: beta_subdir
+            type: object
+            properties:
+              a:
+                minLength: 10   # should not fail, as Validation vocabulary is not used here
+              b: false
+        'application/yaml':
+          schema:
+            $id: second_beta_subdir
+            $schema: https://json-schema.org/draft/2019-09/schema
+            type: array
+            items:              # array form of items is not valid in the latest draft
+              - minLength: 10   # should not fail, as Validation vocabulary is not used here
+              - false
+YAML
+
+  # path-item in main document refs to second document.
+  # now the path-item parameter starts here, a header has an error.
+  cmp_result(
+    $openapi->validate_request(request('GET', 'https://example.com/alpha', ['Content-Type' => 'text/plain'], 'hi'))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/header',
+          keywordLocation => jsonp(qw(/paths /alpha $ref get parameters 0 required)),
+          absoluteKeywordLocation => '/otherdoc/api/definitions#/components/pathItems/alpha_path/get/parameters/0/required',
+          error => 'missing header: Blah',
+        },
+      ],
+    },
+    'correct error location is used when path-item $ref goes to another document',
+  );
+
+  # path-item in main document
+  # we jump to a parameter in the second document
+  # that parameter has an error.
+  cmp_result(
+    $openapi->validate_request(request('GET', 'https://example.com/beta'))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/header',
+          keywordLocation => jsonp(qw(/paths /beta get parameters 0 $ref required)),
+          absoluteKeywordLocation => '/otherdoc/api/definitions#/components/parameters/beta_parameter/required',
+          error => 'missing header: Blah',
+        },
+      ],
+    },
+    'correct error location is used when parameter $ref goes to another document',
+  );
+
+  # path-item in main document refs to second document
+  # parameter passes validation
+  # but the requestBody is a $ref back to the main document, and it has an error.
+  cmp_result(
+    $openapi->validate_request(request('GET', 'https://example.com/alpha', [ Blah => 'a' ]))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request',
+          keywordLocation => jsonp(qw(/paths /alpha $ref get requestBody $ref required)),
+          absoluteKeywordLocation => '/mydoc/api#/components/requestBodies/alpha_requestBody/required',
+          error => 'request body is required but missing',
+        },
+      ],
+    },
+    'correct error location is used when requestBody $ref goes back to the original document',
+  );
+
+  # $ref to a secondary document, in which we evaluate a json schema with an $id in it
+  # and this document uses a custom dialect via jsonSchemaDialect
+  cmp_result(
+    $openapi->validate_request(request('GET', 'https://example.com/beta',
+        [Blah => 1, 'Content-Type' => 'application/json'], '{"a":"hi","b":"oh noes"}'))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        # no error for 'length is less than 10'
+        {
+          instanceLocation => '/request/body/b',
+          keywordLocation => jsonp(qw(/paths /beta get requestBody $ref content application/json schema properties b)),
+          absoluteKeywordLocation => '/otherdoc/api/beta_subdir#/properties/b',
+          error => 'property not permitted',
+        },
+        {
+          instanceLocation => '/request/body',
+          keywordLocation => jsonp(qw(/paths /beta get requestBody $ref content application/json schema properties)),
+          absoluteKeywordLocation => '/otherdoc/api/beta_subdir#/properties',
+          error => 'not all properties are valid',
+        },
+      ],
+    },
+    'correct dialect is used (via document\'s jsonSchemaDialect) in a secondary document',
+  );
+
+
+  # now we switch dialects via $schema in the subschema
+  cmp_result(
+    $openapi->validate_request(request('GET', 'https://example.com/beta',
+        [Blah => 1, 'Content-Type' => 'application/yaml'], '["hi","oh noes"]'))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/body/0',
+          keywordLocation => jsonp(qw(/paths /beta get requestBody $ref content application/yaml schema items 0 minLength)),
+          absoluteKeywordLocation => '/otherdoc/api/second_beta_subdir#/items/0/minLength',
+          error => 'length is less than 10',
+        },
+        {
+          instanceLocation => '/request/body/1',
+          keywordLocation => jsonp(qw(/paths /beta get requestBody $ref content application/yaml schema items 1)),
+          absoluteKeywordLocation => '/otherdoc/api/second_beta_subdir#/items/1',
+          error => 'item not permitted',
+        },
+        {
+          instanceLocation => '/request/body',
+          keywordLocation => jsonp(qw(/paths /beta get requestBody $ref content application/yaml schema items)),
+          absoluteKeywordLocation => '/otherdoc/api/second_beta_subdir#/items',
+          error => 'not all items are valid',
+        },
+      ],
+    },
+  'correct dialect is used (via json schema\'s $schema keyword) in a secondary document',
   );
 };
 
