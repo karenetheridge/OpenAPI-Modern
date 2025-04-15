@@ -825,13 +825,14 @@ sub _evaluate_subschema ($self, $dataref, $schema, $state) {
 
   return 1 if !keys(%$schema);  # schema is {}
 
-  my $canonical_uri = canonical_uri($state);
-  croak 'schema_path does not match canonical uri path fragment'
-    if substr($canonical_uri->fragment, -length($state->{schema_path})) ne $state->{schema_path};
+  # this is not necessarily the canonical uri of the location, but it is still a valid location
+  my $uri = $state->{initial_schema_uri}->clone;
+  $uri->fragment(($uri->fragment//'').$state->{schema_path});
 
   my $result = $self->evaluator->evaluate(
     $dataref->$*,
-    $canonical_uri,  # ensure the original document information is available to the evaluator
+    # reference by uri ensures all schema information is available to the evaluator, e.g. dialect
+    $uri,
     {
       data_path => $state->{data_path},
       traversed_schema_path => $state->{traversed_schema_path}.$state->{schema_path},
