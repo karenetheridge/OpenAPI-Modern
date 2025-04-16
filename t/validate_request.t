@@ -2374,7 +2374,7 @@ YAML
         {
           instanceLocation => '/request/uri/path/foo_id',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id} get parameters 0 schema minimum)),
-          absoluteKeywordLocation => Mojo::URL->new('http://mycorp.com/api')->fragment(jsonp(qw(/paths /foo/{foo_id} get parameters 0 schema minimum)))->to_string,
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get parameters 0 schema minimum)))->to_string,
           error => 'value is less than 4',
         },
       ],

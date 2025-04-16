@@ -317,6 +317,8 @@ sub validate_response ($self, $response, $options = {}) {
 }
 
 sub find_path ($self, $options, $state = {}) {
+  # there are many $state fields used by JSM that we do not set here because we do not use them for
+  # OpenAPI validation, such as document, document_path, vocabularies, spec_version, configs
   $state->{data_path} //= '';
   $state->{initial_schema_uri} = $self->openapi_uri;   # the canonical URI as of the start or last $id, or the last traversed $ref
   $state->{traversed_schema_path} = '';    # the accumulated traversal path as of the start, or last $id, or up to the last traversed $ref
@@ -328,10 +330,6 @@ sub find_path ($self, $options, $state = {}) {
   # now guaranteed to be a Mojo::Message::Request
   if ($options->{request}) {
     $options->{request} = _convert_request($options->{request});
-
-    $state->{effective_base_uri} = Mojo::URL->new
-      ->scheme($options->{request}->url->to_abs->scheme)
-      ->host($options->{request}->headers->host);
 
     # requests don't have response codes, so if 'error' is set, it is some sort of parsing error
     if (my $error = $options->{request}->error) {
@@ -414,7 +412,7 @@ sub find_path ($self, $options, $state = {}) {
     $options->{_path_item} = $self->openapi_document->get($path_item_path);
 
     # FIXME: this is not accurate if the operation lives in another document
-    $options->{operation_uri} = Mojo::URL->new($state->{initial_schema_uri})->to_abs($state->{effective_base_uri})->fragment($path_item_path.'/'.$method);
+    $options->{operation_uri} = $state->{initial_schema_uri}->clone->fragment($path_item_path.'/'.$method);
     return 1;
   }
 
@@ -474,7 +472,7 @@ sub find_path ($self, $options, $state = {}) {
     if not exists $path_item->{$method};
 
   # FIXME: this is not accurate if the operation lives in another document
-  $options->{operation_uri} = Mojo::URL->new($state->{initial_schema_uri})->to_abs($state->{effective_base_uri})->fragment($path_item_path.'/'.$method);
+  $options->{operation_uri} = $state->{initial_schema_uri}->clone->fragment($path_item_path.'/'.$method);
   $options->{operation_id} = $path_item->{$method}{operationId} if exists $path_item->{$method}{operationId};
 
   # note: we aren't doing anything special with escaped slashes. this bit of the spec is hazy.
@@ -503,7 +501,7 @@ sub find_path ($self, $options, $state = {}) {
 
 # TODO: this should (also?) be available at JSON::Schema::Modern
 sub recursive_get ($self, $uri_reference, $entity_type = undef) {
-  my $base = $self->openapi_uri;
+  my $base = $self->openapi_document->canonical_uri;
   my $ref = $uri_reference;
   my ($depth, $schema);
 
@@ -837,7 +835,6 @@ sub _evaluate_subschema ($self, $dataref, $schema, $state) {
     {
       data_path => $state->{data_path},
       traversed_schema_path => $state->{traversed_schema_path}.$state->{schema_path},
-      effective_base_uri => $state->{effective_base_uri},
       $state->{stringy_numbers} ? ( stringy_numbers => 1 ) : (),
     },
   );

@@ -1,6 +1,8 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - no longer resolving error, annotation locations against scheme or
+            host from the HTTP request/response
 
 0.084     2025-04-11 21:10:20Z
           - no longer require the user to define a custom metaschema when
@@ -306,7 +308,7 @@ Revision history for OpenAPI-Modern
 
 0.021     2022-02-11 04:44:05Z
           - absolute locations in errors are now resolved against the
-            request's Host header
+            request's Host header (reverted in v0.085)
 
 0.020     2022-02-10 02:56:46Z
           - validation methods and find_path now also accept the HTTP request
