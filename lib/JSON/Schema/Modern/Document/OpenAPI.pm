@@ -540,6 +540,7 @@ schemas in the document, either manually or perhaps via a web framework plugin (
 This is the identifier that the document is known by, which is used to resolve any relative C<$ref>
 keywords in the document (unless overridden by a subsequent C<$id> in a schema).
 See L<§4.6/https://spec.openapis.org/oas/v3.1.1#relative-references-in-api-description-uris>.
+It is strongly recommended that this URI is absolute.
 
 See also L</retrieval_uri>.
 

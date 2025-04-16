@@ -937,7 +937,7 @@ __END__
 =head1 SYNOPSIS
 
   my $openapi = OpenAPI::Modern->new(
-    openapi_uri => '/api',
+    openapi_uri => 'https://production.example.com/api',
     openapi_schema => YAML::PP->new(boolean => 'JSON::PP')->load_string(<<'YAML'));
   openapi: 3.1.1
   info:
@@ -989,7 +989,7 @@ __END__
 
   say 'request:';
   my $request = POST '/foo/bar',
-    'My-Request-Header' => '123', 'Content-Type' => 'application/json', Host => 'example.com',
+    'My-Request-Header' => '123', 'Content-Type' => 'application/json', Host => 'dev.example.com',
     Content => '{"hello": 123}';
   my $results = $openapi->validate_request($request);
   say $results;
@@ -1015,13 +1015,13 @@ prints:
   {
     "errors" : [
       {
-        "absoluteKeywordLocation" : "https://example.com/api#/paths/~1foo~1%7Bfoo_id%7D/post/requestBody/content/application~1json/schema/properties/hello/type",
+        "absoluteKeywordLocation" : "https://production.example.com/api#/paths/~1foo~1%7Bfoo_id%7D/post/requestBody/content/application~1json/schema/properties/hello/type",
         "error" : "got integer, not string",
         "instanceLocation" : "/request/body/hello",
         "keywordLocation" : "/paths/~1foo~1{foo_id}/post/requestBody/content/application~1json/schema/properties/hello/type"
       },
       {
-        "absoluteKeywordLocation" : "https://example.com/api#/paths/~1foo~1%7Bfoo_id%7D/post/requestBody/content/application~1json/schema/properties",
+        "absoluteKeywordLocation" : "https://production.example.com/api#/paths/~1foo~1%7Bfoo_id%7D/post/requestBody/content/application~1json/schema/properties",
         "error" : "not all properties are valid",
         "instanceLocation" : "/request/body",
         "keywordLocation" : "/paths/~1foo~1{foo_id}/post/requestBody/content/application~1json/schema/properties"
@@ -1057,16 +1057,20 @@ object containing details.
 
 =head2 openapi_uri
 
-The URI that identifies the OpenAPI document.
+The URI that identifies the OpenAPI document; an alias to C<< ->openapi_document->canonical_uri >>.
+See L<JSON::Schema::Modern::Document::OpenAPI/canonical_uri>.
 Ignored if L</openapi_document> is provided.
 
-It is used at runtime as the base for absolute URIs used in L<JSON::Schema::Modern::Result> objects,
-along with the request's C<Host> header and scheme (e.g. C<https>), when available.
+It is used at runtime as the base for absolute URIs used in L<JSON::Schema::Modern::Result> objects.
+The value of C<$self> in the document (if present) is resolved against this value.
+It is strongly recommended that this URI is absolute.
 
 =head2 openapi_schema
 
 The data structure describing the OpenAPI v3.1 document (as specified at
-L<https://spec.openapis.org/oas/v3.1>). Ignored if L</openapi_document> is provided.
+L<https://spec.openapis.org/oas/v3.1>); an alias to C<< ->openapi_document->schema >>.
+See L<JSON::Schema::Modern::Document::OpenAPI/schema>.
+Ignored if L</openapi_document> is provided.
 
 =head2 openapi_document
 
@@ -1218,7 +1222,8 @@ the path templates under `/paths`.
 
 =head2 recursive_get
 
-Given a uri or uri-reference, get the definition at that location, following any C<$ref>s along the
+Given a uri or uri-reference (resolved against the main OpenAPI document's C<canonical_uri>),
+get the definition at that location, following any C<$ref>s along the
 way. Include the expected definition type
 (one of C<schema>, C<response>, C<parameter>, C<example>, C<request-body>, C<header>,
 C<security-scheme>, C<link>, C<callbacks>, or C<path-item>)
