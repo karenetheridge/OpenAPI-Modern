@@ -291,6 +291,7 @@ YAML
     'extra path_capture value provided',
   );
 
+
   $openapi = OpenAPI::Modern->new(
     openapi_uri => $doc_uri,
     openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
@@ -509,6 +510,7 @@ YAML
     { valid => true },
     'operation can be empty',
   );
+
 
   $openapi = OpenAPI::Modern->new(
     openapi_uri => $doc_uri,
@@ -1458,6 +1460,7 @@ YAML
     'duplicate query parameters in path-item section',
   );
 
+
   $openapi = OpenAPI::Modern->new(
     openapi_uri => $doc_uri,
     openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
@@ -1696,6 +1699,7 @@ YAML
     { valid => true },
     'all parameter and body values are parsed from the request as strings',
   );
+
 
   $openapi = OpenAPI::Modern->new(
     openapi_uri => $doc_uri,

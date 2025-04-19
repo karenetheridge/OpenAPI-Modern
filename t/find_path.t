@@ -529,6 +529,7 @@ YAML
   );
   is(get_type($options->{path_captures}{foo_id}), 'integer', 'passed-in path value is preserved as a number');
 
+
   $openapi = OpenAPI::Modern->new(
     openapi_uri => $doc_uri,
     openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
@@ -1359,6 +1360,7 @@ YAML
     },
     'found path_item on the far side of a $ref using path_template and method',
   );
+
 
   $openapi = OpenAPI::Modern->new(
     openapi_uri => $doc_uri,

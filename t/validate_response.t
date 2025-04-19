@@ -672,6 +672,7 @@ YAML
     'headers that appear more than once are parsed into an array',
   );
 
+
   $openapi = OpenAPI::Modern->new(
     openapi_uri => $doc_uri,
     openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
