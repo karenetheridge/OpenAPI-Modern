@@ -338,7 +338,7 @@ YAML
         }),
       ],
     },
-    'concrete path_template is not consistent with request URI, with no captures',
+    'concrete path_template does not match this request URI (no captures)',
   );
 
   ok(!$openapi->find_path($options = { request => $request = request('POST', 'http://example.com/something/else'),
@@ -360,7 +360,7 @@ YAML
         }),
       ],
     },
-    'path_template is not consistent with request URI, with captures',
+    'path_template with variables does not match this request URI (with captures)',
   );
 
   ok(!$openapi->find_path($options = { request => $request, path_template => '/foo/{foo_id}' }),
@@ -380,7 +380,7 @@ YAML
         }),
       ],
     },
-    'path_template with variables is not consistent with request URI, captures not provided',
+    'path_template with variables does not match this request URI (no captures)',
   );
 
   ok(!$openapi->find_path($options = { request => request('GET', 'http://example.com/foo/123'), path_template => '/foo/bar' }),
@@ -648,7 +648,7 @@ YAML
         }),
       ],
     },
-    'failure to extract path template and capture values from the request uri',
+    'no match for URI against /paths',
   );
 
   my $uri = uri('http://example.com', '', 'foo', 'hello // there ಠ_ಠ!');
