@@ -8,12 +8,12 @@ OpenAPI::Modern - Validate HTTP requests and responses against an OpenAPI v3.1 d
 
 =head1 VERSION
 
-version 0.084
+version 0.085
 
 =head1 SYNOPSIS
 
   my $openapi = OpenAPI::Modern->new(
-    openapi_uri => '/api',
+    openapi_uri => 'https://production.example.com/api',
     openapi_schema => YAML::PP->new(boolean => 'JSON::PP')->load_string(<<'YAML'));
   openapi: 3.1.1
   info:
@@ -65,7 +65,7 @@ version 0.084
 
   say 'request:';
   my $request = POST '/foo/bar',
-    'My-Request-Header' => '123', 'Content-Type' => 'application/json', Host => 'example.com',
+    'My-Request-Header' => '123', 'Content-Type' => 'application/json', Host => 'dev.example.com',
     Content => '{"hello": 123}';
   my $results = $openapi->validate_request($request);
   say $results;
@@ -91,13 +91,13 @@ prints:
   {
     "errors" : [
       {
-        "absoluteKeywordLocation" : "https://example.com/api#/paths/~1foo~1%7Bfoo_id%7D/post/requestBody/content/application~1json/schema/properties/hello/type",
+        "absoluteKeywordLocation" : "https://production.example.com/api#/paths/~1foo~1%7Bfoo_id%7D/post/requestBody/content/application~1json/schema/properties/hello/type",
         "error" : "got integer, not string",
         "instanceLocation" : "/request/body/hello",
         "keywordLocation" : "/paths/~1foo~1{foo_id}/post/requestBody/content/application~1json/schema/properties/hello/type"
       },
       {
-        "absoluteKeywordLocation" : "https://example.com/api#/paths/~1foo~1%7Bfoo_id%7D/post/requestBody/content/application~1json/schema/properties",
+        "absoluteKeywordLocation" : "https://production.example.com/api#/paths/~1foo~1%7Bfoo_id%7D/post/requestBody/content/application~1json/schema/properties",
         "error" : "not all properties are valid",
         "instanceLocation" : "/request/body",
         "keywordLocation" : "/paths/~1foo~1{foo_id}/post/requestBody/content/application~1json/schema/properties"
@@ -133,16 +133,20 @@ object containing details.
 
 =head2 openapi_uri
 
-The URI that identifies the OpenAPI document.
+The URI that identifies the OpenAPI document; an alias to C<< ->openapi_document->canonical_uri >>.
+See L<JSON::Schema::Modern::Document::OpenAPI/canonical_uri>.
 Ignored if L</openapi_document> is provided.
 
-It is used at runtime as the base for absolute URIs used in L<JSON::Schema::Modern::Result> objects,
-along with the request's C<Host> header and scheme (e.g. C<https>), when available.
+It is used at runtime as the base for absolute URIs used in L<JSON::Schema::Modern::Result> objects.
+The value of C<$self> in the document (if present) is resolved against this value.
+It is strongly recommended that this URI is absolute.
 
 =head2 openapi_schema
 
 The data structure describing the OpenAPI v3.1 document (as specified at
-L<https://spec.openapis.org/oas/v3.1>). Ignored if L</openapi_document> is provided.
+L<https://spec.openapis.org/oas/v3.1>); an alias to C<< ->openapi_document->schema >>.
+See L<JSON::Schema::Modern::Document::OpenAPI/schema>.
+Ignored if L</openapi_document> is provided.
 
 =head2 openapi_document
 
@@ -242,8 +246,8 @@ corresponds to this response (as not all HTTP libraries link to the request in t
   $result = $self->find_path($options);
 
 Uses information in the request to determine the relevant parts of the OpenAPI specification.
-C<request> should be provided if available, but additional data can be used instead
-(which is populated by earlier L</validate_request> or L</find_path> calls to the same request).
+C<request> should be provided if available, but instead of or in addition to this,
+additional data can also be provided.
 
 The single argument is a hashref that contains information about the request. Possible values
 include:
@@ -260,7 +264,7 @@ C<path_template>: a string representing the request URI, with placeholders in br
 
 =item *
 
-C<operation_id>: a string corresponding to the L<operationId|https://learn.openapis.org/specification/paths.html#the-endpoints-list> at a particular path-template and HTTP location under C</paths>
+C<operation_id>: a string corresponding to the L<operationId|https://learn.openapis.org/specification/paths.html#the-endpoints-list> at a particular path-template and HTTP location under C</paths>. In the case of ambiguous matches (such as the possibility of more than one C<path_template> matching the request URI), providing this value will serve to unambiguously state which path-item and operation are intended, and is also more efficient as not all path-item entries need to be searched to find a match.
 
 =item *
 
@@ -273,9 +277,9 @@ C<method>: the HTTP method used by the request (used case-insensitively)
 =back
 
 All of these values are optional (unless C<request> is omitted), and will be derived from the
-request URI as needed (albeit less
+request as needed (albeit less
 efficiently than if they were provided). All passed-in values MUST be consistent with each other and
-the request URI.
+the request or the return value from this method is false.
 
 When successful, the options hash will be populated (or updated) with keys C<path_template>,
 C<path_captures>, C<method>, C<operation_id> and C<operation_uri> (see below), and the return value
@@ -309,7 +313,8 @@ the path templates under `/paths`.
 
 =head2 recursive_get
 
-Given a uri or uri-reference, get the definition at that location, following any C<$ref>s along the
+Given a uri or uri-reference (resolved against the main OpenAPI document's C<canonical_uri>),
+get the definition at that location, following any C<$ref>s along the
 way. Include the expected definition type
 (one of C<schema>, C<response>, C<parameter>, C<example>, C<request-body>, C<header>,
 C<security-scheme>, C<link>, C<callbacks>, or C<path-item>)
