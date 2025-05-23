@@ -9,6 +9,7 @@ no if "$]" >= 5.033001, feature => 'multidimensional';
 no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 
+use Test::Memory::Cycle;
 use lib 't/lib';
 use Helper;
 
@@ -97,6 +98,8 @@ subtest 'basic document validation' => sub {
 '': not all properties are valid
 ERRORS
 
+  memory_cycle_ok($doc, 'no leaks in the document object');
+
 
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
@@ -134,6 +137,8 @@ ERRORS
 '/webhooks': got string, not object
 '': not all properties are valid
 ERRORS
+
+  memory_cycle_ok($doc, 'no leaks in the document object');
 };
 
 subtest 'bad subschemas' => sub {
@@ -180,6 +185,8 @@ subtest 'bad subschemas' => sub {
 '/components': not all properties are valid
 '': not all properties are valid
 ERRORS
+
+  memory_cycle_ok($doc, 'no leaks in the document object');
 };
 
 subtest 'identify subschemas and other entities' => sub {
@@ -263,6 +270,8 @@ YAML
     ],
     'identifier collisions within the document are found, even those between subschemas',
   );
+
+  memory_cycle_ok($doc, 'no leaks in the document object');
 
 
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
@@ -477,6 +486,8 @@ YAML
     },
     'all entity locations are identified',
   );
+
+  memory_cycle_ok($doc, 'no leaks in the document object');
 };
 
 subtest 'invalid servers entries' => sub {
@@ -575,6 +586,8 @@ YAML
 '/components/pathItems/path0/get/servers/2/variables': missing "variables" definition for templated variable "foo"
 '/components/pathItems/path0/get/servers/3/variables/version/default': servers default is not a member of enum
 ERRORS
+
+  memory_cycle_ok($doc, 'no leaks in the document object');
 };
 
 subtest 'disallowed fields adjacent to $refs in path-items' => sub {
@@ -588,6 +601,7 @@ paths:
 YAML
 
   cmp_result([$doc->errors], [], 'no errors during traversal');
+  memory_cycle_ok($doc, 'no leaks in the document object');
 
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
@@ -636,6 +650,8 @@ YAML
 '/paths/~1bar~1{bar_id}': invalid keywords used adjacent to $ref in a path-item: servers
 '/webhooks/my_webhook1': invalid keywords used adjacent to $ref in a path-item: get
 ERRORS
+
+  memory_cycle_ok($doc, 'no leaks in the document object');
 };
 
 done_testing;
