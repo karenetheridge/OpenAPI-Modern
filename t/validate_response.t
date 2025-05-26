@@ -212,7 +212,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '',
+          instanceLocation => '/response',
           keywordLocation => '',
           absoluteKeywordLocation => $doc_uri->to_string,
           error => 'at least one of $options->{request}, ($options->{path_template} and $options->{method}), or $options->{operation_id} must be provided',
@@ -228,7 +228,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '',
+          instanceLocation => '/response',
           keywordLocation => '',
           absoluteKeywordLocation => $doc_uri->to_string,
           error => 'at least one of $options->{request}, ($options->{path_template} and $options->{method}), or $options->{operation_id} must be provided',
@@ -244,7 +244,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '',
+          instanceLocation => '/response',
           keywordLocation => '',
           absoluteKeywordLocation => $doc_uri->to_string,
           error => 'at least one of $options->{request}, ($options->{path_template} and $options->{method}), or $options->{operation_id} must be provided',

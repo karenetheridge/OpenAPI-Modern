@@ -1136,7 +1136,7 @@ YAML
       method => 'POST',
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/method',
+          instanceLocation => '',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id} get)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get)))->to_string,
           error => 'wrong HTTP method "POST"',

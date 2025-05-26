@@ -382,7 +382,7 @@ sub find_path ($self, $options, $state = {}) {
 
     if ($options->{method} and lc $options->{method} ne $method) {
       delete $options->{operation_id};
-      return E({ %$state, data_path => '/request/method', schema_path => $operation_path },
+      return E({ %$state, ($options->{request} ? ( data_path => '/request/method' ) : ()), schema_path => $operation_path },
         'wrong HTTP method "%s"', $options->{method});
     }
 
@@ -392,7 +392,7 @@ sub find_path ($self, $options, $state = {}) {
   # TODO: support passing $options->{operation_uri}
 
   # by now we will have extracted method from request or operation_id
-  return E({ %$state, data_path => '', exception => 1, recommended_response => [ 500 ] }, 'at least one of $options->{request}, ($options->{path_template} and $options->{method}), or $options->{operation_id} must be provided')
+  return E({ %$state, exception => 1, recommended_response => [ 500 ] }, 'at least one of $options->{request}, ($options->{path_template} and $options->{method}), or $options->{operation_id} must be provided')
     if not $options->{request}
       and not ($options->{path_template} and $method)
       and not $options->{operation_id};
