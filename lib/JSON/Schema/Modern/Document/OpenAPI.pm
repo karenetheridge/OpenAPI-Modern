@@ -253,6 +253,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
   # as they are identical."
   my %seen_path;
   foreach my $path (sort keys(($schema->{paths}//{})->%*)) {
+    next if $path =~ '^x-';
     my %seen_names;
     foreach my $name ($path =~ m!\{([^}]+)\}!g) {
       if (++$seen_names{$name} == 2) {

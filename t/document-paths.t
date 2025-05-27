@@ -30,6 +30,9 @@ subtest '/paths correctness' => sub {
         '/b/{a}/hi' => {},
         '/b/{b}/hi' => {},
         '/c/{c}/d/{c}/e/{e}/f/{e}' => {},
+        'x-{alpha}' => {},
+        'x-{beta}' => {},
+        'x-{foo}-{foo}' => {},
       },
     },
   );

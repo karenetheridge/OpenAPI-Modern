@@ -1,6 +1,7 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - allow for "x-*" properties in /paths/*
 
 0.085     2025-04-22 17:42:36Z
           - no longer resolving error, annotation locations against scheme or
