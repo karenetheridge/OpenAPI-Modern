@@ -163,7 +163,7 @@ subtest 'bad subschemas' => sub {
     },
   );
 
-  cmp_deeply(
+  cmp_result(
     ($doc->errors)[0],
     methods(
       instance_location => '/components/schemas/alpha_schema/not/minimum',
@@ -230,7 +230,7 @@ components:
           $anchor: alpha_anchor
 YAML
 
-  cmp_deeply(
+  cmp_result(
     [ $doc->errors ],
     [
       methods(
@@ -454,7 +454,7 @@ YAML
     'subschema resources are correctly identified in the document',
   );
 
-  cmp_deeply(
+  cmp_result(
     $doc->_entities,
     {
       '/components/parameters/my_param1' => 2,

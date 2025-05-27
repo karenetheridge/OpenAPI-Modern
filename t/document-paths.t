@@ -34,7 +34,7 @@ subtest '/paths correctness' => sub {
     },
   );
 
-  cmp_deeply(
+  cmp_result(
     [ map $_->TO_JSON, $doc->errors ],
     [
       +{

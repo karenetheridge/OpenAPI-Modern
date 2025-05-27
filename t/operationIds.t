@@ -83,7 +83,7 @@ YAML
     schema => $yamlpp->load_string($yaml =~ s/operation_id_[a-z]/operation_id_dupe/gr),
   );
 
-  cmp_deeply(
+  cmp_result(
     [ map $_->TO_JSON, $doc->errors ],
     [ map +{
         instanceLocation => '',
