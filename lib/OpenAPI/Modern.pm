@@ -410,7 +410,7 @@ sub find_path ($self, $options, $state = {}) {
   if (exists $options->{path_template}) {
     $path_template = $options->{path_template};
 
-    return E({ %$state, data_path => '/request/uri/path', keyword => 'paths' }, 'missing path-item "%s"', $path_template)
+    return E({ %$state, data_path => '/request/uri', keyword => 'paths' }, 'missing path-item "%s"', $path_template)
       if not exists $schema->{paths}{$path_template};
   }
 
@@ -442,7 +442,7 @@ sub find_path ($self, $options, $state = {}) {
       $path_template = $pt, last if $capture_values;
     }
 
-    return E({ %$state, data_path => '/request/uri/path', keyword => 'paths' }, 'no match found for request URI "%s"',
+    return E({ %$state, data_path => '/request/uri', keyword => 'paths' }, 'no match found for request URI "%s"',
         $options->{request}->url->clone->query('')->fragment(undef))
       if not $capture_values;
   }
@@ -454,8 +454,9 @@ sub find_path ($self, $options, $state = {}) {
 
     if (not $capture_values) {
       delete $options->{operation_id};
-      return E({ %$state, data_path => '/request/uri'.(exists $options->{path_template} ? '/path' : ''),
-          schema_path => jsonp('/paths', $path_template, exists $options->{path_template} ? () : ($method, 'operationId')), recommended_response => [ 500 ] },
+      return E({ %$state, data_path => '/request/uri', schema_path => jsonp('/paths', $path_template,
+          exists $options->{path_template} ? () : ($method, 'operationId')),
+          recommended_response => [ 500 ] },
         'provided %s does not match request URI',
         exists $options->{path_template} ? 'path_template' : 'operation_id');
     }
@@ -492,7 +493,7 @@ sub find_path ($self, $options, $state = {}) {
   # note: we aren't doing anything special with escaped slashes. this bit of the spec is hazy.
   # { for the editor
   my @capture_names = ($path_template =~ m!\{([^}]+)\}!g);
-  return E({ %$state, $options->{request} ? ( data_path => '/request/uri/path' ) : (), recommended_response => [ 500 ] }, 'provided path_captures names do not match path template "%s"', $path_template)
+  return E({ %$state, $options->{request} ? ( data_path => '/request/uri' ) : (), recommended_response => [ 500 ] }, 'provided path_captures names do not match path template "%s"', $path_template)
     if exists $options->{path_captures}
       and not is_equal([ sort keys $options->{path_captures}->%* ], [ sort @capture_names ]);
 
@@ -501,7 +502,7 @@ sub find_path ($self, $options, $state = {}) {
   if (exists $options->{path_captures}) {
     # $equal_state will contain { path => '/0' } indicating the index of the mismatch
     if (not is_equal([ $options->{path_captures}->@{@capture_names} ], $capture_values, my $equal_state = { stringy_numbers => 1 })) {
-      return E({ %$state, data_path => '/request/uri/path', recommended_response => [ 500 ] },
+      return E({ %$state, data_path => '/request/uri', recommended_response => [ 500 ] },
         'provided path_captures values do not match request URI (value for %s differs)', $capture_names[substr($equal_state->{path}, 1)]);
     }
   }

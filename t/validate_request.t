@@ -203,7 +203,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/uri/path',
+          instanceLocation => '/request/uri',
           keywordLocation => '/paths',
           absoluteKeywordLocation => $doc_uri->clone->fragment('/paths')->to_string,
           error => 'no match found for request URI "http://example.com/bloop/blah"',
@@ -219,7 +219,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/uri/path',
+          instanceLocation => '/request/uri',
           keywordLocation => '/paths',
           absoluteKeywordLocation => $doc_uri->clone->fragment('/paths')->to_string,
           error => 'missing path-item "/foo/baz"',
@@ -283,7 +283,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/uri/path',
+          instanceLocation => '/request/uri',
           keywordLocation => jsonp(qw(/paths /foo)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo)))->to_string,
           error => 'provided path_captures names do not match path template "/foo"',

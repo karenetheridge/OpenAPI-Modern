@@ -105,7 +105,7 @@ YAML
       method => 'get',
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/uri/path',
+          instanceLocation => '/request/uri',
           keywordLocation => '/paths',
           absoluteKeywordLocation => $doc_uri->clone->fragment('/paths')->to_string,
           error => 'missing path-item "/blurp"',
@@ -126,7 +126,7 @@ YAML
       method => 'get',
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/uri/path',
+          instanceLocation => '/request/uri',
           keywordLocation => '/paths',
           absoluteKeywordLocation => $doc_uri->clone->fragment('/paths')->to_string,
           error => 'missing path-item "/foo/baz"',
@@ -271,7 +271,7 @@ YAML
       operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} post)))),
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/uri/path',
+          instanceLocation => '/request/uri',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id})),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
           error => 'provided path_captures names do not match path template "/foo/{foo_id}"',
@@ -295,7 +295,7 @@ YAML
       operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar post)))),
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/uri/path',
+          instanceLocation => '/request/uri',
           keywordLocation => jsonp(qw(/paths /foo/bar)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
           error => 'provided path_captures names do not match path template "/foo/bar"',
@@ -334,7 +334,7 @@ YAML
       path_template => '/foo/bar',
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/uri/path',
+          instanceLocation => '/request/uri',
           keywordLocation => jsonp(qw(/paths /foo/bar)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
           error => 'provided path_template does not match request URI',
@@ -356,7 +356,7 @@ YAML
       path_captures => { foo_id => 123 },
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/uri/path',
+          instanceLocation => '/request/uri',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id})),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
           error => 'provided path_template does not match request URI',
@@ -376,7 +376,7 @@ YAML
       path_template => '/foo/{foo_id}',
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/uri/path',
+          instanceLocation => '/request/uri',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id})),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
           error => 'provided path_template does not match request URI',
@@ -396,7 +396,7 @@ YAML
       path_template => '/foo/bar',
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/uri/path',
+          instanceLocation => '/request/uri',
           keywordLocation => jsonp(qw(/paths /foo/bar)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
           error => 'provided path_template does not match request URI',
@@ -484,7 +484,7 @@ YAML
       _path_item => { post => ignore },
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/uri/path',
+          instanceLocation => '/request/uri',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id})),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
           error => 'provided path_captures values do not match request URI (value for foo_id differs)',
@@ -626,7 +626,7 @@ YAML
       operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get)))),
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/uri/path',
+          instanceLocation => '/request/uri',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id})),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
           error => 'provided path_captures values do not match request URI (value for foo_id differs)',
@@ -646,7 +646,7 @@ YAML
       method => 'get',
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/uri/path',
+          instanceLocation => '/request/uri',
           keywordLocation => '/paths',
           absoluteKeywordLocation => $doc_uri->clone->fragment('/paths')->to_string,
           error => 'no match found for request URI "http://example.com/bloop/blah"',
@@ -1192,7 +1192,7 @@ YAML
       method => 'get',
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/uri/path',
+          instanceLocation => '/request/uri',
           keywordLocation => '/paths',
           absoluteKeywordLocation => $doc_uri->clone->fragment('/paths')->to_string,
           error => 'missing path-item "/blurp"',
@@ -1523,7 +1523,7 @@ YAML
       operation_uri => str(Mojo::URL->new('gopher://mycorp.com/api')->fragment(jsonp(qw(/paths /foo get)))),
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/uri/path',
+          instanceLocation => '/request/uri',
           keywordLocation => jsonp(qw(/paths /foo)),
           absoluteKeywordLocation => Mojo::URL->new('gopher://mycorp.com/api')->clone->fragment(jsonp(qw(/paths /foo)))->to_string,
           error => 'provided path_captures names do not match path template "/foo"',
@@ -1557,7 +1557,7 @@ YAML
       operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /foo get)))),
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/uri/path',
+          instanceLocation => '/request/uri',
           keywordLocation => jsonp(qw(/paths /foo)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo)))->to_string,
           error => 'provided path_captures names do not match path template "/foo"',
