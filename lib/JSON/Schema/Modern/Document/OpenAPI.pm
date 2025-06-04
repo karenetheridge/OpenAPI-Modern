@@ -517,8 +517,7 @@ Provides structured parsing of an OpenAPI document, suitable as the base for mor
 request and response validation, code generation or form generation.
 
 The provided document must be a valid OpenAPI document, as specified by the schema identified by
-L<https://spec.openapis.org/oas/3.1/schema-base/2024-10-25>.
-
+L<https://spec.openapis.org/oas/3.1/schema-base/2024-10-25>
 and the L<OpenAPI v3.1 specification|https://spec.openapis.org/oas/v3.1>.
 
 =head1 CONSTRUCTOR ARGUMENTS
@@ -536,7 +535,8 @@ The actual raw data representing the OpenAPI document. Required.
 A L<JSON::Schema::Modern> object. Unlike in the parent class, this is B<REQUIRED>, because loaded
 vocabularies, metaschemas and resource identifiers must be stored here as they are discovered in the
 OpenAPI document. This is the object that will be used for subsequent evaluation of data against
-schemas in the document, either manually or perhaps via a web framework plugin (coming soon).
+schemas in the document, either manually or perhaps via a web framework plugin
+(see L<Mojo::Plugin::OpenAPI::Modern>).
 
 =head2 canonical_uri
 
@@ -556,7 +556,7 @@ Overrides the value of C<jsonSchemaDialect> in the document, or the specificatio
 (C<https://spec.openapis.org/oas/3.1/dialect/base>).
 
 If you specify your own dialect here or in C<jsonSchemaDialect>, then you need to add the
-vocabularies and schemas to the implementation yourself. (see C<JSON::Schema::Modern/add_vocabulary>
+vocabularies and schemas to the implementation yourself (see C<JSON::Schema::Modern/add_vocabulary>
 and C<JSON::Schema::Modern/add_schema>).
 
 Note this is B<NOT> the same as L<JSON::Schema::Modern::Document/metaschema_uri>
