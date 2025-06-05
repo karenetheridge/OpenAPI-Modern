@@ -22,8 +22,9 @@ no feature 'switch';
 use Carp 'croak';
 use Safe::Isa;
 use Ref::Util qw(is_plain_hashref is_plain_arrayref is_ref);
-use List::Util qw(first pairs);
+use List::Util qw(first pairs none);
 use Scalar::Util 'looks_like_number';
+use builtin::compat 'indexed';
 use Feature::Compat::Try;
 use Encode 2.89 ();
 use JSON::Schema::Modern;
@@ -507,6 +508,8 @@ sub find_path ($self, $options, $state = {}) {
   return E({ %$state, recommended_response => [ 500 ] }, 'templated operation does not match provided operation_id')
     if $options->{operation_id} and ($options->{_path_item}{$method}{operationId}//'') ne $options->{operation_id};
 
+  # this can only happen if we do not have a request object, as otherwise a missing operation is
+  # simply reported as a match failure
   return E({ %$state, data_path => '/request/method', recommended_response => [ 405 ] },
       'missing operation for HTTP method "%s" under "%s"', uc $method, $path_template)
     if not exists $options->{_path_item}{$method};
@@ -527,6 +530,23 @@ sub find_path ($self, $options, $state = {}) {
 
   return 1 if not $captures;
 
+  my @uri_capture_names = keys %$captures;
+
+  if (exists $options->{uri_captures}) {
+    return E({ %$state, $options->{request} ? ( data_path => '/request/uri' ) : (), recommended_response => [ 500 ] },
+        'provided uri_captures names do not match extracted values')
+      if not is_equal([ sort keys $options->{uri_captures}->%* ], [ sort @uri_capture_names ]);
+
+    # $equal_state will contain { path => '/0' } indicating the index of the mismatch
+    if (not is_equal([ $options->{uri_captures}->@{@uri_capture_names} ], [ $captures->@{@uri_capture_names} ], my $equal_state = { stringy_numbers => 1 })) {
+      return E({ %$state, data_path => '/request/uri', recommended_response => [ 500 ] },
+        'provided uri_captures values do not match request URI (value for %s differs)', $uri_capture_names[substr($equal_state->{path}, 1)]);
+    }
+  }
+  else {
+    $options->{uri_captures} = $captures;
+  }
+
   if (exists $options->{path_captures}) {
     # $equal_state will contain { path => '/0' } indicating the index of the mismatch
     if (not is_equal([ $options->{path_captures}->@{@path_capture_names} ], [ $captures->@{@path_capture_names} ], my $equal_state = { stringy_numbers => 1 })) {
@@ -535,7 +555,7 @@ sub find_path ($self, $options, $state = {}) {
     }
   }
   else {
-    $options->{path_captures} = $captures;
+    $options->{path_captures} = +{ $captures->%{@path_capture_names} };
   }
 
   return 1;
@@ -585,21 +605,16 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
     map +(substr($_, 0, 1) eq '{' ? '([^/?#]*)' : quotemeta($_)), # { for the editor
     split /(\{[^}]+\})/, $path_template;
 
-  # TODO: this will soon be the pattern for the entire uri, not the path
-  do { use autovivification 'store'; push $state->{debug}{uri_patterns}->@*, '^'.$path_pattern.'$' }
+  # if the uri doesn't match against the path alone, we can immediately bail (and keep looking for
+  # another /paths entry that might match)... this also saves us needless parsing of server objects
+  do { use autovivification 'store'; push $state->{debug}{uri_patterns}->@*, $path_pattern.'$' }
     if exists $state->{debug};
+  return if $uri_path !~ m/$path_pattern$/;
 
-  # TODO: consider 'servers' fields when matching request URIs: this requires looking at
-  # path prefixes present in server urls
-  return if $uri_path !~ m/^$path_pattern$/;
+  my $local_state = +{ %$state };
 
-  # perldoc perlvar, @-: $n coincides with "substr $_, $-[n], $+[n] - $-[n]" if "$-[n]" is defined
-  my @path_capture_values = map
-    Encode::decode('UTF-8', url_unescape(substr($uri_path, $-[$_], $+[$_]-$-[$_])),
-      Encode::FB_CROAK | Encode::LEAVE_SRC), 1 .. $#-;
-
-  while (my $ref = $state->{path_item}{'$ref'}) {
-    $state->{path_item} = $self->_resolve_ref('path-item', $ref, $state);
+  while (my $ref = $local_state->{path_item}{'$ref'}) {
+    $local_state->{path_item} = $self->_resolve_ref('path-item', $ref, $local_state);
   }
 
   # §4.8.8.1: "In case of ambiguous matching, it’s up to the tooling to decide which one to use."
@@ -607,15 +622,87 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
   # implemented, so we return false and keep searching. Since we may still match to the wrong URI,
   # the correct operation can be forced to match by explicitly passing the corresponding
   # path_template or (preferrably) operationId to be used in the search.
-  return if not exists $state->{path_item}{lc $method};
+  return if not exists $local_state->{path_item}{lc $method};
 
-  # note: we aren't doing anything special with escaped slashes. this bit of the spec is hazy.
-  # { for the editor
-  my @path_capture_names = ($path_template =~ m!\{([^}]+)\}!g);
+  my $full_uri = $uri->clone->path($uri_path)->fragment(undef)->query('')->to_string;
 
-  my %captures;
-  @captures{@path_capture_names} = @path_capture_values;
-  return \%captures;
+  # we need to keep track of the traversed path to the servers object, as well as its absolute
+  # location, for usage in error objects
+  my ($servers, $more_schema_path, $base_schema_uri) =
+      exists $local_state->{path_item}{lc $method}{servers}
+        ? ($local_state->{path_item}{lc $method}{servers}, [lc $method, 'servers'])
+    : exists $local_state->{path_item}{servers}
+        ? ($local_state->{path_item}{servers}, ['servers'])
+    : exists $self->openapi_document->schema->{servers}
+        ? ($self->openapi_document->schema->{servers}, ['servers'], $self->openapi_uri)
+    : ();
+
+  # §4.8.1.1 "If the servers field is not provided, or is an empty array, the default value would
+  # be [an array consisting of a single] Server Object with a url value of `/`."
+  $servers = [{ url => '/' }] if not $servers or not @$servers;
+
+  foreach my $index_and_server (pairs indexed @$servers) {
+    my ($index, $server) = @$index_and_server;
+
+    # we need a full uri to match against the full uri taken from the request (scheme and host)
+    # we fall back to using the request's scheme, host and port, otherwise the match can never
+    # succeed.
+    my $server_url = Mojo::URL->new($server->{url})->to_abs($self->openapi_document->retrieval_uri);
+    $server_url = $server_url->to_abs($uri)->query('');
+    $server_url->path->leading_slash(0)->trailing_slash(0);
+
+    # turn %7B and %7D back into { and }
+    my $uri_template = url_unescape($server_url) . $path_template;
+
+    my $uri_pattern = join '',
+      map +(substr($_, 0, 1) eq '{' ? '([^/?#]*)' : quotemeta($_)), # { for the editor
+      split /(\{[^}]+\})/, $uri_template;
+    do { use autovivification 'store'; push $state->{debug}{uri_patterns}->@*, '^'.$uri_pattern.'$' }
+      if exists $state->{debug};
+    next if $full_uri !~ m/^$uri_pattern$/;
+
+    # extract all capture values from server variables and path template variables: ($1 .. $n)
+    # perldoc perlvar, @-: $n coincides with "substr $_, $-[n], $+[n] - $-[n]" if "$-[n]" is defined
+    my @uri_capture_values = map
+      Encode::decode('UTF-8', url_unescape(substr($full_uri, $-[$_], $+[$_]-$-[$_])),
+        Encode::FB_CROAK | Encode::LEAVE_SRC), 1 .. $#-;
+
+    # we have a match, so preserve our new $state values created via _resolve_ref
+    %$state = %$local_state;
+
+    # note: we aren't doing anything special with escaped slashes. this bit of the spec is hazy.
+    # { for the editor
+    my @uri_capture_names = ($uri_template =~ m!\{([^}]+)\}!g);
+
+    my ($valid, %seen) = (1);
+    foreach my $name (@uri_capture_names) {
+      $valid = E({ %$state, keyword => 'url', data_path => '/request/uri',
+            schema_path => jsonp($state->{schema_path}, @$more_schema_path, $index),
+            defined $base_schema_uri ? (initial_schema_uri => $base_schema_uri) : () },
+          'duplicate template name "%s" in server url and path template', $name)
+        if $seen{$name}++;
+    }
+    return if not $valid;
+
+    my %captures;
+    @captures{@uri_capture_names} = @uri_capture_values;
+
+    foreach my $name (@uri_capture_names) {
+      next if not exists((($server->{variables}//{})->{$name}//{})->{enum});
+
+      $valid = E({ %$state, data_path => '/request/uri', keyword => 'enum',
+            schema_path => jsonp($state->{schema_path}, @$more_schema_path, $index, 'variables', $name),
+            defined $base_schema_uri ? (initial_schema_uri => $base_schema_uri) : () },
+          'server url value does not match any of the allowed values')
+        if none { $captures{$name} eq $_ } $server->{variables}{$name}{enum}->@*;
+    }
+
+    return if not $valid;
+    return \%captures;
+  }
+
+  # no match against any servers urls
+  return;
 }
 
 sub _validate_path_parameter ($self, $state, $param_obj, $path_captures) {
@@ -1001,7 +1088,7 @@ __END__
 =head1 SYNOPSIS
 
   my $openapi = OpenAPI::Modern->new(
-    openapi_uri => 'https://production.example.com/api',
+    openapi_uri => 'https://prod.example.com/api',
     openapi_schema => YAML::PP->new(boolean => 'JSON::PP')->load_string(<<'YAML'));
   openapi: 3.1.1
   info:
@@ -1009,6 +1096,12 @@ __END__
     version: 1.2.3
   paths:
     /foo/{foo_id}:
+      servers:
+        - url: https://{host}.example.com
+          variables:
+            host:
+              default: prod
+              enum: [dev, stg, prod]
       parameters:
       - name: foo_id
         in: path
@@ -1253,8 +1346,7 @@ include:
   additional diagnostic information is stored here in separate keys:
 
 =for :list
-* C<uri_patterns>: an arrayref of patterns that are attempted to be matched against the URI path
-  (note! soon to be the entire URI, when servers urls are implemented) during request matching
+* C<uri_patterns>: an arrayref of patterns that are attempted to be matched against the URI
 
 =end :list
 
@@ -1272,6 +1364,8 @@ a L<JSON::Schema::Modern::Error> object, and the return value is false.
 In addition, these values are also populated in the options hash (when available):
 
 =for :list
+* C<uri_captures>: a hashref mapping placeholders in the entire uri template (server url plus path
+  template) to their actual values in the request URI
 * C<operation_uri>: a URI indicating the document location of the operation object for the
   request, after following any references (usually something under C</paths/>, but may be in another
   document). Use C<< $openapi->evaluator->get($uri) >> to fetch this content (see
@@ -1285,11 +1379,6 @@ You can find the associated operation object in the OpenAPI document by using ei
 or by calling C<< $openapi->openapi_document->get_operationId_path($operation_id) >>
 (see L<JSON::Schema::Modern::Document::OpenAPI/get_operationId_path>) (note that the latter will
 be changed in a subsequent release, in order to support operations existing in other documents).
-
-Note that the L<C</servers>|https://spec.openapis.org/oas/v3.1#server-object> section of the
-OpenAPI document is not used for path matching at this time, for either scheme and host matching nor
-path prefixes. For now, if you use a path prefix in C<servers> entries you will need to add this to
-the path templates under `/paths`.
 
 =head2 recursive_get
 
@@ -1408,7 +1497,6 @@ Only certain permutations of OpenAPI documents are supported at this time:
   of each parameter name is considered, and C<allowEmptyValue> and C<allowReserved> are not checked
 * cookie parameters are not checked at all yet
 * C<application/x-www-form-urlencoded> and C<multipart/*> messages are not yet supported
-* C<server> fields in definitions are completely ignored, and not considered when parsing request URIs.
 * OpenAPI descriptions must be contained in a single document; C<$ref>erences to other documents are
   not fully supported at this time.
 * The use of C<$ref> within a path-item object is only allowed when not adjacent to any other

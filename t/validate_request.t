@@ -244,6 +244,42 @@ YAML
     },
     'path specification was correctly found on the far side of a $ref; error locations are correct',
   );
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri,
+    openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
+components:
+  pathItems:
+    bar:
+      post: {}
+    foo-bar:
+      get:
+        requestBody:
+          required: true
+          content: {}
+paths:
+  /bar:
+    $ref: '#/components/pathItems/bar'
+  /foo/bar:
+    $ref: '#/components/pathItems/foo-bar'
+YAML
+
+  cmp_result(
+    $openapi->validate_request(request('GET', 'http://example.com/foo/bar'))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request',
+          keywordLocation => jsonp(qw(/paths /foo/bar $ref get requestBody required)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/pathItems/foo-bar/get/requestBody/required')->to_string,
+          error => 'request body is required but missing',
+        },
+      ],
+    },
+    'suffix match not deemed sufficient; error locations are correct when $refs involved in both paths',
+  );
 };
 
 subtest $::TYPE.': validation errors, request uri paths' => sub {
