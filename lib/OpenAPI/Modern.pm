@@ -31,7 +31,7 @@ use JSON::Schema::Modern;
 use JSON::Schema::Modern::Utilities qw(jsonp unjsonp canonical_uri E abort is_equal is_elements_unique);
 use JSON::Schema::Modern::Document::OpenAPI;
 use MooX::TypeTiny 0.002002;
-use Types::Standard 'InstanceOf';
+use Types::Standard qw(InstanceOf Bool);
 use constant { true => JSON::PP::true, false => JSON::PP::false };
 use Mojo::Message::Request;
 use Mojo::Message::Response;
@@ -55,6 +55,13 @@ has evaluator => (
   isa => InstanceOf['JSON::Schema::Modern'],
   required => 1,
   handles => [ qw(get_media_type add_media_type) ],
+);
+
+our $DEBUG;
+has debug => (
+  is => 'ro',
+  isa => Bool,
+  default => $DEBUG,
 );
 
 around BUILDARGS => sub ($orig, $class, @args) {
@@ -328,6 +335,7 @@ sub find_path ($self, $options, $state = {}) {
   $state->{errors} = $options->{errors} //= [];
   $state->{annotations} //= [];
   $state->{depth} = 0;
+  $state->{debug} = $options->{debug} = {} if $DEBUG or $self->debug;
 
   # now guaranteed to be a Mojo::Message::Request
   if ($options->{request}) {
@@ -427,7 +435,7 @@ sub find_path ($self, $options, $state = {}) {
     # templated components, except when the concrete component is a non-ascii character or matches
     # 0x7c (pipe), 0x7d (close-brace) or 0x7e (tilde)
     foreach my $pt (sort keys(($schema->{paths}//{})->%*)) {
-      $capture_values = $self->_match_uri($options->{request}->url, $pt);
+      $capture_values = $self->_match_uri($options->{request}->url, $pt, $state);
 
       # this might not be the intended match, as multiple templates can match the same URI
       $path_template = $pt, last if $capture_values;
@@ -441,7 +449,7 @@ sub find_path ($self, $options, $state = {}) {
   elsif ($options->{request}) {
     # we were passed path_template in options or we calculated it from operation_id, and now we
     # verify it against path_captures and the request URI.
-    $capture_values = $self->_match_uri($options->{request}->url, $path_template);
+    $capture_values = $self->_match_uri($options->{request}->url, $path_template, $state);
 
     if (not $capture_values) {
       delete $options->{operation_id};
@@ -531,7 +539,7 @@ sub recursive_get ($self, $uri_reference, $entity_type = undef) {
 ######## NO PUBLIC INTERFACES FOLLOW THIS POINT ########
 
 # given a request uri and a path_template, check that these match, and extract capture values.
-sub _match_uri ($self, $uri, $path_template) {
+sub _match_uri ($self, $uri, $path_template, $state) {
   my $uri_path = $uri->path->to_string;
 
   # RFC9112 §3.2.1-3: "If the target URI's path component is empty, the client MUST send "/" as the
@@ -543,6 +551,10 @@ sub _match_uri ($self, $uri, $path_template) {
   my $path_pattern = join '',
     map +(substr($_, 0, 1) eq '{' ? '([^/?#]*)' : quotemeta($_)), # { for the editor
     split /(\{[^}]+\})/, $path_template;
+
+  # TODO: this will soon be the pattern for the entire uri, not the path
+  do { use autovivification 'store'; push $state->{debug}{uri_patterns}->@*, '^'.$path_pattern.'$' }
+    if exists $state->{debug};
 
   # TODO: consider 'servers' fields when matching request URIs: this requires looking at
   # path prefixes present in server urls
@@ -1088,6 +1100,13 @@ L</openapi_schema> B<MUST> be provided, and L</evaluator> will also be used if p
 The L<JSON::Schema::Modern> object to use for all URI resolution and JSON Schema evaluation.
 Ignored if L</openapi_document> is provided. Optional (a default is constructed when omitted).
 
+=head2 debug
+
+Boolean; defaults to false (can also be set via C<$DEBUG>).
+
+When set, useful diagnostic information is stored in the C<$options> hash used in public methods
+described below.
+
 =head1 METHODS
 
 =head2 document_get
@@ -1162,7 +1181,8 @@ additional data can also be provided.
 The single argument is a hashref that contains information about the request. Possible values
 include:
 
-=for :list
+=begin :list
+
 * C<request>: the object representing the HTTP request. Should be provided when available.
 * C<path_template>: a string representing the request URI, with placeholders in braces (e.g.
   C</pets/{petId}>); see L<https://spec.openapis.org/oas/v3.1#paths-object>.
@@ -1175,6 +1195,14 @@ include:
 * C<path_captures>: a hashref mapping placeholders in the path template to their actual values in
   the request URI
 * C<method>: the HTTP method used by the request (used case-insensitively)
+* C<debug>: when C<$OpenAPI::Modern::DEBUG> or L</debug> is set on the OpenAPI::Modern object,
+  additional diagnostic information is stored here in separate keys:
+
+=for :list
+* C<uri_pattern>: an arrayref of patterns that are attempted to be matched against the URI path
+  (note! soon to be the entire URI, when servers urls are implemented) during request matching
+
+=end :list
 
 All of these values are optional (unless C<request> is omitted), and will be derived from the
 request as needed (albeit less

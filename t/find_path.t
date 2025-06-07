@@ -634,6 +634,7 @@ YAML
     'request URI is inconsistent with provided path captures',
   );
 
+  $OpenAPI::Modern::DEBUG = 1;
   ok(!$openapi->find_path($options = { request => request('GET', 'http://example.com/bloop/blah') }),
     to_str($request).': find_path returns false');
   cmp_result(
@@ -649,9 +650,11 @@ YAML
           error => 'no match found for request URI "http://example.com/bloop/blah"',
         }),
       ],
+      debug => { uri_patterns => [ '^\/foo\/([^/?#]*)$' ] },
     },
     'no match for URI against /paths',
   );
+  $OpenAPI::Modern::DEBUG = 0;
 
   my $uri = uri('http://example.com', '', 'foo', 'hello // there ಠ_ಠ!');
   ok($openapi->find_path($options = { request => request('GET', $uri),
