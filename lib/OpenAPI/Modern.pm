@@ -1055,20 +1055,25 @@ If construction of the object is not successful, for example the document has a 
 call to C<new()> will throw an exception, which will likely be a L<JSON::Schema::Modern::Result>
 object containing details.
 
+Unless otherwise noted, these are also available as read-only accessors.
+
 =head2 openapi_uri
 
 The URI that identifies the OpenAPI document; an alias to C<< ->openapi_document->canonical_uri >>.
 See L<JSON::Schema::Modern::Document::OpenAPI/canonical_uri>.
 Ignored if L</openapi_document> is provided.
 
-It is used at runtime as the base for absolute URIs used in L<JSON::Schema::Modern::Result> objects.
+This URI will be used at runtime to resolve relative URIs used in
+the OpenAPI document, such as for C<jsonSchemaDialect> or C<servers url> values, as well as used
+for locations in L<JSON::Schema::Modern::Result> objects (see below).
+
 The value of C<$self> in the document (if present) is resolved against this value.
 It is strongly recommended that this URI is absolute.
 
 =head2 openapi_schema
 
 The data structure describing the OpenAPI v3.1 document (as specified at
-L<https://spec.openapis.org/oas/v3.1>); an alias to C<< ->openapi_document->schema >>.
+L<https://spec.openapis.org/oas/v3.1.1>); an alias to C<< ->openapi_document->schema >>.
 See L<JSON::Schema::Modern::Document::OpenAPI/schema>.
 Ignored if L</openapi_document> is provided.
 
@@ -1081,24 +1086,9 @@ L</openapi_schema> B<MUST> be provided, and L</evaluator> will also be used if p
 =head2 evaluator
 
 The L<JSON::Schema::Modern> object to use for all URI resolution and JSON Schema evaluation.
-Ignored if L</openapi_document> is provided. Optional.
+Ignored if L</openapi_document> is provided. Optional (a default is constructed when omitted).
 
-=head1 ACCESSORS/METHODS
-
-=head2 openapi_uri
-
-The URI that identifies the OpenAPI document. This URI will be used to resolve relative URIs used in
-the OpenAPI document, such as for C<jsonSchemaDialect> or C<servers url> values, as well as used
-for locations in L<JSON::Schema::Modern::Result> objects (see below).
-
-=head2 openapi_schema
-
-The data structure describing the OpenAPI document. See L<the specification/https://spec.openapis.org/oas/v3.1>.
-
-=head2 openapi_document
-
-The L<JSON::Schema::Modern::Document::OpenAPI> document that holds the OpenAPI information to be
-used for validation.
+=head1 METHODS
 
 =head2 document_get
 
@@ -1109,10 +1099,6 @@ Proxies to L<JSON::Schema::Modern::Document::OpenAPI/get>.
 This is not recursive (does not follow C<$ref> chains) -- for that, use
 C<< $openapi->recursive_get(Mojo::URL->new->fragment($json_pointer)) >>, see
 L</recursive_get>.
-
-=head2 evaluator
-
-The L<JSON::Schema::Modern> object to use for all URI retrieval and JSON Schema evaluation.
 
 =head2 validate_request
 
