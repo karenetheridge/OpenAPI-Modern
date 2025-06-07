@@ -295,28 +295,29 @@ sub traverse ($self, $evaluator, $config_override = {}) {
       $seen_url{$normalized} = $servers->[$server_idx]{url};
 
       my $variables_obj = $servers->[$server_idx]{variables};
-      if (@url_variables and not $variables_obj) {
+      if (not $variables_obj) {
         # missing 'variables': needs variables/$varname/default
         ()= E({ %$state, schema_path => jsonp($servers_location, $server_idx) },
-          '"variables" property is required for templated server urls');
+          '"variables" property is required for templated server urls') if @url_variables;
         next;
       }
 
-      next if not $variables_obj;
+      my %seen_names;
+      foreach my $name (@url_variables) {
+        ()= E({ %$state, schema_path => jsonp($servers_location, $server_idx) },
+            'duplicate servers template variable "%s"', $name)
+          if ++$seen_names{$name} == 2;
 
-      foreach my $varname (keys $variables_obj->%*) {
-        if (exists $variables_obj->{$varname}{enum}
-            and not grep $variables_obj->{$varname}{default} eq $_, $variables_obj->{$varname}{enum}->@*) {
-          ()= E({ %$state, schema_path => jsonp($servers_location, $server_idx, 'variables', $varname, 'default') },
-            'servers default is not a member of enum');
-        }
+        ()= E({ %$state, schema_path => jsonp($servers_location, $server_idx, 'variables') },
+            'missing "variables" definition for servers template variable "%s"', $name)
+          if $seen_names{$name} == 1 and not exists $variables_obj->{$name};
       }
 
-      if (@url_variables
-          and my @missing_definitions = grep !exists $variables_obj->{$_}, @url_variables) {
-        ()= E({ %$state, schema_path => jsonp($servers_location, $server_idx, 'variables') },
-          'missing "variables" definition for templated variable%s "%s"',
-          @missing_definitions > 1 ? 's' : '', join('", "', @missing_definitions));
+      foreach my $varname (keys $variables_obj->%*) {
+        ()= E({ %$state, schema_path => jsonp($servers_location, $server_idx, 'variables', $varname, 'default') },
+            'servers default is not a member of enum')
+          if exists $variables_obj->{$varname}{enum}
+            and not grep $variables_obj->{$varname}{default} eq $_, $variables_obj->{$varname}{enum}->@*;
       }
     }
   }

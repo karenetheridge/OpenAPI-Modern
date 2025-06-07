@@ -505,7 +505,7 @@ servers:
       unused:
         default: nope
   - url: https://example.com/{v}/{greeting}
-  - url: https://example.com/{foo}
+  - url: https://example.com/{foo}/{foo}
     variables: {}
   - url: http://example.com/literal
     variables:
@@ -558,7 +558,13 @@ YAML
           instanceLocation => '',
           keywordLocation => $_.'/servers/2/variables',
           absoluteKeywordLocation => 'http://localhost:1234/api#'.$_.'/servers/2/variables',
-          error => 'missing "variables" definition for templated variable "foo"',
+          error => 'missing "variables" definition for servers template variable "foo"',
+        },
+        {
+          instanceLocation => '',
+          keywordLocation => $_.'/servers/2',
+          absoluteKeywordLocation => 'http://localhost:1234/api#'.$_.'/servers/2',
+          error => 'duplicate servers template variable "foo"',
         },
         {
           instanceLocation => '',
@@ -575,17 +581,20 @@ YAML
 '/servers/0/variables/version/default': servers default is not a member of enum
 '/servers/1/url': duplicate of templated server url "https://example.com/{version}/{greeting}"
 '/servers/1': "variables" property is required for templated server urls
-'/servers/2/variables': missing "variables" definition for templated variable "foo"
+'/servers/2/variables': missing "variables" definition for servers template variable "foo"
+'/servers/2': duplicate servers template variable "foo"
 '/servers/3/variables/version/default': servers default is not a member of enum
 '/components/pathItems/path0/servers/0/variables/version/default': servers default is not a member of enum
 '/components/pathItems/path0/servers/1/url': duplicate of templated server url "https://example.com/{version}/{greeting}"
 '/components/pathItems/path0/servers/1': "variables" property is required for templated server urls
-'/components/pathItems/path0/servers/2/variables': missing "variables" definition for templated variable "foo"
+'/components/pathItems/path0/servers/2/variables': missing "variables" definition for servers template variable "foo"
+'/components/pathItems/path0/servers/2': duplicate servers template variable "foo"
 '/components/pathItems/path0/servers/3/variables/version/default': servers default is not a member of enum
 '/components/pathItems/path0/get/servers/0/variables/version/default': servers default is not a member of enum
 '/components/pathItems/path0/get/servers/1/url': duplicate of templated server url "https://example.com/{version}/{greeting}"
 '/components/pathItems/path0/get/servers/1': "variables" property is required for templated server urls
-'/components/pathItems/path0/get/servers/2/variables': missing "variables" definition for templated variable "foo"
+'/components/pathItems/path0/get/servers/2/variables': missing "variables" definition for servers template variable "foo"
+'/components/pathItems/path0/get/servers/2': duplicate servers template variable "foo"
 '/components/pathItems/path0/get/servers/3/variables/version/default': servers default is not a member of enum
 ERRORS
 
