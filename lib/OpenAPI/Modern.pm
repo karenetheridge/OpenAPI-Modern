@@ -26,13 +26,13 @@ use List::Util qw(first pairs);
 use Scalar::Util 'looks_like_number';
 use Feature::Compat::Try;
 use Encode 2.89 ();
-use URI::Escape ();
 use JSON::Schema::Modern;
 use JSON::Schema::Modern::Utilities qw(jsonp unjsonp canonical_uri E abort is_equal is_elements_unique);
 use JSON::Schema::Modern::Document::OpenAPI;
 use MooX::TypeTiny 0.002002;
 use Types::Standard qw(InstanceOf Bool);
 use constant { true => JSON::PP::true, false => JSON::PP::false };
+use Mojo::Util 'url_unescape';
 use Mojo::Message::Request;
 use Mojo::Message::Response;
 use Storable 'dclone';
@@ -562,7 +562,7 @@ sub _match_uri ($self, $uri, $path_template, $state) {
 
   # perldoc perlvar, @-: $n coincides with "substr $_, $-[n], $+[n] - $-[n]" if "$-[n]" is defined
   return [ map
-    Encode::decode('UTF-8', URI::Escape::uri_unescape(substr($uri_path, $-[$_], $+[$_]-$-[$_])),
+    Encode::decode('UTF-8', url_unescape(substr($uri_path, $-[$_], $+[$_]-$-[$_])),
       Encode::FB_CROAK | Encode::LEAVE_SRC), 1 .. $#- ];
 }
 
