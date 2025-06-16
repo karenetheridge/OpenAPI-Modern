@@ -1000,9 +1000,11 @@ __END__
   YAML
 
   say 'request:';
-  my $request = POST '/foo/bar',
-    'My-Request-Header' => '123', 'Content-Type' => 'application/json', Host => 'dev.example.com',
-    Content => '{"hello": 123}';
+  my $request = Mojo::Message::Request->new;
+  $request->url->parse("https://dev.example.com/foo/bar");
+  $request->headers('My-Request-Header' => '123');
+  $request->headers('Content-Type' => 'application/json');
+  $request->body('{"hello": 123}');
   my $results = $openapi->validate_request($request);
   say $results;
   say ''; # newline
@@ -1085,7 +1087,7 @@ It is strongly recommended that this URI is absolute.
 =head2 openapi_schema
 
 The data structure describing the OpenAPI v3.1 document (as specified at
-L<https://spec.openapis.org/oas/v3.1.1>); an alias to C<< ->openapi_document->schema >>.
+L<https://spec.openapis.org/oas/v3.1>); an alias to C<< ->openapi_document->schema >>.
 See L<JSON::Schema::Modern::Document::OpenAPI/schema>.
 Ignored if L</openapi_document> is provided.
 
@@ -1137,13 +1139,13 @@ object against the corresponding OpenAPI v3.1 document, returning a
 L<JSON::Schema::Modern::Result> object.
 
 Absolute URIs in the result object are constructed by resolving the openapi document path against
-the L</openapi_uri>, as well as the C<Host> header of the request if a host component is not
-included in the L</openapi_uri>.
+the L</openapi_uri> (which is derived from the document's C<$self> keyword as well as the URI
+provided to the document constructor).
 
 The second argument is an optional hashref that contains extra information about the request,
-corresponding to the values expected by L</find_path> below. It is populated with some information
-about the request:
-save it and pass it to a later L</validate_response> (corresponding to a response for this request)
+corresponding to the values expected by L</find_path> below. The method populates the hashref
+with some information about the request:
+save it and pass it to a later L</validate_response> call (that corresponds to a response for this request)
 to improve performance.
 
 =head2 validate_response
@@ -1161,8 +1163,8 @@ object against the corresponding OpenAPI v3.1 document, returning a
 L<JSON::Schema::Modern::Result> object.
 
 Absolute URIs in the result object are constructed by resolving the openapi document path against
-the L</openapi_uri>, as well as the C<Host> header of the request if the request is provided and if a
-host component is not included in the L</openapi_uri>.
+the L</openapi_uri> (which is derived from the document's C<$self> keyword as well as the URI
+provided to the document constructor).
 
 The second argument is an optional hashref that contains extra information about the request
 corresponding to the response, as in L</find_path>.
@@ -1174,9 +1176,8 @@ corresponds to this response (as not all HTTP libraries link to the request in t
 
   $result = $self->find_path($options);
 
-Uses information in the request to determine the relevant parts of the OpenAPI specification.
-C<request> should be provided if available, but instead of or in addition to this,
-additional data can also be provided.
+Finds the appropriate entry in the OpenAPI document corresponding to a request. Called
+internally by both L</validate_request> and L</validate_response>.
 
 The single argument is a hashref that contains information about the request. Possible values
 include:
@@ -1184,6 +1185,7 @@ include:
 =begin :list
 
 * C<request>: the object representing the HTTP request. Should be provided when available.
+  Supported types are: L<HTTP::Request>, L<Plack::Request>, L<Catalyst::Request>, L<Mojo::Message::Request>.
 * C<path_template>: a string representing the request URI, with placeholders in braces (e.g.
   C</pets/{petId}>); see L<https://spec.openapis.org/oas/v3.1#paths-object>.
 * C<operation_id>: a string corresponding to the
@@ -1199,7 +1201,7 @@ include:
   additional diagnostic information is stored here in separate keys:
 
 =for :list
-* C<uri_pattern>: an arrayref of patterns that are attempted to be matched against the URI path
+* C<uri_patterns>: an arrayref of patterns that are attempted to be matched against the URI path
   (note! soon to be the entire URI, when servers urls are implemented) during request matching
 
 =end :list
@@ -1207,15 +1209,15 @@ include:
 All of these values are optional (unless C<request> is omitted), and will be derived from the
 request as needed (albeit less
 efficiently than if they were provided). All passed-in values MUST be consistent with each other and
-the request or the return value from this method is false.
+the request or the return value from this method is false and appropriate errors will be included
+in the C<$options> hash.
 
-When successful, the options hash will be populated (or updated) with keys C<path_template>,
-C<path_captures>, C<method>, C<operation_id> and C<operation_uri> (see below), and the return value
-is true.
+When successful, the options hash will be populated (or updated) with all the above keys,
+and the return value is true.
 When not successful, the options hash will be populated with key C<errors>, an arrayref containing
 a L<JSON::Schema::Modern::Error> object, and the return value is false.
 
-In addition, these values are populated in the options hash (when available):
+In addition, these values are also populated in the options hash (when available):
 
 =for :list
 * C<operation_uri>: a URI indicating the document location of the operation object for the
@@ -1227,10 +1229,10 @@ In addition, these values are populated in the options hash (when available):
   L<§4.8.10 of the specification|https://spec.openapis.org/oas/v3.1#operation-object>.)
 * C<request> (not necessarily what was passed in: this is always a L<Mojo::Message::Request>)
 
-You can find the associated operation object by using either C<operation_uri>,
+You can find the associated operation object in the OpenAPI document by using either C<operation_uri>,
 or by calling C<< $openapi->openapi_document->get_operationId_path($operation_id) >>
 (see L<JSON::Schema::Modern::Document::OpenAPI/get_operationId_path>) (note that the latter will
-be removed in a subsequent release, in order to support operations existing in other documents).
+be changed in a subsequent release, in order to support operations existing in other documents).
 
 Note that the L<C</servers>|https://spec.openapis.org/oas/v3.1#server-object> section of the
 OpenAPI document is not used for path matching at this time, for either scheme and host matching nor
@@ -1251,9 +1253,11 @@ referenced location in list context.
 
 If the provided location is relative, the main openapi document is used for the base URI.
 If you have a local json pointer you want to resolve, you can turn it into a uri-reference by
-prepending C<#>.
+prepending C<#> and url-encoding it, e.g. C<< Mojo::URL->new->fragment($jsonp) >>.
 
-  my $schema = $openapi->recursive_get('#/components/parameters/Content-Encoding', 'parameter');
+  my $param = $openapi->recursive_get('#/components/parameters/Content-Encoding', 'parameter');
+  my $operation_schema = $openapi->recursive_get(Mojo::URL->new('https://example.com/api.json')
+    ->fragment(jsonp(qw(/paths /foo/{foo_id} get requestBody content application/json schema)));
 
   # starts with a JSON::Schema::Modern object (TODO)
   my $schema = $js->recursive_get('https:///openapi_doc.yaml#/components/schemas/my_object')
@@ -1356,7 +1360,7 @@ Only certain permutations of OpenAPI documents are supported at this time:
 * OpenAPI descriptions must be contained in a single document; C<$ref>erences to other documents are
   not fully supported at this time.
 * The use of C<$ref> within a path-item object is only allowed when not adjacent to any other
-  path-item properties ('parameters', 'servers', request methods)
+  path-item properties (C<parameters>, C<servers>, request methods)
 * Security schemes in the OpenAPI description, and the use of any C<Authorization> headers in
   requests, are not currently supported.
 

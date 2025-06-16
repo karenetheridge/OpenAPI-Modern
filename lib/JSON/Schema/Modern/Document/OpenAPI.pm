@@ -513,7 +513,25 @@ __END__
   my $openapi_document = JSON::Schema::Modern::Document::OpenAPI->new(
     evaluator => $js,
     canonical_uri => 'https://example.com/v1/api',
-    schema => $schema,
+    schema => decode_json(<<JSON),
+{
+  "openapi": "3.1",
+  "info": {
+    "title": "my title",
+    "version": "1.2.3"
+  },
+  "components": {
+  },
+  "paths": {
+    "/foo": {
+      "get": {}
+    },
+    "/foo/{foo_id}": {
+      "post": {}
+    }
+  }
+}
+JSON
     metaschema_uri => 'https://example.com/my_custom_dialect',
   );
 
@@ -526,7 +544,7 @@ request and response validation, code generation or form generation.
 
 The provided document must be a valid OpenAPI document, as specified by the schema identified by
 L<https://spec.openapis.org/oas/3.1/schema-base/2024-10-25>
-and the L<OpenAPI v3.1 specification|https://spec.openapis.org/oas/v3.1>.
+and the L<OpenAPI v3.1.x specification|https://spec.openapis.org/oas/v3.1>.
 
 =head1 CONSTRUCTOR ARGUMENTS
 
@@ -550,7 +568,7 @@ schemas in the document, either manually or perhaps via a web framework plugin
 
 This is the identifier that the document is known by, which is used to resolve any relative C<$ref>
 keywords in the document (unless overridden by a subsequent C<$id> in a schema).
-See L<§4.6/https://spec.openapis.org/oas/v3.1.1#relative-references-in-api-description-uris>.
+See L<§4.6/https://spec.openapis.org/oas/v3.1#relative-references-in-api-description-uris>.
 It is strongly recommended that this URI is absolute.
 
 See also L</retrieval_uri>.
