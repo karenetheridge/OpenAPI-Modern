@@ -6,6 +6,7 @@ package JSON::Schema::Modern::Vocabulary::OpenAPI;
 our $VERSION = '0.087';
 
 use 5.020;
+use utf8;
 use Moo;
 use strictures 2;
 use stable 0.031 'postderef';
