@@ -497,7 +497,7 @@ sub find_path ($self, $options, $state = {}) {
   if (exists $options->{path_captures}) {
     # $equal_state will contain { path => '/0' } indicating the index of the mismatch
     if (not is_equal([ $options->{path_captures}->@{@capture_names} ], $capture_values, my $equal_state = { stringy_numbers => 1 })) {
-      return E({ %$state, data_path => '/request/uri/path', recommended_response => [ 500 ]  },
+      return E({ %$state, data_path => '/request/uri/path', recommended_response => [ 500 ] },
         'provided path_captures values do not match request URI (value for %s differs)', $capture_names[substr($equal_state->{path}, 1)]);
     }
   }
