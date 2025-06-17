@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.087     2025-06-17 21:01:06Z
           - various fixes to instance and keyword locations in some errors
             when validating requests and responses
