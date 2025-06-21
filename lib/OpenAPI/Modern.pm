@@ -131,7 +131,7 @@ sub validate_request ($self, $request, $options = {}) {
         my $state = { %$state, schema_path => jsonp($state->{schema_path},
           ($section eq $method ? $method : ()), 'parameters', $idx) };
         my $param_obj = ($section eq $method ? $operation : $path_item)->{parameters}[$idx];
-        while (my $ref = $param_obj->{'$ref'}) {
+        while (defined(my $ref = $param_obj->{'$ref'})) {
           $param_obj = $self->_resolve_ref('parameter', $ref, $state);
         }
 
@@ -186,7 +186,7 @@ sub validate_request ($self, $request, $options = {}) {
     if (my $body_obj = $operation->{requestBody}) {
       $state->{schema_path} = $state->{schema_path}.'/requestBody';
 
-      while (my $ref = $body_obj->{'$ref'}) {
+      while (defined(my $ref = $body_obj->{'$ref'})) {
         $body_obj = $self->_resolve_ref('request-body', $ref, $state);
       }
 
@@ -289,7 +289,7 @@ sub validate_response ($self, $response, $options = {}) {
 
     my $response_obj = $operation->{responses}{$response_name};
     $state->{schema_path} = jsonp($state->{schema_path}, 'responses', $response_name);
-    while (my $ref = $response_obj->{'$ref'}) {
+    while (defined(my $ref = $response_obj->{'$ref'})) {
       $response_obj = $self->_resolve_ref('response', $ref, $state);
     }
 
@@ -297,7 +297,7 @@ sub validate_response ($self, $response, $options = {}) {
       next if fc $header_name eq fc 'Content-Type';
       my $state = { %$state, schema_path => jsonp($state->{schema_path}, 'headers', $header_name) };
       my $header_obj = $response_obj->{headers}{$header_name};
-      while (my $ref = $header_obj->{'$ref'}) {
+      while (defined(my $ref = $header_obj->{'$ref'})) {
         $header_obj = $self->_resolve_ref('header', $ref, $state);
       }
 
@@ -493,7 +493,7 @@ sub find_path ($self, $options, $state = {}) {
   else {
     $state->{path_item} = $schema->{paths}{$path_template};
     $state->{schema_path} = jsonp('/paths', $path_template);
-    while (my $ref = $state->{path_item}{'$ref'}) {
+    while (defined(my $ref = $state->{path_item}{'$ref'})) {
       $state->{path_item} = $self->_resolve_ref('path-item', $ref, $state);
     }
   }
@@ -613,7 +613,7 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
 
   my $local_state = +{ %$state };
 
-  while (my $ref = $local_state->{path_item}{'$ref'}) {
+  while (defined(my $ref = $local_state->{path_item}{'$ref'})) {
     $local_state->{path_item} = $self->_resolve_ref('path-item', $ref, $local_state);
   }
 
@@ -982,7 +982,7 @@ sub _type_in_schema ($self, $schema, $state) {
       { %$state, schema_path => $state->{schema_path}.'/allOf/'.$_ }), 0..$schema->{allOf}->$#*
     if exists $schema->{allOf};
 
-  if (my $ref = $schema->{'$ref'}) {
+  if (defined(my $ref = $schema->{'$ref'})) {
     $schema = $self->_resolve_ref('schema', $ref, $state);
     push @types, $self->_type_in_schema($schema, $state);
   }

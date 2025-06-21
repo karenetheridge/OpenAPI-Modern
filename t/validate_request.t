@@ -2244,6 +2244,41 @@ YAML
     },
     'header schemas can use a $ref and we follow it correctly, updating locations, and respect adjacent keywords',
   );
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri,
+    openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
+paths:
+  /foo:
+    get:
+      parameters:
+      - name: ZeroSchema
+        in: header
+        schema:
+          $ref: '0'
+YAML
+
+  $openapi->evaluator->add_schema(
+    Mojo::URL->new('0')->to_abs($doc_uri),
+    { type => 'array', minItems => 3 },
+  );
+
+  cmp_result(
+    $openapi->validate_request(request('GET', 'http://example.com/foo', [ ZeroSchema => 'foo,bar' ]))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/header/ZeroSchema',
+          keywordLocation => jsonp(qw(/paths /foo get parameters 0 schema $ref minItems)),
+          absoluteKeywordLocation => 'http://example.com/0#/minItems',
+          error => 'array has fewer than 3 items',
+        },
+      ],
+    },
+    'can correctly use a $ref to "0" when parsing parameter schemas for type hints',
+  );
 };
 
 subtest $::TYPE.': max_depth' => sub {
