@@ -191,12 +191,6 @@ YAML
     to_str($request).': operation is not under a path-item with a path template',
   );
 
-  # TODO test: path-item exists, under paths with a template, but a $ref is followed before finding
-  # the actual definition: should be usable.
-  # we need to make sure that the URI matches the path_template above all the $refs.
-  # the destination path-item could be under /components/pathItems or /webhooks or in a callback,
-  # or shared by a path-item in another /path/<path_template>.
-
   cmp_result(
     $openapi->validate_request(request('GET', 'http://example.com/bloop/blah'))->TO_JSON,
     {
