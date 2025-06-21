@@ -720,8 +720,8 @@ sub _validate_path_parameter ($self, $state, $param_obj, $path_captures) {
   return E({ %$state, keyword => 'style' }, 'only style: simple is supported in path parameters')
     if ($param_obj->{style}//'simple') ne 'simple';
 
-  my $types = $self->_type_in_schema($param_obj->{schema}, { %$state, schema_path => $state->{schema_path}.'/schema' });
-  if (grep $_ eq 'array', @$types or grep $_ eq 'object', @$types) {
+  my @types = $self->_type_in_schema($param_obj->{schema}, { %$state, schema_path => $state->{schema_path}.'/schema' });
+  if (grep $_ eq 'array', @types or grep $_ eq 'object', @types) {
     return E($state, 'deserializing to non-primitive types is not yet supported in path parameters');
   }
 
@@ -761,8 +761,8 @@ sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
   return E({ %$state, keyword => 'style' }, 'only style: form is supported in query parameters')
     if ($param_obj->{style}//'form') ne 'form';
 
-  my $types = $self->_type_in_schema($param_obj->{schema}, { %$state, schema_path => $state->{schema_path}.'/schema' });
-  if (grep $_ eq 'array', @$types or grep $_ eq 'object', @$types) {
+  my @types = $self->_type_in_schema($param_obj->{schema}, { %$state, schema_path => $state->{schema_path}.'/schema' });
+  if (grep $_ eq 'array', @types or grep $_ eq 'object', @types) {
     return E($state, 'deserializing to non-primitive types is not yet supported in query parameters');
   }
 
@@ -791,7 +791,7 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
   # line value from a field line."
   my @values = map s/^\s*//r =~ s/\s*$//r, map split(/,/, $_), $headers->every_header($header_name)->@*;
 
-  my $types = $self->_type_in_schema($header_obj->{schema}, { %$state, schema_path => $state->{schema_path}.'/schema' });
+  my @types = $self->_type_in_schema($header_obj->{schema}, { %$state, schema_path => $state->{schema_path}.'/schema' });
 
   # RFC9110 §5.3-1: "A recipient MAY combine multiple field lines within a field section that have
   # the same field name into one field line, without changing the semantics of the message, by
@@ -799,11 +799,11 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
   # by a comma (",") and optional whitespace (OWS, defined in Section 5.6.3). For consistency, use
   # comma SP."
   my $data;
-  if (grep $_ eq 'array', @$types) {
+  if (grep $_ eq 'array', @types) {
     # style=simple, explode=false or true: "blue,black,brown" -> ["blue","black","brown"]
     $data = \@values;
   }
-  elsif (grep $_ eq 'object', @$types) {
+  elsif (grep $_ eq 'object', @types) {
     if ($header_obj->{explode}//false) {
       # style=simple, explode=true: "R=100,G=200,B=150" -> { "R": 100, "G": 200, "B": 150 }
       $data = +{ map m/^([^=]*)=?(.*)$/g, @values };
@@ -949,17 +949,25 @@ sub _resolve_ref ($self, $entity_type, $ref, $state) {
   return $schema_info->{schema};
 }
 
-# determines the type(s) requested in a schema, and the new schema.
+# determines the type(s) expected in a schema
 sub _type_in_schema ($self, $schema, $state) {
   return [] if not is_plain_hashref($schema);
 
-  while (my $ref = $schema->{'$ref'}) {
-    $schema = $self->_resolve_ref('schema', $ref, $state);
-  }
-  my $types = is_plain_hashref($schema) ? $schema->{type}//[] : [];
-  $types = [ $types ] if not is_plain_arrayref($types);
+  my @types;
 
-  return $types;
+  push @types, is_plain_arrayref($schema->{type}) ? ($schema->{types}->@*) : ($schema->{type})
+    if exists $schema->{type};
+
+  push @types, map $self->_type_in_schema($schema->{allOf}[$_],
+      { %$state, schema_path => $state->{schema_path}.'/allOf/'.$_ }), 0..$schema->{allOf}->$#*
+    if exists $schema->{allOf};
+
+  if (my $ref = $schema->{'$ref'}) {
+    $schema = $self->_resolve_ref('schema', $ref, $state);
+    push @types, $self->_type_in_schema($schema, $state);
+  }
+
+  return @types;
 }
 
 # evaluates data against the subschema at the current state location

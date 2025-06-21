@@ -2002,14 +2002,27 @@ paths:
         schema:
           $ref: '#/paths/~1foo/get/parameters/2/schema'
           not: true
-      - name: ArrayWithBrokenRef
-        in: header
-        schema:
-          $ref: '#/components/schemas/i_do_not_exist'
       - name: MultipleValuesAsRawString
         in: header
         schema:
           const: 'one , two  , three'
+      - name: ArrayWithLocalTypeAndRef
+        in: header
+        schema:
+          type: array   # if detected, this will be used first to determine the parsing
+          $ref: '#/paths/~1foo/get/parameters/3/schema' # this provides  type: object
+          not: true
+      - name: ArrayWithAllOfAndRef
+        in: header
+        schema:
+          allOf:
+            - $ref: '#/paths/~1foo/get/parameters/2/schema'
+            - not: true
+      # must be evaluated last, as broken $refs abort all validation
+      - name: ArrayWithBrokenRef
+        in: header
+        schema:
+          $ref: '#/components/schemas/i_do_not_exist'
 YAML
 
   my $request = request('GET', 'http://example.com/foo', [ SingleValue => '  mystring  ' ]);
@@ -2085,6 +2098,8 @@ YAML
   $request = request('GET', 'http://example.com/foo', [
       ArrayWithRef => 'one, one, three',
       ArrayWithRefAndOtherKeywords => 'one, one, three',
+      ArrayWithLocalTypeAndRef => 'one, two, two',
+      ArrayWithAllOfAndRef => 'one, three, three',
       ArrayWithBrokenRef => 'hi',
     ]);
   cmp_result(
@@ -2111,9 +2126,39 @@ YAML
           error => 'subschema is true',
         },
         {
+          instanceLocation => '/request/header/ArrayWithLocalTypeAndRef',
+          keywordLocation => jsonp(qw(/paths /foo get parameters 8 schema $ref type)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo get parameters 3 schema type)))->to_string,
+          error => 'got array, not object',
+        },
+        {
+          instanceLocation => '/request/header/ArrayWithLocalTypeAndRef',
+          keywordLocation => jsonp(qw(/paths /foo get parameters 8 schema not)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo get parameters 8 schema not)))->to_string,
+          error => 'subschema is true',
+        },
+        {
+          instanceLocation => '/request/header/ArrayWithAllOfAndRef',
+          keywordLocation => jsonp(qw(/paths /foo get parameters 9 schema allOf 0 $ref uniqueItems)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo get parameters 2 schema uniqueItems)))->to_string,
+          error => 'items at indices 1 and 2 are not unique',
+        },
+        {
+          instanceLocation => '/request/header/ArrayWithAllOfAndRef',
+          keywordLocation => jsonp(qw(/paths /foo get parameters 9 schema allOf 1 not)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo get parameters 9 schema allOf 1 not)))->to_string,
+          error => 'subschema is true',
+        },
+        {
+          instanceLocation => '/request/header/ArrayWithAllOfAndRef',
+          keywordLocation => jsonp(qw(/paths /foo get parameters 9 schema allOf)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo get parameters 9 schema allOf)))->to_string,
+          error => 'subschemas 0, 1 are not valid',
+        },
+        {
           instanceLocation => '/request/header/ArrayWithBrokenRef',
-          keywordLocation => jsonp(qw(/paths /foo get parameters 7 schema $ref)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo get parameters 7 schema $ref)))->to_string,
+          keywordLocation => jsonp(qw(/paths /foo get parameters 10 schema $ref)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo get parameters 10 schema $ref)))->to_string,
           error => 'EXCEPTION: unable to find resource "'.$doc_uri.'#/components/schemas/i_do_not_exist"',
         },
       ],
