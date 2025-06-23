@@ -1,6 +1,10 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - potentially-breaking change: "method" in the options hash is
+            now treated case-sensitively when matching to an HTTP request (the
+            entry in the OpenAPI document itself is still lower-cased), and
+            also preserves the case when it is returned.
 
 0.095     2025-09-11 03:38:53Z
         - updated bundled schemas to their latest published versions
