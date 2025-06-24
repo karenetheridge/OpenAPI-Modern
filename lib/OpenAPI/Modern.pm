@@ -506,7 +506,7 @@ sub find_path ($self, $options, $state = {}) {
   # this can only happen if we were not able to derive the path_template from the provided
   # operation_id earlier, but we still matched the request against some other path-item
   return E({ %$state, recommended_response => [ 500 ] }, 'templated operation does not match provided operation_id')
-    if $options->{operation_id} and ($options->{_path_item}{$method}{operationId}//'') ne $options->{operation_id};
+    if exists $options->{operation_id} and ($options->{_path_item}{$method}{operationId}//'') ne $options->{operation_id};
 
   # this can only happen if we do not have a request object, as otherwise a missing operation is
   # simply reported as a match failure
