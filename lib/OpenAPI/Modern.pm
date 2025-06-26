@@ -711,10 +711,10 @@ sub _validate_path_parameter ($self, $state, $param_obj, $path_captures) {
       'missing path parameter: %s', $param_obj->{name})
     if not exists $path_captures->{$param_obj->{name}};
 
-  my $value = $path_captures->{$param_obj->{name}};
-  $value .= '';
+  my $data = $path_captures->{$param_obj->{name}};
+  $data .= '';
 
-  return $self->_validate_parameter_content({ %$state, depth => $state->{depth}+1 }, $param_obj, \$value)
+  return $self->_validate_parameter_content({ %$state, depth => $state->{depth}+1 }, $param_obj, \$data)
     if exists $param_obj->{content};
 
   return E({ %$state, keyword => 'style' }, 'only style: simple is supported in path parameters')
@@ -725,7 +725,7 @@ sub _validate_path_parameter ($self, $state, $param_obj, $path_captures) {
     return E($state, 'deserializing to non-primitive types is not yet supported in path parameters');
   }
 
-  $self->_evaluate_subschema(\$value, $param_obj->{schema}, { %$state, schema_path => $state->{schema_path}.'/schema', stringy_numbers => 1, depth => $state->{depth}+1 });
+  $self->_evaluate_subschema(\$data, $param_obj->{schema}, { %$state, schema_path => $state->{schema_path}.'/schema', stringy_numbers => 1, depth => $state->{depth}+1 });
 }
 
 sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
@@ -739,7 +739,9 @@ sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
     return 1;
   }
 
-  return $self->_validate_parameter_content({ %$state, depth => $state->{depth}+1 }, $param_obj, \ $query_params->{$param_obj->{name}})
+  my $data = $query_params->{$param_obj->{name}};
+
+  return $self->_validate_parameter_content({ %$state, depth => $state->{depth}+1 }, $param_obj, \$data)
     if exists $param_obj->{content};
 
   # §4.8.12.2.1: "If `true`, clients MAY pass a zero-length string value in place of parameters that
@@ -747,7 +749,7 @@ sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
   # unused."
   return if $param_obj->{allowEmptyValue}
     and ($param_obj->{style}//'form') eq 'form'
-    and not length($query_params->{$param_obj->{name}});
+    and not length($data);
 
   # TODO: check 'allowReserved'; difficult to do without access to the raw request string
 
@@ -765,7 +767,7 @@ sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
   }
 
   $state = { %$state, schema_path => $state->{schema_path}.'/schema', stringy_numbers => 1, depth => $state->{depth}+1 };
-  $self->_evaluate_subschema(\ $query_params->{$param_obj->{name}}, $param_obj->{schema}, $state);
+  $self->_evaluate_subschema(\$data, $param_obj->{schema}, $state);
 }
 
 # validates a header, from either the request or the response
@@ -818,7 +820,7 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
   }
 
   $state = { %$state, schema_path => $state->{schema_path}.'/schema', stringy_numbers => 1, depth => $state->{depth}+1 };
-  $self->_evaluate_subschema(\ $data, $header_obj->{schema}, $state);
+  $self->_evaluate_subschema(\$data, $header_obj->{schema}, $state);
 }
 
 sub _validate_cookie_parameter ($self, $state, $param_obj, $request) {
