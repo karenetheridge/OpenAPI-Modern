@@ -2,7 +2,8 @@ Revision history for OpenAPI-Modern
 
 {{$NEXT}}
           - better type inference for serialized parameters (also looks inside
-            the "allOf" keyword, and respects keywords adjacent to "$ref")
+            the "allOf" keyword, respects keywords adjacent to "$ref", and now
+            infers null and boolean data using the "type" keyword)
 
 0.087     2025-06-17 21:01:06Z
           - various fixes to instance and keyword locations in some errors

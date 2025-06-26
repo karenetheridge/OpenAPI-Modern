@@ -871,6 +871,85 @@ YAML
     openapi_uri => $doc_uri,
     openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
 paths:
+  /foo/{null_path}/{boolean_path}:
+    parameters:
+    - name: null_path
+      in: path
+      required: true
+      schema:
+        type: 'null'
+    - name: boolean_path
+      in: path
+      required: true
+      schema:
+        type: boolean
+    get:
+      parameters:
+      - name: null_query
+        in: query
+        required: false
+        schema:
+          type: 'null'
+      - name: boolean_query
+        in: query
+        required: false
+        schema:
+          type: boolean
+          const: true
+      - name: NullHeader
+        in: header
+        required: false
+        schema:
+          type: 'null'
+      - name: BooleanHeader
+        in: header
+        required: false
+        schema:
+          type: boolean
+          const: true
+YAML
+
+  $request = request('GET', 'http://example.com/foo/bar/baz?null_query=&boolean_query=0',
+    [ NullHeader => '', BooleanHeader => 0 ]);
+  cmp_result(
+    $openapi->validate_request($request)->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/uri/query/boolean_query',
+          keywordLocation => jsonp(qw(/paths /foo/{null_path}/{boolean_path} get parameters 1 schema const)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{null_path}/{boolean_path} get parameters 1 schema const)))->to_string,
+          error => 'value does not match',
+        },
+        {
+          instanceLocation => '/request/header/BooleanHeader',
+          keywordLocation => jsonp(qw(/paths /foo/{null_path}/{boolean_path} get parameters 3 schema const)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{null_path}/{boolean_path} get parameters 3 schema const)))->to_string,
+          error => 'value does not match',
+        },
+        {
+          instanceLocation => '/request/uri/path/null_path',
+          keywordLocation => jsonp(qw(/paths /foo/{null_path}/{boolean_path} parameters 0 schema type)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{null_path}/{boolean_path} parameters 0 schema type)))->to_string,
+          error => 'got string, not null',
+        },
+        {
+          instanceLocation => '/request/uri/path/boolean_path',
+          keywordLocation => jsonp(qw(/paths /foo/{null_path}/{boolean_path} parameters 1 schema type)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{null_path}/{boolean_path} parameters 1 schema type)))->to_string,
+          error => 'got string, not boolean',
+        },
+      ],
+    },
+    'query and header parameters are evaluated against their schemas',
+  );
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri,
+    openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
+paths:
   /foo:
     get:
       parameters:

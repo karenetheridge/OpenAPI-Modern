@@ -724,6 +724,11 @@ sub _validate_path_parameter ($self, $state, $param_obj, $path_captures) {
   if (grep $_ eq 'array', @types or grep $_ eq 'object', @types) {
     return E($state, 'deserializing to non-primitive types is not yet supported in path parameters');
   }
+  if (grep $_ eq 'boolean', @types) {
+    $data = false if $data eq '0' or $data eq 'false' or $data eq '';
+    $data = true if $data eq '1' or $data eq 'true';
+  }
+  $data = undef if $data eq '' and grep $_ eq 'null', @types;
 
   $self->_evaluate_subschema(\$data, $param_obj->{schema}, { %$state, schema_path => $state->{schema_path}.'/schema', stringy_numbers => 1, depth => $state->{depth}+1 });
 }
@@ -765,6 +770,12 @@ sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
   if (grep $_ eq 'array', @types or grep $_ eq 'object', @types) {
     return E($state, 'deserializing to non-primitive types is not yet supported in query parameters');
   }
+
+  if (grep $_ eq 'boolean', @types) {
+    $data = false if $data eq '0' or $data eq 'false' or $data eq '';
+    $data = true if $data eq '1' or $data eq 'true';
+  }
+  $data = undef if $data eq '' and grep $_ eq 'null', @types;
 
   $state = { %$state, schema_path => $state->{schema_path}.'/schema', stringy_numbers => 1, depth => $state->{depth}+1 };
   $self->_evaluate_subschema(\$data, $param_obj->{schema}, $state);
@@ -817,6 +828,12 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
     # when validating as a single string, preserve internal whitespace in each individual header
     # but strip leading/trailing whitespace
     $data = join ', ', map s/^\s*//r =~ s/\s*$//r, $headers->every_header($header_name)->@*;
+
+    if (grep $_ eq 'boolean', @types) {
+      $data = false if $data eq '0' or $data eq 'false' or $data eq '';
+      $data = true if $data eq '1' or $data eq 'true';
+    }
+    $data = undef if $data eq '' and grep $_ eq 'null', @types;
   }
 
   $state = { %$state, schema_path => $state->{schema_path}.'/schema', stringy_numbers => 1, depth => $state->{depth}+1 };
@@ -949,7 +966,10 @@ sub _resolve_ref ($self, $entity_type, $ref, $state) {
   return $schema_info->{schema};
 }
 
-# determines the type(s) expected in a schema
+# determines the type(s) expected in a schema: array, object, null, boolean, string.
+# "" will be interpreted as null when type = null
+# 0, 1, false, true will be interpreted as boolean when type = boolean
+# (number and integer are implicit via evaluation with "stringy_numbers" enabled)
 sub _type_in_schema ($self, $schema, $state) {
   return [] if not is_plain_hashref($schema);
 
