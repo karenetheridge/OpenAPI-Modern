@@ -22,7 +22,9 @@ no feature 'switch';
 use Carp 'croak';
 use Safe::Isa;
 use Ref::Util qw(is_plain_hashref is_plain_arrayref is_ref);
-use List::Util qw(first pairs none);
+use List::Util qw(first pairs);
+use if "$]" < 5.041010, 'List::Util' => 'any';
+use if "$]" >= 5.041010, experimental => 'keyword_any';
 use Scalar::Util 'looks_like_number';
 use builtin::compat 'indexed';
 use Feature::Compat::Try;
@@ -693,7 +695,7 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
             schema_path => jsonp($state->{schema_path}, @$more_schema_path, $index, 'variables', $name),
             defined $base_schema_uri ? (initial_schema_uri => $base_schema_uri) : () },
           'server url value does not match any of the allowed values')
-        if none { $captures{$name} eq $_ } $server->{variables}{$name}{enum}->@*;
+        if not any { $captures{$name} eq $_ } $server->{variables}{$name}{enum}->@*;
     }
 
     return if not $valid;
