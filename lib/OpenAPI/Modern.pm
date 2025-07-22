@@ -891,7 +891,7 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
   my $content_ref = \ $message->body;
 
   # decode the charset, for text content
-  if ($content_type =~ m{^text/} and my $charset = $message->content->charset) {
+  if ($content_type =~ m{^text/} and defined(my $charset = $message->content->charset)) {
     try {
       $content_ref = \ Encode::decode($charset, $content_ref->$*, Encode::DIE_ON_ERR);
     }
