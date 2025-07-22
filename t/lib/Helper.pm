@@ -57,6 +57,8 @@ our $TYPE;
 # Note: if you want your query parameters or uri fragment to be normalized, set them afterwards
 sub request ($method, $uri_string, $headers = [], $body_content = undef) {
   die '$TYPE is not set at ', join(' line ', (caller)[1,2]), ".\n" if not defined $TYPE;
+  die 'Wide character in body content at ', join(' line ', (caller)[1,2]), ".\n"
+    if length $body_content and $body_content =~ /[^\x00-\xff]/;
 
   my $req;
   if ($TYPE eq 'lwp' or $TYPE eq 'plack' or $TYPE eq 'catalyst') {
@@ -111,6 +113,8 @@ sub request ($method, $uri_string, $headers = [], $body_content = undef) {
 
 sub response ($code, $headers = [], $body_content = undef) {
   die '$TYPE is not set at ', join(' line ', (caller)[1,2]), ".\n" if not defined $TYPE;
+  die 'Wide character in body content at ', join(' line ', (caller)[1,2]), ".\n"
+    if length $body_content and $body_content =~ /[^\x00-\xff]/;
 
   my $res;
   if ($TYPE eq 'lwp') {
