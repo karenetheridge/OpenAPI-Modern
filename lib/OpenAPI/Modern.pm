@@ -666,7 +666,7 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
     # perldoc perlvar, @-: $n coincides with "substr $_, $-[n], $+[n] - $-[n]" if "$-[n]" is defined
     my @uri_capture_values = map
       Encode::decode('UTF-8', url_unescape(substr($full_uri, $-[$_], $+[$_]-$-[$_])),
-        Encode::FB_CROAK | Encode::LEAVE_SRC), 1 .. $#-;
+        Encode::DIE_ON_ERR), 1 .. $#-;
 
     # we have a match, so preserve our new $state values created via _resolve_ref
     %$state = %$local_state;
@@ -893,7 +893,7 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
   # decode the charset, for text content
   if ($content_type =~ m{^text/} and my $charset = $message->content->charset) {
     try {
-      $content_ref = \ Encode::decode($charset, $content_ref->$*, Encode::FB_CROAK | Encode::LEAVE_SRC);
+      $content_ref = \ Encode::decode($charset, $content_ref->$*, Encode::DIE_ON_ERR);
     }
     catch ($e) {
       return E({ %$state, keyword => 'content', _schema_path_suffix => $media_type },
