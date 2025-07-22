@@ -1309,7 +1309,7 @@ YAML
   );
 
   $request = request('POST', 'http://example.com/foo', [ 'Content-Type' => 'text/plain; charset=UTF-8' ],
-    chr(0xe9).'clair"}');
+    chr(0xe9).'clair');
   cmp_result(
     $openapi->validate_request($request)->TO_JSON,
     {
