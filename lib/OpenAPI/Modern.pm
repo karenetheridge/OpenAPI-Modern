@@ -856,7 +856,7 @@ sub _validate_parameter_content ($self, $state, $param_obj, $content_ref) {
 }
 
 sub _validate_body_content ($self, $state, $content_obj, $message) {
-  # strip charset from Content-Type
+  # strip media-type parameters (e.g. charset) from Content-Type
   my $content_type = (split(/;/, $message->headers->content_type//'', 2))[0] // '';
 
   return E({ %$state, data_path => $state->{data_path} =~ s{body}{header}r, keyword => 'content' },
@@ -890,9 +890,10 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
   # TODO: handle Content-Encoding header; https://github.com/OAI/OpenAPI-Specification/issues/2868
   my $content_ref = \ $message->body;
 
-  # decode the charset, for text content
+  # use charset to decode text content
   if ($content_type =~ m{^text/} and defined(my $charset = $message->content->charset)) {
     try {
+      # we don't use $message->text or Mojo::Util::decode because they don't die on failure
       $content_ref = \ Encode::decode($charset, $content_ref->$*, Encode::DIE_ON_ERR);
     }
     catch ($e) {
