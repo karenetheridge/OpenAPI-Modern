@@ -56,7 +56,7 @@ our $TYPE;
 
 # Note: if you want your query parameters or uri fragment to be normalized, set them afterwards
 sub request ($method, $uri_string, $headers = [], $body_content = undef) {
-  die '$TYPE is not set' if not defined $TYPE;
+  die '$TYPE is not set at ', join(' line ', (caller)[1,2]), ".\n" if not defined $TYPE;
 
   my $req;
   if ($TYPE eq 'lwp' or $TYPE eq 'plack' or $TYPE eq 'catalyst') {
@@ -103,14 +103,14 @@ sub request ($method, $uri_string, $headers = [], $body_content = undef) {
     $req->fix_headers;
   }
   else {
-    die '$TYPE '.$TYPE.' not supported';
+    die '$TYPE '.$TYPE.' not supported at ', join(' line ', (caller)[1,2]), ".\n";
   }
 
   return $req;
 }
 
 sub response ($code, $headers = [], $body_content = undef) {
-  die '$TYPE is not set' if not defined $TYPE;
+  die '$TYPE is not set at ', join(' line ', (caller)[1,2]), ".\n" if not defined $TYPE;
 
   my $res;
   if ($TYPE eq 'lwp') {
@@ -149,14 +149,14 @@ sub response ($code, $headers = [], $body_content = undef) {
         and not defined $res->headers->header('Transfer-Encoding');
   }
   else {
-    die '$TYPE '.$TYPE.' not supported';
+    die '$TYPE '.$TYPE.' not supported at ', join(' line ', (caller)[1,2]), ".\n";
   }
 
   return $res;
 }
 
 sub uri ($uri_string, @path_parts) {
-  die '$TYPE is not set' if not defined $TYPE;
+  die '$TYPE is not set at ', join(' line ', (caller)[1,2]), ".\n" if not defined $TYPE;
 
   my $uri;
   if ($TYPE eq 'lwp' or $TYPE eq 'plack' or $TYPE eq 'catalyst') {
@@ -169,7 +169,7 @@ sub uri ($uri_string, @path_parts) {
     $uri->path->parts(\@path_parts) if @path_parts;
   }
   else {
-    die '$TYPE '.$TYPE.' not supported';
+    die '$TYPE '.$TYPE.' not supported at ', join(' line ', (caller)[1,2]), ".\n";
   }
 
   return $uri;
@@ -177,7 +177,7 @@ sub uri ($uri_string, @path_parts) {
 
 # sets query parameters on the request
 sub query_params ($request, $pairs) {
-  die '$TYPE is not set' if not defined $TYPE;
+  die '$TYPE is not set at ', join(' line ', (caller)[1,2]), ".\n" if not defined $TYPE;
 
   my $uri;
   if ($TYPE eq 'lwp') {
@@ -193,14 +193,14 @@ sub query_params ($request, $pairs) {
     # $request->_clear_parameters if $TYPE eq 'catalyst';  # might need this later
   }
   else {
-    die '$TYPE '.$TYPE.' not supported';
+    die '$TYPE '.$TYPE.' not supported at ', join(' line ', (caller)[1,2]), ".\n";
   }
 
   return $uri;
 }
 
 sub remove_header ($message, $header_name) {
-  die '$TYPE is not set' if not defined $TYPE;
+  die '$TYPE is not set at ', join(' line ', (caller)[1,2]), ".\n" if not defined $TYPE;
 
   if ($TYPE eq 'lwp') {
     $message->headers->remove_header($header_name);
@@ -213,7 +213,7 @@ sub remove_header ($message, $header_name) {
     delete $message->env->{uc $header_name =~ s/-/_/r} if $message->can('env');
   }
   else {
-    die '$TYPE '.$TYPE.' not supported';
+    die '$TYPE '.$TYPE.' not supported at ', join(' line ', (caller)[1,2]), ".\n";
   }
 }
 
@@ -236,7 +236,7 @@ sub to_str ($message) {
     return $message->status.' '.HTTP::Status::status_message($message->status);
   }
 
-  die 'unrecognized type '.ref($message);
+  die 'unrecognized type ', ref $message, ' at ', join(' line ', (caller)[1,2]), ".\n";
 }
 
 # create a Result object out of the document errors; suitable for stringifying

@@ -569,13 +569,13 @@ sub recursive_get ($self, $uri_reference, $entity_type = undef) {
   my ($depth, $schema);
 
   while ($ref) {
-    die 'maximum evaluation depth exceeded' if $depth++ > $self->evaluator->max_traversal_depth;
+    croak 'maximum evaluation depth exceeded' if $depth++ > $self->evaluator->max_traversal_depth;
     my $uri = Mojo::URL->new($ref)->to_abs($base);
 
     my $schema_info = $self->evaluator->_fetch_from_uri($uri);
 
-    die('unable to find resource "', $uri, '"') if not $schema_info;
-    die sprintf('bad $ref to %s: not a%s "%s"', $schema_info->{canonical_uri}, ($entity_type =~ /^[aeiou]/ ? 'n' : ''), $entity_type)
+    croak 'unable to find resource "', $uri, '"' if not $schema_info;
+    croak sprintf('bad $ref to %s: not a%s "%s"', $schema_info->{canonical_uri}, ($entity_type =~ /^[aeiou]/ ? 'n' : ''), $entity_type)
       if $entity_type
         and $schema_info->{document}->get_entity_at_location($schema_info->{document_path}) ne $entity_type;
 
@@ -1104,7 +1104,7 @@ sub THAW ($class, $serializer, $data) {
   my $self = bless($data, $class);
 
   foreach my $attr (qw(openapi_document evaluator)) {
-    die "serialization missing attribute '$attr': perhaps your serialized data was produced for an older version of $class?"
+    croak "serialization missing attribute '$attr': perhaps your serialized data was produced for an older version of $class?"
       if not exists $self->{$attr};
   }
 

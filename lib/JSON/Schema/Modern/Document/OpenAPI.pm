@@ -492,7 +492,7 @@ sub THAW ($class, $serializer, $data) {
   my $self = bless($data, $class);
 
   foreach my $attr (qw(schema evaluator _entities)) {
-    die "serialization missing attribute '$attr': perhaps your serialized data was produced for an older version of $class?"
+    croak "serialization missing attribute '$attr': perhaps your serialized data was produced for an older version of $class?"
       if not exists $self->{$attr};
   }
 
