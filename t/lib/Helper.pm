@@ -312,31 +312,31 @@ sub cmp_result ($got, $expected, $test_name) {
 }
 
 sub lives_result ($sub, $test_name) {
-  my $ok = ok(lives(\&$sub), $test_name);
-  if (not $ok) {
-    context_do {
-      my ($ctx, $result) = @_;
+  context_do {
+    my ($ctx, $result) = @_;
+    if (not $ctx->ok(lives(\&$sub), $test_name)) {
       my $method =
         # be less noisy for expected failures
         (grep $_->{todo}, Test2::API::test2_stack->top->{_pre_filters}->@*) ? 'note'
           : $ENV{AUTHOR_TESTING} || $ENV{AUTOMATED_TESTING} ? 'diag' : 'note';
       $ctx->$method("got result:\n".$encoder->encode($result));
-    } $@;
-  }
+    }
+  } $@;
 }
 
 sub die_result ($sub, $pattern, $test_name) {
   eval { $sub->() };
   my $result = $@;
   if (defined $result) {
-    like($result, $pattern, $test_name)
-    or context_do {
+    context_do {
       my ($ctx, $result) = @_;
-      my $method =
-        # be less noisy for expected failures
-        (grep $_->{todo}, Test2::API::test2_stack->top->{_pre_filters}->@*) ? 'note'
-          : $ENV{AUTHOR_TESTING} || $ENV{AUTOMATED_TESTING} ? 'diag' : 'note';
-      $ctx->$method("got result:\n".$encoder->encode($result));
+      if (not like($result, $pattern, $test_name)) {
+        my $method =
+          # be less noisy for expected failures
+          (grep $_->{todo}, Test2::API::test2_stack->top->{_pre_filters}->@*) ? 'note'
+            : $ENV{AUTHOR_TESTING} || $ENV{AUTOMATED_TESTING} ? 'diag' : 'note';
+        $ctx->$method("got result:\n".$encoder->encode($result));
+      }
     } $result;
   }
 }
