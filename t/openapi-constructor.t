@@ -125,6 +125,30 @@ subtest 'construct with document' => sub {
     true,
     'can construct an openapi object with a pre-existing document',
   );
+
+  cmp_deeply(
+    scalar $openapi->evaluator->get('https://spec.openapis.org/oas/3.1/schema/latest#/type'),
+    'object',
+    'the main OAD schema is available from the evaluator used in OpenAPI::Modern construction',
+  );
+
+  cmp_deeply(
+    $openapi->evaluator->_get_vocabulary_class('https://spec.openapis.org/oas/3.1/vocab/base'),
+    [
+      'draft2020-12',
+      'JSON::Schema::Modern::Vocabulary::OpenAPI',
+    ],
+    'the OpenAPI vocabulary is also available on the evaluator',
+  );
+
+  cmp_deeply(
+    $openapi->evaluator->_get_format_validation('int32'),
+    {
+      type => 'number',
+      sub => reftype('CODE'),
+    },
+    'OpenAPI format validations are also available on the evaluator',
+  );
 };
 
 done_testing;
