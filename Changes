@@ -1,6 +1,8 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - internal changes to JSON::Schema::Modern::Document::OpenAPI with
+            how the evaluator object is stored and tracked
 
 0.088     2025-07-19 17:09:08Z
           - better type inference for serialized parameters (also looks inside

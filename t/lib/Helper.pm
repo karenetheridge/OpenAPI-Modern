@@ -52,7 +52,7 @@ YAML
 # 'plack': classes of type Plack::Request, Plack::Response
 # 'catalyst': classes of type Catalyst::Request, Catalyst::Response
 our @TYPES = qw(mojo lwp plack catalyst);
-our $TYPE;
+our $TYPE = 'mojo'; # safe default
 
 # Note: if you want your query parameters or uri fragment to be normalized, set them afterwards
 sub request ($method, $uri_string, $headers = [], $body_content = undef) {

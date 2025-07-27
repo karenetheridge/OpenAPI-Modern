@@ -51,7 +51,6 @@ has openapi_document => (
   },
 );
 
-# held separately because $document->evaluator is a weak ref
 has evaluator => (
   is => 'ro',
   isa => InstanceOf['JSON::Schema::Modern'],
@@ -69,14 +68,11 @@ has debug => (
 around BUILDARGS => sub ($orig, $class, @args) {
   my $args = $class->$orig(@args);
 
-  if (exists $args->{openapi_document}) {
-    $args->{evaluator} = $args->{openapi_document}->evaluator;
-  }
-  else {
-    # construct document out of openapi_uri, openapi_schema (and evaluator if provided).
-    croak 'missing required constructor arguments: either openapi_document, or openapi_uri and openapi_schema'
-      if not exists $args->{openapi_uri} or not exists $args->{openapi_schema};
-  }
+  croak 'missing required constructor arguments: either openapi_document, or openapi_uri and openapi_schema'
+    if not exists $args->{openapi_document}
+      and (not exists $args->{openapi_uri} or not exists $args->{openapi_schema});
+
+  my $had_document = exists $args->{openapi_document};
 
   $args->{evaluator} //= JSON::Schema::Modern->new(validate_formats => 1, max_traversal_depth => 80);
 
@@ -85,6 +81,9 @@ around BUILDARGS => sub ($orig, $class, @args) {
     schema => $args->{openapi_schema},
     evaluator => $args->{evaluator},
   );
+
+  # add the OpenAPI vacabulary, formats and metaschemas to the evaluator if they weren't there already
+  $args->{openapi_document}->_add_vocab_and_default_schemas($args->{evaluator}) if $had_document;
 
   # if there were errors, this will die with a JSON::Schema::Modern::Result object
   $args->{evaluator}->add_document($args->{openapi_document});
@@ -1277,7 +1276,10 @@ L</openapi_schema> B<MUST> be provided, and L</evaluator> will also be used if p
 =head2 evaluator
 
 The L<JSON::Schema::Modern> object to use for all URI resolution and JSON Schema evaluation.
-Ignored if L</openapi_document> is provided. Optional (a default is constructed when omitted).
+Optional (a default is constructed when omitted).
+
+This must be prepared in advance if custom metaschemas are to be used, as the evaluator is what
+holds the information about all available schemas.
 
 =head2 debug
 
