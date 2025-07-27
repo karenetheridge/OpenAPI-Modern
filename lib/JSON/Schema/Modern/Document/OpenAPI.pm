@@ -395,7 +395,9 @@ sub _add_vocab_and_default_schemas ($self) {
   $js->add_format_validation(password => +{ type => 'string', sub => sub ($) { 1 } });
 
   foreach my $filename (DEFAULT_SCHEMAS->@*) {
-    my $document = $js->add_schema($js->_json_decoder->decode(path(dist_dir('OpenAPI-Modern'), $filename)->slurp_raw));
+    my $file = path(dist_dir('OpenAPI-Modern'), $filename);
+    my $schema = $js->_json_decoder->decode($file->slurp_raw);
+    my $document = $js->add_schema($schema);
 
     if ($document->canonical_uri =~ m{/\d{4}-\d{2}-\d{2}$}) {
       my $base = $`;
