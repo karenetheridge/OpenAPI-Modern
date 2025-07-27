@@ -364,6 +364,9 @@ sub traverse ($self, $evaluator, $config_override = {}) {
 
 ######## NO PUBLIC INTERFACES FOLLOW THIS POINT ########
 
+# simple runtime-wide cache of metaschema document objects that are sourced from disk
+my $metaschema_cache = {};
+
 sub _add_vocab_and_default_schemas ($self) {
   my $js = $self->evaluator;
   $js->add_vocabulary('JSON::Schema::Modern::Vocabulary::OpenAPI');
@@ -395,9 +398,15 @@ sub _add_vocab_and_default_schemas ($self) {
   $js->add_format_validation(password => +{ type => 'string', sub => sub ($) { 1 } });
 
   foreach my $filename (DEFAULT_SCHEMAS->@*) {
-    my $file = path(dist_dir('OpenAPI-Modern'), $filename);
-    my $schema = $js->_json_decoder->decode($file->slurp_raw);
-    my $document = $js->add_schema($schema);
+    my $document;
+    if ($document = $metaschema_cache->{$filename}) {
+      $js->add_document($document);
+    }
+    else {
+      my $file = path(dist_dir('OpenAPI-Modern'), $filename);
+      my $schema = $js->_json_decoder->decode($file->slurp_raw);
+      $document = $js->add_schema($schema);
+    }
 
     if ($document->canonical_uri =~ m{/\d{4}-\d{2}-\d{2}$}) {
       my $base = $`;
