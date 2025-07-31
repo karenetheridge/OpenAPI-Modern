@@ -8,7 +8,7 @@ OpenAPI::Modern - Validate HTTP requests and responses against an OpenAPI v3.1 d
 
 =head1 VERSION
 
-version 0.088
+version 0.089
 
 =head1 SYNOPSIS
 
@@ -170,7 +170,10 @@ L</openapi_schema> B<MUST> be provided, and L</evaluator> will also be used if p
 =head2 evaluator
 
 The L<JSON::Schema::Modern> object to use for all URI resolution and JSON Schema evaluation.
-Ignored if L</openapi_document> is provided. Optional (a default is constructed when omitted).
+Optional (a default is constructed when omitted).
+
+This must be prepared in advance if custom metaschemas are to be used, as the evaluator is what
+holds the information about all available schemas.
 
 =head2 debug
 
