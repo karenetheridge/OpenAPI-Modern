@@ -590,7 +590,7 @@ The URI of the metaschema to use for all embedded L<JSON Schemas|https://json-sc
 document.
 
 Overrides the value of C<jsonSchemaDialect> in the document, or the specification default
-(C<https://spec.openapis.org/oas/3.1/dialect/base>).
+(C<https://spec.openapis.org/oas/3.1/dialect/2024-10-25>).
 
 If you specify your own dialect here or in C<jsonSchemaDialect>, then you need to add the
 vocabularies and schemas to the implementation yourself (see C<JSON::Schema::Modern/add_vocabulary>
