@@ -5,19 +5,16 @@
   "$ref": "https://spec.openapis.org/oas/3.1/schema/2024-11-14",
   "properties": {
     "jsonSchemaDialect": {
-      "$ref": "#/$defs/dialect"
+      "const": "https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/strict-dialect.json"
     }
   },
   "$defs": {
-    "dialect": {
-      "const": "https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/strict-dialect.json"
-    },
     "schema": {
       "$dynamicAnchor": "meta",
       "$ref": "https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/strict-dialect.json",
       "properties": {
         "$schema": {
-          "$ref": "#/$defs/dialect"
+          "const": "https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/strict-dialect.json"
         }
       }
     }
