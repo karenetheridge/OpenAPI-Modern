@@ -341,6 +341,7 @@ ERRORS
           meta => {
             path => '',
             canonical_uri => str(DEFAULT_DIALECT),
+            dynamic => 1,
           },
         },
       },
@@ -356,6 +357,7 @@ ERRORS
           meta => {
             path => '',
             canonical_uri => str(OAS_VOCABULARY),
+            dynamic => 1,
           },
         },
       },
@@ -485,6 +487,7 @@ ERRORS
           meta => {
             path => '/$defs/schema',
             canonical_uri => str($doc->metaschema_uri.'#/$defs/schema'),
+            dynamic => 1,
           },
         },
       },
