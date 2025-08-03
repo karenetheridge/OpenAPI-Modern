@@ -9,16 +9,13 @@ no if "$]" >= 5.033001, feature => 'multidimensional';
 no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 no if "$]" >= 5.041009, feature => 'smartmatch';
 no feature 'switch';
+use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 use Path::Tiny;
 use Mojo::UserAgent;
 use YAML::PP;
 use Digest::MD5 'md5_hex';
 use JSON::Schema::Modern;
 use JSON::Schema::Modern::Document::OpenAPI;
-
-# note: the latest versions can always be found at https://spec.openapis.org/
-# Once /latest links exist, we will pull from those instead, and use those names in code to ensure
-# we always use the latest files.
 
 # see https://spec.openapis.org/#openapi-specification-schemas for the latest links
 
@@ -38,9 +35,43 @@ my %files = (
   'oas/LICENSE' => 'https://raw.githubusercontent.com/OAI/OpenAPI-Specification/main/LICENSE',
 );
 
+my $web_url = 'https://spec.openapis.org/';
+
+my $ua = Mojo::UserAgent->new;
+print "# fetching $web_url\n" if $ENV{DEBUG};
+my $res = $ua->get($web_url)->result;
+my %new_schemas = ();  # keys are existing OAS schema URIs, defined above in %files
+
+# check the website and find all files that are newer than what we've got
+foreach my $e ($res->dom->find('a[href]')->each) {
+  my $link = $e->{href};
+  next if $link !~ m{^/oas/3.1/[a-z-]+/\d{4}-\d{2}-\d{2}$};
+
+  $link = Mojo::URL->new($web_url)->path($link)->to_string; # normalize slashes
+
+  if (my ($existing) = grep +($link =~ m{^\Q${\ substr($_, 0, -10) }\E}), grep !/github/, values %files) {
+    $new_schemas{$existing} //= [];
+    push $new_schemas{$existing}->@*, $link if $existing lt $link;
+  }
+}
+
+# identify outdated schema files, and find all references to them in the repository
+if (my @outdated_schemas = grep +($new_schemas{$_}->@*), sort keys %new_schemas) {
+  warn join("\n", 'these outdated files should be updated (fix the hash in update-schemas and re-run):',
+    map +("$_ -> ".join(', ', sort $new_schemas{$_}->@*)), @outdated_schemas), "\n\n";
+
+  my $re = join('|', map "\Q$_\E", @outdated_schemas);
+  my @outdated_files = grep
+    +(path($_)->slurp_utf8 =~ $re && !exists $files{s!share/!!r}), split /\n/, `git ls-files`;
+  warn join("\n", 'all other files containing references to outdated files:', @outdated_files), "\n\n";
+
+  warn join("\n", 'run this repeatedly in order to find bad references:',
+    'ack -l \''.$re.'\' `git ls-files`'), "\n\n";
+}
+
+
 my $yaml = YAML::PP->new(boolean => 'JSON::PP');
 my $js = JSON::Schema::Modern->new(validate_formats => 1);
-my $ua = Mojo::UserAgent->new;
 my %checksums;
 
 # download fresh copies of our files, validate against their schemas and against our code
