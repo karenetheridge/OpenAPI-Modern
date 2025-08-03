@@ -49,6 +49,8 @@ use constant DEFAULT_SCHEMAS => [
 use constant DEFAULT_DIALECT => 'https://spec.openapis.org/oas/3.1/dialect/2024-10-25';
 use constant DEFAULT_BASE_METASCHEMA => 'https://spec.openapis.org/oas/3.1/schema-base/2024-11-14';
 use constant DEFAULT_METASCHEMA => 'https://spec.openapis.org/oas/3.1/schema/2024-11-14';
+use constant OAS_VOCABULARY => 'https://spec.openapis.org/oas/3.1/meta/2024-10-25';
+use constant OAS_VERSION => '3.1.1';
 
 has '+schema' => (
   isa => HashRef,
@@ -111,7 +113,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     traverse => 1,
   };
 
-  # this is an abridged form of https://spec.openapis.org/oas/3.1/schema/2024-10-25
+  # this is an abridged form of https://spec.openapis.org/oas/3.1/schema/<date>
   # just to validate the parts of the document we need to verify before parsing jsonSchemaDialect
   # and switching to the real metaschema for this document
   state $top_schema = {
@@ -211,7 +213,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
         # properties are valid" etc
         '$dynamicRef' => sub ($, $schema, $state) {
           # Note that if we are using the default metaschema
-          # https://spec.openapis.org/oas/3.1/schema/2024-10-25, we will only find the root of each
+          # https://spec.openapis.org/oas/3.1/schema/<date>, we will only find the root of each
           # schema, not all subschemas. We will traverse each of these schemas later using
           # jsonSchemaDialect to find all subschemas and their $ids.
           push @json_schema_paths, $state->{data_path} if $schema->{'$dynamicRef'} eq '#meta';
@@ -412,7 +414,7 @@ sub _add_vocab_and_default_schemas ($self, $evaluator) {
   }
 
   # dirty hack! patch in support for $self, until v3.2
-  $evaluator->{_resource_index}{'https://spec.openapis.org/oas/3.1/schema/2024-11-14'}{document}->schema->{properties}{'$self'} = {
+  $evaluator->{_resource_index}{DEFAULT_METASCHEMA()}{document}->schema->{properties}{'$self'} = {
     type => 'string',
     format => 'uri-reference',
     '$comment' => 'MUST NOT be empty, and MUST NOT contain a fragment',
@@ -476,7 +478,8 @@ sub _dynamic_metaschema_uri ($self, $json_schema_dialect, $evaluator) {
   my $dialect_uri = 'https://custom-dialect.example.com/' . md5_hex($json_schema_dialect);
   return $dialect_uri if $evaluator->_get_resource($dialect_uri);
 
-  # we use the definition of share/oas/schema-base.json but swap out the dialect reference.
+  # we use the definition of https://spec.openapis.org/oas/3.1/schema-base/<date> but swap out the
+  # dialect reference.
   my $schema = dclone($evaluator->_get_resource(DEFAULT_BASE_METASCHEMA)->{document}->schema);
   $schema->{'$id'} = $dialect_uri;
   $schema->{'$defs'}{dialect}{const} = $json_schema_dialect;
@@ -541,6 +544,7 @@ JSON
   );
 
 =for Pod::Coverage THAW DEFAULT_BASE_METASCHEMA DEFAULT_DIALECT DEFAULT_METASCHEMA DEFAULT_SCHEMAS
+OAS_VOCABULARY OAS_VERSION
 
 =head1 DESCRIPTION
 

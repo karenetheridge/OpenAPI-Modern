@@ -24,16 +24,16 @@ use JSON::Schema::Modern::Document::OpenAPI;
 
 my %files = (
   # metaschema for json schemas contained within openapi documents
-  'oas/dialect/base.schema.json' => 'https://spec.openapis.org/oas/3.1/dialect/2024-10-25',
+  'oas/dialect/base.schema.json' => JSON::Schema::Modern::Document::OpenAPI::DEFAULT_DIALECT,
 
   # vocabulary definition
-  'oas/meta/base.schema.json' => 'https://spec.openapis.org/oas/3.1/meta/2024-10-25',
+  'oas/meta/base.schema.json' => JSON::Schema::Modern::Document::OpenAPI::OAS_VOCABULARY,
 
   # openapi document schema + custom json schema dialect
-  'oas/schema-base.json' => 'https://spec.openapis.org/oas/3.1/schema-base/2024-11-14',
+  'oas/schema-base.json' => JSON::Schema::Modern::Document::OpenAPI::DEFAULT_BASE_METASCHEMA,
 
   # the main openapi document schema
-  'oas/schema.json' => 'https://spec.openapis.org/oas/3.1/schema/2024-11-14',
+  'oas/schema.json' => JSON::Schema::Modern::Document::OpenAPI::DEFAULT_METASCHEMA,
 
   'oas/LICENSE' => 'https://raw.githubusercontent.com/OAI/OpenAPI-Specification/main/LICENSE',
 );
