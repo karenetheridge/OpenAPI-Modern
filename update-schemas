@@ -10,7 +10,7 @@ no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 no if "$]" >= 5.041009, feature => 'smartmatch';
 no feature 'switch';
 use Path::Tiny;
-use HTTP::Tiny;
+use Mojo::UserAgent;
 use YAML::PP;
 use Digest::MD5 'md5_hex';
 use JSON::Schema::Modern;
@@ -40,22 +40,25 @@ my %files = (
 
 my $yaml = YAML::PP->new(boolean => 'JSON::PP');
 my $js = JSON::Schema::Modern->new(validate_formats => 1);
+my $ua = Mojo::UserAgent->new;
 my %checksums;
 
+# download fresh copies of our files, validate against their schemas and against our code
 foreach my $target (keys %files) {
-  my $source = $files{$target};
+  my $uri = $files{$target};
+
+  print "# fetching $uri to share/$target\n" if $ENV{DEBUG};
+  my $res = $ua->get($uri)->result;
+  die "Failed to fetch $uri", $res->code, " ", $res->message if $res->is_error;
+
   $target = path('share', $target);
   $target->parent->mkpath;
-
-  my $response = HTTP::Tiny->new->get($source);
-  die "Failed to fetch $source: $response->{status} $response->{reason}" if not $response->{success};
-
-  $target->spew_raw($response->{content});
-  $checksums{$target} = md5_hex($response->{content});
+  $target->spew_raw(my $content = $res->body);
+  $checksums{$target} = md5_hex($content);
 
   next if $target =~ /LICENSE$/;
 
-  my $document = $js->add_schema($yaml->load_file($target));
+  my $document = $js->add_schema($yaml->load_string($content));
 
   print "# validating ", $document->canonical_uri, "\n" if $ENV{DEBUG};
   my $result = $document->validate;
