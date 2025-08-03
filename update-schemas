@@ -37,6 +37,8 @@ my %files = (
   'oas/LICENSE' => 'https://raw.githubusercontent.com/OAI/OpenAPI-Specification/main/LICENSE',
 );
 
+my $yaml = YAML::PP->new(boolean => 'JSON::PP');
+my $js = JSON::Schema::Modern->new(validate_formats => 1);
 my %checksums;
 
 foreach my $target (keys %files) {
@@ -49,6 +51,14 @@ foreach my $target (keys %files) {
 
   $target->spew_raw($response->{content});
   $checksums{$target} = md5_hex($response->{content});
+
+  next if $target =~ /LICENSE$/;
+
+  my $document = $js->add_schema($yaml->load_file($target));
+
+  print "# validating ", $document->canonical_uri, "\n" if $ENV{DEBUG};
+  my $result = $document->validate;
+  die $js->_json_decoder->pretty->encode($result) if not $result->valid;
 }
 
 # compute checksums and record them in the test
@@ -56,17 +66,3 @@ path('t/checksums.t')->edit_raw(sub {
   m/^__DATA__$/mg;
   $_ = substr($_, 0, pos()+1).join("\n", map $_.' '.$checksums{$_}, sort keys %checksums)."\n";
 });
-
-my $yaml = YAML::PP->new(boolean => 'JSON::PP');
-my $js = JSON::Schema::Modern->new(validate_formats => 1);
-$js->add_schema($files{$_} => $yaml->load_file('share/'.$_)) foreach grep /json$/, keys %files;
-
-foreach my $uri (values %files) {
-  next if $uri =~ /LICENSE$/;
-  print "# validating $uri\n" if $ENV{DEBUG};
-
-  my $document = $js->_fetch_from_uri($uri)->{document};
-  my $result = $js->evaluate($document->schema, $document->metaschema_uri);
-
-  die $js->_json_decoder->pretty->encode($result) if not $result->valid;
-}
