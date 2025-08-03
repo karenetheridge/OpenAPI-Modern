@@ -45,6 +45,7 @@ use constant DEFAULT_SCHEMAS => [
   'strict-dialect.json',
 ];
 
+# these are all pre-loaded, and also made available as s/<date>/latest/
 use constant DEFAULT_DIALECT => 'https://spec.openapis.org/oas/3.1/dialect/2024-10-25';
 use constant DEFAULT_BASE_METASCHEMA => 'https://spec.openapis.org/oas/3.1/schema-base/2024-11-14';
 use constant DEFAULT_METASCHEMA => 'https://spec.openapis.org/oas/3.1/schema/2024-11-14';
@@ -406,11 +407,8 @@ sub _add_vocab_and_default_schemas ($self, $evaluator) {
       $document = $evaluator->add_schema($schema);
     }
 
-    if ($document->canonical_uri =~ m{/\d{4}-\d{2}-\d{2}$}) {
-      my $base = $`;
-      $evaluator->add_document($base, $document) if $base =~ m{/schema$};
-      $evaluator->add_document($base.'/latest', $document);
-    }
+    $evaluator->add_document($`.'/latest', $document)
+      if $document->canonical_uri =~ m{/\d{4}-\d{2}-\d{2}$};
   }
 
   # dirty hack! patch in support for $self, until v3.2
