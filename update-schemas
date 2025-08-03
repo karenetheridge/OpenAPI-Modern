@@ -14,6 +14,7 @@ use HTTP::Tiny;
 use YAML::PP;
 use Digest::MD5 'md5_hex';
 use JSON::Schema::Modern;
+use JSON::Schema::Modern::Document::OpenAPI;
 
 # note: the latest versions can always be found at https://spec.openapis.org/
 # Once /latest links exist, we will pull from those instead, and use those names in code to ensure
@@ -59,6 +60,14 @@ foreach my $target (keys %files) {
   print "# validating ", $document->canonical_uri, "\n" if $ENV{DEBUG};
   my $result = $document->validate;
   die $js->_json_decoder->pretty->encode($result) if not $result->valid;
+
+  die 'for uri ', $document->schema->{'$id'}, ', mismatch between jsonSchemaDialect "',
+      $document->schema->{properties}{jsonSchemaDialect}{default},
+      '" and assumed default "',
+      JSON::Schema::Modern::Document::OpenAPI->DEFAULT_DIALECT, '"'
+    if exists((($document->schema->{properties}//{})->{jsonSchemaDialect}//{})->{default})
+      and $document->schema->{properties}{jsonSchemaDialect}{default}
+        ne JSON::Schema::Modern::Document::OpenAPI->DEFAULT_DIALECT;
 }
 
 # compute checksums and record them in the test
