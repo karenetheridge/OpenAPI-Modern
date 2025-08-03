@@ -46,10 +46,10 @@ use constant DEFAULT_SCHEMAS => [
 ];
 
 # these are all pre-loaded, and also made available as s/<date>/latest/
-use constant DEFAULT_DIALECT => 'https://spec.openapis.org/oas/3.1/dialect/2024-10-25';
-use constant DEFAULT_BASE_METASCHEMA => 'https://spec.openapis.org/oas/3.1/schema-base/2024-11-14';
-use constant DEFAULT_METASCHEMA => 'https://spec.openapis.org/oas/3.1/schema/2024-11-14';
-use constant OAS_VOCABULARY => 'https://spec.openapis.org/oas/3.1/meta/2024-10-25';
+use constant DEFAULT_DIALECT => 'https://spec.openapis.org/oas/3.1/dialect/2024-11-10';
+use constant DEFAULT_BASE_METASCHEMA => 'https://spec.openapis.org/oas/3.1/schema-base/2025-02-13';
+use constant DEFAULT_METASCHEMA => 'https://spec.openapis.org/oas/3.1/schema/2025-02-13';
+use constant OAS_VOCABULARY => 'https://spec.openapis.org/oas/3.1/meta/2024-11-10';
 use constant OAS_VERSION => '3.1.1';
 
 has '+schema' => (
@@ -552,7 +552,7 @@ Provides structured parsing of an OpenAPI document, suitable as the base for mor
 request and response validation, code generation or form generation.
 
 The provided document must be a valid OpenAPI document, as specified by the schema identified by
-L<https://spec.openapis.org/oas/3.1/schema-base/2024-10-25>
+L<https://spec.openapis.org/oas/3.1/schema-base/2025-02-13>
 and the L<OpenAPI v3.1.x specification|https://spec.openapis.org/oas/v3.1>.
 
 =head1 CONSTRUCTOR ARGUMENTS
@@ -592,7 +592,7 @@ The URI of the metaschema to use for all embedded L<JSON Schemas|https://json-sc
 document.
 
 Overrides the value of C<jsonSchemaDialect> in the document, or the specification default
-(C<https://spec.openapis.org/oas/3.1/dialect/2024-10-25>).
+(C<https://spec.openapis.org/oas/3.1/dialect/2024-11-10>).
 
 If you specify your own dialect here or in C<jsonSchemaDialect>, then you need to add the
 vocabularies and schemas to the implementation yourself (see C<JSON::Schema::Modern/add_vocabulary>
@@ -606,7 +606,7 @@ entire document is not a JSON Schema).
 =head2 metaschema_uri
 
 The URI of the schema that describes the OpenAPI document itself. Defaults to
-L<https://spec.openapis.org/oas/3.1/schema-base/2024-10-25> when the json schema dialect is not
+L<https://spec.openapis.org/oas/3.1/schema-base/2025-02-13> when the json schema dialect is not
 changed; otherwise defaults to a dynamically generated metaschema that uses the correct
 value of C<jsonSchemaDialect>, so you don't need to write one yourself.
 

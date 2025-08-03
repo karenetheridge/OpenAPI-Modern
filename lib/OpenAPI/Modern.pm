@@ -1494,7 +1494,7 @@ See also L<JSON::Schema::Modern/CACHING>.
 Embedded JSON Schemas, through the use of the C<schema> keyword, are fully draft2020-12-compliant,
 as per the spec, and implemented with L<JSON::Schema::Modern>. Unless overridden with the use of the
 L<jsonSchemaDialect|https://spec.openapis.org/oas/v3.1#specifying-schema-dialects> keyword, their
-metaschema is L<https://spec.openapis.org/oas/3.1/dialect/2024-10-25>, which allows for use of the
+metaschema is L<https://spec.openapis.org/oas/3.1/dialect/2024-11-10>, which allows for use of the
 OpenAPI-specific keywords (C<discriminator>, C<xml>, C<externalDocs>, and C<example>), as defined in
 L<the specification/https://spec.openapis.org/oas/v3.1#schema-object>. Format validation is turned
 B<on>, and the use of content* keywords is off (see

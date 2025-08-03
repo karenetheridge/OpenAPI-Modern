@@ -38,7 +38,7 @@ my %files = (
 my $web_url = 'https://spec.openapis.org/';
 
 my $ua = Mojo::UserAgent->new;
-print "# fetching $web_url\n" if $ENV{DEBUG};
+say "# fetching $web_url" if $ENV{DEBUG};
 my $res = $ua->get($web_url)->result;
 my %new_schemas = ();  # keys are existing OAS schema URIs, defined above in %files
 
@@ -78,7 +78,7 @@ my %checksums;
 foreach my $target (keys %files) {
   my $uri = $files{$target};
 
-  print "# fetching $uri to share/$target\n" if $ENV{DEBUG};
+  say "# fetching $uri to share/$target" if $ENV{DEBUG};
   my $res = $ua->get($uri)->result;
   die "Failed to fetch $uri", $res->code, " ", $res->message if $res->is_error;
 
@@ -91,7 +91,7 @@ foreach my $target (keys %files) {
 
   my $document = $js->add_schema($yaml->load_string($content));
 
-  print "# validating ", $document->canonical_uri, "\n" if $ENV{DEBUG};
+  say "# validating ", $document->canonical_uri if $ENV{DEBUG};
   my $result = $document->validate;
   die $js->_json_decoder->pretty->encode($result) if not $result->valid;
 
