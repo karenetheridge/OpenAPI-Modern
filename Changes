@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.090     2025-08-04 00:57:05Z
           - update bundled schemas to their latest versions
 
