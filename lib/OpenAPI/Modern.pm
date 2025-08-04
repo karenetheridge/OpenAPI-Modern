@@ -1489,6 +1489,13 @@ reloading them (perhaps by using a timestamp or checksum to determine if a fresh
 
 See also L<JSON::Schema::Modern/CACHING>.
 
+=head1 BUNDLED SCHEMA DOCUMENTS
+
+This distribution comes bundled with all the metaschema documents you need to build your application,
+or build custom schemas on top of. It aims to always use the latest versions of the documents; if
+you need earlier versions, you can find them at
+L<https://spec.openapis.org/#openapi-specification-schemas>.
+
 =head1 ON THE USE OF JSON SCHEMAS
 
 Embedded JSON Schemas, through the use of the C<schema> keyword, are fully draft2020-12-compliant,
