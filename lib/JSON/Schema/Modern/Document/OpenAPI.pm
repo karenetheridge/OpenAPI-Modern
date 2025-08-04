@@ -56,11 +56,6 @@ has '+schema' => (
   isa => HashRef,
 );
 
-has '+metaschema_uri' => (
-  lazy => 1,
-  default => DEFAULT_BASE_METASCHEMA,
-);
-
 has json_schema_dialect => (
   is => 'rwp',
   isa => InstanceOf['Mojo::URL'],
@@ -187,8 +182,10 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     $state->@{qw(specification_version vocabularies)} = $check_metaschema_state->@{qw(specification_version vocabularies)};
     $self->_set_json_schema_dialect($json_schema_dialect);
 
-    $self->_set_metaschema_uri($self->_dynamic_metaschema_uri($json_schema_dialect, $evaluator))
-      if not $self->_has_metaschema_uri and $json_schema_dialect ne DEFAULT_DIALECT;
+    $self->_set_metaschema_uri(
+          $json_schema_dialect eq DEFAULT_DIALECT ? DEFAULT_BASE_METASCHEMA
+        : $self->_dynamic_metaschema_uri($json_schema_dialect, $evaluator))
+      if not $self->_has_metaschema_uri;
   }
 
   $state->{identifiers}{$state->{initial_schema_uri}} = {
