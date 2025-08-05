@@ -106,7 +106,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     identifiers => {},
     configs => {},
     # note that this is the JSON Schema specification version, not OpenAPI
-    spec_version => $evaluator->SPECIFICATION_VERSION_DEFAULT,
+    specification_version => $evaluator->SPECIFICATION_VERSION_DEFAULT,
     vocabularies => [],
     subschemas => [],
     depth => 0,
@@ -184,7 +184,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
       return $state;
     }
 
-    $state->@{qw(spec_version vocabularies)} = $check_metaschema_state->@{qw(spec_version vocabularies)};
+    $state->@{qw(specification_version vocabularies)} = $check_metaschema_state->@{qw(specification_version vocabularies)};
     $self->_set_json_schema_dialect($json_schema_dialect);
 
     $self->_set_metaschema_uri($self->_dynamic_metaschema_uri($json_schema_dialect, $evaluator))
@@ -194,7 +194,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
   $state->{identifiers}{$state->{initial_schema_uri}} = {
     path => '',
     canonical_uri => $state->{initial_schema_uri},
-    specification_version => $state->{spec_version},
+    specification_version => $state->{specification_version},
     vocabularies => $state->{vocabularies}, # reference, not copy
     configs => {},
   };

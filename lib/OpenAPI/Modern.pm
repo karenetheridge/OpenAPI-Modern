@@ -328,7 +328,7 @@ sub validate_response ($self, $response, $options = {}) {
 
 sub find_path ($self, $options, $state = {}) {
   # there are many $state fields used by JSM that we do not set here because we do not use them for
-  # OpenAPI validation, such as document, document_path, vocabularies, spec_version, configs
+  # OpenAPI validation, such as document, document_path, vocabularies, specification_version, configs
   $state->{data_path} //= '';
   $state->{initial_schema_uri} = $self->openapi_uri;   # the canonical URI as of the start or last $id, or the last traversed $ref
   $state->{traversed_schema_path} = '';    # the accumulated traversal path as of the start, or last $id, or up to the last traversed $ref
