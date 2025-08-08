@@ -104,7 +104,6 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     errors => [],
     evaluator => $evaluator,
     identifiers => {},
-    configs => {},
     # note that this is the JSON Schema specification version, not OpenAPI
     specification_version => $evaluator->SPECIFICATION_VERSION_DEFAULT,
     vocabularies => [],
@@ -196,7 +195,6 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     canonical_uri => $state->{initial_schema_uri},
     specification_version => $state->{specification_version},
     vocabularies => $state->{vocabularies}, # reference, not copy
-    configs => {},
   };
 
   # evaluate the document against its metaschema to find any errors, to identify all schema
@@ -448,8 +446,8 @@ sub _traverse_schema ($self, $state) {
     my $new = $subschema_state->{identifiers}{$new_uri};
 
     if (not is_equal(
-        { canonical_uri => $new->{canonical_uri}.'', map +($_ => $new->{$_}), qw(path specification_version vocabularies configs) },
-        { canonical_uri => $existing->{canonical_uri}.'', map +($_ => $existing->{$_}), qw(path specification_version vocabularies configs) })) {
+        { canonical_uri => $new->{canonical_uri}.'', map +($_ => $new->{$_}), qw(path specification_version vocabularies) },
+        { canonical_uri => $existing->{canonical_uri}.'', map +($_ => $existing->{$_}), qw(path specification_version vocabularies) })) {
       ()= E({ %$state, schema_path => $new->{path} },
         'duplicate canonical uri "%s" found (original at path "%s")',
         $new_uri, $existing->{path});

@@ -37,7 +37,6 @@ subtest 'basic construction' => sub {
         specification_version => 'draft2020-12',
         vocabularies => bag(map 'JSON::Schema::Modern::Vocabulary::'.$_,
           qw(Core Applicator Validation FormatAnnotation Content MetaData Unevaluated OpenAPI)),
-        configs => {},
       },
     },
     'the document itself is recorded as a resource',
@@ -326,7 +325,6 @@ ERRORS
         document => shallow($doc),
         vocabularies => bag(map 'JSON::Schema::Modern::Vocabulary::'.$_,
           qw(Core Applicator Validation FormatAnnotation Content MetaData Unevaluated OpenAPI)),
-        configs => {},
       },
       # the oas vocabulary, and the dialect that uses it
       DEFAULT_DIALECT() => {
@@ -336,7 +334,6 @@ ERRORS
         document => ignore,
         vocabularies => bag(map 'JSON::Schema::Modern::Vocabulary::'.$_,
           qw(Core Applicator Validation FormatAnnotation Content MetaData Unevaluated)),
-        configs => {},
         anchors => {
           meta => {
             path => '',
@@ -352,7 +349,6 @@ ERRORS
         document => ignore,
         vocabularies => bag(map 'JSON::Schema::Modern::Vocabulary::'.$_,
           qw(Core Applicator Validation FormatAnnotation Content MetaData Unevaluated)),
-        configs => {},
         anchors => {
           meta => {
             path => '',
@@ -411,7 +407,6 @@ ERRORS
         specification_version => 'draft2020-12',
         document => shallow($doc),
         vocabularies => [ map 'JSON::Schema::Modern::Vocabulary::'.$_, qw(Core Applicator) ],
-        configs => {},
       },
       'https://mymetaschema' => {
         canonical_uri => str('https://mymetaschema'),
@@ -420,7 +415,6 @@ ERRORS
         document => shallow($mymetaschema_doc),
         vocabularies => bag(map 'JSON::Schema::Modern::Vocabulary::'.$_,
           qw(Core Applicator Validation FormatAnnotation Content MetaData Unevaluated)),
-        configs => {},
       },
     }),
     'dialect resources are properly stored on the evaluator',
@@ -464,7 +458,6 @@ ERRORS
         specification_version => 'draft2020-12',
         document => shallow($doc),
         vocabularies => [ map 'JSON::Schema::Modern::Vocabulary::'.$_, qw(Core Applicator) ],
-        configs => {},
       },
       'https://mymetaschema' => {
         canonical_uri => str('https://mymetaschema'),
@@ -473,7 +466,6 @@ ERRORS
         document => shallow($mymetaschema_doc),
         vocabularies => bag(map 'JSON::Schema::Modern::Vocabulary::'.$_,
           qw(Core Applicator Validation FormatAnnotation Content MetaData Unevaluated)),
-        configs => {},
       },
       $doc->metaschema_uri => {
         canonical_uri => str($doc->metaschema_uri),
@@ -482,7 +474,6 @@ ERRORS
         document => ignore,
         vocabularies => bag(map 'JSON::Schema::Modern::Vocabulary::'.$_,
           qw(Core Applicator Validation FormatAnnotation Content MetaData Unevaluated)),
-        configs => {},
         anchors => {
           meta => {
             path => '/$defs/schema',
@@ -522,7 +513,6 @@ ERRORS
         specification_version => 'draft2020-12',
         vocabularies => bag(map 'JSON::Schema::Modern::Vocabulary::'.$_,
           qw(Core Applicator Validation FormatAnnotation Content MetaData Unevaluated OpenAPI)),
-        configs => {},
       },
     },
     'resource is properly indexed',
@@ -555,7 +545,6 @@ ERRORS
         specification_version => 'draft2020-12',
         vocabularies => bag(map 'JSON::Schema::Modern::Vocabulary::'.$_,
           qw(Core Applicator Validation FormatAnnotation Content MetaData Unevaluated OpenAPI)),
-        configs => {},
       },
     },
     'resource is properly indexed',
@@ -588,7 +577,6 @@ ERRORS
         specification_version => 'draft2020-12',
         vocabularies => bag(map 'JSON::Schema::Modern::Vocabulary::'.$_,
           qw(Core Applicator Validation FormatAnnotation Content MetaData Unevaluated OpenAPI)),
-        configs => {},
       },
     },
     'resource is properly indexed',
@@ -621,7 +609,6 @@ ERRORS
         specification_version => 'draft2020-12',
         vocabularies => bag(map 'JSON::Schema::Modern::Vocabulary::'.$_,
           qw(Core Applicator Validation FormatAnnotation Content MetaData Unevaluated OpenAPI)),
-        configs => {},
       },
     },
     'resource is properly indexed',

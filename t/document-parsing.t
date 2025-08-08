@@ -465,7 +465,6 @@ YAML
         specification_version => 'draft2020-12',
         vocabularies => bag(map 'JSON::Schema::Modern::Vocabulary::'.$_,
           qw(Core Applicator Validation FormatAnnotation Content MetaData Unevaluated OpenAPI)),
-        configs => {},
         anchors => {
           anchor1 => {
             path => '/components/schemas/anchor1',
@@ -483,7 +482,6 @@ YAML
         specification_version => 'draft2020-12',
         vocabularies => bag(map 'JSON::Schema::Modern::Vocabulary::'.$_,
           qw(Core Applicator Validation FormatAnnotation Content MetaData Unevaluated OpenAPI)),
-        configs => {},
       },
       'http://localhost:1234/gamma' => {
         path => '/components/schemas/beta_schema/not',
@@ -491,7 +489,6 @@ YAML
         specification_version => 'draft2019-09',
         vocabularies => bag(map 'JSON::Schema::Modern::Vocabulary::'.$_,
           qw(Core Applicator Validation FormatAnnotation Content MetaData)), # overridden "$schema" keyword
-        configs => {},
       },
       'http://localhost:1234/parameter1_id' => {
         path => '/components/parameters/my_param1/schema',
@@ -499,7 +496,6 @@ YAML
         specification_version => 'draft2020-12',
         vocabularies => bag(map 'JSON::Schema::Modern::Vocabulary::'.$_,
           qw(Core Applicator Validation FormatAnnotation Content MetaData Unevaluated OpenAPI)),
-        configs => {},
         anchors => {
           anchor3 => {
             path => '/components/parameters/my_param1/schema/properties/foo',
@@ -513,7 +509,6 @@ YAML
         specification_version => 'draft2020-12',
         vocabularies => bag(map 'JSON::Schema::Modern::Vocabulary::'.$_,
           qw(Core Applicator Validation FormatAnnotation Content MetaData Unevaluated OpenAPI)),
-        configs => {},
       },
       'http://localhost:1234/pathItem0_param_id' => {
         path => '/components/pathItems/path0/parameters/0/schema',
@@ -521,7 +516,6 @@ YAML
         specification_version => 'draft2020-12',
         vocabularies => bag(map 'JSON::Schema::Modern::Vocabulary::'.$_,
           qw(Core Applicator Validation FormatAnnotation Content MetaData Unevaluated OpenAPI)),
-        configs => {},
       },
       'http://localhost:1234/pathItem0_get_param_id' => {
         path => '/components/pathItems/path0/get/parameters/0/schema',
@@ -529,7 +523,6 @@ YAML
         specification_version => 'draft2020-12',
         vocabularies => bag(map 'JSON::Schema::Modern::Vocabulary::'.$_,
           qw(Core Applicator Validation FormatAnnotation Content MetaData Unevaluated OpenAPI)),
-        configs => {},
       },
       'http://localhost:1234/pathItem0_get_requestBody_id' => {
         path => '/components/pathItems/path0/get/requestBody/content/media_type_1/schema',
@@ -537,7 +530,6 @@ YAML
         specification_version => 'draft2020-12',
         vocabularies => bag(map 'JSON::Schema::Modern::Vocabulary::'.$_,
           qw(Core Applicator Validation FormatAnnotation Content MetaData Unevaluated OpenAPI)),
-        configs => {},
       },
       map +('http://localhost:1234/pathItem0_get_responses'.$_.'_id' => {
         path => '/components/pathItems/path0/get/responses/200/content/media_type_'.$_.'/schema',
@@ -545,7 +537,6 @@ YAML
         specification_version => 'draft2020-12',
         vocabularies => bag(map 'JSON::Schema::Modern::Vocabulary::'.$_,
           qw(Core Applicator Validation FormatAnnotation Content MetaData Unevaluated OpenAPI)),
-        configs => {},
       }), 2..3,
     },
     'subschema resources are correctly identified in the document',
