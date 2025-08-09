@@ -1496,6 +1496,15 @@ or build custom schemas on top of. It aims to always use the latest versions of 
 you need earlier versions, you can find them at
 L<https://spec.openapis.org/#openapi-specification-schemas>.
 
+The default metaschema used by this tool does not permit the use of C<$schema> keywords
+in subschemas (where the value differs from the default OAS dialect), but a more permissive
+dialect is also available (or you can define your own), which you declare by providing the
+C<L<jsonSchemaDialect/https://spec.openapis.org/oas/v3.1#fixed-fields>> property in your OpenAPI
+Document.
+
+The schemas are also available under the URIs C<< s/<date>/latest/ >> so you don't have to change your
+code or configurations to keep pace with internal changes.
+
 =head1 ON THE USE OF JSON SCHEMAS
 
 Embedded JSON Schemas, through the use of the C<schema> keyword, are fully draft2020-12-compliant,
