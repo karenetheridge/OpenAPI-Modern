@@ -17,7 +17,6 @@ use Helper;
 subtest 'basic construction' => sub {
   my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
-    evaluator => my $js = JSON::Schema::Modern->new,
     schema => {
       openapi => OAS_VERSION,
       info => {
@@ -48,7 +47,6 @@ subtest 'top level document checks' => sub {
     sub {
       JSON::Schema::Modern::Document::OpenAPI->new(
         canonical_uri => 'http://localhost:1234/api',
-        evaluator => JSON::Schema::Modern->new,
         schema => 1,
       );
     },
@@ -59,7 +57,6 @@ subtest 'top level document checks' => sub {
 
   my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
-    evaluator => my $js = JSON::Schema::Modern->new,
     schema => {},
   );
   cmp_result(
@@ -83,7 +80,6 @@ subtest 'top level document checks' => sub {
 
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
-    evaluator => $js,
     schema => {
       openapi => OAS_VERSION,
       info => {},
@@ -116,7 +112,6 @@ ERRORS
 
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
-    evaluator => $js,
     schema => {
       openapi => '2.1.3',
     },
@@ -144,7 +139,6 @@ ERRORS
 
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
-    evaluator => $js,
     schema => {
       openapi => OAS_VERSION,
       info => {
@@ -180,7 +174,6 @@ ERRORS
 
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
-    evaluator => $js,
     schema => {
       openapi => OAS_VERSION,
       info => {
@@ -219,7 +212,6 @@ ERRORS
 
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
-    evaluator => $js,
     schema => {
       openapi => OAS_VERSION,
       info => {
@@ -250,6 +242,7 @@ ERRORS
   );
 
 
+  my $js = JSON::Schema::Modern->new;
   $js->add_schema({
     '$id' => 'https://metaschema/with/wrong/spec',
     '$vocabulary' => {
@@ -554,7 +547,6 @@ ERRORS
   # relative $self, relative original_uri - $self is resolved with original_uri
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'foo/api.json',
-    evaluator => $js,
     schema => {
       openapi => OAS_VERSION,
       info => {
@@ -586,7 +578,6 @@ ERRORS
   # absolute $self, relative original_uri - $self is used as is
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'foo/api.json',
-    evaluator => $js,
     schema => {
       openapi => OAS_VERSION,
       info => {

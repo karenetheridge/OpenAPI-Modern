@@ -20,7 +20,6 @@ my $yamlpp = YAML::PP->new(boolean => 'JSON::PP');
 subtest 'basic document validation' => sub {
   my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
-    evaluator => my $js = JSON::Schema::Modern->new,
     schema => {
       openapi => OAS_VERSION,
       info => {
@@ -102,10 +101,8 @@ ERRORS
 
   memory_cycle_ok($doc, 'no leaks in the document object');
 
-
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
-    evaluator => $js,
     schema => {
       openapi => OAS_VERSION,
       info => {
@@ -182,7 +179,6 @@ YAML
 
   my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
-    evaluator => my $js = JSON::Schema::Modern->new,
     schema => $yamlpp->load_string($yaml),
   );
 
@@ -204,7 +200,6 @@ YAML
 
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
-    evaluator => $js = JSON::Schema::Modern->new,
     schema => $yamlpp->load_string($yaml =~ s/operation_id_[a-z]/operation_id_dupe/gr),
   );
 
@@ -243,7 +238,6 @@ ERRORS
 subtest 'bad subschemas' => sub {
   my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
-    evaluator => my $js = JSON::Schema::Modern->new,
     schema => {
       $yamlpp->load_string(OPENAPI_PREAMBLE)->%*,
       jsonSchemaDialect => DEFAULT_DIALECT,
@@ -291,7 +285,6 @@ ERRORS
 subtest 'identify subschemas and other entities' => sub {
   my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
-    evaluator => my $js = JSON::Schema::Modern->new,
     schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
 components:
   schemas:
@@ -376,7 +369,6 @@ YAML
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
     metaschema_uri => 'https://spec.openapis.org/oas/3.1/schema/latest',  # needed to override $schema
-    evaluator => $js = JSON::Schema::Modern->new,
     schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
 components:
   schemas:
@@ -608,7 +600,6 @@ YAML
 
   my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
-    evaluator => my $js = JSON::Schema::Modern->new,
     schema => {
       $yamlpp->load_string(OPENAPI_PREAMBLE)->%*,
       %$servers,
@@ -713,7 +704,6 @@ ERRORS
 subtest 'disallowed fields adjacent to $refs in path-items' => sub {
   my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
-    evaluator => my $js = JSON::Schema::Modern->new,
     schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
 paths:
   /foo/alpha: {}
@@ -725,7 +715,6 @@ YAML
 
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
-    evaluator => $js,
     schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
 components:
   callbacks:
