@@ -135,6 +135,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
       },
     },
   };
+
   my $top_result = $evaluator->evaluate(
     $schema, $top_schema,
     {
@@ -169,8 +170,8 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     # these Schema Objects."
     $json_schema_dialect //= DEFAULT_DIALECT;
 
-    # traverse an empty schema with this metaschema uri to confirm it is valid
-    # (and add an entry in the evaluator's _metaschema_vocabulary_classes)
+    # traverse an empty schema with this metaschema uri to confirm it is valid, and add an entry in
+    # the evaluator's _metaschema_vocabulary_classes
     my $check_metaschema_state = $evaluator->traverse({}, {
       metaschema_uri => $json_schema_dialect,
       initial_schema_uri => $self->canonical_uri->clone->fragment('/jsonSchemaDialect'),
@@ -469,8 +470,10 @@ sub _traverse_schema ($self, $state) {
   }
 }
 
-# given a jsonSchemaDialect uri, generate a new schema that wraps the standard OAD schema
+# Given a jsonSchemaDialect uri, generate a new schema that wraps the standard OAD schema
 # to set the jsonSchemaDialect value for the #meta dynamic reference.
+# This metaschema does not allow subschemas to select their own $schema; for that, you
+# should construct your own, based on DEFAULT_BASE_METASCHEMA.
 sub _dynamic_metaschema_uri ($self, $json_schema_dialect, $evaluator) {
   $json_schema_dialect .= '';
   my $dialect_uri = 'https://custom-dialect.example.com/' . md5_hex($json_schema_dialect);
