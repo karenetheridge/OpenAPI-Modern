@@ -1,4 +1,5 @@
 #!/usr/bin/env perl
+# vim: set ts=8 sts=2 sw=2 tw=100 et ft=perl :
 use strict;
 use warnings;
 use 5.020;
