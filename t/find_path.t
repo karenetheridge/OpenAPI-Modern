@@ -2366,7 +2366,7 @@ YAML
 
 subtest $::TYPE.': URI resolution' => sub {
   my $openapi = OpenAPI::Modern->new(
-    openapi_uri => '/api',
+    openapi_uri => $doc_uri_rel,
     openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
 paths:
   /foo:
@@ -2386,17 +2386,17 @@ YAML
       path_captures => { a => 1 },
       path_template => '/foo',
       operation_id => 'foo',
-      operation_uri => str(Mojo::URL->new('/api')->fragment(jsonp(qw(/paths /foo get)))),
+      operation_uri => str($doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo get)))),
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/uri',
           keywordLocation => jsonp(qw(/paths /foo)),
-          absoluteKeywordLocation => Mojo::URL->new('/api')->clone->fragment(jsonp(qw(/paths /foo)))->to_string,
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo)))->to_string,
           error => 'provided path_captures names do not match path template "/foo"',
         }),
       ],
     },
-    'scheme and host from URI are used for error locations and operation_uri when openapi document URI is relative',
+    'scheme and host from URI are irrelevant to error locations and operation_uri, even when openapi document URI is relative',
   );
 
 
