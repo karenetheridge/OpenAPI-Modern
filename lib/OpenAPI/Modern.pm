@@ -68,16 +68,15 @@ has debug => (
 around BUILDARGS => sub ($orig, $class, @args) {
   my $args = $class->$orig(@args);
 
-  croak 'missing required constructor arguments: either openapi_document, or openapi_uri and openapi_schema'
-    if not exists $args->{openapi_document}
-      and (not exists $args->{openapi_uri} or not exists $args->{openapi_schema});
+  croak 'missing required constructor arguments: either openapi_document or openapi_schema'
+    if not exists $args->{openapi_document} and not exists $args->{openapi_schema};
 
   my $had_document = exists $args->{openapi_document};
 
   $args->{evaluator} //= JSON::Schema::Modern->new(validate_formats => 1, max_traversal_depth => 80);
 
   $args->{openapi_document} //= JSON::Schema::Modern::Document::OpenAPI->new(
-    canonical_uri => $args->{openapi_uri},
+    exists $args->{openapi_uri} ? (canonical_uri => $args->{openapi_uri}) : (),
     schema => $args->{openapi_schema},
     evaluator => $args->{evaluator},
   );
@@ -1249,16 +1248,18 @@ Unless otherwise noted, these are also available as read-only accessors.
 
 =head2 openapi_uri
 
+Optional.
+
 The URI that identifies the OpenAPI document; an alias to C<< ->openapi_document->canonical_uri >>.
 See L<JSON::Schema::Modern::Document::OpenAPI/canonical_uri>.
 Ignored if L</openapi_document> is provided.
 
 This URI will be used at runtime to resolve relative URIs used in
-the OpenAPI document, such as for C<jsonSchemaDialect> or C<servers url> values, as well as used
-for locations in L<JSON::Schema::Modern::Result> objects (see below).
+the OpenAPI document, such as for C<jsonSchemaDialect> or C<servers url> values and C<$ref>
+locations, as well as used for locations in L<JSON::Schema::Modern::Result> objects (see below).
 
 The value of C<$self> in the document (if present) is resolved against this value.
-It is strongly recommended that this URI is absolute.
+It is strongly recommended that this resulting URI is absolute.
 
 =head2 openapi_schema
 

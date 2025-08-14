@@ -29,23 +29,25 @@ my $minimal_schema = {
 subtest 'missing arguments' => sub {
   die_result(
     sub { OpenAPI::Modern->new },
-    qr/missing required constructor arguments: either openapi_document, or openapi_uri/,
-    'need openapi_document or openapi_uri',
+    qr/missing required constructor arguments: either openapi_document or openapi_schema/,
+    'need something in constructor arguments',
   );
 
   die_result(
     sub { OpenAPI::Modern->new(openapi_uri => 'foo') },
-    qr/missing required constructor arguments: either openapi_document, or openapi_uri and openapi_schema/,
-    'need openapi_document or openapi_schema',
-  );
-
-  die_result(
-    sub { OpenAPI::Modern->new(openapi_schema => $minimal_schema) },
-    qr/missing required constructor arguments: either openapi_document, or openapi_uri and openapi_schema/,
+    qr/missing required constructor arguments: either openapi_document or openapi_schema/,
     'need openapi_document or openapi_schema',
   );
 
   my $openapi;
+  lives_result(
+    sub {
+      $openapi = OpenAPI::Modern->new(openapi_schema => $minimal_schema);
+      memory_cycle_ok($openapi, 'no cycles');
+    },
+    'openapi_schema is sufficient',
+  );
+
   lives_result(
     sub {
       $openapi = OpenAPI::Modern->new(
@@ -54,7 +56,7 @@ subtest 'missing arguments' => sub {
       );
       memory_cycle_ok($openapi, 'no cycles');
     },
-    'simple usecase: providing just canonical_uri and schema',
+    'canonical_uri and schema is sufficient',
   );
 
   cmp_result(
