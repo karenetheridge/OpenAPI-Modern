@@ -2374,8 +2374,34 @@ paths:
       operationId: foo
 YAML
 
-  my $request = request('GET', 'gopher://mycorp.com/foo');
+  my $request = request('GET', '/foo');
   ok(!$openapi->find_path(my $options = { request => $request, path_captures => { a => 1 } }),
+    to_str($request).': find_path returns false');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      method => 'get',
+      _path_item => { get => ignore },
+      path_captures => { a => 1 },
+      path_template => '/foo',
+      operation_id => 'foo',
+      operation_uri => str($doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo get)))),
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '/request/uri',
+          keywordLocation => jsonp(qw(/paths /foo)),
+          absoluteKeywordLocation => $doc_uri_rel->clone->fragment(jsonp(qw(/paths /foo)))->to_string,
+          error => 'provided path_captures names do not match path template "/foo"',
+        }),
+      ],
+    },
+    'when request URI is relative, there is no difference to the result',
+  );
+
+
+  $request = request('GET', 'gopher://mycorp.com/foo');
+  ok(!$openapi->find_path($options = { request => $request, path_captures => { a => 1 } }),
     to_str($request).': find_path returns false');
   cmp_result(
     $options,

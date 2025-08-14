@@ -1056,8 +1056,8 @@ sub _convert_request ($request) {
     return $req->error({ message => 'unknown type '.ref($request) });
   }
 
-  # we could call $req->fix_headers here to add a missing Content-Length, but proper requests from
-  # the network should always have it set.
+  # we could call $req->fix_headers here to add a missing Content-Length or Host, but proper
+  # requests from the network should always have these set.
 
   warn 'parse error when converting '.ref($request) if not $req->is_finished;
   return $req;
