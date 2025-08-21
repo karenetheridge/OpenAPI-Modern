@@ -15,6 +15,10 @@ use Test::Warnings qw(:no_end_test warnings had_no_warnings);
 use lib 't/lib';
 use Helper;
 
+use constant STRICT_DIALECT_URI => 'https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/strict-dialect.json';
+use constant STRICT_METASCHEMA_URI => 'https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/strict-schema.json';
+
+
 subtest 'basic construction' => sub {
   cmp_result(
     [ warnings {
@@ -300,11 +304,12 @@ ERRORS
 '/jsonSchemaDialect/$vocabulary/https:~1~1unknown': "https://unknown" is not a known vocabulary
 '/jsonSchemaDialect': "https://metaschema/with/wrong/spec" is not a valid metaschema
 ERRORS
+};
 
-
-  $doc = JSON::Schema::Modern::Document::OpenAPI->new(
+subtest 'custom dialects via jsonSchemaDialect' => sub {
+  my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
-    evaluator => $js = JSON::Schema::Modern->new,
+    evaluator => my $js = JSON::Schema::Modern->new,
     schema => {
       openapi => OAS_VERSION,
       info => {
@@ -489,12 +494,82 @@ ERRORS
     }),
     'dialect resources are properly stored on the evaluator',
   );
+};
 
+subtest 'custom dialects, via metaschema_uri' => sub {
+  my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
+    metaschema_uri => STRICT_METASCHEMA_URI,
+    schema => {
+      openapi => OAS_VERSION,
+      info => {
+        title => 'my title',
+        version => '1.2.3',
+      },
+      components => {
+        schemas => {
+          Foo => {
+            blah => 'unrecognized keyword!',
+          },
+          Bar => {
+            'x-todo' => 'this one is okay',
+          },
+        },
+      },
+    },
+  );
 
+  cmp_result(
+    ($doc->errors)[0]->TO_JSON,
+    {
+      instanceLocation => '/components/schemas/Foo/blah',
+      keywordLocation => '/$ref/properties/components/$ref/properties/schemas/additionalProperties/$dynamicRef/$ref/unevaluatedProperties',
+      absoluteKeywordLocation => STRICT_DIALECT_URI.'#/unevaluatedProperties',
+      error => 'additional property not permitted',
+    },
+    'subschemas identified, and error found',
+  );
+};
+
+subtest 'custom dialects, via metaschema_uri and jsonSchemaDialect' => sub {
+  my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
+    metaschema_uri => STRICT_METASCHEMA_URI,
+    schema => {
+      openapi => OAS_VERSION,
+      info => {
+        title => 'my title',
+        version => '1.2.3',
+      },
+      jsonSchemaDialect => STRICT_DIALECT_URI,
+      components => {
+        schemas => {
+          Foo => {
+            blah => 'unrecognized keyword!',
+          },
+          Bar => {
+            'x-todo' => 'this one is okay',
+          },
+        },
+      },
+    },
+  );
+
+  cmp_result(
+    ($doc->errors)[0]->TO_JSON,
+    {
+      instanceLocation => '/components/schemas/Foo/blah',
+      keywordLocation => '/$ref/properties/components/$ref/properties/schemas/additionalProperties/$dynamicRef/$ref/unevaluatedProperties',
+      absoluteKeywordLocation => STRICT_DIALECT_URI.'#/unevaluatedProperties',
+      error => 'additional property not permitted',
+    },
+    'subschemas identified, and error found',
+  );
+};
+
+subtest 'custom $self value' => sub {
   # relative $self, absolute original_uri - $self is resolved with original_uri
-  $doc = JSON::Schema::Modern::Document::OpenAPI->new(
+  my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/foo/api.json',
-    evaluator => $js,
+    evaluator => my $js = JSON::Schema::Modern->new,
     schema => {
       openapi => OAS_VERSION,
       info => {
