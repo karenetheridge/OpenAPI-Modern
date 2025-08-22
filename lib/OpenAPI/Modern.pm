@@ -1138,6 +1138,11 @@ __END__
         required: true
         schema:
           pattern: ^[a-z]+$
+      - name: bar_id
+        in: path
+        required: true
+        schema:
+          pattern: ^\d+$
       post:
         operationId: my_foo_request
         parameters:
@@ -1204,16 +1209,16 @@ prints:
   {
     "errors" : [
       {
-        "absoluteKeywordLocation" : "https://production.example.com/api#/paths/~1foo~1%7Bfoo_id%7D/post/requestBody/content/application~1json/schema/properties/hello/type",
+        "absoluteKeywordLocation" : "https://production.example.com/api#/paths/~1foo~1%7Bfoo_id%7D~1bar~1%7Bbar_id%7D/post/requestBody/content/application~1json/schema/properties/hello/type",
         "error" : "got integer, not string",
         "instanceLocation" : "/request/body/hello",
-        "keywordLocation" : "/paths/~1foo~1{foo_id}/post/requestBody/content/application~1json/schema/properties/hello/type"
+        "keywordLocation" : "/paths/~1foo~1{foo_id}~1bar~1%7Bbar_id%7D/post/requestBody/content/application~1json/schema/properties/hello/type"
       },
       {
-        "absoluteKeywordLocation" : "https://production.example.com/api#/paths/~1foo~1%7Bfoo_id%7D/post/requestBody/content/application~1json/schema/properties",
+        "absoluteKeywordLocation" : "https://production.example.com/api#/paths/~1foo~1%7Bfoo_id%7D~1bar~1%7Bbar_id%7D/post/requestBody/content/application~1json/schema/properties",
         "error" : "not all properties are valid",
         "instanceLocation" : "/request/body",
-        "keywordLocation" : "/paths/~1foo~1{foo_id}/post/requestBody/content/application~1json/schema/properties"
+        "keywordLocation" : "/paths/~1foo~1{foo_id}~1bar~1%7Bbar_id%7D/post/requestBody/content/application~1json/schema/properties"
       }
     ],
     "valid" : false
@@ -1293,7 +1298,7 @@ described below.
 
 =head2 document_get
 
-  my $parameter_data = $openapi->document_get('/paths/~1foo~1{foo_id}/get/parameters/0');
+  my $parameter_data = $openapi->document_get('/paths/~1foo~1{foo_id}~1bar~1%7Bbar_id%7D/post/parameters/0');
 
 Fetches the subschema at the provided JSON pointer.
 Proxies to L<JSON::Schema::Modern::Document::OpenAPI/get>.
@@ -1305,12 +1310,12 @@ L</recursive_get>.
 
   $result = $openapi->validate_request(
     $request,
-    # optional second argument can contain any combination of:
+    # optional second argument can contain any combination of these keys+values:
     my $options = {
-      path_template => '/foo/{arg1}/bar/{arg2}',
-      operation_id => 'my_operation_id',
-      path_captures => { arg1 => 1, arg2 => 2 },
-      method => 'get',
+      path_template => '/foo/{foo_id}/bar/{bar_id}',
+      operation_id => 'my_foo_request',
+      path_captures => { foo_id => 'abc', bar_id => 2 },
+      method => 'POST',
     },
   );
 
@@ -1333,7 +1338,6 @@ to improve performance.
   $result = $openapi->validate_response(
     $response,
     {
-      path_template => '/foo/{arg1}/bar/{arg2}',
       request => $request,
     },
   );
@@ -1347,7 +1351,7 @@ the L</openapi_uri> (which is derived from the document's C<$self> keyword as we
 provided to the document constructor).
 
 The second argument is an optional hashref that contains extra information about the request
-corresponding to the response, as in L</find_path>.
+corresponding to the response, as in L</validate_request> and L</find_path>.
 
 C<request> is also accepted as a key in the hashref, representing the original request object that
 corresponds to this response (as not all HTTP libraries link to the request in the response object).
@@ -1381,7 +1385,7 @@ include:
   additional diagnostic information is stored here in separate keys:
 
 =for :list
-* C<uri_patterns>: an arrayref of patterns that are attempted to be matched against the URI
+* C<uri_patterns>: an arrayref of patterns that were attempted to be matched against the URI
 
 =end :list
 
