@@ -156,7 +156,7 @@ subtest 'missing arguments' => sub {
         evaluator => $js,
       );
       is($openapi->openapi_uri, 'openapi.yaml', 'got uri out of object');
-      cmp_deeply($openapi->openapi_schema, $minimal_schema, 'got schema out of object');
+      cmp_result($openapi->openapi_schema, $minimal_schema, 'got schema out of object');
       ok($openapi->evaluator->collect_annotations, 'original evaluator is still defined');
       memory_cycle_ok($openapi, 'no cycles');
     },
@@ -171,7 +171,7 @@ subtest 'missing arguments' => sub {
         evaluator => JSON::Schema::Modern->new(validate_formats => 0),
       );
       is($openapi->openapi_uri, 'openapi.yaml', 'got uri out of object');
-      cmp_deeply($openapi->openapi_schema, $minimal_schema, 'got schema out of object');
+      cmp_result($openapi->openapi_schema, $minimal_schema, 'got schema out of object');
       ok(!$openapi->evaluator->validate_formats, 'evaluator overrides the default');
       memory_cycle_ok($openapi, 'no cycles');
     },
@@ -185,7 +185,7 @@ subtest 'missing arguments' => sub {
         openapi_schema => $minimal_schema,
       );
       is($openapi->openapi_uri, 'openapi.yaml', 'got uri out of object');
-      cmp_deeply($openapi->openapi_schema, $minimal_schema, 'got schema out of object');
+      cmp_result($openapi->openapi_schema, $minimal_schema, 'got schema out of object');
       ok($openapi->evaluator->validate_formats, 'default evaluator is used');
       memory_cycle_ok($openapi, 'no cycles');
     },
@@ -226,19 +226,19 @@ subtest 'construct with document' => sub {
     'canonical uri is taken from the document',
   );
 
-  cmp_deeply(
+  cmp_result(
     scalar $openapi->evaluator->get('http://localhost:1234/api#/components/schemas/foo'),
     true,
     'can construct an openapi object with a pre-existing document',
   );
 
-  cmp_deeply(
+  cmp_result(
     scalar $openapi->evaluator->get('https://spec.openapis.org/oas/3.1/schema/latest#/type'),
     'object',
     'the main OAD schema is available from the evaluator used in OpenAPI::Modern construction',
   );
 
-  cmp_deeply(
+  cmp_result(
     $openapi->evaluator->_get_vocabulary_class('https://spec.openapis.org/oas/3.1/vocab/base'),
     [
       'draft2020-12',
@@ -247,7 +247,7 @@ subtest 'construct with document' => sub {
     'the OpenAPI vocabulary is also available on the evaluator',
   );
 
-  cmp_deeply(
+  cmp_result(
     $openapi->evaluator->_get_format_validation('int32'),
     {
       type => 'number',

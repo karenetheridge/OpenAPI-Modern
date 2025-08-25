@@ -44,7 +44,7 @@ subtest 'basic construction' => sub {
     },
   );
 
-  cmp_deeply(
+  cmp_result(
     { $doc->resource_index },
     {
       'http://localhost:1234/api' => {
@@ -325,7 +325,7 @@ subtest 'custom dialects via jsonSchemaDialect' => sub {
   is($doc->metaschema_uri, DEFAULT_BASE_METASCHEMA, 'default metaschema is saved for the document');
 
   $js->add_document($doc);
-  cmp_deeply(
+  cmp_result(
     $js->{_resource_index},
     superhashof({
       # our document itself is a resource, even if it isn't a json schema itself
@@ -407,7 +407,7 @@ subtest 'custom dialects via jsonSchemaDialect' => sub {
   is($doc->metaschema_uri, DEFAULT_METASCHEMA, 'default (permissive) metaschema is saved');
 
   $js->add_document($doc);
-  cmp_deeply(
+  cmp_result(
     $js->{_resource_index},
     superhashof({
       # our document itself is a resource, even if it isn't a json schema itself
@@ -457,7 +457,7 @@ subtest 'custom dialects via jsonSchemaDialect' => sub {
   like($doc->metaschema_uri, qr{^https://custom-dialect\.example\.com/[[:xdigit:]]{32}$}, 'dynamic metaschema is used');
 
   $js->add_document($doc);
-  cmp_deeply(
+  cmp_result(
     $js->{_resource_index},
     superhashof({
       # our document itself is a resource, even if it isn't a json schema itself
@@ -583,7 +583,7 @@ subtest 'custom $self value' => sub {
 
   is($doc->original_uri, 'http://localhost:1234/foo/api.json', 'retrieval uri');
   is($doc->canonical_uri, 'http://localhost:1234/foo/user/api.json', 'canonical uri is $self resolved against retrieval uri');
-  cmp_deeply(
+  cmp_result(
     $doc->{resource_index},
     {
       'http://localhost:1234/foo/user/api.json' => {
@@ -615,7 +615,7 @@ subtest 'custom $self value' => sub {
 
   is($doc->original_uri, 'http://localhost:1234/foo/api.json', 'retrieval uri');
   is($doc->canonical_uri, 'http://localhost:5555/user/api.json', 'canonical uri is $self, already absolute');
-  cmp_deeply(
+  cmp_result(
     $doc->{resource_index},
     {
       'http://localhost:5555/user/api.json' => {
@@ -646,7 +646,7 @@ subtest 'custom $self value' => sub {
 
   is($doc->original_uri, 'foo/api.json', 'retrieval uri');
   is($doc->canonical_uri, 'foo/user/api.json', 'canonical uri is $self resolved against retrieval uri');
-  cmp_deeply(
+  cmp_result(
     $doc->{resource_index},
     {
       'foo/user/api.json' => {
@@ -677,7 +677,7 @@ subtest 'custom $self value' => sub {
 
   is($doc->original_uri, 'foo/api.json', 'retrieval uri');
   is($doc->canonical_uri, 'http://localhost:5555/user/api.json', 'canonical uri is $self, already absolute');
-  cmp_deeply(
+  cmp_result(
     $doc->{resource_index},
     {
       'http://localhost:5555/user/api.json' => {

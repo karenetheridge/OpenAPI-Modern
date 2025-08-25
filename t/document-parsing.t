@@ -243,8 +243,8 @@ YAML
     schema => $yamlpp->load_string($yaml),
   );
 
-  ok(!$doc->errors, 'no errors when parsing this document');
-  cmp_deeply(
+  cmp_result([ $doc->errors ], [], 'no errors when parsing this document');
+  cmp_result(
     $doc->_operationIds,
     {
       operation_id_a => '/components/callbacks/callback_a/$url_a/patch',
@@ -508,8 +508,8 @@ webhooks:
   bar: {}
 YAML
 
-  cmp_result([$doc->errors], [], 'no errors during traversal');
-  cmp_deeply(
+  cmp_result([ $doc->errors ], [], 'no errors when parsing this document');
+  cmp_result(
     my $index = { $doc->resource_index },
     {
       'http://localhost:1234/api' => {
@@ -771,7 +771,7 @@ paths:
   /foo/beta: {}
 YAML
 
-  cmp_result([$doc->errors], [], 'no errors during traversal');
+  cmp_result([ $doc->errors ], [], 'no errors when parsing this document');
   memory_cycle_ok($doc, 'no leaks in the document object');
 
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
