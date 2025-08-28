@@ -580,15 +580,19 @@ The actual raw data representing the OpenAPI document. Required.
 
 =for stopwords metaschema schemas
 
-A L<JSON::Schema::Modern> object, which will be used for subsequent evaluation of data against
-schemas in the document, either manually or perhaps via a web framework plugin
-(see L<Mojo::Plugin::OpenAPI::Modern>).
+A L<JSON::Schema::Modern> object which is used for parsing the schema of this document. This is the
+object that holds all other schemas that may be used for parsing: that is, metaschemas that define
+the structure of the document.
 
 Optional, unless you are using custom metaschemas for your OpenAPI document or embedded JSON Schemas
 (in which case you should define the evaluator first and call L<JSON::Schema::Modern/add_schema> for
 each customization, before calling this constructor).
 
-This argument is not preserved by the constructor, so it is not available as an accessor.
+This argument is not saved after object construction, so it is not available as an accessor.
+However, if this document object was constructed via a call to L<OpenAPI::Modern/new>, it will be
+saved on that object for use during request and response validation, so it is expected that the
+evaluator object should also hold the other documents that are needed for runtime evaluation (which
+may be other L<JSON::Schema::Modern::Document::OpenAPI> objects).
 
 =head2 canonical_uri
 

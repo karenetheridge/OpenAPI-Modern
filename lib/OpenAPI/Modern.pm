@@ -1271,12 +1271,12 @@ It is strongly recommended that this resulting URI is absolute.
 The data structure describing the OpenAPI v3.1 document (as specified at
 L<https://spec.openapis.org/oas/v3.1>); an alias to C<< ->openapi_document->schema >>.
 See L<JSON::Schema::Modern::Document::OpenAPI/schema>.
-Ignored if L</openapi_document> is provided.
+Ignored if L</openapi_document> is provided, otherwise required.
 
 =head2 openapi_document
 
 The L<JSON::Schema::Modern::Document::OpenAPI> document that holds the OpenAPI information to be
-used for validation. If it is not provided to the constructor, then both L</openapi_uri> and
+used for validation. If it is not provided to the constructor, then
 L</openapi_schema> B<MUST> be provided, and L</evaluator> will also be used if provided.
 
 =head2 evaluator
@@ -1285,7 +1285,8 @@ The L<JSON::Schema::Modern> object to use for all URI resolution and JSON Schema
 Optional (a default is constructed when omitted).
 
 This must be prepared in advance if custom metaschemas are to be used, as the evaluator is what
-holds the information about all available schemas.
+holds the information about all available schemas (which are used by keywords such as
+C<jsonSchemaDialect> and C<$ref>.
 
 =head2 debug
 
