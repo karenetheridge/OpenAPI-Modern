@@ -66,7 +66,43 @@ subtest 'top level document checks' => sub {
   );
 
 
-  my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
+  my $doc;
+  cmp_result(
+    [ warnings {
+      $doc = JSON::Schema::Modern::Document::OpenAPI->new(
+        specification_version => 'draft7',
+        schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
+components:
+  schemas:
+    test_schema:
+      $id: /foo/bar
+YAML
+    } ],
+    [ re(qr/^specification_version argument is ignored by this subclass: use jsonSchemaDialect in your document instead/) ],
+    'unsupported construction arguments (but supported in the base class) generate warnings',
+  );
+
+  cmp_result(
+    $doc->{resource_index},
+    {
+      '' => {
+        canonical_uri => str(''),
+        path => '',
+        specification_version => 'draft2020-12',
+        vocabularies => bag(OAS_VOCABULARIES->@*),
+      },
+      '/foo/bar' => {
+        canonical_uri => str('/foo/bar'),
+        path => '/components/schemas/test_schema',
+        specification_version => 'draft2020-12',
+        vocabularies => bag(OAS_VOCABULARIES->@*),
+      },
+    },
+    '...and also gracefully removed from consideration',
+  );
+
+
+  $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
     schema => {},
   );

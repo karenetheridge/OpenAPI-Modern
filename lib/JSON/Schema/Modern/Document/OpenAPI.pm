@@ -82,6 +82,9 @@ sub BUILDARGS ($class, @args) {
   carp 'json_schema_dialect has been removed as a constructor attribute: use jsonSchemaDialect in your document instead'
     if exists $args->{json_schema_dialect};
 
+  carp 'specification_version argument is ignored by this subclass: use jsonSchemaDialect in your document instead'
+    if defined(delete($args->{specification_version}));
+
   return $args;
 }
 
