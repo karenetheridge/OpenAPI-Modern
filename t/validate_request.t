@@ -1170,10 +1170,8 @@ YAML
     'request body is missing',
   );
 
-  TODO: {
-    local $TODO = 'mojo will strip the content body when parsing a stringified request that lacks Content-Length'
-      if $::TYPE eq 'lwp' or $::TYPE eq 'plack' or $::TYPE eq 'catalyst';
-
+  if ($::TYPE eq 'lwp' or $::TYPE eq 'plack' or $::TYPE eq 'catalyst') {
+  todo 'mojo will strip the content body when parsing a stringified request that lacks Content-Length' => sub {
     # this works without a charset because all characters fit into a single byte, essentially
     # acting like latin1.
     $request = request('POST', 'http://example.com/foo', [ 'Content-Type' => 'text/plain' ], 'éclair');
@@ -1194,7 +1192,7 @@ YAML
       },
       'Content-Length is required in requests with a message body',
     );
-  }
+  }}
 
   $request = request('POST', 'http://example.com/foo', [ 'Content-Type' => 'text/bloop' ], 'plain text');
   cmp_result(
@@ -2114,20 +2112,19 @@ YAML
     'multiple values in a single header are validated as a string, with only leading and trailing whitespace stripped',
   );
 
-  TODO: {
+  if ($::TYPE eq 'plack' or $::TYPE eq 'catalyst') {
+  todo 'HTTP::Message::to_psgi fetches all headers as a single concatenated string' => sub {
   $request = request('GET', 'http://example.com/foo', [
       MultipleValuesAsString => '  one ',
       MultipleValuesAsString => ' two  ',
       MultipleValuesAsString => 'three  ',
     ]);
-  local $TODO = 'HTTP::Message::to_psgi fetches all headers as a single concatenated string'
-    if $::TYPE eq 'plack' or $::TYPE eq 'catalyst';
   cmp_result(
     $openapi->validate_request($request)->TO_JSON,
     { valid => true },
     'multiple headers on separate lines are validated as a string, with leading and trailing whitespace stripped',
   );
-  }
+  }}
 
   $request = request('GET', 'http://example.com/foo', [ MultipleValuesAsArray => '  one, two, three  ' ]);
   cmp_result(

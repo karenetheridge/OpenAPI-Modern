@@ -1030,8 +1030,8 @@ YAML
   # note: when 204, mojo's $message->body always returns '' and Content-Length is stripped.
   # this test is only possible (for HTTP::Response) if we manually add a Content-Length; it will not
   # be added via parse().
-  TODO: {
-  local $TODO = 'Mojolicious will strip Content-Length for 204 responses' if $::TYPE eq 'mojo';
+  if ($::TYPE eq 'mojo') {
+  todo 'Mojolicious will strip Content-Length for 204 responses' => sub {
   cmp_result(
     $openapi->validate_response(response(204, [ 'Content-Type' => 'text/plain', 'Content-Length' => 20 ], 'I should not have content'),
       { path_template => '/foo', method => 'post' })->TO_JSON,
@@ -1054,7 +1054,7 @@ YAML
     },
     'an undesired response body is detectable for 204 responses',
   );
-  }
+  }}
 
 
   $openapi = OpenAPI::Modern->new(
