@@ -2460,6 +2460,9 @@ YAML
   );
 };
 
-goto START if ++$type_index < @::TYPES;
+if (++$type_index < @::TYPES) {
+  bail_if_not_passing if $ENV{AUTHOR_TESTING};
+  goto START;
+}
 
 done_testing;

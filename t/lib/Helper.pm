@@ -22,6 +22,7 @@ use Test2::Tools::Exception 'lives';
 use Test::Needs;
 use Test::More 0.96;
 use if $ENV{AUTHOR_TESTING}, 'Test::Warnings';
+use if $ENV{AUTHOR_TESTING}, 'Test2::Plugin::BailOnFail';
 use Test::Deep; # import symbols: ignore, re etc
 use JSON::Schema::Modern::Document::OpenAPI;
 use JSON::Schema::Modern::Utilities qw(true false);
@@ -351,6 +352,13 @@ sub die_result ($sub, $pattern, $test_name) {
 sub exception :prototype(&) {
   eval { $_[0]->() };
   return $@ eq '' ? undef : $@;
+}
+
+sub bail_if_not_passing {
+  context_do {
+    my $ctx = shift;
+    $ctx->bail if not $ctx->hub->is_passing;
+  }
 }
 
 1;
