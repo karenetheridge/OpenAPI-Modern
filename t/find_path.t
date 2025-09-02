@@ -2081,6 +2081,39 @@ YAML
     'no request provided; operation method does not match passed-in method',
   );
 
+  ok(!$openapi->find_path($options = { operation_id => 'my_reffed_component_operation', method => 'GET' }),
+    'find_path returns false');
+  cmp_result(
+    $options,
+    {
+      method => 'GET',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '',
+          keywordLocation => '/components/pathItems/my_path_item/post/operationId',
+          absoluteKeywordLocation => $doc_uri.'#/components/pathItems/my_path_item/post/operationId',
+          error => 'operation at operation_id does not match HTTP method "GET"',
+        }),
+      ],
+    },
+    'passed-in method does not match operation at operationId under /components',
+  );
+
+  ok($openapi->find_path($options = { operation_id => 'my_reffed_component_operation', method => 'POST' }),
+    'find_path succeeded');
+  cmp_result(
+    $options,
+    {
+      operation_id => 'my_reffed_component_operation',
+      # no path_template
+      method => 'post',
+      _path_item => { post => ignore },
+      operation_uri => str($doc_uri.'#/components/pathItems/my_path_item/post'),
+      errors => [],
+    },
+    'operation outside /paths can be found with operation_id and method'
+  );
+
   ok(!$openapi->find_path($options = { method => 'get' }), 'find_path returns false');
   cmp_result(
     $options,
