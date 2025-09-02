@@ -231,7 +231,7 @@ YAML
         {
           instanceLocation => '/request/header',
           keywordLocation => jsonp(qw(/paths /foo $ref post parameters 0 required)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/pathItems/my_path_item2/post/parameters/0/required')->to_string,
+          absoluteKeywordLocation => $doc_uri.'#/components/pathItems/my_path_item2/post/parameters/0/required',
           error => 'missing header: Alpha',
         },
       ],
@@ -267,7 +267,7 @@ YAML
         {
           instanceLocation => '/request',
           keywordLocation => jsonp(qw(/paths /foo/bar $ref get requestBody required)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/pathItems/foo-bar/get/requestBody/required')->to_string,
+          absoluteKeywordLocation => $doc_uri.'#/components/pathItems/foo-bar/get/requestBody/required',
           error => 'request body is required but missing',
         },
       ],
@@ -620,7 +620,7 @@ YAML
         {
           instanceLocation => '/request',
           keywordLocation => jsonp(qw(/paths /foo post parameters 0 $ref $ref)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/parameters/foo/$ref')->to_string,
+          absoluteKeywordLocation => $doc_uri.'#/components/parameters/foo/$ref',
           error => 'EXCEPTION: unable to find resource "'.$doc_uri.'#/i_do_not_exist"',
         },
       ],
@@ -744,13 +744,13 @@ YAML
         {
           instanceLocation => '/request/header',
           keywordLocation => jsonp(qw(/paths /foo post parameters 1 $ref required)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/parameters/foo-header/required')->to_string,
+          absoluteKeywordLocation => $doc_uri.'#/components/parameters/foo-header/required',
           error => 'missing header: Alpha',
         },
         {
           instanceLocation => '/request/header',
           keywordLocation => jsonp(qw(/paths /foo post parameters 7 $ref $ref required)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/parameters/bar-header/required')->to_string,
+          absoluteKeywordLocation => $doc_uri.'#/components/parameters/bar-header/required',
           error => 'missing header: Beta',
         },
       ],
@@ -846,7 +846,7 @@ YAML
         {
           instanceLocation => '/request/header/Alpha',
           keywordLocation => jsonp(qw(/paths /foo post parameters 1 $ref schema pattern)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/parameters/foo-header/schema/pattern')->to_string,
+          absoluteKeywordLocation => $doc_uri.'#/components/parameters/foo-header/schema/pattern',
           error => 'pattern does not match',
         },
         {
@@ -1563,7 +1563,7 @@ YAML
         {
           instanceLocation => '/request',
           keywordLocation => jsonp(qw(/paths /foo parameters 1 $ref)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/parameters/alpha')->to_string,
+          absoluteKeywordLocation => $doc_uri.'#/components/parameters/alpha',
           error => 'duplicate query parameter "alpha"',
         },
       ],
@@ -1598,7 +1598,7 @@ YAML
         {
           instanceLocation => '/request',
           keywordLocation => jsonp(qw(/paths /foo get parameters 1 $ref)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/parameters/alpha')->to_string,
+          absoluteKeywordLocation => $doc_uri.'#/components/parameters/alpha',
           error => 'duplicate query parameter "alpha"',
         },
       ],
@@ -2301,7 +2301,7 @@ YAML
         {
           instanceLocation => '/request',
           keywordLocation => jsonp(qw(/paths /foo post parameters 0), ('$ref')x17),
-          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/parameters/bar/$ref')->to_string,
+          absoluteKeywordLocation => $doc_uri.'#/components/parameters/bar/$ref',
           error => 'EXCEPTION: maximum evaluation depth exceeded',
         },
       ],
