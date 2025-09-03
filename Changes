@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.092     2025-09-03 22:49:24Z
           - removed the 'json_schema_dialect' constructor argument for
             JSON::Schema::Modern::Document::OpenAPI (use jsonSchemaDialect in
             the document instead)
