@@ -29,7 +29,7 @@ use Path::Tiny;
 use List::Util 'pairs';
 use Ref::Util 'is_plain_hashref';
 use MooX::TypeTiny 0.002002;
-use Types::Standard qw(InstanceOf HashRef Str Enum);
+use Types::Standard qw(HashRef Str);
 use namespace::clean;
 
 extends 'JSON::Schema::Modern::Document';
