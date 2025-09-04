@@ -251,7 +251,7 @@ sub to_str ($message) {
 # as the OpenAPI::Modern constructor might do.
 sub document_result ($document) {
   JSON::Schema::Modern::Result->new(
-    valid => $document->has_errors,
+    valid => !$document->has_errors,
     errors => [ $document->errors ],
   );
 }
