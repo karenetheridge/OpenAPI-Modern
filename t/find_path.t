@@ -1953,6 +1953,61 @@ YAML
     },
     'a relative server url is resolved against the relative retrieval uri to match the request; request has no host or scheme',
   );
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri_rel,
+    openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
+paths:
+  /user/{id}:
+    parameters:
+      - name: id
+        required: true
+        in: path
+        schema: {}
+    get:
+      operationId: generic_get
+  /company/{id}:
+    $ref: '#/paths/~1user~1%7Bid%7D'
+YAML
+
+  ok($openapi->find_path($options = { request => request('GET', '/user/1'), operation_id => 'generic_get' }),
+    to_str($request).': find_path returns success');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      method => 'get',
+      operation_id => 'generic_get',
+      path_template => '/user/{id}',
+      path_captures => { id => 1 },
+      uri_captures => { id => 1 },
+      _path_item => { map +($_ => ignore), qw(parameters get) },
+      operation_uri => str($doc_uri_rel->clone->fragment(jsonp(qw(/paths /user/{id} get)))),
+      errors => [],
+    },
+    'found the right path-item for an operation shared by multiple paths, no $refs',
+  );
+
+  todo('FIXME! cannot infer path_template from operation_id, as we may be $reffed from another path-item' => sub {
+  ok($openapi->find_path($options = { request => request('GET', '/company/2'), operation_id => 'generic_get' }),
+    to_str($request).': find_path returns success');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      method => 'get',
+      operation_id => 'generic_get',
+      path_template => '/company/{id}',
+      path_captures => { id => 2 },
+      uri_captures => { id => 2 },
+      _path_item => { map +($_ => ignore), qw(parameters get) },
+      operation_uri => str($doc_uri_rel->clone->fragment(jsonp(qw(/paths /user/{id} get)))),
+      errors => [],
+    },
+    'found the right path-item for an operation shared by multiple paths, $ref from the path to the path-item',
+  );
+  });
 };
 
 subtest $::TYPE.': no request is provided: options are relied on as the sole source of truth' => sub {

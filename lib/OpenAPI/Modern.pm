@@ -375,7 +375,9 @@ sub find_path ($self, $options, $state = {}) {
     # The path_template cannot be found if the operation path is not directly under /paths (such as
     # for path-items reached by a $ref): we will do a URI -> path_template lookup later on,
     # which will work as long as the operation does not correspond to a webhook or callback.
-    # TODO: need a mechanism for specifying these
+    # TODO: need a mechanism for specifying these for validate_request
+    # FIXME: if the request's real 'path' has a $ref to this path-item, we will find the wrong
+    # path_template, and the subsequent _match_uri check will fail.
     if ($operation_path ne jsonp('/paths', $path_template, $method)) {
       undef $path_template;
     }
