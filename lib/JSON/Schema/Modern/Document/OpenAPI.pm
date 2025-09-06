@@ -263,6 +263,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
   foreach my $path (sort keys(($schema->{paths}//{})->%*)) {
     next if $path =~ '^x-';
     my %seen_names;
+    # { for the editor
     foreach my $name ($path =~ m!\{([^}]+)\}!g) {
       if (++$seen_names{$name} == 2) {
         ()= E({ %$state, schema_path => jsonp('/paths', $path) },
@@ -270,6 +271,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
       }
     }
 
+    # { for the editor
     my $normalized = $path =~ s/\{[^}]+\}/\x00/r;
     if (my $first_path = $seen_path{$normalized}) {
       ()= E({ %$state, schema_path => jsonp('/paths', $path) },
@@ -298,6 +300,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
         next;
       }
 
+      # { for the editor
       my $normalized = $servers->[$server_idx]{url} =~ s/\{[^}]+\}/\x00/r;
       # { for the editor
       my @url_variables = $servers->[$server_idx]{url} =~ /\{([^}]+)\}/g;
