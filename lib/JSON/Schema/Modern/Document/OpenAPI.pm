@@ -28,6 +28,7 @@ use File::ShareDir 'dist_dir';
 use Path::Tiny;
 use List::Util 'pairs';
 use Ref::Util 'is_plain_hashref';
+use builtin::compat 'blessed';
 use MooX::TypeTiny 0.002002;
 use Types::Standard qw(HashRef Str);
 use namespace::clean;
@@ -370,6 +371,13 @@ sub traverse ($self, $evaluator, $config_override = {}) {
   }
 
   return $state;
+}
+
+# just like the base class's version, except we skip the evaluate step because we already did
+# that as part of traverse.
+sub validate ($class, @args) {
+  my $document = blessed($class) ? $class : $class->new(@args);
+  return JSON::Schema::Modern::Result->new(valid => !$document->has_errors, errors => [ $document->errors ]);
 }
 
 ######## NO PUBLIC INTERFACES FOLLOW THIS POINT ########
