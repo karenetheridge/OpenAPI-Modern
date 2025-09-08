@@ -53,6 +53,10 @@ use constant DEFAULT_DIALECT => 'https://spec.openapis.org/oas/3.1/dialect/2024-
 use constant DEFAULT_BASE_METASCHEMA => 'https://spec.openapis.org/oas/3.1/schema-base/2025-02-13';
 use constant DEFAULT_METASCHEMA => 'https://spec.openapis.org/oas/3.1/schema/2025-02-13';
 use constant OAS_VOCABULARY => 'https://spec.openapis.org/oas/3.1/meta/2024-11-10';
+
+# it is likely the case that we can support a version beyond what's stated here -- but we may not,
+# so we'll warn to that effect. Every effort will be made to upgrade this implementation to fully
+# support the latest version as soon as possible.
 use constant OAS_VERSION => '3.1.1';
 
 has '+schema' => (
@@ -150,10 +154,26 @@ sub traverse ($self, $evaluator, $config_override = {}) {
       validate_formats => 1,
       callbacks => {
         pattern => sub ($data, $schema, $state) {
-          return E($state, 'unrecognized openapi version %s', $data)
-            if $state->{data_path} eq '/openapi' and $data !~ /^3\.1\.[0-9]+(-.+)?$/;
           return E($state, '$self cannot contain a fragment')
             if $state->{data_path} eq '/$self' and $data =~ /#/;
+
+          if ($state->{data_path} eq '/openapi') {
+            return E($state, 'unrecognized/unsupported openapi version %s', $data)
+              if $data !~ /^3\.1\.[0-9]+(-.+)?$/;
+
+            my @oad_version = split /\./, $data;
+            my @supported_version = split /\./, OAS_VERSION;
+
+            if ($oad_version[0] > $supported_version[0]
+                || $oad_version[0] == $supported_version[0]
+                  && ($oad_version[1] > $supported_version[1]
+                || $oad_version[1] == $supported_version[1] && $oad_version[2] > $supported_version[2])) {
+              carp 'WARNING: your document was written for version ', $data,
+                ' but this implementation has only been tested up to ', OAS_VERSION,
+                ': this may be okay but you should upgrade your OpenAPI::Modern installation soon';
+            }
+          }
+
           return 1;
         },
       },

@@ -171,7 +171,7 @@ ERRORS
         instanceLocation => '/openapi',
         keywordLocation => '/properties/openapi/pattern',
         absoluteKeywordLocation => DEFAULT_METASCHEMA.'#/properties/openapi/pattern',
-        error => 'unrecognized openapi version 2.1.3',
+        error => 'unrecognized/unsupported openapi version 2.1.3',
       },
       {
         instanceLocation => '',
@@ -316,6 +316,26 @@ YAML
 '/jsonSchemaDialect/$vocabulary/https:~1~1unknown': "https://unknown" is not a known vocabulary
 '/jsonSchemaDialect': "https://metaschema/with/wrong/spec" is not a valid metaschema
 ERRORS
+};
+
+subtest 'openapi version checks' => sub {
+  foreach my $version (qw(3.1.2)) {    # TODO: 3.2.5 4.0.0 4.1.0
+    cmp_result(
+      [ warnings {
+        JSON::Schema::Modern::Document::OpenAPI->new(
+          schema => $yamlpp->load_string(<<"YAML"))
+---
+openapi: $version
+info:
+  title: Test API
+  version: 1.2.3
+paths: {}
+YAML
+      } ],
+    [ re(qr/^\QWARNING: your document was written for version $version but this implementation has only been tested up to ${\ OAS_VERSION }: this may be okay but you should upgrade your OpenAPI::Modern installation soon\E/) ],
+      'warning (not error) is given when the OAD version ('.$version.') exceeds what we know about',
+    );
+  }
 };
 
 subtest 'custom dialects via jsonSchemaDialect' => sub {
