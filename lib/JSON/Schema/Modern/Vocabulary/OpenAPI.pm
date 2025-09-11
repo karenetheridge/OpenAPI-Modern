@@ -124,7 +124,7 @@ with the URI C<https://spec.openapis.org/oas/3.1/vocab/base> and formally specif
 L<https://spec.openapis.org/oas/v3.1#schema-object>.
 
 This vocabulary is normally made available by using the default OpenAPI metaschema
-(currently L<https://spec.openapis.org/oas/3.1/schema/2025-02-13>).
+(currently L<https://spec.openapis.org/oas/3.1/schema/2025-08-31>).
 
 =head1 SEE ALSO
 

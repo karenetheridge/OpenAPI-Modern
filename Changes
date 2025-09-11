@@ -1,6 +1,7 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+        - updated bundled schemas to their latest published versions
 
 0.094     2025-09-08 19:05:29Z
           - fix redefinition warning in tests
