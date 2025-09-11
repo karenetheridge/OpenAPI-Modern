@@ -1602,7 +1602,7 @@ YAML
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/uri',
-          keywordLocation => jsonp(qw(/paths /worse/{host} $ref servers 3 url)),
+          keywordLocation => '/servers/3/url',
           absoluteKeywordLocation => $doc_uri.'#/servers/3/url',
           error => 'duplicate template name "host" in server url and path template',
         }),
@@ -1665,7 +1665,7 @@ YAML
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/uri',
-          keywordLocation => jsonp(qw(/paths /qux/{qux_id} $ref servers 3 variables host enum)),
+          keywordLocation => '/servers/3/variables/host/enum',
           absoluteKeywordLocation => $doc_uri.'#/servers/3/variables/host/enum',
           error => 'server url value does not match any of the allowed values',
         }),

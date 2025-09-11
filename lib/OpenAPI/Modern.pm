@@ -631,11 +631,11 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
   # location, for usage in error objects
   my ($servers, $more_schema_path, $base_schema_uri) =
       exists $local_state->{path_item}{lc $method}{servers}
-        ? ($local_state->{path_item}{lc $method}{servers}, [lc $method, 'servers'])
+        ? ($local_state->{path_item}{lc $method}{servers}, [lc $method])
     : exists $local_state->{path_item}{servers}
-        ? ($local_state->{path_item}{servers}, ['servers'])
+        ? ($local_state->{path_item}{servers}, [])
     : exists $self->openapi_document->schema->{servers}
-        ? ($self->openapi_document->schema->{servers}, ['servers'], $self->openapi_uri)
+        ? ($self->openapi_document->schema->{servers}, [], $self->openapi_uri)
     : ();
 
   # §4.8.1.1 "If the servers field is not provided, or is an empty array, the default value would
@@ -678,8 +678,9 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
     my ($valid, %seen) = (1);
     foreach my $name (@uri_capture_names) {
       $valid = E({ %$state, keyword => 'url', data_path => '/request/uri',
-            schema_path => jsonp($state->{schema_path}, @$more_schema_path, $index),
-            defined $base_schema_uri ? (initial_schema_uri => $base_schema_uri) : () },
+            defined $base_schema_uri
+              ? (initial_schema_uri => $base_schema_uri, traversed_schema_path => '', schema_path => '/servers/'.$index)
+              : (schema_path => jsonp($state->{schema_path}, @$more_schema_path, 'servers', $index)) },
           'duplicate template name "%s" in server url and path template', $name)
         if $seen{$name}++;
     }
@@ -692,8 +693,10 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
       next if not exists((($server->{variables}//{})->{$name}//{})->{enum});
 
       $valid = E({ %$state, data_path => '/request/uri', keyword => 'enum',
-            schema_path => jsonp($state->{schema_path}, @$more_schema_path, $index, 'variables', $name),
-            defined $base_schema_uri ? (initial_schema_uri => $base_schema_uri) : () },
+            defined $base_schema_uri
+              ? (initial_schema_uri => $base_schema_uri, traversed_schema_path => '',
+                  schema_path => jsonp('/servers', $index, 'variables', $name))
+              : (schema_path => jsonp($state->{schema_path}, @$more_schema_path, 'servers', $index, 'variables', $name)) },
           'server url value does not match any of the allowed values')
         if not any { $captures{$name} eq $_ } $server->{variables}{$name}{enum}->@*;
     }
