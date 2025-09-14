@@ -286,8 +286,8 @@ YAML
       errors => [
         {
           instanceLocation => '/response',
-          keywordLocation => jsonp(qw(/paths /foo/bar)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
+          keywordLocation => jsonp(qw(/paths /foo/bar post)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar post)))->to_string,
           error => 'templated operation does not match provided operation_id',
         },
       ],
@@ -299,7 +299,6 @@ YAML
     $options,
     {
       path_template => '/foo/bar',
-      _path_item => { post => ignore },
       method => 'POST',
       operation_id => 'my_components_pathItem_operation',
     },

@@ -97,6 +97,7 @@ paths:
     $ref: '#/components/pathItems/my_path_item2'
   /foo/bar:
     post:
+      # note: no operationId here
       callbacks:
         my_callback:
           '{$request.query.queryUrl}': # note this is a path-item
@@ -118,9 +119,9 @@ YAML
       errors => [
         {
           instanceLocation => '/request',
-          keywordLocation => jsonp(qw(/paths /foo/bar)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
-          error => 'templated operation does not match provided operation_id',
+          keywordLocation => '/paths',
+          absoluteKeywordLocation => $doc_uri.'#/paths',
+          error => 'no match found for request '.to_str($request),
         },
       ],
     },
@@ -134,9 +135,10 @@ YAML
       errors => [
         {
           instanceLocation => '/request',
-          keywordLocation => jsonp(qw(/paths /foo/bar)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
-          error => 'templated operation does not match provided operation_id',
+          keywordLocation => jsonp(qw(/paths /foo/bar post)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar post)))->to_string,
+          error => 'provided path_template and operation_id do not match request '.to_str($request),
+
         },
       ],
     },
@@ -150,9 +152,9 @@ YAML
       errors => [
         {
           instanceLocation => '/request',
-          keywordLocation => jsonp(qw(/paths /foo/bar)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
-          error => 'templated operation does not match provided operation_id',
+          keywordLocation => '/paths',
+          absoluteKeywordLocation => $doc_uri.'#/paths',
+          error => 'no match found for request '.to_str($request),
         },
       ],
     },
@@ -166,9 +168,9 @@ YAML
       errors => [
         {
           instanceLocation => '/request',
-          keywordLocation => jsonp(qw(/paths /foo/bar)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
-          error => 'templated operation does not match provided operation_id',
+          keywordLocation => '/paths',
+          absoluteKeywordLocation => $doc_uri.'#/paths',
+          error => 'no match found for request '.to_str($request),
         },
       ],
     },
@@ -182,13 +184,13 @@ YAML
       errors => [
         {
           instanceLocation => '/request',
-          keywordLocation => jsonp(qw(/paths /foo/bar)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
-          error => 'templated operation does not match provided operation_id',
+          keywordLocation => '/paths',
+          absoluteKeywordLocation => $doc_uri.'#/paths',
+          error => 'no match found for request '.to_str($request),
         },
       ],
     },
-    to_str($request).': operation is not under a path-item with a path template',
+    to_str($request).': operation is not under a path-item with this path template',
   );
 
   cmp_result(
@@ -199,7 +201,7 @@ YAML
         {
           instanceLocation => '/request',
           keywordLocation => '/paths',
-          absoluteKeywordLocation => $doc_uri->clone->fragment('/paths')->to_string,
+          absoluteKeywordLocation => $doc_uri.'#/paths',
           error => 'no match found for request '.to_str($request),
         },
       ],

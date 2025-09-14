@@ -360,9 +360,9 @@ sub find_path ($self, $options, $state = {}) {
     $method = $options->{method};
   }
 
-  my ($path_template, $operation_path);
+  my $operation_path;
 
-  # path_template and method from operation_id from options
+  # method from operation_id from options
   if (exists $options->{operation_id}) {
     # FIXME: what if the operation is defined in another document? Need to look it up across
     # all documents, and localize $state->{initial_schema_uri}
@@ -370,29 +370,17 @@ sub find_path ($self, $options, $state = {}) {
     return E({ %$state, recommended_response => [ 500 ] }, 'unknown operation_id "%s"', $options->{operation_id})
       if not $operation_path;
 
-    # the operation path always ends with the method
-    ($path_template, $method) = (unjsonp($operation_path))[-2,-1];
-    $method = uc $method;
+    # The path_template cannot be unambiguously found by looking at the path of the operation:
+    # the operation path may be under /components/pathItems or /webhooks, or the intended /paths
+    # entry might contain a $ref to this location.
+    # We can do a URI -> path_template lookup later on, which will succeed if the operation is
+    # reachable from a /paths entry, but as this can possibly match more than once, in order to
+    # provide an unambiguous result, provide the operation_id as well.
 
-    # The path_template cannot be found if the operation path is not directly under /paths (such as
-    # for path-items reached by a $ref): we will do a URI -> path_template lookup later on,
-    # which will work as long as the operation does not correspond to a webhook or callback.
-    # TODO: need a mechanism for specifying these for validate_request
-    # FIXME: if the request's real 'path' has a $ref to this path-item, we will find the wrong
-    # path_template, and the subsequent _match_uri check will fail.
-    if ($operation_path ne jsonp('/paths', $path_template, lc $method)) {
-      undef $path_template;
-    }
-    else {
-      # the path_template need not be provided, but if it is, the operation must be located at the
-      # path-item directly underneath that /paths/<path_template>.
-      return E({ %$state, keyword_path => $operation_path.'/operationId', recommended_response => [ 500 ] },
-          'operation at operation_id does not match provided path_template')
-        if exists $options->{path_template} and $options->{path_template} ne $path_template;
-    }
+    # the operation path always ends with the method
+    $method = uc((unjsonp($operation_path))[-1]);
 
     if ($options->{method} and $options->{method} ne $method) {
-      delete $options->{operation_id};
       return E({ %$state, ($options->{request} ? ( data_path => '/request/method' ) : ()), keyword_path => $operation_path.'/operationId' },
         'operation at operation_id does not match HTTP method "%s"', $options->{method});
     }
@@ -412,13 +400,11 @@ sub find_path ($self, $options, $state = {}) {
 
   # path_template from options
   if (exists $options->{path_template}) {
-    $path_template = $options->{path_template};
-
-    return E({ %$state, data_path => '/request/uri', keyword => 'paths' }, 'missing path "%s"', $path_template)
-      if not exists $schema->{paths}{$path_template};
+    return E({ %$state, data_path => '/request/uri', keyword => 'paths' }, 'missing path "%s"', $options->{path_template})
+      if not exists $schema->{paths}{$options->{path_template}};
   }
 
-  if (not $path_template and not $options->{request}) {
+  if (not $options->{path_template} and not $options->{request}) {
     # some operations don't exist directly under a /paths/$path_template - e.g. webhooks or
     # callbacks, but they are still usable
     my $path_item_path = $operation_path =~ s{/\L$method$}{}r;
@@ -433,40 +419,50 @@ sub find_path ($self, $options, $state = {}) {
 
   my $captures;  # hashref of template variable names -> concrete values from the uri
 
-  if (not $path_template and $options->{request}) {
+  if (not $options->{path_template} and $options->{request}) {
     # derive path_template and capture values from the request URI
 
     # sorting (ascii-wise) gives us the desired results that concrete path components sort ahead of
     # templated components, except when the concrete component is a non-ascii character or matches
     # 0x7c (pipe), 0x7d (close-brace) or 0x7e (tilde)
     foreach my $pt (sort keys(($schema->{paths}//{})->%*)) {
-      $state->{path_item} = $schema->{paths}{$pt};
-      $state->{keyword_path} = jsonp('/paths', $pt);
-      $captures = $self->_match_uri($options->{request}->method, $options->{request}->url, $pt, $state);
+      my $local_state = +{ %$state };
+      $local_state->{path_item} = $schema->{paths}{$pt};
+      $local_state->{keyword_path} = jsonp('/paths', $pt);
+      $captures = $self->_match_uri($options->{request}->method, $options->{request}->url, $pt, $local_state);
 
-      # note: this might not be the intended match, as multiple templates can match the same URI
-      $path_template = $pt, last if $captures;
+      if ($captures) {
+        # a URI can match multiple /paths entries, and an operationId can be reachable from multiple
+        # /paths entries, so keep searching until both are a match
+        next if exists $options->{operation_id}
+          and (not exists $local_state->{path_item}{lc $method}{operationId}
+            or $local_state->{path_item}{lc $method}{operationId} ne $options->{operation_id});
 
-      # the initial match succeeded, but something else went wrong and we will still stop iterating
-      if ($state->{errors}->@*) {
+        %$state = %$local_state;
+        $options->{path_template} = $pt;
+        last;
+      }
+
+      # something went wrong, but the match succeeded so we will stop iterating
+      if ($local_state->{errors}->@*) {
+        %$state = %$local_state;
         $options->{path_template} = $pt;
         $options->{_path_item} = $state->{path_item};
         return;
       }
     }
 
-    return E({ %$state, data_path => '/request', keyword_path => '', keyword => 'paths' },
+    return E({ %$state, data_path => '/request', keyword => 'paths' },
         'no match found for request %s %s',
         $options->{request}->method, $options->{request}->url->clone->query('')->fragment(undef))
-      if not $captures;
+      if not exists $options->{path_template};
   }
 
   elsif ($options->{request}) {
-    # we were passed path_template in options or we calculated it from operation_id, and now we
-    # verify it against path_captures and the request URI.
-    $state->{path_item} = $schema->{paths}{$path_template};
-    $state->{keyword_path} = jsonp('/paths', $path_template);
-    $captures = $self->_match_uri($options->{request}->method, $options->{request}->url, $path_template, $state);
+    # we were passed path_template in options, and now we verify it against the request URI
+    $state->{path_item} = $schema->{paths}{$options->{path_template}};
+    $state->{keyword_path} = jsonp('/paths', $options->{path_template});
+    $captures = $self->_match_uri($options->{request}->method, $options->{request}->url, $options->{path_template}, $state);
 
     if (not $captures) {
       #  no path-item and operation found that matches the request's method and uri
@@ -474,52 +470,50 @@ sub find_path ($self, $options, $state = {}) {
 
       # the initial match succeeded, but something else went wrong
       if ($state->{errors}->@*) {
-        $options->{path_template} = $path_template;
         $options->{_path_item} = $state->{path_item};
         return;
       }
 
-      if (exists $options->{path_template}) {
-        return E({ %$state, data_path => '/request/uri',
-            keyword_path => jsonp('/paths', $path_template), recommended_response => [ 500 ] },
-          'provided path_template does not match request URI "%s"',
-          $options->{request}->url->clone->query('')->fragment(undef));
-      }
-      else {
-        return E({ %$state, data_path => '/request/uri',
-            keyword_path => $operation_path.'/operationId', recommended_response => [ 500 ] },
-          'provided operation_id does not match request %s %s',
-          $options->{request}->method, $options->{request}->url->clone->query('')->fragment(undef));
-      }
+      return E({ %$state, data_path => '/request/uri', recommended_response => [ 500 ] },
+        'provided path_template does not match request URI "%s"',
+        $options->{request}->url->clone->query('')->fragment(undef));
+    }
+
+    if (exists $options->{operation_id}
+        and (not exists $state->{path_item}{lc $method}{operationId}
+          or $state->{path_item}{lc $method}{operationId} ne $options->{operation_id})) {
+      delete $options->@{qw(_path_item path_captures uri_captures operation_uri)};
+      return E({ %$state, keyword_path => jsonp($state->{keyword_path}, lc $method,
+          (exists $state->{path_item}{lc $method}{operationId} ? 'operationId' : ())),
+          recommended_response => [ 500 ] },
+        'provided path_template and operation_id do not match request %s %s',
+        $options->{request}->method, $options->{request}->url->clone->query('')->fragment(undef));
     }
   }
 
   else {
     # we were provided $options->{path_template}, and we have already confirmed that it exists.
-    $state->{path_item} = $schema->{paths}{$path_template};
-    $state->{keyword_path} = jsonp('/paths', $path_template);
+    $state->{path_item} = $schema->{paths}{$options->{path_template}};
+    $state->{keyword_path} = jsonp('/paths', $options->{path_template});
     while (defined(my $ref = $state->{path_item}{'$ref'})) {
       $state->{path_item} = $self->_resolve_ref('path-item', $ref, $state);
     }
+
+    return E({ %$state, data_path => '/request/method', recommended_response => [ 405 ] },
+        'missing operation for HTTP method "%s" under "%s"%s', $method, $options->{path_template},
+        exists $state->{path_item}{lc $method} ? (' (should be '.uc $method.')') : '')
+      if $method ne uc $method or not exists $state->{path_item}{lc $method};
+
+    return E({ %$state, keyword_path => jsonp($state->{keyword_path}, lc $method,
+          (exists $state->{path_item}{lc $method}{operationId} ? 'operationId' : ())),
+        recommended_response => [ 500 ] },
+        'templated operation does not match provided operation_id')
+      if exists $options->{operation_id}
+        and (not exists $state->{path_item}{lc $method}{operationId}
+          or $state->{path_item}{lc $method}{operationId} ne $options->{operation_id});
   }
 
-  # if we weren't passed a request, we can't verify that the path_template matches, but we may have
-  # derived it from looking upward from the operation_id
-  $options->{path_template} = $path_template;
   $options->{_path_item} = $state->{path_item};
-
-  # this can only happen if we were not able to derive the path_template from the provided
-  # operation_id earlier, but we still matched the request against some other path-item
-  return E({ %$state, recommended_response => [ 500 ] }, 'templated operation does not match provided operation_id')
-    if exists $options->{operation_id}
-      and (($options->{_path_item}{lc $method}//{})->{operationId}//'') ne $options->{operation_id};
-
-  # this can only happen if we do not have a request object, as otherwise a missing operation is
-  # simply reported as a match failure
-  return E({ %$state, data_path => '/request/method', recommended_response => [ 405 ] },
-      'missing operation for HTTP method "%s" under "%s"%s', $method, $path_template,
-      exists $options->{_path_item}{lc $method} ? (' (should be '.uc $method.')') : '')
-    if $method ne uc $method or not exists $options->{_path_item}{lc $method};
 
   # if initial_schema_uri still points to the head of the entry document, then we have not followed
   # a $ref and the path-item is located at /paths/<path_template>
@@ -531,8 +525,8 @@ sub find_path ($self, $options, $state = {}) {
 
   # note: we aren't doing anything special with escaped slashes. this bit of the spec is hazy.
   # { for the editor
-  my @path_capture_names = ($path_template =~ m!\{([^}]+)\}!g);
-  return E({ %$state, $options->{request} ? (data_path => '/request/uri') : (), recommended_response => [ 500 ] }, 'provided path_captures names do not match path template "%s"', $path_template)
+  my @path_capture_names = ($options->{path_template} =~ m!\{([^}]+)\}!g);
+  return E({ %$state, $options->{request} ? (data_path => '/request/uri') : (), recommended_response => [ 500 ] }, 'provided path_captures names do not match path template "%s"', $options->{path_template})
     if exists $options->{path_captures}
       and not is_equal([ sort keys $options->{path_captures}->%* ], [ sort @path_capture_names ]);
 

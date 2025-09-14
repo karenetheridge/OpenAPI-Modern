@@ -269,14 +269,58 @@ YAML
       operation_id => 'my_get_operation',
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '',
+          instanceLocation => '/request/method',
           keywordLocation => jsonp(qw(/paths /foo/bar get operationId)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar get operationId)))->to_string,
-          error => 'operation at operation_id does not match provided path_template',
+          error => 'operation at operation_id does not match HTTP method "POST"',
         }),
       ],
     },
-    'path_template and operation_id are inconsistent',
+    'request method does not match operation at operationId',
+  );
+
+  ok(!$openapi->find_path($options = { request => $request,
+      path_template => '/foo/{foo_id}', operation_id => 'my_post_operation' }),
+    to_str($request).': lookup failed');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      method => 'POST',
+      path_template => '/foo/{foo_id}',
+      operation_id => 'my_post_operation',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id} post operationId)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} post operationId)))->to_string,
+          error => 'provided path_template and operation_id do not match request POST http://example.com/foo/bar',
+        }),
+      ],
+    },
+    'path_template and operation_id are inconsistent, even if path_template at provided operation_id would match',
+  );
+
+  ok(!$openapi->find_path($options = { request => $request,
+      path_template => '/foo/bar', operation_id => 'another_post_operation' }),
+    to_str($request).': lookup failed');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      method => 'POST',
+      path_template => '/foo/bar',
+      operation_id => 'another_post_operation',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '',
+          keywordLocation => jsonp(qw(/paths /foo/bar post operationId)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar post operationId)))->to_string,
+          error => 'provided path_template and operation_id do not match request POST http://example.com/foo/bar',
+        }),
+      ],
+    },
+    'path_template and operation_id are inconsistent, even if path_template at provided operation_id would match',
   );
 
   ok(!$openapi->find_path($options = { request => $request, operation_id => 'my_get_operation' }),
@@ -286,6 +330,7 @@ YAML
     {
       request => isa('Mojo::Message::Request'),
       method => 'POST',
+      operation_id => 'my_get_operation',
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/method',
@@ -391,6 +436,7 @@ YAML
     {
       request => isa('Mojo::Message::Request'),
       method => 'Get',
+      operation_id => 'my_get_operation',
       errors => [
         methods(TO_JSON => {
           instanceLocation => '/request/method',
@@ -513,17 +559,37 @@ YAML
       request => isa('Mojo::Message::Request'),
       method => 'POST',
       path_template => '/foo/bar',
-      operation_id => 'another_post_operation',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '/request/uri',
+          keywordLocation => jsonp(qw(/paths /foo/bar)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
+          error => 'provided path_template does not match request URI "http://example.com/foo/123"',
+        }),
+      ],
+    },
+    'operation id matches URI, and a path matches this request URI, but not the path_template we provided',
+  );
+
+  ok(!$openapi->find_path($options = { request => $request, path_template => '/foo/{foo_id}', operation_id => 'my_post_operation' }),
+    to_str($request).': lookup failed');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      method => 'POST',
+      path_template => '/foo/{foo_id}',
+      operation_id => 'my_post_operation',
       errors => [
         methods(TO_JSON => {
           instanceLocation => '',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id} post operationId)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} post operationId)))->to_string,
-          error => 'operation at operation_id does not match provided path_template',
+          error => 'provided path_template and operation_id do not match request '.to_str($request),
         }),
       ],
     },
-    'operation id matches URI, and a path matches this request URI, but not the path_template we provided',
+    'path_template matches URI, but the operation_id does not map to this operation',
   );
 
   ok(!$openapi->find_path($options = { request => $request = request('GET', 'http://example.com/something/else'),
@@ -534,12 +600,13 @@ YAML
     {
       request => isa('Mojo::Message::Request'),
       method => 'GET',
+      operation_id => 'my_get_operation',
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/uri',
-          keywordLocation => jsonp(qw(/paths /foo/bar get operationId)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar get operationId)))->to_string,
-          error => 'provided operation_id does not match request GET http://example.com/something/else',
+          instanceLocation => '/request',
+          keywordLocation => '/paths',
+          absoluteKeywordLocation => $doc_uri.'#/paths',
+          error => 'no match found for request '.to_str($request),
         }),
       ],
     },
@@ -554,14 +621,13 @@ YAML
     {
       request => isa('Mojo::Message::Request'),
       method => 'POST',
-      # we should not bother to extract path_captures
-      # operation_id does not match, so is deleted
+      operation_id => 'my_post_operation',
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/uri',
-          keywordLocation => jsonp(qw(/paths /foo/bar post operationId)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar post operationId)))->to_string,
-          error => 'provided operation_id does not match request POST http://example.com/foo/123',
+          instanceLocation => '/request',
+          keywordLocation => '/paths',
+          absoluteKeywordLocation => $doc_uri.'#/paths',
+          error => 'no match found for request '.to_str($request),
         }),
       ],
     },
@@ -867,12 +933,13 @@ YAML
     {
       request => isa('Mojo::Message::Request'),
       method => 'GET',
+      operation_id => 'dotted_foo_bar',
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/uri',
-          keywordLocation => jsonp(qw(/paths /foo.bar get operationId)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo.bar get operationId)))->to_string,
-          error => 'provided operation_id does not match request GET http://example.com/foo/bar',
+          instanceLocation => '/request',
+          keywordLocation => '/paths',
+          absoluteKeywordLocation => $doc_uri.'#/paths',
+          error => 'no match found for request '.to_str($request),
         }),
       ],
     },
@@ -910,12 +977,13 @@ YAML
     {
       request => isa('Mojo::Message::Request'),
       method => 'GET',
+      operation_id => 'all_dots',
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/uri',
-          keywordLocation => jsonp(qw(/paths /foo/..... get operationId)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/..... get operationId)))->to_string,
-          error => 'provided operation_id does not match request GET http://example.com/foo/x.bar',
+          instanceLocation => '/request',
+          keywordLocation => '/paths',
+          absoluteKeywordLocation => $doc_uri.'#/paths',
+          error => 'no match found for request '.to_str($request),
         }),
       ],
     },
@@ -1051,16 +1119,14 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
-      path_template => '/foo/bar',
-      _path_item => { post => ignore },
       method => 'POST',
       operation_id => 'my_components_pathItem_operation',
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '',
-          keywordLocation => jsonp(qw(/paths /foo/bar)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
-          error => 'templated operation does not match provided operation_id',
+          instanceLocation => '/request',
+          keywordLocation => '/paths',
+          absoluteKeywordLocation => $doc_uri.'#/paths',
+          error => 'no match found for request '.to_str($request),
         }),
       ],
     },
@@ -1074,15 +1140,14 @@ YAML
     {
       request => isa('Mojo::Message::Request'),
       path_template => '/foo/bar',
-      _path_item => { post => ignore },
       method => 'POST',
       operation_id => 'my_components_pathItem_operation',
       errors => [
         methods(TO_JSON => {
           instanceLocation => '',
-          keywordLocation => jsonp(qw(/paths /foo/bar)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
-          error => 'templated operation does not match provided operation_id',
+          keywordLocation => jsonp(qw(/paths /foo/bar post)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar post)))->to_string,
+          error => 'provided path_template and operation_id do not match request '.to_str($request),
         }),
       ],
     },
@@ -1098,15 +1163,13 @@ YAML
     {
       request => isa('Mojo::Message::Request'),
       method => 'POST',
-      path_template => '/foo/bar',
-      _path_item => { post => ignore },
       operation_id => 'my_webhook_operation',
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '',
-          keywordLocation => jsonp(qw(/paths /foo/bar)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
-          error => 'templated operation does not match provided operation_id',
+          instanceLocation => '/request',
+          keywordLocation => '/paths',
+          absoluteKeywordLocation => $doc_uri.'#/paths',
+          error => 'no match found for request '.to_str($request),
         }),
       ],
     },
@@ -1120,15 +1183,13 @@ YAML
     {
       request => isa('Mojo::Message::Request'),
       method => 'POST',
-      path_template => '/foo/bar',
-      _path_item => { post => ignore },
       operation_id => '0',
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '',
-          keywordLocation => jsonp(qw(/paths /foo/bar)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
-          error => 'templated operation does not match provided operation_id',
+          instanceLocation => '/request',
+          keywordLocation => '/paths',
+          absoluteKeywordLocation => $doc_uri.'#/paths',
+          error => 'no match found for request '.to_str($request),
         }),
       ],
     },
@@ -1144,15 +1205,13 @@ YAML
     {
       request => isa('Mojo::Message::Request'),
       method => 'POST',
-      path_template => '/foo/bar',
-      _path_item => { post => ignore },
       operation_id => 'my_paths_pathItem_callback_operation',
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '',
-          keywordLocation => jsonp(qw(/paths /foo/bar)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
-          error => 'templated operation does not match provided operation_id',
+          instanceLocation => '/request',
+          keywordLocation => '/paths',
+          absoluteKeywordLocation => $doc_uri.'#/paths',
+          error => 'no match found for request '.to_str($request),
         }),
       ],
     },
@@ -1166,15 +1225,13 @@ YAML
     {
       request => isa('Mojo::Message::Request'),
       method => 'POST',
-      path_template => '/foo/bar',
-      _path_item => { post => ignore },
       operation_id => 'my_components_pathItem_callback_operation',
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '',
-          keywordLocation => jsonp(qw(/paths /foo/bar)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
-          error => 'templated operation does not match provided operation_id',
+          instanceLocation => '/request',
+          keywordLocation => '/paths',
+          absoluteKeywordLocation => $doc_uri.'#/paths',
+          error => 'no match found for request '.to_str($request),
         }),
       ],
     },
@@ -1992,7 +2049,7 @@ YAML
 
 
   $openapi = OpenAPI::Modern->new(
-    openapi_uri => $doc_uri_rel,
+    openapi_uri => $doc_uri,
     openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
 paths:
   /user/{id}:
@@ -2002,48 +2059,232 @@ paths:
         in: path
         schema: {}
     get:
-      operationId: generic_get
+      operationId: user_get
+  /company/acme:
+    $ref: '#/paths/~1animal~1giraffe'
   /company/{id}:
     $ref: '#/paths/~1user~1%7Bid%7D'
+  /animal/giraffe:
+    # note: no operation_id
+    get: {}
+  /animal/tiger:
+    get:
+      operationId: tiger_get
+  /animal/{name}:
+    get:
+      operationId: animal_get
+  /empty/operation/id:
+    get:
+      operationId: ''
 YAML
 
-  ok($openapi->find_path($options = { request => $request = request('GET', '/user/1'), operation_id => 'generic_get' }),
+  ok($openapi->find_path($options = { request => $request = request('GET', 'http://example.com/user/1'), operation_id => 'user_get' }),
     to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     {
       request => isa('Mojo::Message::Request'),
       method => 'GET',
-      operation_id => 'generic_get',
+      operation_id => 'user_get',
       path_template => '/user/{id}',
       path_captures => { id => 1 },
       uri_captures => { id => 1 },
       _path_item => { map +($_ => ignore), qw(parameters get) },
-      operation_uri => str($doc_uri_rel->clone->fragment(jsonp(qw(/paths /user/{id} get)))),
+      operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /user/{id} get)))),
       errors => [],
     },
     'found the right path-item for an operation shared by multiple paths, no $refs',
   );
 
-  todo('FIXME! cannot infer path_template from operation_id, as we may be $reffed from another path-item' => sub {
-  ok($openapi->find_path($options = { request => $request = request('GET', '/company/2'), operation_id => 'generic_get' }),
+  ok($openapi->find_path($options = { request => $request = request('GET', 'http://example.com/company/2'), operation_id => 'user_get' }),
     to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     {
       request => isa('Mojo::Message::Request'),
       method => 'GET',
-      operation_id => 'generic_get',
+      operation_id => 'user_get',
       path_template => '/company/{id}',
       path_captures => { id => 2 },
       uri_captures => { id => 2 },
       _path_item => { map +($_ => ignore), qw(parameters get) },
-      operation_uri => str($doc_uri_rel->clone->fragment(jsonp(qw(/paths /user/{id} get)))),
+      operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /user/{id} get)))),
       errors => [],
     },
     'found the right path-item for an operation shared by multiple paths, $ref from the path to the path-item',
   );
-  });
+
+  ok(!$openapi->find_path($options = { request => $request = request('GET', 'http://example.com/company/acme'), operation_id => 'tiger_get' }),
+    to_str($request).': lookup failed');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      method => 'GET',
+      operation_id => 'tiger_get',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '/request',
+          keywordLocation => '/paths',
+          absoluteKeywordLocation => $doc_uri.'#/paths',
+          error => 'no match found for request '.to_str($request),
+        }),
+      ],
+    },
+    'two URI matches through a $ref do not match provided operation_id',
+  );
+
+  ok($openapi->find_path($options = { request => $request = request('GET', 'http://example.com/animal/giraffe'), operation_id => 'animal_get' }),
+    to_str($request).': lookup succeeded');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      method => 'GET',
+      operation_id => 'animal_get',
+      path_template => '/animal/{name}',
+      path_captures => { name => 'giraffe' },
+      uri_captures => { name => 'giraffe' },
+      _path_item => { get => ignore },
+      operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /animal/{name} get)))),
+      errors => [],
+    },
+    'can force a match to a lower-priority path by providing the operation_id (where first match has no operationId',
+  );
+
+  ok($openapi->find_path($options = { request => $request = request('GET', 'http://example.com/animal/tiger'), operation_id => 'animal_get' }),
+    to_str($request).': lookup succeeded');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      method => 'GET',
+      operation_id => 'animal_get',
+      path_template => '/animal/{name}',
+      path_captures => { name => 'tiger' },
+      uri_captures => { name => 'tiger' },
+      _path_item => { get => ignore },
+      operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /animal/{name} get)))),
+      errors => [],
+    },
+    'can force a match to a lower-priority path by providing the operation_id (where first match does have an operationId',
+  );
+
+  ok(!$openapi->find_path($options = { request => $request, operation_id => 'user_get' }), 'lookup failed');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      method => 'GET',
+      operation_id => 'user_get',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '/request',
+          keywordLocation => '/paths',
+          absoluteKeywordLocation => $doc_uri.'#/paths',
+          error => 'no match found for request '.to_str($request),
+        }),
+      ],
+    },
+    'provided operation_id does not match any request',
+  );
+
+  ok($openapi->find_path($options = { request => $request = request('GET', 'http://example.com/company/2'), path_template => '/company/{id}', operation_id => 'user_get' }),
+    to_str($request).': lookup succeeded');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      method => 'GET',
+      operation_id => 'user_get',
+      path_template => '/company/{id}',
+      path_captures => { id => 2 },
+      uri_captures => { id => 2 },
+      _path_item => { map +($_ => ignore), qw(parameters get) },
+      operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /user/{id} get)))),
+      errors => [],
+    },
+    'found the right path-item with path_template for an operation shared by multiple paths, $ref from the path to the path-item',
+  );
+
+  ok(!$openapi->find_path($options = { request => $request = request('GET', 'http://example.com/animal/giraffe'), path_template => '/animal/giraffe', operation_id => 'animal_get' }), 'lookup failed');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      method => 'GET',
+      operation_id => 'animal_get',
+      path_template => '/animal/giraffe',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '',
+          keywordLocation => jsonp(qw(/paths /animal/giraffe get)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /animal/giraffe get)))->to_string,
+          error => 'provided path_template and operation_id do not match request '.to_str($request),
+        }),
+      ],
+    },
+    'cannot match path and path_template when the path-item does not have an operationId',
+  );
+
+  ok(!$openapi->find_path($options = { request => $request = request('GET', 'http://example.com/animal/tiger'), path_template => '/animal/{name}', operation_id => 'tiger_get' }), 'lookup failed');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      method => 'GET',
+      path_template => '/animal/{name}',
+      operation_id => 'tiger_get',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '',
+          keywordLocation => jsonp(qw(/paths /animal/{name} get operationId)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /animal/{name} get operationId)))->to_string,
+          error => 'provided path_template and operation_id do not match request '.to_str($request),
+        }),
+      ],
+    },
+    'cannot match path and path_template when the path-item has the wrong operationId',
+  );
+
+  ok(!$openapi->find_path($options = { request => $request = request('GET', 'http://example.com/animal/giraffe'), operation_id => '' }), 'lookup failed');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      method => 'GET',
+      operation_id => '',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '/request',
+          keywordLocation => '/paths',
+          absoluteKeywordLocation => $doc_uri.'#/paths',
+          error => 'no match found for request '.to_str($request),
+        }),
+      ],
+    },
+    'requesting an empty-string operation_id without path_template does not match an operation with no operationId',
+  );
+
+  ok(!$openapi->find_path($options = { request => $request, path_template => '/animal/giraffe', operation_id => '' }), 'lookup failed');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      method => 'GET',
+      path_template => '/animal/giraffe',
+      operation_id => '',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '',
+          keywordLocation => jsonp(qw(/paths /animal/giraffe get)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /animal/giraffe get)))->to_string,
+          error => 'provided path_template and operation_id do not match request '.to_str($request),
+        }),
+      ],
+    },
+    'requesting an empty-string operation_id with path_template does not match an operation with no operationId',
+  );
 };
 
 subtest $::TYPE.': no request is provided: options are relied on as the sole source of truth' => sub {
@@ -2103,6 +2344,7 @@ YAML
     $options,
     {
       method => 'POST',
+      operation_id => 'my_get_operation',
       errors => [
         methods(TO_JSON => {
           instanceLocation => '',
@@ -2112,7 +2354,7 @@ YAML
         }),
       ],
     },
-    'no request provided; operation method does not match passed-in method',
+    'passed-in method does not match operation at operationId',
   );
 
   ok(!$openapi->find_path($options = { operation_id => 'my_reffed_component_operation', method => 'GET' }),
@@ -2121,6 +2363,7 @@ YAML
     $options,
     {
       method => 'GET',
+      operation_id => 'my_reffed_component_operation',
       errors => [
         methods(TO_JSON => {
           instanceLocation => '',
@@ -2140,6 +2383,7 @@ YAML
     {
       # no path_template
       method => 'POST',
+      operation_id => 'my_reffed_component_operation',
       _path_item => { post => ignore },
       operation_uri => str($doc_uri.'#/components/pathItems/my_path_item/post'),
       errors => [],
@@ -2153,6 +2397,7 @@ YAML
     $options,
     {
       method => 'Get',
+      operation_id => 'my_get_operation',
       errors => [
         methods(TO_JSON => {
           instanceLocation => '',
@@ -2162,7 +2407,7 @@ YAML
         }),
       ],
     },
-    'no request provided; Get does not map to get, only GET does, so operation does not exist',
+    'wrongly-cased method does not match operation at operationId',
   );
 
   ok($openapi->find_path($options = { operation_id => 'my_get_operation', method => 'GET' }),
@@ -2171,8 +2416,8 @@ YAML
     $options,
     {
       operation_id => 'my_get_operation',
-      path_template => '/foo/{foo_id}',
       method => 'GET',
+      # note: no path_template
       _path_item => { get => ignore },
       operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get)))),
       errors => [],
@@ -2259,7 +2504,7 @@ YAML
     {
       operation_id => 'my_get_operation',
       path_captures => { foo_id => 'a' },
-      path_template => '/foo/{foo_id}',
+      # note: no path_template
       method => 'GET',
       _path_item => { get => ignore },
       operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get)))),
@@ -2304,7 +2549,6 @@ YAML
     {
       path_template => '/foo/{foo_id}',
       method => 'get',
-      _path_item => { get => ignore },
       errors => [ methods(
         TO_JSON => {
           instanceLocation => '/request/method',
@@ -2324,7 +2568,6 @@ YAML
     {
       path_template => '/foo/{foo_id}',
       method => 'Get',
-      _path_item => { get => ignore },
       errors => [ methods(
         TO_JSON => {
           instanceLocation => '/request/method',
@@ -2344,7 +2587,6 @@ YAML
     {
       path_template => '/foo/{foo_id}',
       method => 'POST',
-      _path_item => { get => ignore },
       errors => [ methods(
         TO_JSON => {
           instanceLocation => '/request/method',
@@ -2365,8 +2607,7 @@ YAML
       operation_id => 'my_get_operation',
       operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get)))),
       _path_item => { get => ignore },
-      # note: no path_captures
-      path_template => '/foo/{foo_id}',
+      # note: no path_template or path_captures
       method => 'GET',
       errors => [],
     },
@@ -2396,13 +2637,14 @@ YAML
     $options,
     {
       path_template => '/foo',
+      method => 'GET',
       operation_id => 'my_get_operation',
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '',
-          keywordLocation => jsonp(qw(/paths /foo/{foo_id} get operationId)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get operationId)))->to_string,
-          error => 'operation at operation_id does not match provided path_template',
+          instanceLocation => '/request/method',
+          keywordLocation => jsonp(qw(/paths /foo $ref)),
+          absoluteKeywordLocation => $doc_uri.'#/components/pathItems/my_path_item',
+          error => 'missing operation for HTTP method "GET" under "/foo"',
         }),
       ],
     },
@@ -2500,19 +2742,39 @@ YAML
     $options,
     {
       path_template => '/foo/bar',
-      _path_item => { post => ignore },
       method => 'POST',
       operation_id => 'my_components_pathItem_operation',
       errors => [
         methods(TO_JSON => {
           instanceLocation => '',
-          keywordLocation => jsonp(qw(/paths /foo/bar)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar)))->to_string,
+          keywordLocation => jsonp(qw(/paths /foo/bar post)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar post)))->to_string,
           error => 'templated operation does not match provided operation_id',
         }),
       ],
     },
-    'this operation cannot be reached by using this path template',
+    'this operation cannot be reached by using this path template (no operationId)',
+  );
+
+  ok(!$openapi->find_path($options = { path_template => '/foo', operation_id => 'my_components_pathItem_operation' }),
+    'lookup failed');
+  cmp_result(
+    $options,
+    {
+      path_template => '/foo',
+      method => 'POST',
+      operation_id => 'my_components_pathItem_operation',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '',
+          keywordLocation => jsonp(qw(/paths /foo $ref post operationId)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/pathItems/my_path_item2/post/operationId')->to_string,
+
+          error => 'templated operation does not match provided operation_id',
+        }),
+      ],
+    },
+    'this operation cannot be reached by using this path template (there is an operationId)',
   );
 
   ok($openapi->find_path($options = { operation_id => 'my_webhook_operation' }),
@@ -2555,6 +2817,38 @@ YAML
       errors => [],
     },
     'operation is not under a path-item with a path template, but still exists',
+  );
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri,
+    openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
+paths:
+  /animal/giraffe:
+    # note: no operation_id
+    get: {}
+  /empty/operation/id:
+    get:
+      operationId: ''
+YAML
+
+  ok(!$openapi->find_path($options = { path_template => '/animal/giraffe', operation_id => '' }), 'lookup failed');
+  cmp_result(
+    $options,
+    {
+      method => 'GET',
+      path_template => '/animal/giraffe',
+      operation_id => '',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '',
+          keywordLocation => jsonp(qw(/paths /animal/giraffe get)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /animal/giraffe get)))->to_string,
+          error => 'templated operation does not match provided operation_id',
+        }),
+      ],
+    },
+    'requesting an empty-string operation_id with path_template does not match an operation with no operationId',
   );
 };
 
