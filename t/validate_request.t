@@ -192,7 +192,7 @@ YAML
   );
 
   cmp_result(
-    $openapi->validate_request(request('GET', 'http://example.com/bloop/blah'))->TO_JSON,
+    $openapi->validate_request($request = request('GET', 'http://example.com/bloop/blah'))->TO_JSON,
     {
       valid => false,
       errors => [

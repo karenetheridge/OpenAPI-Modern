@@ -121,7 +121,7 @@ YAML
     'provided path_template does not exist in /paths',
   );
 
-  ok(!$openapi->find_path($options = { request => request('GET', 'http://example.com/foo/bar'),
+  ok(!$openapi->find_path($options = { request => $request = request('GET', 'http://example.com/foo/bar'),
       path_template => '/foo/baz' }),
     to_str($request).': find_path returns false');
   cmp_result(
@@ -163,7 +163,7 @@ YAML
     'operation_id does not exist',
   );
 
-  ok(!$openapi->find_path($options = { request => request('PUT', 'http://example.com/foo/bloop') }),
+  ok(!$openapi->find_path($options = { request => $request = request('PUT', 'http://example.com/foo/bloop') }),
     to_str($request).': find_path returns false');
   cmp_result(
     $options,
@@ -182,7 +182,7 @@ YAML
     'operation does not exist under /paths/<path_template>/<method>',
   );
 
-  ok(!$openapi->find_path($options = { request => request('Post', 'http://example.com/foo/bloop') }),
+  ok(!$openapi->find_path($options = { request => $request = request('Post', 'http://example.com/foo/bloop') }),
     to_str($request).': find_path returns false');
   cmp_result(
     $options,
@@ -201,7 +201,7 @@ YAML
     'Post does not map to post, only POST does, so operation does not exist under /paths/<path_template>/<method>',
   );
 
-  ok($openapi->find_path($options = { request => request('DELETE', 'http://example.com/foo/bar') }),
+  ok($openapi->find_path($options = { request => $request = request('DELETE', 'http://example.com/foo/bar') }),
     to_str($request).': find_path returns successfully');
   cmp_result(
     $options,
@@ -385,7 +385,7 @@ YAML
     'inferred path template does not match path captures',
   );
 
-  ok(!$openapi->find_path($options = { request => request('Get', 'http://example.com/foo/bloop'), operation_id => 'my_get_operation' }),
+  ok(!$openapi->find_path($options = { request => $request = request('Get', 'http://example.com/foo/bloop'), operation_id => 'my_get_operation' }),
     to_str($request).': find_path returns false');
   cmp_result(
     $options,
@@ -404,7 +404,7 @@ YAML
     'request HTTP method does not match operation',
   );
 
-  ok($openapi->find_path($options = { request => request('GET', 'http://example.com/foo/bar'),
+  ok($openapi->find_path($options = { request => $request = request('GET', 'http://example.com/foo/bar'),
       path_template => '/foo/bar', method => 'GET', operation_id => 'my_get_operation', path_captures => {} }),
     to_str($request).': find_path returns successfully');
   cmp_result(
@@ -423,7 +423,7 @@ YAML
     'path_template, method, operation_id and path_captures can all be passed, if consistent',
   );
 
-  ok(!$openapi->find_path($options = { request => request('GET', 'http://example.com/something/else'),
+  ok(!$openapi->find_path($options = { request => $request = request('GET', 'http://example.com/something/else'),
       path_template => '/foo/bar' }),
     to_str($request).': find_path returns false');
   cmp_result(
@@ -486,7 +486,7 @@ YAML
     'path_template with variables does not match this request URI (no captures)',
   );
 
-  ok(!$openapi->find_path($options = { request => request('GET', 'http://example.com/foo/123'), path_template => '/foo/bar' }),
+  ok(!$openapi->find_path($options = { request => $request = request('GET', 'http://example.com/foo/123'), path_template => '/foo/bar' }),
     to_str($request).': find_path returns false');
   cmp_result(
     $options,
@@ -506,7 +506,7 @@ YAML
     'a path matches this request URI, but not the path_template we provided',
   );
 
-  ok(!$openapi->find_path($options = { request => request('POST', 'http://example.com/foo/123'), path_template => '/foo/bar', operation_id => 'another_post_operation' }),
+  ok(!$openapi->find_path($options = { request => $request = request('POST', 'http://example.com/foo/123'), path_template => '/foo/bar', operation_id => 'another_post_operation' }),
     to_str($request).': find_path returns false');
   cmp_result(
     $options,
@@ -527,7 +527,7 @@ YAML
     'operation id matches URI, and a path matches this request URI, but not the path_template we provided',
   );
 
-  ok(!$openapi->find_path($options = { request => request('GET', 'http://example.com/something/else'),
+  ok(!$openapi->find_path($options = { request => $request = request('GET', 'http://example.com/something/else'),
       operation_id => 'my_get_operation' }),
     to_str($request).': find_path returns false');
   cmp_result(
@@ -547,7 +547,7 @@ YAML
     'operation_id is not consistent with request',
   );
 
-  ok(!$openapi->find_path($options = { request => request('POST', 'http://example.com/foo/123'),
+  ok(!$openapi->find_path($options = { request => $request = request('POST', 'http://example.com/foo/123'),
       operation_id => 'my_post_operation' }),
     to_str($request).': find_path returns false');
   cmp_result(
@@ -569,7 +569,7 @@ YAML
     'operation_id is not consistent with request URI, but the real operation does exist (with the same method)',
   );
 
-  ok(!$openapi->find_path($options = { request => request('POST', 'http://example.com/foo/hello'),
+  ok(!$openapi->find_path($options = { request => $request = request('POST', 'http://example.com/foo/hello'),
       operation_id => 'another_post_operation', path_captures => { foo_id => 'goodbye' } }),
     to_str($request).': find_path returns false');
   cmp_result(
@@ -595,7 +595,7 @@ YAML
     'path_captures values are not consistent with request URI',
   );
 
-  ok($openapi->find_path($options = { request => request('POST', 'http://example.com/foo/123'),
+  ok($openapi->find_path($options = { request => $request = request('POST', 'http://example.com/foo/123'),
       operation_id => 'another_post_operation', path_captures => { foo_id => 123 } }),
     to_str($request).': find_path returns successfully');
   cmp_result(
@@ -615,7 +615,7 @@ YAML
   );
   is(get_type($options->{path_captures}{foo_id}), 'integer', 'passed-in path value is preserved as a number');
 
-  ok($openapi->find_path($options = { request => request('POST', 'http://example.com/foo/123'),
+  ok($openapi->find_path($options = { request => $request = request('POST', 'http://example.com/foo/123'),
       path_captures => { foo_id => 123 } }),
     to_str($request).': find_path returns successfully');
   cmp_result(
@@ -682,7 +682,7 @@ paths:
       operationId: my_get_operation
 YAML
 
-  ok(!$openapi->find_path($options = { request => request('POST', 'http://example.com/foo/blah'),
+  ok(!$openapi->find_path($options = { request => $request = request('POST', 'http://example.com/foo/blah'),
       path_template => '/foo/{foo_id}', path_captures => { foo_id => 'blah' } }),
     to_str($request).': find_path returns false');
   cmp_result(
@@ -777,7 +777,7 @@ YAML
   );
 
   $OpenAPI::Modern::DEBUG = 1;
-  ok(!$openapi->find_path($options = { request => request('GET', 'http://example.com/bloop/blah') }),
+  ok(!$openapi->find_path($options = { request => $request = request('GET', 'http://example.com/bloop/blah') }),
     to_str($request).': find_path returns false');
   cmp_result(
     $options,
@@ -799,7 +799,7 @@ YAML
   $OpenAPI::Modern::DEBUG = 0;
 
   my $uri = uri('http://example.com', '', 'foo', 'hello // there ಠ_ಠ!');
-  ok($openapi->find_path($options = { request => request('GET', $uri),
+  ok($openapi->find_path($options = { request => $request = request('GET', $uri),
       path_template => '/foo/{foo_id}', path_captures => { foo_id => 'hello // there ಠ_ಠ!' } }),
     to_str($request).': find_path returns successfully');
   cmp_result(
@@ -818,7 +818,7 @@ YAML
     'path_capture values are found to be consistent with the URI when some values are url-escaped',
   );
 
-  ok($openapi->find_path($options = { request => request('GET', $uri) }), to_str($request).': find_path returns successfully');
+  ok($openapi->find_path($options = { request => $request = request('GET', $uri) }), to_str($request).': find_path returns successfully');
   cmp_result(
     $options,
     $expected,
@@ -1406,7 +1406,7 @@ paths:
     $ref: '#/components/pathItems/worse-host'
 YAML
 
-  ok(!$openapi->find_path($options = { request => request('GET', 'http://bloop.example.com/foo?x=1') }),
+  ok(!$openapi->find_path($options = { request => $request = request('GET', 'http://bloop.example.com/foo?x=1') }),
     to_str($request).': find_path returns false');
   cmp_result(
     $options,
@@ -1426,7 +1426,7 @@ YAML
   );
 
   local $OpenAPI::Modern::DEBUG = 1;
-  ok($openapi->find_path($options = { request => request('GET', 'http://dev.example.com/foo/1?x=1') }),
+  ok($openapi->find_path($options = { request => $request = request('GET', 'http://dev.example.com/foo/1?x=1') }),
     to_str($request).': find_path returns success');
   cmp_result(
     $options,
@@ -1450,7 +1450,7 @@ YAML
   );
   local $OpenAPI::Modern::DEBUG = 0;
 
-  ok($openapi->find_path($options = { request => request('GET', 'http://stg.example.com/bar/1?x=1') }),
+  ok($openapi->find_path($options = { request => $request = request('GET', 'http://stg.example.com/bar/1?x=1') }),
     to_str($request).': find_path returns success');
   cmp_result(
     $options,
@@ -1467,7 +1467,7 @@ YAML
     'with the correct host, the uri matches on a server url from path-item + path_template',
   );
 
-  ok($openapi->find_path($options = { request => request('GET', 'http://prod.example.com/qux/1?x=1') }),
+  ok($openapi->find_path($options = { request => $request = request('GET', 'http://prod.example.com/qux/1?x=1') }),
     to_str($request).': find_path returns success');
   cmp_result(
     $options,
@@ -1484,7 +1484,7 @@ YAML
     'with the correct host, the uri matches on a server url from global servers + path_template',
   );
 
-  ok($openapi->find_path($options = { request => request('GET', 'http://dev.example.com/subdir/foo/1?x=1') }),
+  ok($openapi->find_path($options = { request => $request = request('GET', 'http://dev.example.com/subdir/foo/1?x=1') }),
     to_str($request).': find_path returns success');
   cmp_result(
     $options,
@@ -1501,7 +1501,7 @@ YAML
     'the uri can match on a server url with a path prefix, even when another match comes first, servers at operation level',
   );
 
-  ok($openapi->find_path($options = { request => request('GET', 'http://stg.example.com/subdir/bar/1?x=1') }),
+  ok($openapi->find_path($options = { request => $request = request('GET', 'http://stg.example.com/subdir/bar/1?x=1') }),
     to_str($request).': find_path returns success');
   cmp_result(
     $options,
@@ -1518,7 +1518,7 @@ YAML
     'the uri can match on a server url with a path prefix, even when another match comes first, servers at path-item level',
   );
 
-  ok($openapi->find_path($options = { request => request('GET', 'http://prod.example.com/subdir/qux/1?x=1') }),
+  ok($openapi->find_path($options = { request => $request = request('GET', 'http://prod.example.com/subdir/qux/1?x=1') }),
     to_str($request).': find_path returns success');
   cmp_result(
     $options,
@@ -1535,7 +1535,7 @@ YAML
     'the uri can match on a server url with a path prefix, even when another match comes first, servers at global level',
   );
 
-  ok($openapi->find_path($options = { request => request('GET', 'http://example.com/subdir/subdir-operation?x=1') }),
+  ok($openapi->find_path($options = { request => $request = request('GET', 'http://example.com/subdir/subdir-operation?x=1') }),
     to_str($request).': find_path returns success');
   cmp_result(
     $options,
@@ -1552,7 +1552,7 @@ YAML
     'a relative server url is resolved against the absolute retrieval uri to match the request, with servers at operation level',
   );
 
-  ok($openapi->find_path($options = { request => request('GET', 'http://example.com/subdir/subdir-path-item?x=1') }),
+  ok($openapi->find_path($options = { request => $request = request('GET', 'http://example.com/subdir/subdir-path-item?x=1') }),
     to_str($request).': find_path returns success');
   cmp_result(
     $options,
@@ -1569,7 +1569,7 @@ YAML
     'a relative server url is resolved against the absolute retrieval uri to match the request, with servers at path-item level',
   );
 
-  ok($openapi->find_path($options = { request => request('GET', 'http://example.com/subdir/subdir-global?x=1') }),
+  ok($openapi->find_path($options = { request => $request = request('GET', 'http://example.com/subdir/subdir-global?x=1') }),
     to_str($request).': find_path returns success');
   cmp_result(
     $options,
@@ -1586,7 +1586,7 @@ YAML
     'a relative server url is resolved against the absolute retrieval uri to match the request, with servers at global level',
   );
 
-  ok(!$openapi->find_path($options = { request => request('GET', 'http://operation.example2.com/bad/bar') }),
+  ok(!$openapi->find_path($options = { request => $request = request('GET', 'http://operation.example2.com/bad/bar') }),
     to_str($request).': find_path returns false');
   cmp_result(
     $options,
@@ -1607,7 +1607,7 @@ YAML
     'cannot reuse a template name between a server url and the path template, with operation level servers',
   );
 
-  ok(!$openapi->find_path($options = { request => request('POST', 'http://path-item.example2.com/bad/bar') }),
+  ok(!$openapi->find_path($options = { request => $request = request('POST', 'http://path-item.example2.com/bad/bar') }),
     to_str($request).': find_path returns false');
   cmp_result(
     $options,
@@ -1628,7 +1628,7 @@ YAML
     'cannot reuse a template name between a server url and the path template, with path-item level servers',
   );
 
-  ok(!$openapi->find_path($options = { request => request('GET', 'http://global.example2.com/worse/bar') }),
+  ok(!$openapi->find_path($options = { request => $request = request('GET', 'http://global.example2.com/worse/bar') }),
     to_str($request).': find_path returns false');
   cmp_result(
     $options,
@@ -1649,7 +1649,7 @@ YAML
     'cannot reuse a template name between a server url and the path template, with global servers',
   );
 
-  ok(!$openapi->find_path($options = { request => request('GET', 'http://zip.example2.com/foo/1') }),
+  ok(!$openapi->find_path($options = { request => $request = request('GET', 'http://zip.example2.com/foo/1') }),
     to_str($request).': find_path returns false');
   cmp_result(
     $options,
@@ -1670,7 +1670,7 @@ YAML
     'server url templated value must match the enum specification; error from servers at operation',
   );
 
-  ok(!$openapi->find_path($options = { request => request('GET', 'http://zip.example2.com/bar/1') }),
+  ok(!$openapi->find_path($options = { request => $request = request('GET', 'http://zip.example2.com/bar/1') }),
     to_str($request).': find_path returns false');
   cmp_result(
     $options,
@@ -1691,7 +1691,7 @@ YAML
     'server url templated value must match the enum specification; error from servers at path-item',
   );
 
-  ok(!$openapi->find_path($options = { request => request('GET', 'http://zip.example2.com/qux/1') }),
+  ok(!$openapi->find_path($options = { request => $request = request('GET', 'http://zip.example2.com/qux/1') }),
     to_str($request).': find_path returns false');
   cmp_result(
     $options,
@@ -1712,7 +1712,7 @@ YAML
     'server url templated value must match the enum specification; error from servers at global level',
   );
 
-  ok($openapi->find_path($options = { request => request('GET', 'http://dev.example2.com/foo/1?x=1') }),
+  ok($openapi->find_path($options = { request => $request = request('GET', 'http://dev.example2.com/foo/1?x=1') }),
     to_str($request).': find_path returns success');
   cmp_result(
     $options,
@@ -1729,7 +1729,7 @@ YAML
     'the uri matches on a templated server url from operation + path_template',
   );
 
-  ok($openapi->find_path($options = { request => request('GET', 'http://stg.example2.com/bar/1?x=1') }),
+  ok($openapi->find_path($options = { request => $request = request('GET', 'http://stg.example2.com/bar/1?x=1') }),
     to_str($request).': find_path returns success');
   cmp_result(
     $options,
@@ -1746,7 +1746,7 @@ YAML
     'the uri matches on a templated server url from path-item + path_template',
   );
 
-  ok($openapi->find_path($options = { request => request('GET', 'http://prod.example2.com/qux/1?x=1') }),
+  ok($openapi->find_path($options = { request => $request = request('GET', 'http://prod.example2.com/qux/1?x=1') }),
     to_str($request).': find_path returns success');
   cmp_result(
     $options,
@@ -1763,7 +1763,7 @@ YAML
     'the uri matches on a templated server url from global servers + path_template',
   );
 
-  ok($openapi->find_path($options = { request => request('POST', 'http://example.com/bar/1') }),
+  ok($openapi->find_path($options = { request => $request = request('POST', 'http://example.com/bar/1') }),
     to_str($request).': find_path returns success');
   cmp_result(
     $options,
@@ -1780,7 +1780,7 @@ YAML
     'operation-level servers object overrides one at path-item; because it is empty the default is used (which resolves to the retrieval uri)',
   );
 
-  ok(!$openapi->find_path($options = { request => request('GET', 'http://dev.example2.com/foo/1?x=1'),
+  ok(!$openapi->find_path($options = { request => $request = request('GET', 'http://dev.example2.com/foo/1?x=1'),
         uri_captures => { not_host => 'dev', foo_id => 1 } }),
     to_str($request).': find_path returns false');
   cmp_result(
@@ -1804,7 +1804,7 @@ YAML
     'uri_captures names are not correct',
   );
 
-  ok(!$openapi->find_path($options = { request => request('GET', 'http://dev.example2.com/foo/1?x=1'),
+  ok(!$openapi->find_path($options = { request => $request = request('GET', 'http://dev.example2.com/foo/1?x=1'),
       uri_captures => { host => 'not_dev', foo_id => 1 } }),
     to_str($request).': find_path returns false');
   cmp_result(
@@ -1828,7 +1828,7 @@ YAML
     'uri_captures values are not correct',
   );
 
-  ok(!$openapi->find_path($options = { request => request('GET', 'http://dev.example2.com/foo/1?x=1'),
+  ok(!$openapi->find_path($options = { request => $request = request('GET', 'http://dev.example2.com/foo/1?x=1'),
       uri_captures => { host => 'dev', foo_id => 1 }, path_captures => { foo_id => 2 } }),
     to_str($request).': find_path returns false');
   cmp_result(
@@ -1853,7 +1853,7 @@ YAML
     'path_captures values are inconsistent with uri_captures values',
   );
 
-  ok($openapi->find_path($options = { request => request('GET', 'http://dev.example2.com/foo/1?x=1'),
+  ok($openapi->find_path($options = { request => $request = request('GET', 'http://dev.example2.com/foo/1?x=1'),
       uri_captures => { host => 'dev', foo_id => 1 }, path_captures => { foo_id => 1 } }),
     to_str($request).': find_path returns success');
   cmp_result(
@@ -1898,7 +1898,7 @@ servers:
   - url: /subdir
 YAML
 
-  ok($openapi->find_path($options = { request => request('GET', 'http://example.com/subdir/foo?x=1') }),
+  ok($openapi->find_path($options = { request => $request = request('GET', 'http://example.com/subdir/foo?x=1') }),
     to_str($request).': find_path returns success');
   cmp_result(
     $options,
@@ -1915,7 +1915,7 @@ YAML
     'a relative server url is resolved against the relative retrieval uri to match the request, with servers at the operation level',
   );
 
-  ok($openapi->find_path($options = { request => request('GET', 'http://example.com/subdir/bar?x=1') }),
+  ok($openapi->find_path($options = { request => $request = request('GET', 'http://example.com/subdir/bar?x=1') }),
     to_str($request).': find_path returns success');
   cmp_result(
     $options,
@@ -1932,7 +1932,7 @@ YAML
     'a relative server url is resolved against the relative retrieval uri to match the request, with servers at the path-item level',
   );
 
-  ok($openapi->find_path($options = { request => request('GET', 'http://example.com/subdir/baz?x=1') }),
+  ok($openapi->find_path($options = { request => $request = request('GET', 'http://example.com/subdir/baz?x=1') }),
     to_str($request).': find_path returns success');
   cmp_result(
     $options,
@@ -1958,7 +1958,7 @@ paths:
     get: {}
 YAML
 
-  ok($openapi->find_path($options = { request => request('GET', 'http://example.com:'.int(300+int(rand(1000))).'/foo?x=1') }),
+  ok($openapi->find_path($options = { request => $request = request('GET', 'http://example.com:'.int(300+int(rand(1000))).'/foo?x=1') }),
     to_str($request).': find_path returns success');
   cmp_result(
     $options,
@@ -1975,7 +1975,7 @@ YAML
     'the default (relative) server url is resolved against the relative retrieval uri to match the request; request has a custom and unpredictable port',
   );
 
-  ok($openapi->find_path($options = { request => request('GET', '/foo?x=1') }),
+  ok($openapi->find_path($options = { request => $request = request('GET', '/foo?x=1') }),
     to_str($request).': find_path returns success');
   cmp_result(
     $options,
@@ -2009,7 +2009,7 @@ paths:
     $ref: '#/paths/~1user~1%7Bid%7D'
 YAML
 
-  ok($openapi->find_path($options = { request => request('GET', '/user/1'), operation_id => 'generic_get' }),
+  ok($openapi->find_path($options = { request => $request = request('GET', '/user/1'), operation_id => 'generic_get' }),
     to_str($request).': find_path returns success');
   cmp_result(
     $options,
@@ -2028,7 +2028,7 @@ YAML
   );
 
   todo('FIXME! cannot infer path_template from operation_id, as we may be $reffed from another path-item' => sub {
-  ok($openapi->find_path($options = { request => request('GET', '/company/2'), operation_id => 'generic_get' }),
+  ok($openapi->find_path($options = { request => $request = request('GET', '/company/2'), operation_id => 'generic_get' }),
     to_str($request).': find_path returns success');
   cmp_result(
     $options,
