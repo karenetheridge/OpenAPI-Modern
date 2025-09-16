@@ -225,7 +225,7 @@ sub remove_header ($message, $header_name) {
   }
 }
 
-# prints the method and path of the request, or the response code and message of the response
+# prints the method and URI of the request, or the response code and message of the response
 sub to_str ($message) {
   my $str;
   if ($message->isa('Mojo::Message::Request') or $message->isa('HTTP::Request')) {

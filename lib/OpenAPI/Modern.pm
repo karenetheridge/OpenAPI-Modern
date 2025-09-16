@@ -456,7 +456,7 @@ sub find_path ($self, $options, $state = {}) {
     }
 
     return E({ %$state, data_path => '/request', keyword_path => '', keyword => 'paths' },
-        'no match found for request %s "%s"',
+        'no match found for request %s %s',
         $options->{request}->method, $options->{request}->url->clone->query('')->fragment(undef))
       if not $captures;
   }
