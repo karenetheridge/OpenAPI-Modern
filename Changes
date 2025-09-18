@@ -1,6 +1,8 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - various internal changes to adjust for changes in
+            JSON::Schema::Modern 0.619
 
 0.096     2025-09-19 17:17:20Z
           - potentially-breaking change: "method" in the options hash is

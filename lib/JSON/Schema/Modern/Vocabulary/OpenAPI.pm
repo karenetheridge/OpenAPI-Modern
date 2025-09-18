@@ -37,17 +37,17 @@ sub _traverse_keyword_discriminator ($self, $schema, $state) {
   # "the discriminator field MUST be a required field"
   return E($state, 'missing required property "propertyName"')
     if not exists $schema->{discriminator}{propertyName};
-  return E({ %$state, _schema_path_suffix => 'propertyName' }, 'discriminator propertyName is not a string')
+  return E({ %$state, _keyword_path_suffix => 'propertyName' }, 'discriminator propertyName is not a string')
     if not is_type('string', $schema->{discriminator}{propertyName});
 
   my $valid = 1;
   if (exists $schema->{discriminator}{mapping}) {
-    return if not assert_keyword_type({ %$state, _schema_path_suffix => 'mapping' }, $schema, 'object');
-    return E({ %$state, _schema_path_suffix => 'mapping' }, 'discriminator mapping is not an object ')
+    return if not assert_keyword_type({ %$state, _keyword_path_suffix => 'mapping' }, $schema, 'object');
+    return E({ %$state, _keyword_path_suffix => 'mapping' }, 'discriminator mapping is not an object ')
       if not is_type('object', $schema->{discriminator}{mapping});
     foreach my $mapping_key (sort keys $schema->{discriminator}{mapping}->%*) {
       my $uri = $schema->{discriminator}{mapping}{$mapping_key};
-      $valid = E({ %$state, _schema_path_suffix => [ 'mapping', $mapping_key ] }, 'discriminator mapping value for "%s" is not a string', $mapping_key), next if not is_type('string', $uri);
+      $valid = E({ %$state, _keyword_path_suffix => [ 'mapping', $mapping_key ] }, 'discriminator mapping value for "%s" is not a string', $mapping_key), next if not is_type('string', $uri);
     }
   }
 

@@ -106,8 +106,8 @@ sub traverse ($self, $evaluator, $config_override = {}) {
   my $schema = $self->schema;
   my $state = {
     # initial_schema_uri calculated from '$self' below
-    traversed_schema_path => '',
-    schema_path => '',
+    traversed_keyword_path => '',
+    keyword_path => '',
     data_path => '',
     errors => [],
     evaluator => $evaluator,
@@ -201,7 +201,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     my $check_metaschema_state = $evaluator->traverse({}, {
       metaschema_uri => $json_schema_dialect,
       initial_schema_uri => $self->canonical_uri->clone->fragment('/jsonSchemaDialect'),
-      traversed_schema_path => '/jsonSchemaDialect',
+      traversed_keyword_path => '/jsonSchemaDialect',
     });
 
     # we cannot continue if the metaschema is invalid
@@ -288,7 +288,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     # { for the editor
     foreach my $name ($path =~ m!\{([^}]+)\}!g) {
       if (++$seen_names{$name} == 2) {
-        ()= E({ %$state, schema_path => jsonp('/paths', $path) },
+        ()= E({ %$state, keyword_path => jsonp('/paths', $path) },
           'duplicate path template variable "%s"', $name);
       }
     }
@@ -296,7 +296,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     # { for the editor
     my $normalized = $path =~ s/\{[^}]+\}/\x00/r;
     if (my $first_path = $seen_path{$normalized}) {
-      ()= E({ %$state, schema_path => jsonp('/paths', $path) },
+      ()= E({ %$state, keyword_path => jsonp('/paths', $path) },
         'duplicate of templated path "%s"', $first_path);
       next;
     }
@@ -304,7 +304,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
   }
 
   foreach my $path_item (sort keys %bad_path_item_refs) {
-    ()= E({ %$state, schema_path => $path_item },
+    ()= E({ %$state, keyword_path => $path_item },
       'invalid keywords used adjacent to $ref in a path-item: %s', $bad_path_item_refs{$path_item});
   }
 
@@ -317,7 +317,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
 
     foreach my $server_idx (0 .. $servers->$#*) {
       if ($servers->[$server_idx]{url} =~ m{(?:/$|\?|#)}) {
-        ()= E({ %$state, schema_path => jsonp($servers_location, $server_idx, 'url') },
+        ()= E({ %$state, keyword_path => jsonp($servers_location, $server_idx, 'url') },
           'server url cannot end in / or contain query or fragment components');
         next;
       }
@@ -328,7 +328,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
       my @url_variables = $servers->[$server_idx]{url} =~ /\{([^}]+)\}/g;
 
       if (my $first_url = $seen_url{$normalized}) {
-        ()= E({ %$state, schema_path => jsonp($servers_location, $server_idx, 'url') },
+        ()= E({ %$state, keyword_path => jsonp($servers_location, $server_idx, 'url') },
           'duplicate of templated server url "%s"', $first_url);
       }
       $seen_url{$normalized} = $servers->[$server_idx]{url};
@@ -336,24 +336,24 @@ sub traverse ($self, $evaluator, $config_override = {}) {
       my $variables_obj = $servers->[$server_idx]{variables};
       if (not $variables_obj) {
         # missing 'variables': needs variables/$varname/default
-        ()= E({ %$state, schema_path => jsonp($servers_location, $server_idx) },
+        ()= E({ %$state, keyword_path => jsonp($servers_location, $server_idx) },
           '"variables" property is required for templated server urls') if @url_variables;
         next;
       }
 
       my %seen_names;
       foreach my $name (@url_variables) {
-        ()= E({ %$state, schema_path => jsonp($servers_location, $server_idx) },
+        ()= E({ %$state, keyword_path => jsonp($servers_location, $server_idx) },
             'duplicate servers template variable "%s"', $name)
           if ++$seen_names{$name} == 2;
 
-        ()= E({ %$state, schema_path => jsonp($servers_location, $server_idx, 'variables') },
+        ()= E({ %$state, keyword_path => jsonp($servers_location, $server_idx, 'variables') },
             'missing "variables" definition for servers template variable "%s"', $name)
           if $seen_names{$name} == 1 and not exists $variables_obj->{$name};
       }
 
       foreach my $varname (keys $variables_obj->%*) {
-        ()= E({ %$state, schema_path => jsonp($servers_location, $server_idx, 'variables', $varname, 'default') },
+        ()= E({ %$state, keyword_path => jsonp($servers_location, $server_idx, 'variables', $varname, 'default') },
             'servers default is not a member of enum')
           if exists $variables_obj->{$varname}{enum}
             and not grep $variables_obj->{$varname}{default} eq $_, $variables_obj->{$varname}{enum}->@*;
@@ -377,13 +377,13 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     push @real_json_schema_paths, $json_schema_paths[$idx];
   }
 
-  $self->_traverse_schema({ %$state, schema_path => $_ }) foreach reverse @real_json_schema_paths;
+  $self->_traverse_schema({ %$state, keyword_path => $_ }) foreach reverse @real_json_schema_paths;
   $self->_add_entity_location($_, 'schema') foreach $state->{subschemas}->@*;
 
   foreach my $pair (@operation_paths) {
     my ($operation_id, $path) = @$pair;
     if (my $existing = $self->get_operationId_path($operation_id)) {
-      ()= E({ %$state, schema_path => $path .'/operationId' },
+      ()= E({ %$state, keyword_path => $path .'/operationId' },
         'duplicate of operationId at %s', $existing);
     }
     else {
@@ -463,12 +463,12 @@ sub _add_vocab_and_default_schemas ($self, $evaluator) {
 # traverse this JSON Schema and identify all errors, subschema locations, and referenceable
 # identifiers
 sub _traverse_schema ($self, $state) {
-  my $schema = $self->get($state->{schema_path});
+  my $schema = $self->get($state->{keyword_path});
   return if not is_plain_hashref($schema) or not keys %$schema;
 
   my $subschema_state = $state->{evaluator}->traverse($schema, {
     initial_schema_uri => canonical_uri($state),
-    traversed_schema_path => $state->{traversed_schema_path}.$state->{schema_path},
+    traversed_keyword_path => $state->{traversed_keyword_path}.$state->{keyword_path},
     metaschema_uri => $state->{json_schema_dialect},  # can be overridden with the '$schema' keyword
   });
 
@@ -487,7 +487,7 @@ sub _traverse_schema ($self, $state) {
     if (not is_equal(
         { canonical_uri => $new->{canonical_uri}.'', map +($_ => $new->{$_}), qw(path specification_version vocabularies) },
         { canonical_uri => $existing->{canonical_uri}.'', map +($_ => $existing->{$_}), qw(path specification_version vocabularies) })) {
-      ()= E({ %$state, schema_path => $new->{path} },
+      ()= E({ %$state, keyword_path => $new->{path} },
         'duplicate canonical uri "%s" found (original at path "%s")',
         $new_uri, $existing->{path});
       next;
@@ -495,7 +495,7 @@ sub _traverse_schema ($self, $state) {
 
     foreach my $anchor (sort keys $new->{anchors}->%*) {
       if (my $existing_anchor = ($existing->{anchors}//{})->{$anchor}) {
-        ()= E({ %$state, schema_path => $new->{anchors}{$anchor}{path} },
+        ()= E({ %$state, keyword_path => $new->{anchors}{$anchor}{path} },
           'duplicate anchor uri "%s" found (original at path "%s")',
           $new->{canonical_uri}->clone->fragment($anchor),
           $existing->{anchors}{$anchor}{path});
