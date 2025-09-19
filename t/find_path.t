@@ -31,7 +31,7 @@ paths: {}
 YAML
 
   ok(!$openapi->find_path(my $options = { request => bless({}, 'Bespoke::Request') }),
-    'find_path returns false');
+    'lookup failed');
   cmp_result(
     $options,
     {
@@ -54,7 +54,7 @@ YAML
   # start line is missing "HTTP/1.1"
   my $request = HTTP::Request->new(GET => 'http://example.com/', [ Host => 'example.com' ]);
   ok(!$openapi->find_path($options = { request => $request }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -102,7 +102,7 @@ YAML
 
   my $request = request('GET', 'http://example.com/foo/bar');
   ok(!$openapi->find_path(my $options = { request => $request, path_template => '/blurp' }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -123,7 +123,7 @@ YAML
 
   ok(!$openapi->find_path($options = { request => $request = request('GET', 'http://example.com/foo/bar'),
       path_template => '/foo/baz' }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -144,7 +144,7 @@ YAML
 
   $request = request('GET', 'http://example.com/foo/bar');
   ok(!$openapi->find_path($options = { request => $request, operation_id => 'bloop' }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -164,7 +164,7 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { request => $request = request('PUT', 'http://example.com/foo/bloop') }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -179,11 +179,11 @@ YAML
         }),
       ],
     },
-    'operation does not exist under /paths/<path_template>/<method>',
+    'the operation does not exist under the matching path-item',
   );
 
   ok(!$openapi->find_path($options = { request => $request = request('Post', 'http://example.com/foo/bloop') }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -198,11 +198,11 @@ YAML
         }),
       ],
     },
-    'Post does not map to post, only POST does, so operation does not exist under /paths/<path_template>/<method>',
+    'Post does not map to post, only POST does, so the operation does not exist under the matching path-item',
   );
 
   ok($openapi->find_path($options = { request => $request = request('DELETE', 'http://example.com/foo/bar') }),
-    to_str($request).': find_path returns successfully');
+    to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     {
@@ -220,7 +220,7 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { request => $request = request('PUT', 'http://example.com/blech/bar') }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -239,7 +239,7 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { request => $request, path_template => '/blech/bar' }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -260,7 +260,7 @@ YAML
 
   ok(!$openapi->find_path($options = { request => $request = request('POST', 'http://example.com/foo/bar'),
       path_template => '/foo/{foo_id}', operation_id => 'my_get_operation' }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -281,7 +281,7 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { request => $request, operation_id => 'my_get_operation' }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -300,7 +300,7 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { request => $request, method => 'GET' }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -319,7 +319,7 @@ YAML
   );
 
   ok($openapi->find_path($options = { request => $request, method => 'POST' }),
-    to_str($request).': find_path returns true');
+    to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     {
@@ -338,7 +338,7 @@ YAML
 
   ok(!$openapi->find_path($options = { request => $request,
         path_template => '/foo/{foo_id}', path_captures => { bloop => 'bar' } }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -362,7 +362,7 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { request => $request, path_captures => { bloop => 'bar' } }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -386,7 +386,7 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { request => $request = request('Get', 'http://example.com/foo/bloop'), operation_id => 'my_get_operation' }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -406,7 +406,7 @@ YAML
 
   ok($openapi->find_path($options = { request => $request = request('GET', 'http://example.com/foo/bar'),
       path_template => '/foo/bar', method => 'GET', operation_id => 'my_get_operation', path_captures => {} }),
-    to_str($request).': find_path returns successfully');
+    to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     {
@@ -425,7 +425,7 @@ YAML
 
   ok(!$openapi->find_path($options = { request => $request = request('GET', 'http://example.com/something/else'),
       path_template => '/foo/bar' }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -446,7 +446,7 @@ YAML
 
   ok(!$openapi->find_path($options = { request => $request = request('POST', 'http://example.com/something/else'),
       path_template => '/foo/{foo_id}', path_captures => { foo_id => 123 } }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -467,7 +467,7 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { request => $request, path_template => '/foo/{foo_id}' }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -487,7 +487,7 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { request => $request = request('GET', 'http://example.com/foo/123'), path_template => '/foo/bar' }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -507,7 +507,7 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { request => $request = request('POST', 'http://example.com/foo/123'), path_template => '/foo/bar', operation_id => 'another_post_operation' }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -529,7 +529,7 @@ YAML
 
   ok(!$openapi->find_path($options = { request => $request = request('GET', 'http://example.com/something/else'),
       operation_id => 'my_get_operation' }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -549,7 +549,7 @@ YAML
 
   ok(!$openapi->find_path($options = { request => $request = request('POST', 'http://example.com/foo/123'),
       operation_id => 'my_post_operation' }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -571,7 +571,7 @@ YAML
 
   ok(!$openapi->find_path($options = { request => $request = request('POST', 'http://example.com/foo/hello'),
       operation_id => 'another_post_operation', path_captures => { foo_id => 'goodbye' } }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -597,7 +597,7 @@ YAML
 
   ok($openapi->find_path($options = { request => $request = request('POST', 'http://example.com/foo/123'),
       operation_id => 'another_post_operation', path_captures => { foo_id => 123 } }),
-    to_str($request).': find_path returns successfully');
+    to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     {
@@ -617,7 +617,7 @@ YAML
 
   ok($openapi->find_path($options = { request => $request = request('POST', 'http://example.com/foo/123'),
       path_captures => { foo_id => 123 } }),
-    to_str($request).': find_path returns successfully');
+    to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     {
@@ -637,7 +637,7 @@ YAML
 
   ok($openapi->find_path($options = { request => $request = request('POST', 'http://example.com/foo/bar'),
       path_template => '/foo/{foo_id}' }),
-    to_str($request).': find_path returns true');
+    to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     {
@@ -655,7 +655,7 @@ YAML
   );
 
   ok($openapi->find_path($options = { request => $request, operation_id => 'another_post_operation' }),
-    to_str($request).': find_path returns true');
+    to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     {
@@ -684,7 +684,7 @@ YAML
 
   ok(!$openapi->find_path($options = { request => $request = request('POST', 'http://example.com/foo/blah'),
       path_template => '/foo/{foo_id}', path_captures => { foo_id => 'blah' } }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -701,11 +701,11 @@ YAML
         }),
       ],
     },
-    'operation does not exist under /paths/<path-template>',
+    'the operation does not exist under the matching path-item',
   );
 
   ok($openapi->find_path($options = { request => $request = request('GET', 'http://example.com/foo/123') }),
-    to_str($request).': find_path returns successfully');
+    to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     my $expected = {
@@ -724,7 +724,7 @@ YAML
   is(get_type($options->{path_captures}{foo_id}), 'string', 'captured path value is parsed as a string');
 
   ok($openapi->find_path($options = { request => $request, path_captures => { foo_id => '123' } }),
-    to_str($request).': find_path returns successfully');
+    to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     $expected,
@@ -733,7 +733,7 @@ YAML
   is(get_type($options->{path_captures}{foo_id}), 'string', 'passed-in path value is preserved as a string');
 
   ok($openapi->find_path($options = { request => $request, path_template => '/foo/{foo_id}', path_captures => { foo_id => 123 } }),
-    to_str($request).': find_path returns successfully');
+    to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     $expected,
@@ -743,7 +743,7 @@ YAML
 
   my $val = 123; my $str = sprintf("%s\n", $val);
   ok($openapi->find_path($options = { request => $request, path_captures => { foo_id => $val } }),
-    to_str($request).': find_path returns successfully');
+    to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     $expected,
@@ -752,7 +752,7 @@ YAML
   ok(Scalar::Util::isdual($options->{path_captures}{foo_id}), 'passed-in path value is preserved as a dualvar');
 
   ok(!$openapi->find_path($options = { request => $request, path_captures => { foo_id => 'a' } }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -778,7 +778,7 @@ YAML
 
   $OpenAPI::Modern::DEBUG = 1;
   ok(!$openapi->find_path($options = { request => $request = request('GET', 'http://example.com/bloop/blah') }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -801,7 +801,7 @@ YAML
   my $uri = uri('http://example.com', '', 'foo', 'hello // there ಠ_ಠ!');
   ok($openapi->find_path($options = { request => $request = request('GET', $uri),
       path_template => '/foo/{foo_id}', path_captures => { foo_id => 'hello // there ಠ_ಠ!' } }),
-    to_str($request).': find_path returns successfully');
+    to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     $expected = {
@@ -818,7 +818,7 @@ YAML
     'path_capture values are found to be consistent with the URI when some values are url-escaped',
   );
 
-  ok($openapi->find_path($options = { request => $request = request('GET', $uri) }), to_str($request).': find_path returns successfully');
+  ok($openapi->find_path($options = { request => $request = request('GET', $uri) }), to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     $expected,
@@ -845,7 +845,7 @@ paths:
 YAML
 
   $request = request('GET', 'http://example.com/foo/bar');
-  ok($openapi->find_path($options = { request => $request }), to_str($request).': find_path returns successfully');
+  ok($openapi->find_path($options = { request => $request }), to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     $expected = {
@@ -862,7 +862,7 @@ YAML
     'paths with dots are not treated as regex wildcards when matching against URIs',
   );
 
-  ok(!$openapi->find_path($options = { request => $request, operation_id => 'dotted_foo_bar' }), 'find_path fails');
+  ok(!$openapi->find_path($options = { request => $request, operation_id => 'dotted_foo_bar' }), 'lookup failed');
   cmp_result(
     $options,
     {
@@ -880,7 +880,7 @@ YAML
     'provided operation_id and inferred path_template does not match request',
   );
 
-  ok($openapi->find_path($options = { request => $request, operation_id => 'concrete_foo_bar' }), to_str($request).': find_path returns successfully');
+  ok($openapi->find_path($options = { request => $request, operation_id => 'concrete_foo_bar' }), to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     $expected,
@@ -888,7 +888,7 @@ YAML
   );
 
   $request = request('GET', 'http://example.com/foo/x.bar');
-  ok($openapi->find_path($options = { request => $request }), to_str($request).': find_path returns successfully');
+  ok($openapi->find_path($options = { request => $request }), to_str($request).': lookup succeeded');
   cmp_result(
     my $got_options = $options,
     {
@@ -905,7 +905,7 @@ YAML
     'capture values are still captured when using dots in path template',
   );
 
-  ok(!$openapi->find_path($options = { request => $request, operation_id => 'all_dots' }), 'find_path fails');
+  ok(!$openapi->find_path($options = { request => $request, operation_id => 'all_dots' }), 'lookup failed');
   cmp_result(
     $options,
     {
@@ -923,7 +923,7 @@ YAML
     'provided operation_id and inferred path_template does not match request',
   );
 
-  ok($openapi->find_path($options = { request => $request, operation_id => 'templated_foo_bar' }), to_str($request).': find_path returns successfully');
+  ok($openapi->find_path($options = { request => $request, operation_id => 'templated_foo_bar' }), to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     { %$got_options, request => isa('Mojo::Message::Request'), operation_uri => str($got_options->{operation_uri}) },
@@ -940,7 +940,7 @@ paths:
 YAML
 
   $request = request('GET', 'http://example.com/foo/bar');
-  ok($openapi->find_path($options = { request => $request }), to_str($request).': find_path returns successfully');
+  ok($openapi->find_path($options = { request => $request }), to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     {
@@ -957,7 +957,7 @@ YAML
   );
 
   ok($openapi->find_path($options = { request => $request, path_template => '/foo/{foo_id}' }),
-    to_str($request).': find_path returns successfully');
+    to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     {
@@ -983,7 +983,7 @@ paths:
 YAML
 
   $request = request('GET', 'http://example.com');
-  ok($openapi->find_path($options = { request => $request }), 'find_path can match an empty uri path');
+  ok($openapi->find_path($options = { request => $request }), 'lookup succeeded');
   cmp_result(
     $options,
     $expected = {
@@ -999,12 +999,11 @@ YAML
     'path_template inferred from request uri; empty path maps to /',
   );
 
-  ok($openapi->find_path($options = { request => $request, path_template => '/' }),
-   'find_path can match an empty uri path when passed path_template');
+  ok($openapi->find_path($options = { request => $request, path_template => '/' }), 'lookup succeeded');
   cmp_result(
     $options,
     $expected,
-    'provided path_template verified against request uri',
+    'provided path_template verified against request uri with empty path',
   );
 
 
@@ -1048,7 +1047,7 @@ YAML
 
   $request = request('POST', 'http://example.com/foo/bar');
   ok(!$openapi->find_path($options = { request => $request, operation_id => 'my_components_pathItem_operation' }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -1070,7 +1069,7 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { request => $request, path_template => '/foo/bar', operation_id => 'my_components_pathItem_operation' }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -1094,7 +1093,7 @@ YAML
   # TODO: no way at present to match a webhook request to its path and path_template (and OpenAPI
   # 3.x does not provide for specifying a path_template for webhooks)
   ok(!$openapi->find_path($options = { request => $request, operation_id => 'my_webhook_operation' }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -1116,7 +1115,7 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { request => $request, operation_id => '0' }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -1140,7 +1139,7 @@ YAML
   # TODO: no way at present to match a callback request to its path-item embedded under the
   # operation, rather than to the top level /paths/*
   ok(!$openapi->find_path($options = { request => $request, operation_id => 'my_paths_pathItem_callback_operation' }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -1162,7 +1161,7 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { request => $request, operation_id => 'my_components_pathItem_callback_operation' }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -1185,7 +1184,7 @@ YAML
 
   $request = request('POST', 'http://example.com/foo');
 
-  ok($openapi->find_path($options = { request => $request }), to_str($request).': find_path succeeded');
+  ok($openapi->find_path($options = { request => $request }), to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     {
@@ -1202,7 +1201,7 @@ YAML
     'found path-item on the far side of a $ref using the request uri',
   );
 
-  ok($openapi->find_path($options = { request => $request, operation_id => 'my_reffed_component_operation' }), to_str($request).': find_path succeeded');
+  ok($openapi->find_path($options = { request => $request, operation_id => 'my_reffed_component_operation' }), to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     {
@@ -1219,7 +1218,7 @@ YAML
     'found path-item on the far side of a $ref using an operationId, and verified against the request uri',
   );
 
-  ok($openapi->find_path($options = { request => $request, path_template => '/foo' }), to_str($request).': find_path succeeded');
+  ok($openapi->find_path($options = { request => $request, path_template => '/foo' }), to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     {
@@ -1237,7 +1236,7 @@ YAML
   );
 
   ok($openapi->find_path($options = { request => $request, path_template => '/foo', operation_id => 'my_reffed_component_operation' }),
-    to_str($request).': find_path returns success');
+    to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     {
@@ -1272,7 +1271,7 @@ paths:
 YAML
 
   ok(!$openapi->find_path($options = { request => $request = request('POST', 'http://example.com/blech/bar' ) }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -1291,7 +1290,7 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { request => $request, path_template => '/bar' }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -1311,7 +1310,7 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { request => $request = request('POST', 'http://example.com/foo/bar' ) }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -1407,7 +1406,7 @@ paths:
 YAML
 
   ok(!$openapi->find_path($options = { request => $request = request('GET', 'http://bloop.example.com/foo?x=1') }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -1427,7 +1426,7 @@ YAML
 
   local $OpenAPI::Modern::DEBUG = 1;
   ok($openapi->find_path($options = { request => $request = request('GET', 'http://dev.example.com/foo/1?x=1') }),
-    to_str($request).': find_path returns success');
+    to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     {
@@ -1451,7 +1450,7 @@ YAML
   local $OpenAPI::Modern::DEBUG = 0;
 
   ok($openapi->find_path($options = { request => $request = request('GET', 'http://stg.example.com/bar/1?x=1') }),
-    to_str($request).': find_path returns success');
+    to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     {
@@ -1468,7 +1467,7 @@ YAML
   );
 
   ok($openapi->find_path($options = { request => $request = request('GET', 'http://prod.example.com/qux/1?x=1') }),
-    to_str($request).': find_path returns success');
+    to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     {
@@ -1485,7 +1484,7 @@ YAML
   );
 
   ok($openapi->find_path($options = { request => $request = request('GET', 'http://dev.example.com/subdir/foo/1?x=1') }),
-    to_str($request).': find_path returns success');
+    to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     {
@@ -1502,7 +1501,7 @@ YAML
   );
 
   ok($openapi->find_path($options = { request => $request = request('GET', 'http://stg.example.com/subdir/bar/1?x=1') }),
-    to_str($request).': find_path returns success');
+    to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     {
@@ -1519,7 +1518,7 @@ YAML
   );
 
   ok($openapi->find_path($options = { request => $request = request('GET', 'http://prod.example.com/subdir/qux/1?x=1') }),
-    to_str($request).': find_path returns success');
+    to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     {
@@ -1536,7 +1535,7 @@ YAML
   );
 
   ok($openapi->find_path($options = { request => $request = request('GET', 'http://example.com/subdir/subdir-operation?x=1') }),
-    to_str($request).': find_path returns success');
+    to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     {
@@ -1553,7 +1552,7 @@ YAML
   );
 
   ok($openapi->find_path($options = { request => $request = request('GET', 'http://example.com/subdir/subdir-path-item?x=1') }),
-    to_str($request).': find_path returns success');
+    to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     {
@@ -1570,7 +1569,7 @@ YAML
   );
 
   ok($openapi->find_path($options = { request => $request = request('GET', 'http://example.com/subdir/subdir-global?x=1') }),
-    to_str($request).': find_path returns success');
+    to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     {
@@ -1587,7 +1586,7 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { request => $request = request('GET', 'http://operation.example2.com/bad/bar') }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -1608,7 +1607,7 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { request => $request = request('POST', 'http://path-item.example2.com/bad/bar') }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -1629,7 +1628,7 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { request => $request = request('GET', 'http://global.example2.com/worse/bar') }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -1650,7 +1649,7 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { request => $request = request('GET', 'http://zip.example2.com/foo/1') }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -1671,7 +1670,7 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { request => $request = request('GET', 'http://zip.example2.com/bar/1') }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -1692,7 +1691,7 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { request => $request = request('GET', 'http://zip.example2.com/qux/1') }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -1713,7 +1712,7 @@ YAML
   );
 
   ok($openapi->find_path($options = { request => $request = request('GET', 'http://dev.example2.com/foo/1?x=1') }),
-    to_str($request).': find_path returns success');
+    to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     {
@@ -1730,7 +1729,7 @@ YAML
   );
 
   ok($openapi->find_path($options = { request => $request = request('GET', 'http://stg.example2.com/bar/1?x=1') }),
-    to_str($request).': find_path returns success');
+    to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     {
@@ -1747,7 +1746,7 @@ YAML
   );
 
   ok($openapi->find_path($options = { request => $request = request('GET', 'http://prod.example2.com/qux/1?x=1') }),
-    to_str($request).': find_path returns success');
+    to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     {
@@ -1764,7 +1763,7 @@ YAML
   );
 
   ok($openapi->find_path($options = { request => $request = request('POST', 'http://example.com/bar/1') }),
-    to_str($request).': find_path returns success');
+    to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     {
@@ -1782,7 +1781,7 @@ YAML
 
   ok(!$openapi->find_path($options = { request => $request = request('GET', 'http://dev.example2.com/foo/1?x=1'),
         uri_captures => { not_host => 'dev', foo_id => 1 } }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -1806,7 +1805,7 @@ YAML
 
   ok(!$openapi->find_path($options = { request => $request = request('GET', 'http://dev.example2.com/foo/1?x=1'),
       uri_captures => { host => 'not_dev', foo_id => 1 } }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -1830,7 +1829,7 @@ YAML
 
   ok(!$openapi->find_path($options = { request => $request = request('GET', 'http://dev.example2.com/foo/1?x=1'),
       uri_captures => { host => 'dev', foo_id => 1 }, path_captures => { foo_id => 2 } }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -1855,7 +1854,7 @@ YAML
 
   ok($openapi->find_path($options = { request => $request = request('GET', 'http://dev.example2.com/foo/1?x=1'),
       uri_captures => { host => 'dev', foo_id => 1 }, path_captures => { foo_id => 1 } }),
-    to_str($request).': find_path returns success');
+    to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     {
@@ -1899,7 +1898,7 @@ servers:
 YAML
 
   ok($openapi->find_path($options = { request => $request = request('GET', 'http://example.com/subdir/foo?x=1') }),
-    to_str($request).': find_path returns success');
+    to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     {
@@ -1916,7 +1915,7 @@ YAML
   );
 
   ok($openapi->find_path($options = { request => $request = request('GET', 'http://example.com/subdir/bar?x=1') }),
-    to_str($request).': find_path returns success');
+    to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     {
@@ -1933,7 +1932,7 @@ YAML
   );
 
   ok($openapi->find_path($options = { request => $request = request('GET', 'http://example.com/subdir/baz?x=1') }),
-    to_str($request).': find_path returns success');
+    to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     {
@@ -1959,7 +1958,7 @@ paths:
 YAML
 
   ok($openapi->find_path($options = { request => $request = request('GET', 'http://example.com:'.int(300+int(rand(1000))).'/foo?x=1') }),
-    to_str($request).': find_path returns success');
+    to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     {
@@ -1976,7 +1975,7 @@ YAML
   );
 
   ok($openapi->find_path($options = { request => $request = request('GET', '/foo?x=1') }),
-    to_str($request).': find_path returns success');
+    to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     {
@@ -2010,7 +2009,7 @@ paths:
 YAML
 
   ok($openapi->find_path($options = { request => $request = request('GET', '/user/1'), operation_id => 'generic_get' }),
-    to_str($request).': find_path returns success');
+    to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     {
@@ -2029,7 +2028,7 @@ YAML
 
   todo('FIXME! cannot infer path_template from operation_id, as we may be $reffed from another path-item' => sub {
   ok($openapi->find_path($options = { request => $request = request('GET', '/company/2'), operation_id => 'generic_get' }),
-    to_str($request).': find_path returns success');
+    to_str($request).': lookup succeeded');
   cmp_result(
     $options,
     {
@@ -2066,7 +2065,7 @@ paths:
 YAML
 
   ok(!$openapi->find_path(my $options = { path_template => '/foo/{foo_id}' }),
-    'find_path returns false');
+    'lookup failed');
   cmp_result(
     $options,
     {
@@ -2084,7 +2083,7 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { path_captures => {} }),
-    'find_path returns false');
+    'lookup failed');
   cmp_result(
     $options,
     {
@@ -2102,7 +2101,7 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { operation_id => 'my_get_operation', method => 'POST' }),
-    'find_path returns false');
+    'lookup failed');
   cmp_result(
     $options,
     {
@@ -2120,7 +2119,7 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { operation_id => 'my_reffed_component_operation', method => 'GET' }),
-    'find_path returns false');
+    'lookup failed');
   cmp_result(
     $options,
     {
@@ -2138,7 +2137,7 @@ YAML
   );
 
   ok($openapi->find_path($options = { operation_id => 'my_reffed_component_operation', method => 'POST' }),
-    'find_path succeeded');
+    'lookup succeeded');
   cmp_result(
     $options,
     {
@@ -2153,7 +2152,7 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { operation_id => 'my_get_operation', method => 'Get' }),
-    'find_path returns false');
+    'lookup failed');
   cmp_result(
     $options,
     {
@@ -2171,7 +2170,7 @@ YAML
   );
 
   ok($openapi->find_path($options = { operation_id => 'my_get_operation', method => 'GET' }),
-    'find_path succeeded');
+    'lookup succeeded');
   cmp_result(
     $options,
     {
@@ -2185,7 +2184,7 @@ YAML
     'operation can be found with operation_id and exact-cased method',
   );
 
-  ok(!$openapi->find_path($options = { method => 'GET' }), 'find_path returns false');
+  ok(!$openapi->find_path($options = { method => 'GET' }), 'lookup failed');
   cmp_result(
     $options,
     {
@@ -2202,7 +2201,7 @@ YAML
     'path_template can only be derived from request or operation_id',
   );
 
-  ok(!$openapi->find_path($options = {}), 'find_path returns false');
+  ok(!$openapi->find_path($options = {}), 'lookup failed');
   cmp_result(
     $options,
     {
@@ -2218,7 +2217,7 @@ YAML
     'cannot do any lookup when provided no options',
   );
 
-  ok(!$openapi->find_path($options = { path_template => '/blurp', method => 'GET' }), 'find_path failed');
+  ok(!$openapi->find_path($options = { path_template => '/blurp', method => 'GET' }), 'lookup failed');
   cmp_result(
     $options,
     {
@@ -2233,10 +2232,10 @@ YAML
         }),
       ],
     },
-    'no request provided; path template cannot be found under /paths',
+    'path template cannot be found under /paths',
   );
 
-  ok(!$openapi->find_path($options = { path_template => '/foo/{foo_id}', path_captures => {}, method => 'GET' }), 'find_path failed');
+  ok(!$openapi->find_path($options = { path_template => '/foo/{foo_id}', path_captures => {}, method => 'GET' }), 'lookup failed');
   cmp_result(
     $options,
     {
@@ -2255,10 +2254,10 @@ YAML
         }),
       ],
     },
-    'no request provided; path template does not match path captures',
+    'path template does not match path captures',
   );
 
-  ok($openapi->find_path($options = { operation_id => 'my_get_operation', path_captures => { foo_id => 'a' } }), 'find_path succeeded');
+  ok($openapi->find_path($options = { operation_id => 'my_get_operation', path_captures => { foo_id => 'a' } }), 'lookup succeeded');
   cmp_result(
     $options,
     {
@@ -2270,10 +2269,10 @@ YAML
       operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get)))),
       errors => [],
     },
-    'no request provided; path_captures and method are derived from operation_id',
+    'path_captures and method are derived from operation_id',
   );
 
-  ok($openapi->find_path($options = { method => 'GET', path_template => '/foo/{foo_id}', path_captures => { foo_id => 'a' } }), 'find_path succeeded');
+  ok($openapi->find_path($options = { method => 'GET', path_template => '/foo/{foo_id}', path_captures => { foo_id => 'a' } }), 'lookup succeeded');
   cmp_result(
     $options,
     {
@@ -2285,10 +2284,10 @@ YAML
       operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get)))),
       errors => [],
     },
-    'no request provided; operation_id is derived from method and path_template',
+    'operation_id is derived from method and path_template',
   );
 
-  ok($openapi->find_path($options = { method => 'GET', path_template => '/foo/{foo_id}' }), 'find_path succeeded');
+  ok($openapi->find_path($options = { method => 'GET', path_template => '/foo/{foo_id}' }), 'lookup succeeded');
   cmp_result(
     $options,
     {
@@ -2300,10 +2299,10 @@ YAML
       operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get)))),
       errors => [],
     },
-    'no request provided; path_captures is not required for verification',
+    'path_captures is not required for verification',
   );
 
-  ok(!$openapi->find_path($options = { method => 'get', path_template => '/foo/{foo_id}' }), 'find_path failed');
+  ok(!$openapi->find_path($options = { method => 'get', path_template => '/foo/{foo_id}' }), 'lookup failed');
   cmp_result(
     $options,
     {
@@ -2320,10 +2319,10 @@ YAML
         recommended_response => [ 405, 'Method Not Allowed' ],
       )],
     },
-    'no request provided; operation does not exist for path-item when provided method is wrongly cased',
+    'operation does not exist for path-item when provided method is wrongly cased',
   );
 
-  ok(!$openapi->find_path($options = { method => 'Get', path_template => '/foo/{foo_id}' }), 'find_path failed');
+  ok(!$openapi->find_path($options = { method => 'Get', path_template => '/foo/{foo_id}' }), 'lookup failed');
   cmp_result(
     $options,
     {
@@ -2340,10 +2339,10 @@ YAML
         recommended_response => [ 405, 'Method Not Allowed' ],
       )],
     },
-    'no request provided; operation does not exist for path-item when provided method is wrongly cased',
+    'operation does not exist for path-item when provided method is wrongly cased',
   );
 
-  ok(!$openapi->find_path($options = { path_template => '/foo/{foo_id}', method => 'POST' }), 'find_path failed');
+  ok(!$openapi->find_path($options = { path_template => '/foo/{foo_id}', method => 'POST' }), 'lookup failed');
   cmp_result(
     $options,
     {
@@ -2360,10 +2359,10 @@ YAML
         recommended_response => [ 405, 'Method Not Allowed' ],
       )],
     },
-    'no request provided; operation does not exist for path-item',
+    'operation does not exist for path-item',
   );
 
-  ok($openapi->find_path($options = { operation_id => 'my_get_operation' }), 'find_path succeeds');
+  ok($openapi->find_path($options = { operation_id => 'my_get_operation' }), 'lookup succeeded');
   cmp_result(
     $options,
     {
@@ -2378,7 +2377,7 @@ YAML
     'method and path_item are derived from operation_id; path_captures cannot be determined without request',
   );
 
-  ok(!$openapi->find_path($options = { operation_id => 'bloop' }), 'find_path returns false');
+  ok(!$openapi->find_path($options = { operation_id => 'bloop' }), 'lookup failed');
   cmp_result(
     $options,
     {
@@ -2396,7 +2395,7 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { path_template => '/foo', operation_id => 'my_get_operation' }),
-    'find_path returns false');
+    'lookup failed');
   cmp_result(
     $options,
     {
@@ -2414,7 +2413,7 @@ YAML
     'path_template and operation_id are inconsistent',
   );
 
-  ok($openapi->find_path($options = { operation_id => 'my_reffed_component_operation' }), 'find_path succeeded');
+  ok($openapi->find_path($options = { operation_id => 'my_reffed_component_operation' }), 'lookup succeeded');
   cmp_result(
     $options,
     {
@@ -2428,7 +2427,7 @@ YAML
     'found path_item on the far side of a $ref using operation_id',
   );
 
-  ok($openapi->find_path($options = { path_template => '/foo', method => 'POST' }), 'find_path succeeded');
+  ok($openapi->find_path($options = { path_template => '/foo', method => 'POST' }), 'lookup succeeded');
   cmp_result(
     $options,
     {
@@ -2452,7 +2451,7 @@ paths:
     get: {}
 YAML
 
-  ok($openapi->find_path($options = { method => 'GET', path_template => '/foo/{foo_id}' }), 'find_path succeeded');
+  ok($openapi->find_path($options = { method => 'GET', path_template => '/foo/{foo_id}' }), 'lookup succeeded');
   cmp_result(
     $options,
     {
@@ -2466,7 +2465,7 @@ YAML
   );
 
   ok($openapi->find_path(
-      $options = { method => 'GET', path_template => '/foo/{foo_id}' }), 'find_path succeeded');
+      $options = { method => 'GET', path_template => '/foo/{foo_id}' }), 'lookup succeeded');
   cmp_result(
     $options,
     {
@@ -2486,7 +2485,7 @@ YAML
   );
 
   ok($openapi->find_path($options = { operation_id => 'my_components_pathItem_operation' }),
-    'find_path succeeded');
+    'lookup succeeded');
   cmp_result(
     $options,
     {
@@ -2500,7 +2499,7 @@ YAML
   );
 
   ok(!$openapi->find_path($options = { path_template => '/foo/bar', operation_id => 'my_components_pathItem_operation' }),
-    'find_path returns false');
+    'lookup failed');
   cmp_result(
     $options,
     {
@@ -2521,7 +2520,7 @@ YAML
   );
 
   ok($openapi->find_path($options = { operation_id => 'my_webhook_operation' }),
-    'find_path succeeded');
+    'lookup succeeded');
   cmp_result(
     $options,
     {
@@ -2535,7 +2534,7 @@ YAML
   );
 
   ok($openapi->find_path($options = { operation_id => 'my_paths_pathItem_callback_operation' }),
-    'find_path succeeded');
+    'lookup succeeded');
   cmp_result(
     $options,
     {
@@ -2549,7 +2548,7 @@ YAML
   );
 
   ok($openapi->find_path($options = { operation_id => 'my_components_pathItem_callback_operation' }),
-    'find_path succeeded');
+    'lookup succeeded');
   cmp_result(
     $options,
     {
@@ -2575,7 +2574,7 @@ YAML
 
   my $request = request('GET', '/foo');
   ok(!$openapi->find_path(my $options = { request => $request, path_captures => { a => 1 } }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -2601,7 +2600,7 @@ YAML
 
   $request = request('GET', 'gopher://mycorp.com/foo');
   ok(!$openapi->find_path($options = { request => $request, path_captures => { a => 1 } }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -2635,7 +2634,7 @@ paths:
 YAML
 
   ok(!$openapi->find_path($options = { request => $request, path_captures => { a => 1 } }),
-    to_str($request).': find_path returns false');
+    to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
