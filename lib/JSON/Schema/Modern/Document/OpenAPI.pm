@@ -50,8 +50,8 @@ use constant DEFAULT_SCHEMAS => [
 
 # these are all pre-loaded, and also made available as s/<date>/latest/
 use constant DEFAULT_DIALECT => 'https://spec.openapis.org/oas/3.1/dialect/2024-11-10';
-use constant DEFAULT_BASE_METASCHEMA => 'https://spec.openapis.org/oas/3.1/schema-base/2025-08-31';
-use constant DEFAULT_METASCHEMA => 'https://spec.openapis.org/oas/3.1/schema/2025-08-31';
+use constant DEFAULT_BASE_METASCHEMA => 'https://spec.openapis.org/oas/3.1/schema-base/2025-09-15';
+use constant DEFAULT_METASCHEMA => 'https://spec.openapis.org/oas/3.1/schema/2025-09-15';
 use constant OAS_VOCABULARY => 'https://spec.openapis.org/oas/3.1/meta/2024-11-10';
 
 # it is likely the case that we can support a version beyond what's stated here -- but we may not,
@@ -598,8 +598,8 @@ Provides structured parsing of an OpenAPI document, suitable as the base for mor
 request and response validation, code generation or form generation.
 
 The provided document must be a valid OpenAPI document, as specified by the schema identified by
-L<https://spec.openapis.org/oas/3.1/schema-base/2025-08-31> (which is a wrapper around
-L<https://spec.openapis.org/oas/3.1/schema/2025-08-31>),
+L<https://spec.openapis.org/oas/3.1/schema-base/2025-09-15> (which is a wrapper around
+L<https://spec.openapis.org/oas/3.1/schema/2025-09-15>),
 and the L<OpenAPI v3.1.x specification|https://spec.openapis.org/oas/v3.1>.
 
 =head1 CONSTRUCTOR ARGUMENTS
@@ -640,7 +640,7 @@ See also L</retrieval_uri>.
 =head2 metaschema_uri
 
 The URI of the schema that describes the OpenAPI document itself. Defaults to
-L<https://spec.openapis.org/oas/3.1/schema-base/2025-08-31> when the
+L<https://spec.openapis.org/oas/3.1/schema-base/2025-09-15> when the
 C<L<jsonSchemaDialect/https://spec.openapis.org/oas/v3.1#fixed-fields>>
 is not changed from its default; otherwise defaults to a dynamically generated metaschema that uses
 the correct value of C<jsonSchemaDialect>, so you don't need to write one yourself.
