@@ -156,7 +156,7 @@ if (keys %new_schemas) {
   say '# edited Changes file' if $ENV{DEBUG};
   path('Changes')->edit_lines_utf8(sub {
     if ($seen_next ||= /^\{\{\$NEXT\}\}/ and not $seen_blank and /^$/) {
-      s/^$/        - updated bundled schemas to their latest published versions\n/;
+      s/^$/          - updated bundled schemas to their latest published versions\n/;
       $seen_blank = 1;
     }
   });
