@@ -216,7 +216,7 @@ YAML
           instanceLocation => '/request/uri',
           keywordLocation => '/paths',
           absoluteKeywordLocation => $doc_uri->clone->fragment('/paths')->to_string,
-          error => 'missing path-item "/foo/baz"',
+          error => 'missing path "/foo/baz"',
         },
       ],
     },

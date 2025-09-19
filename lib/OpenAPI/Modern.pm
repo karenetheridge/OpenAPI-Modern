@@ -414,7 +414,7 @@ sub find_path ($self, $options, $state = {}) {
   if (exists $options->{path_template}) {
     $path_template = $options->{path_template};
 
-    return E({ %$state, data_path => '/request/uri', keyword => 'paths' }, 'missing path-item "%s"', $path_template)
+    return E({ %$state, data_path => '/request/uri', keyword => 'paths' }, 'missing path "%s"', $path_template)
       if not exists $schema->{paths}{$path_template};
   }
 
