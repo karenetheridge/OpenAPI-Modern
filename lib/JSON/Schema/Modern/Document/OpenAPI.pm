@@ -20,6 +20,7 @@ no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 no if "$]" >= 5.041009, feature => 'smartmatch';
 no feature 'switch';
 use JSON::Schema::Modern::Utilities qw(E canonical_uri jsonp is_equal json_pointer_type assert_keyword_type assert_uri_reference);
+use OpenAPI::Modern::Utilities;
 use Carp qw(croak carp);
 use Digest::MD5 'md5_hex';
 use Storable 'dclone';
@@ -34,28 +35,6 @@ use namespace::clean;
 extends 'JSON::Schema::Modern::Document';
 
 our @CARP_NOT = qw(Sereal Sereal::Decoder JSON::Schema::Modern::Document);
-
-# schema files to add by default
-# these are also available as URIs with 'latest' instead of the timestamp.
-use constant DEFAULT_SCHEMAS => [
-  'oas/dialect/base.schema.json', # metaschema for json schemas contained within openapi documents
-  'oas/meta/base.schema.json',    # vocabulary definition
-  'oas/schema-base.json',         # the main openapi document schema + draft2020-12 jsonSchemaDialect
-  'oas/schema.json',              # the main openapi document schema + permissive jsonSchemaDialect
-  'strict-schema.json',
-  'strict-dialect.json',
-];
-
-# these are all pre-loaded, and also made available as s/<date>/latest/
-use constant DEFAULT_DIALECT => 'https://spec.openapis.org/oas/3.1/dialect/2024-11-10';
-use constant DEFAULT_BASE_METASCHEMA => 'https://spec.openapis.org/oas/3.1/schema-base/2025-09-15';
-use constant DEFAULT_METASCHEMA => 'https://spec.openapis.org/oas/3.1/schema/2025-09-15';
-use constant OAS_VOCABULARY => 'https://spec.openapis.org/oas/3.1/meta/2024-11-10';
-
-# it is likely the case that we can support a version beyond what's stated here -- but we may not,
-# so we'll warn to that effect. Every effort will be made to upgrade this implementation to fully
-# support the latest version as soon as possible.
-use constant OAD_VERSION => '3.1.2';
 
 has '+schema' => (
   isa => HashRef,
@@ -559,8 +538,7 @@ JSON
     metaschema_uri => 'https://example.com/my_custom_metaschema',
   );
 
-=for Pod::Coverage THAW DEFAULT_BASE_METASCHEMA DEFAULT_DIALECT DEFAULT_METASCHEMA DEFAULT_SCHEMAS
-OAS_VOCABULARY OAD_VERSION get_operationId_path
+=for Pod::Coverage THAW get_operationId_path
 
 =head1 DESCRIPTION
 

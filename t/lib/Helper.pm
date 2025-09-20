@@ -27,24 +27,16 @@ use Test::Deep qw(!array !hash); # import symbols: ignore, re etc
 use JSON::Schema::Modern::Document::OpenAPI;
 use JSON::Schema::Modern::Utilities qw(true false);
 use OpenAPI::Modern;
+use OpenAPI::Modern::Utilities;
 use Test::File::ShareDir -share => { -dist => { 'OpenAPI-Modern' => 'share' } };
 use YAML::PP 0.005;
-
-use constant DEFAULT_DIALECT => JSON::Schema::Modern::Document::OpenAPI::DEFAULT_DIALECT;
-use constant DEFAULT_BASE_METASCHEMA => JSON::Schema::Modern::Document::OpenAPI::DEFAULT_BASE_METASCHEMA;
-use constant DEFAULT_METASCHEMA => JSON::Schema::Modern::Document::OpenAPI::DEFAULT_METASCHEMA;
-use constant OAS_VOCABULARY => JSON::Schema::Modern::Document::OpenAPI::OAS_VOCABULARY;
 
 use constant OAS_VOCABULARIES => [ map 'JSON::Schema::Modern::Vocabulary::'.$_,
   qw(Core Applicator Validation FormatAnnotation Content MetaData Unevaluated OpenAPI) ];
 
-# technically all 3.1.x versions should be supported, but this is all we have tested for, and the
-# version of the schemas we're bundling.
-use constant OAD_VERSION => JSON::Schema::Modern::Document::OpenAPI::OAD_VERSION;
-
 use constant OPENAPI_PREAMBLE => <<"YAML";
 ---
-openapi: ${\ OAD_VERSION() }
+openapi: ${\ OAD_VERSION }
 info:
   title: Test API
   version: 1.2.3
