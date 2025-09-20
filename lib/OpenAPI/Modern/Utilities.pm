@@ -16,6 +16,8 @@ no if "$]" >= 5.033001, feature => 'multidimensional';
 no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 no if "$]" >= 5.041009, feature => 'smartmatch';
 no feature 'switch';
+use File::ShareDir 'dist_dir';
+use Path::Tiny;
 use namespace::clean;
 
 use Exporter 'import';
@@ -29,7 +31,13 @@ our @EXPORT = qw(
   OAD_VERSION
 );
 
-our @EXPORT_OK = qw();
+our @EXPORT_OK = qw(
+  add_vocab_and_default_schemas
+);
+
+our %EXPORT_TAGS = (
+  constants => \@EXPORT,
+);
 
 # schema files to add by default
 # these are also available as URIs with 'latest' instead of the timestamp.
@@ -53,6 +61,54 @@ use constant OAS_VOCABULARY => 'https://spec.openapis.org/oas/3.1/meta/2024-11-1
 # support the latest version as soon as possible.
 use constant OAD_VERSION => '3.1.2';
 
+# simple runtime-wide cache of metaschema document objects that are sourced from disk
+my $metaschema_cache = {};
+
+sub add_vocab_and_default_schemas ($evaluator) {
+  $evaluator->add_vocabulary('JSON::Schema::Modern::Vocabulary::OpenAPI');
+
+  $evaluator->add_format_validation(int32 => +{
+    type => 'number',
+    sub => sub ($x) {
+      require Math::BigInt; Math::BigInt->VERSION(1.999701);
+      $x = Math::BigInt->new($x);
+      return if $x->is_nan;
+      my $bound = Math::BigInt->new(2) ** 31;
+      $x >= -$bound && $x < $bound;
+    }
+  });
+
+  $evaluator->add_format_validation(int64 => +{
+    type => 'number',
+    sub => sub ($x) {
+      require Math::BigInt; Math::BigInt->VERSION(1.999701);
+      $x = Math::BigInt->new($x);
+      return if $x->is_nan;
+      my $bound = Math::BigInt->new(2) ** 63;
+      $x >= -$bound && $x < $bound;
+    }
+  });
+
+  $evaluator->add_format_validation(float => +{ type => 'number', sub => sub ($x) { 1 } });
+  $evaluator->add_format_validation(double => +{ type => 'number', sub => sub ($x) { 1 } });
+  $evaluator->add_format_validation(password => +{ type => 'string', sub => sub ($) { 1 } });
+
+  foreach my $filename (DEFAULT_SCHEMAS->@*) {
+    my $document;
+    if ($document = $metaschema_cache->{$filename}) {
+      $evaluator->add_document($document);
+    }
+    else {
+      my $file = path(dist_dir('OpenAPI-Modern'), $filename);
+      my $schema = $evaluator->_json_decoder->decode($file->slurp_raw);
+      $metaschema_cache->{$filename} = $document = $evaluator->add_schema($schema);
+    }
+
+    $evaluator->add_document($`.'/latest', $document)
+      if $document->canonical_uri =~ m{/\d{4}-\d{2}-\d{2}$};
+  }
+}
+
 1;
 __END__
 
@@ -73,5 +129,6 @@ DEFAULT_METASCHEMA
 DEFAULT_SCHEMAS
 OAD_VERSION
 OAS_VOCABULARY
+add_vocab_and_default_schemas
 
 =cut

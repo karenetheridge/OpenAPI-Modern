@@ -31,6 +31,7 @@ use Feature::Compat::Try;
 use Encode 2.89 ();
 use JSON::Schema::Modern;
 use JSON::Schema::Modern::Utilities qw(jsonp unjsonp canonical_uri E abort is_equal is_elements_unique true false);
+use OpenAPI::Modern::Utilities qw(add_vocab_and_default_schemas);
 use JSON::Schema::Modern::Document::OpenAPI;
 use MooX::TypeTiny 0.002002;
 use Types::Standard qw(InstanceOf Bool);
@@ -82,7 +83,7 @@ around BUILDARGS => sub ($orig, $class, @args) {
   );
 
   # add the OpenAPI vacabulary, formats and metaschemas to the evaluator if they weren't there already
-  $args->{openapi_document}->_add_vocab_and_default_schemas($args->{evaluator}) if $had_document;
+  add_vocab_and_default_schemas($args->{evaluator}) if $had_document;
 
   # if there were errors, this will die with a JSON::Schema::Modern::Result object
   $args->{evaluator}->add_document($args->{openapi_document});

@@ -20,12 +20,10 @@ no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 no if "$]" >= 5.041009, feature => 'smartmatch';
 no feature 'switch';
 use JSON::Schema::Modern::Utilities qw(E canonical_uri jsonp is_equal json_pointer_type assert_keyword_type assert_uri_reference);
-use OpenAPI::Modern::Utilities;
+use OpenAPI::Modern::Utilities qw(:constants add_vocab_and_default_schemas);
 use Carp qw(croak carp);
 use Digest::MD5 'md5_hex';
 use Storable 'dclone';
-use File::ShareDir 'dist_dir';
-use Path::Tiny;
 use Ref::Util 'is_plain_hashref';
 use builtin::compat 'blessed';
 use MooX::TypeTiny 0.002002;
@@ -101,7 +99,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
       ': this may be okay but you should upgrade your OpenAPI::Modern installation soon'
     if defined $oad_version[2] and (split(/\./, $max_supported))[2] < $oad_version[2];
 
-  $self->_add_vocab_and_default_schemas($evaluator);
+  add_vocab_and_default_schemas($evaluator);
 
   my $state = {
     traversed_keyword_path => '',
@@ -361,54 +359,6 @@ sub validate ($class, @args) {
 }
 
 ######## NO PUBLIC INTERFACES FOLLOW THIS POINT ########
-
-# simple runtime-wide cache of metaschema document objects that are sourced from disk
-my $metaschema_cache = {};
-
-sub _add_vocab_and_default_schemas ($self, $evaluator) {
-  $evaluator->add_vocabulary('JSON::Schema::Modern::Vocabulary::OpenAPI');
-
-  $evaluator->add_format_validation(int32 => +{
-    type => 'number',
-    sub => sub ($x) {
-      require Math::BigInt; Math::BigInt->VERSION(1.999701);
-      $x = Math::BigInt->new($x);
-      return if $x->is_nan;
-      my $bound = Math::BigInt->new(2) ** 31;
-      $x >= -$bound && $x < $bound;
-    }
-  });
-
-  $evaluator->add_format_validation(int64 => +{
-    type => 'number',
-    sub => sub ($x) {
-      require Math::BigInt; Math::BigInt->VERSION(1.999701);
-      $x = Math::BigInt->new($x);
-      return if $x->is_nan;
-      my $bound = Math::BigInt->new(2) ** 63;
-      $x >= -$bound && $x < $bound;
-    }
-  });
-
-  $evaluator->add_format_validation(float => +{ type => 'number', sub => sub ($x) { 1 } });
-  $evaluator->add_format_validation(double => +{ type => 'number', sub => sub ($x) { 1 } });
-  $evaluator->add_format_validation(password => +{ type => 'string', sub => sub ($) { 1 } });
-
-  foreach my $filename (DEFAULT_SCHEMAS->@*) {
-    my $document;
-    if ($document = $metaschema_cache->{$filename}) {
-      $evaluator->add_document($document);
-    }
-    else {
-      my $file = path(dist_dir('OpenAPI-Modern'), $filename);
-      my $schema = $evaluator->_json_decoder->decode($file->slurp_raw);
-      $metaschema_cache->{$filename} = $document = $evaluator->add_schema($schema);
-    }
-
-    $evaluator->add_document($`.'/latest', $document)
-      if $document->canonical_uri =~ m{/\d{4}-\d{2}-\d{2}$};
-  }
-}
 
 # https://spec.openapis.org/oas/v3.1#schema-object
 # traverse this JSON Schema and identify all errors, subschema locations, and referenceable
