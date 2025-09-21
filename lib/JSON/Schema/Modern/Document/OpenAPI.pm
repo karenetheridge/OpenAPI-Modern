@@ -445,7 +445,7 @@ sub _add_vocab_and_default_schemas ($self, $evaluator) {
     else {
       my $file = path(dist_dir('OpenAPI-Modern'), $filename);
       my $schema = $evaluator->_json_decoder->decode($file->slurp_raw);
-      $document = $evaluator->add_schema($schema);
+      $metaschema_cache->{$filename} = $document = $evaluator->add_schema($schema);
     }
 
     $evaluator->add_document($`.'/latest', $document)
