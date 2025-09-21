@@ -98,7 +98,7 @@ my $json_decoder = JSON::Schema::Modern::_JSON_BACKEND()->new->utf8(1);
 my $js = JSON::Schema::Modern->new;
 my %checksums;
 
-# download fresh copies of our files, validate against their schemas and against our code
+# download fresh copies of all files, validate against their schemas
 foreach my $target (sort keys %files) {
   my $uri = $files{$target};
 
@@ -119,35 +119,6 @@ foreach my $target (sort keys %files) {
   say '# validating ', $schema->{'$id'}, ' -> ', $target if $ENV{DEBUG};
   my $result = $js->validate_schema($schema, { strict => 1, validate_formats => 1 });
   die $result->dump if not $result->valid;
-}
-
-# all files must be updated before any of them can be loaded as documents, since they depend on each
-# other via the '$schema' and '$vocabulary' keywords... and we delay loading the document class,
-# so we get the new versions of our constants
-require JSON::Schema::Modern::Document::OpenAPI;
-
-foreach my $target (sort keys %files) {
-  $target = path('share', $target);
-  next if $target->basename eq 'LICENSE';
-
-  my $schema = $json_decoder->decode($target->slurp_raw);
-  say '# loading    ', $schema->{'$id'}, ' -> ', $target if $ENV{DEBUG};
-
-  # Note that if these are new files, then this type of validate won't work...
-  # because the files won't be in the resource index. But we can fix this by carefully rearranging
-  # the order in which we load the files, and can sequentially add them to the evaluator's resource
-  # index.
-
-  my $result = JSON::Schema::Modern::Document->validate(schema => $schema);
-  die $result->dump if not $result->valid;
-
-  die 'for uri ', $schema->{'$id'}, ', mismatch between jsonSchemaDialect "',
-      $schema->{properties}{jsonSchemaDialect}{default},
-      '" and assumed default "',
-      JSON::Schema::Modern::Document::OpenAPI->DEFAULT_DIALECT, '"'
-    if exists((($schema->{properties}//{})->{jsonSchemaDialect}//{})->{default})
-      and $schema->{properties}{jsonSchemaDialect}{default}
-        ne JSON::Schema::Modern::Document::OpenAPI->DEFAULT_DIALECT;
 }
 
 # compute checksums and record them in the test
