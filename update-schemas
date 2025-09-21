@@ -14,7 +14,6 @@ use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 use Path::Tiny;
 use Mojo::UserAgent;
 use Digest::MD5 'md5_hex';
-use Test::File::ShareDir -share => { -dist => { 'OpenAPI-Modern' => 'share' } };
 use JSON::Schema::Modern;
 use lib 'lib';  # make sure we load the newly-patched version of our modules
 
@@ -42,11 +41,13 @@ my %files = (
 my $web_url = 'https://spec.openapis.org/';
 
 my $ua = Mojo::UserAgent->new(max_redirects => 3);
-say "# fetching $web_url" if $ENV{DEBUG};
+say "# fetching   $web_url" if $ENV{DEBUG};
 my $res = $ua->get($web_url)->result;
 die "Failed to fetch $web_url", $res->code, " ", $res->message if $res->is_error;
 
-my %new_schemas = ();  # keys are existing OAS schema URIs, defined above in %files
+# keys are existing OAS schema URLs, as found above
+# values is the list of all schemas found on the website of the same type
+my %new_schemas;
 
 # check the website and find all files that are newer than what we've got
 foreach my $e ($res->dom->find('a[href]')->each) {
@@ -62,12 +63,18 @@ foreach my $e ($res->dom->find('a[href]')->each) {
 }
 
 # identify outdated schema files, and replace all references to them in the repository
-if (my @outdated_schemas = grep $new_schemas{$_}->@*, sort keys %new_schemas) {
+if (my @outdated_schemas = grep $new_schemas{$_}->@*, reverse sort keys %new_schemas) {
   warn join("\n", 'these outdated entries will be replaced everywhere they are found (including in this script itself):',
-    map +("$_ -> ".join(', ', sort $new_schemas{$_}->@*)), @outdated_schemas), "\n\n";
+    map "$_ -> $new_schemas{$_}->[0]", @outdated_schemas), "\n\n";
 
   # now we just keep track of the newest version of each..
-  %new_schemas = map +($new_schemas{$_}->@* ? ($_ => $new_schemas{$_}->[-1]) : ()), @outdated_schemas;
+  %new_schemas = map +($_ => $new_schemas{$_}->[0]), @outdated_schemas;
+
+  if ($ENV{DEBUG}) {
+    foreach my $outdated (@outdated_schemas) {
+      say 'replacing "'.$outdated.'" with "'.$new_schemas{$outdated}.'"';
+    }
+  }
 
   foreach my $file (split("\n", `git ls-files`) ) {
     next if $file =~ m{^share/oas/};  # skip references in the files we are replacing
@@ -79,18 +86,16 @@ if (my @outdated_schemas = grep $new_schemas{$_}->@*, sort keys %new_schemas) {
   }
 
   # update the values of %files for all schemas that are outdated
+  # we want to download even unchanged files to make sure the checksum matches
   my %inverted_files = reverse %files;
   foreach my $outdated (@outdated_schemas) {
     $inverted_files{$new_schemas{$outdated}} = delete $inverted_files{$outdated};
   }
   %files = reverse %inverted_files;
 }
-else {
-  %new_schemas = ();
-}
 
 my $json_decoder = JSON::Schema::Modern::_JSON_BACKEND()->new->utf8(1);
-my $js = JSON::Schema::Modern->new(strict => 1, validate_formats => 1);
+my $js = JSON::Schema::Modern->new;
 my %checksums;
 
 # download fresh copies of our files, validate against their schemas and against our code
@@ -112,7 +117,7 @@ foreach my $target (sort keys %files) {
   # JSON::Schema::Modern instance
   my $schema = $json_decoder->decode($content);
   say '# validating ', $schema->{'$id'}, ' -> ', $target if $ENV{DEBUG};
-  my $result = $js->validate_schema($schema, { strict => 1 });
+  my $result = $js->validate_schema($schema, { strict => 1, validate_formats => 1 });
   die $result->dump if not $result->valid;
 }
 
@@ -151,7 +156,8 @@ path('t/checksums.t')->edit_raw(sub {
   $_ = substr($_, 0, pos()+1).join("\n", map $_.' '.$checksums{$_}, sort keys %checksums)."\n";
 });
 
-if (keys %new_schemas) {
+# only edit Changes file if there are dirty files
+if (system('git diff --quiet --stat') >> 8) {
   my ($seen_next, $seen_blank);
   say '# edited Changes file' if $ENV{DEBUG};
   path('Changes')->edit_lines_utf8(sub {
