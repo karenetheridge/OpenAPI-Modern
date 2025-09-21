@@ -23,15 +23,18 @@ use namespace::clean;
 use Exporter 'import';
 
 our @EXPORT = qw(
-  DEFAULT_SCHEMAS
   DEFAULT_DIALECT
   DEFAULT_BASE_METASCHEMA
   DEFAULT_METASCHEMA
+  STRICT_METASCHEMA
+  STRICT_DIALECT
   OAS_VOCABULARY
   OAD_VERSION
 );
 
 our @EXPORT_OK = qw(
+  BUNDLED_SCHEMAS
+  OAS_SCHEMAS
   add_vocab_and_default_schemas
 );
 
@@ -39,29 +42,48 @@ our %EXPORT_TAGS = (
   constants => \@EXPORT,
 );
 
-# schema files to add by default
-# these are also available as URIs with 'latest' instead of the timestamp.
-use constant DEFAULT_SCHEMAS => [
-  'oas/dialect/base.schema.json', # metaschema for json schemas contained within openapi documents
-  'oas/meta/base.schema.json',    # vocabulary definition
-  'oas/schema-base.json',         # the main openapi document schema + draft2020-12 jsonSchemaDialect
-  'oas/schema.json',              # the main openapi document schema + permissive jsonSchemaDialect
-  'strict-schema.json',
-  'strict-dialect.json',
-];
+# see https://spec.openapis.org/#openapi-specification-schemas for the latest links
+# these are updated automatically at build time via 'update-schemas'
+
+# the main OpenAPI document schema, with permissive (unvalidated) JSON Schemas
+use constant DEFAULT_METASCHEMA => 'https://spec.openapis.org/oas/3.1/schema/2025-09-15';
+
+# metaschema for JSON Schemas contained within OpenAPI documents:
+# standard JSON Schema (presently draft2020-12) + OpenAPI vocabulary
+use constant DEFAULT_DIALECT => 'https://spec.openapis.org/oas/3.1/dialect/2024-11-10';
+
+# OpenAPI document schema that forces the use of the JSON Schema dialect (no $schema overrides
+# permitted)
+use constant DEFAULT_BASE_METASCHEMA => 'https://spec.openapis.org/oas/3.1/schema-base/2025-09-15';
+
+# OpenAPI vocabulary definition
+use constant OAS_VOCABULARY => 'https://spec.openapis.org/oas/3.1/meta/2024-11-10';
+
+# an OpenAPI schema and JSON Schema dialect which prohibit unknown keywords
+use constant STRICT_METASCHEMA => 'https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/strict-schema.json';
+use constant STRICT_DIALECT => 'https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/strict-dialect.json';
+
+# identifier => local filename (under share/)
+use constant BUNDLED_SCHEMAS => {
+  DEFAULT_METASCHEMA, 'oas/schema.json',
+  DEFAULT_DIALECT, 'oas/dialect/base.schema.json',
+  DEFAULT_BASE_METASCHEMA, 'oas/schema-base.json',
+  OAS_VOCABULARY, 'oas/meta/base.schema.json',
+  STRICT_METASCHEMA, 'strict-schema.json',
+  STRICT_DIALECT, 'strict-dialect.json',
+};
 
 # these are all pre-loaded, and also made available as s/<date>/latest/
-use constant DEFAULT_DIALECT => 'https://spec.openapis.org/oas/3.1/dialect/2024-11-10';
-use constant DEFAULT_BASE_METASCHEMA => 'https://spec.openapis.org/oas/3.1/schema-base/2025-09-15';
-use constant DEFAULT_METASCHEMA => 'https://spec.openapis.org/oas/3.1/schema/2025-09-15';
-use constant OAS_VOCABULARY => 'https://spec.openapis.org/oas/3.1/meta/2024-11-10';
+use constant OAS_SCHEMAS => [
+  grep m{/oas/3\.1/}, keys BUNDLED_SCHEMAS->%*,
+];
 
 # it is likely the case that we can support a version beyond what's stated here -- but we may not,
 # so we'll warn to that effect. Every effort will be made to upgrade this implementation to fully
 # support the latest version as soon as possible.
 use constant OAD_VERSION => '3.1.2';
 
-# simple runtime-wide cache of metaschema document objects that are sourced from disk
+# simple runtime-wide cache of $ids to metaschema document objects that are sourced from disk
 my $metaschema_cache = {};
 
 sub add_vocab_and_default_schemas ($evaluator) {
@@ -93,15 +115,15 @@ sub add_vocab_and_default_schemas ($evaluator) {
   $evaluator->add_format_validation(double => +{ type => 'number', sub => sub ($x) { 1 } });
   $evaluator->add_format_validation(password => +{ type => 'string', sub => sub ($) { 1 } });
 
-  foreach my $filename (DEFAULT_SCHEMAS->@*) {
+  foreach my $uri (keys BUNDLED_SCHEMAS->%*) {
     my $document;
-    if ($document = $metaschema_cache->{$filename}) {
+    if ($document = $metaschema_cache->{$uri}) {
       $evaluator->add_document($document);
     }
     else {
-      my $file = path(dist_dir('OpenAPI-Modern'), $filename);
+      my $file = path(dist_dir('OpenAPI-Modern'), BUNDLED_SCHEMAS->{$uri});
       my $schema = $evaluator->_json_decoder->decode($file->slurp_raw);
-      $metaschema_cache->{$filename} = $document = $evaluator->add_schema($schema);
+      $metaschema_cache->{$uri} = $document = $evaluator->add_schema($schema);
     }
 
     $evaluator->add_document($`.'/latest', $document)
@@ -123,12 +145,15 @@ __END__
 This class contains common definitions and internal utilities to be used by L<OpenAPI::Modern>.
 
 =for Pod::Coverage
+BUNDLED_SCHEMAS
 DEFAULT_BASE_METASCHEMA
 DEFAULT_DIALECT
 DEFAULT_METASCHEMA
-DEFAULT_SCHEMAS
 OAD_VERSION
+OAS_SCHEMAS
 OAS_VOCABULARY
+STRICT_DIALECT
+STRICT_METASCHEMA
 add_vocab_and_default_schemas
 
 =cut

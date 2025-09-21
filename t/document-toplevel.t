@@ -15,9 +15,6 @@ use Test::Warnings qw(:no_end_test warnings had_no_warnings);
 use lib 't/lib';
 use Helper;
 
-use constant STRICT_DIALECT_URI => 'https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/strict-dialect.json';
-use constant STRICT_METASCHEMA_URI => 'https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/strict-schema.json';
-
 my $yamlpp = YAML::PP->new(boolean => 'JSON::PP');
 
 subtest 'basic construction' => sub {
@@ -547,7 +544,7 @@ YAML
 
 subtest 'custom dialects, via metaschema_uri' => sub {
   my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
-    metaschema_uri => STRICT_METASCHEMA_URI,
+    metaschema_uri => STRICT_METASCHEMA,
     schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
 components:
   schemas:
@@ -562,7 +559,7 @@ YAML
     {
       instanceLocation => '/components/schemas/Foo/blah',
       keywordLocation => '/$ref/properties/components/$ref/properties/schemas/additionalProperties/$dynamicRef/$ref/unevaluatedProperties',
-      absoluteKeywordLocation => STRICT_DIALECT_URI.'#/unevaluatedProperties',
+      absoluteKeywordLocation => STRICT_DIALECT.'#/unevaluatedProperties',
       error => 'additional property not permitted',
     },
     'subschemas identified, and error found',
@@ -571,9 +568,9 @@ YAML
 
 subtest 'custom dialects, via metaschema_uri and jsonSchemaDialect' => sub {
   my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
-    metaschema_uri => STRICT_METASCHEMA_URI,
+    metaschema_uri => STRICT_METASCHEMA,
     schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<YAML));
-jsonSchemaDialect: ${\ STRICT_DIALECT_URI() }
+jsonSchemaDialect: ${\ STRICT_DIALECT }
 components:
   schemas:
     Foo:
@@ -587,7 +584,7 @@ YAML
     {
       instanceLocation => '/components/schemas/Foo/blah',
       keywordLocation => '/$ref/properties/components/$ref/properties/schemas/additionalProperties/$dynamicRef/$ref/unevaluatedProperties',
-      absoluteKeywordLocation => STRICT_DIALECT_URI.'#/unevaluatedProperties',
+      absoluteKeywordLocation => STRICT_DIALECT.'#/unevaluatedProperties',
       error => 'additional property not permitted',
     },
     'subschemas identified, and error found',

@@ -15,8 +15,6 @@ use JSON::Schema::Modern::Document::OpenAPI;
 use lib 't/lib';
 use Helper;
 
-use constant STRICT_METASCHEMA => 'https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/strict-schema.json';
-
 my $oad_schema = {
   openapi => OAD_VERSION,
   info => { title => 'my api', version => '1.0' },
