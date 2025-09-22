@@ -127,8 +127,8 @@ path('t/checksums.t')->edit_raw(sub {
   $_ = substr($_, 0, pos()+1).join("\n", map $_.' '.$checksums{$_}, sort keys %checksums)."\n";
 });
 
-# only edit Changes file if there are dirty files
-if (system('git diff --quiet --stat') >> 8) {
+# only edit Changes file if there are updated files to be committed
+if (system('git diff --quiet --stat share/') >> 8) {
   my ($seen_next, $seen_blank);
   say '# edited Changes file' if $ENV{DEBUG};
   path('Changes')->edit_lines_utf8(sub {
@@ -139,4 +139,7 @@ if (system('git diff --quiet --stat') >> 8) {
   });
 
   exec 'git commit -m"update bundled schemas to latest versions" Changes lib share t update-schemas';
+}
+else {
+  say '# no changes to bundled schemas';
 }
