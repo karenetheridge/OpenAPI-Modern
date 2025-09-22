@@ -153,6 +153,14 @@ sub traverse ($self, $evaluator, $config_override = {}) {
       ? Mojo::URL->new($schema->{jsonSchemaDialect})->to_abs($self->canonical_uri)
       : DEFAULT_DIALECT;
 
+    # continue to support the old strict dialect and metaschema which didn't have "3.1" in the $id
+    if ($json_schema_dialect eq (STRICT_DIALECT->{3.1} =~ s{/3.1/}{/}r)) {
+      $json_schema_dialect =~ s{share/\K}{3.1/};
+      $schema->{jsonSchemaDialect} = $json_schema_dialect;
+    }
+    $self->_set_metaschema_uri($self->metaschema_uri =~ s{share/\K}{3.1/}r)
+      if $self->_has_metaschema_uri and $self->metaschema_uri eq (STRICT_METASCHEMA =~ s{/3.1/}{/}r);
+
     # we used to always preload these, so we need to do it as needed for users who are using them
     load_bundled_document($evaluator, STRICT_DIALECT)
       if $self->_has_metaschema_uri and $self->metaschema_uri eq STRICT_METASCHEMA

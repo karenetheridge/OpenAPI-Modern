@@ -60,4 +60,18 @@ subtest 'OAS metaschemas sanity check' => sub {
   ) foreach ('/$defs/dialect/const', '/$defs/schema/$ref');
 };
 
+subtest 'customized 3.1 strict schema and dialect when version is omitted' => sub {
+  my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
+    evaluator => my $evaluator = JSON::Schema::Modern->new,
+    metaschema_uri => (STRICT_METASCHEMA =~ s{/3\.1/}{/}r),
+    schema => {
+      %$oad_schema,
+      jsonSchemaDialect => (STRICT_DIALECT =~ s{/3\.1/}{/}r),
+    },
+  );
+
+  cmp_result([ map $_->TO_JSON, $doc->errors ], [], 'no document errors');
+  is($doc->metaschema_uri, STRICT_METASCHEMA, '3.1-identified strict metaschema is swapped in');
+};
+
 done_testing;

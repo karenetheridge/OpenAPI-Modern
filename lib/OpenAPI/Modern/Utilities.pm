@@ -61,8 +61,8 @@ use constant DEFAULT_BASE_METASCHEMA => 'https://spec.openapis.org/oas/3.1/schem
 use constant OAS_VOCABULARY => 'https://spec.openapis.org/oas/3.1/meta/2024-11-10';
 
 # an OpenAPI schema and JSON Schema dialect which prohibit unknown keywords
-use constant STRICT_METASCHEMA => 'https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/strict-schema.json';
-use constant STRICT_DIALECT => 'https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/strict-dialect.json';
+use constant STRICT_METASCHEMA => 'https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/3.1/strict-schema.json';
+use constant STRICT_DIALECT => 'https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/3.1/strict-dialect.json';
 
 # identifier => local filename (under share/)
 use constant BUNDLED_SCHEMAS => {
@@ -70,8 +70,8 @@ use constant BUNDLED_SCHEMAS => {
   DEFAULT_DIALECT, 'oas/dialect/base.schema.json',
   DEFAULT_BASE_METASCHEMA, 'oas/schema-base.json',
   OAS_VOCABULARY, 'oas/meta/base.schema.json',
-  STRICT_METASCHEMA, 'strict-schema.json',
-  STRICT_DIALECT, 'strict-dialect.json',
+  STRICT_METASCHEMA, '3.1/strict-schema.json',
+  STRICT_DIALECT, '3.1/strict-dialect.json',
 };
 
 # these are all pre-loaded, and also made available as s/<date>/latest/

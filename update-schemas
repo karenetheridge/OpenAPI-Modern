@@ -109,9 +109,10 @@ foreach my $uri (sort keys %files) {
   die $result->dump if not $result->valid;
 }
 
-# compute checksums and record them in the test
+# compute checksums and record them in the test, preserving unaffected entries
 path('t/checksums.t')->edit_raw(sub {
   m/^__DATA__$/mg;
+  %checksums = ((split /\s/, substr($_, pos()+1)), %checksums);
   $_ = substr($_, 0, pos()+1).join("\n", map $_.' '.$checksums{$_}, sort keys %checksums)."\n";
 });
 

@@ -27,6 +27,8 @@ foreach my $line (<DATA>) {
 done_testing;
 
 __DATA__
+share/3.1/strict-dialect.json d13df15c1f7475a477cdff7c3dfa0bca
+share/3.1/strict-schema.json 94554b65920faa88f89d0e65d2e099c1
 share/oas/LICENSE 7a3f5fcd4ca489b5555f5f92ec054a0a
 share/oas/dialect/base.schema.json 06cea984f8807c13e2916914251e22c3
 share/oas/meta/base.schema.json ecd6e7cbcc29cdabd9c445a2752fc394
