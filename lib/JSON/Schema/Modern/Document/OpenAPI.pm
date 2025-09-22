@@ -20,7 +20,7 @@ no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 no if "$]" >= 5.041009, feature => 'smartmatch';
 no feature 'switch';
 use JSON::Schema::Modern::Utilities qw(E canonical_uri jsonp is_equal json_pointer_type assert_keyword_type assert_uri_reference);
-use OpenAPI::Modern::Utilities qw(:constants add_vocab_and_default_schemas);
+use OpenAPI::Modern::Utilities qw(:constants add_vocab_and_default_schemas load_bundled_document);
 use Carp qw(croak carp);
 use Digest::MD5 'md5_hex';
 use Storable 'dclone';
@@ -153,6 +153,11 @@ sub traverse ($self, $evaluator, $config_override = {}) {
       ? Mojo::URL->new($schema->{jsonSchemaDialect})->to_abs($self->canonical_uri)
       : DEFAULT_DIALECT;
 
+    # we used to always preload these, so we need to do it as needed for users who are using them
+    load_bundled_document($evaluator, STRICT_DIALECT)
+      if $self->_has_metaschema_uri and $self->metaschema_uri eq STRICT_METASCHEMA
+        or $json_schema_dialect eq STRICT_DIALECT;
+
     # traverse an empty schema with this dialect uri to confirm it is valid, and add an entry in
     # the evaluator's _metaschema_vocabulary_classes
     my $check_metaschema_state = $evaluator->traverse({}, {
@@ -174,6 +179,9 @@ sub traverse ($self, $evaluator, $config_override = {}) {
           $json_schema_dialect eq DEFAULT_DIALECT ? DEFAULT_BASE_METASCHEMA
         : $self->_dynamic_metaschema_uri($json_schema_dialect, $evaluator))
       if not $self->_has_metaschema_uri;
+
+    load_bundled_document($evaluator, STRICT_METASCHEMA)
+      if $self->_has_metaschema_uri and $self->metaschema_uri eq STRICT_METASCHEMA;
   }
 
   $state->{identifiers}{$state->{initial_schema_uri}} = {

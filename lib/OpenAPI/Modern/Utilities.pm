@@ -36,6 +36,7 @@ our @EXPORT_OK = qw(
   BUNDLED_SCHEMAS
   OAS_SCHEMAS
   add_vocab_and_default_schemas
+  load_bundled_document
 );
 
 our %EXPORT_TAGS = (
@@ -83,8 +84,6 @@ use constant OAS_SCHEMAS => [
 # support the latest version as soon as possible.
 use constant OAD_VERSION => '3.1.2';
 
-# simple runtime-wide cache of $ids to metaschema document objects that are sourced from disk
-my $metaschema_cache = {};
 
 sub add_vocab_and_default_schemas ($evaluator) {
   $evaluator->add_vocabulary('JSON::Schema::Modern::Vocabulary::OpenAPI');
@@ -115,20 +114,24 @@ sub add_vocab_and_default_schemas ($evaluator) {
   $evaluator->add_format_validation(double => +{ type => 'number', sub => sub ($x) { 1 } });
   $evaluator->add_format_validation(password => +{ type => 'string', sub => sub ($) { 1 } });
 
-  foreach my $uri (keys BUNDLED_SCHEMAS->%*) {
-    my $document;
-    if ($document = $metaschema_cache->{$uri}) {
-      $evaluator->add_document($document);
-    }
-    else {
-      my $file = path(dist_dir('OpenAPI-Modern'), BUNDLED_SCHEMAS->{$uri});
-      my $schema = $evaluator->_json_decoder->decode($file->slurp_raw);
-      $metaschema_cache->{$uri} = $document = $evaluator->add_schema($schema);
-    }
-
-    $evaluator->add_document($`.'/latest', $document)
-      if $document->canonical_uri =~ m{/\d{4}-\d{2}-\d{2}$};
+  foreach my $uri (OAS_SCHEMAS->@*) {
+    my $document = load_bundled_document($evaluator, $uri);
+    $evaluator->add_document(($document->canonical_uri =~ s{/\d{4}-\d{2}-\d{2}$}{}r).'/latest', $document);
   }
+}
+
+# simple runtime-wide cache of $ids to metaschema document objects that are sourced from disk
+my $metaschema_cache = {};
+
+# load a schema that comes bundled with the distribution, and add it to the evaluator.
+sub load_bundled_document ($evaluator, $uri) {
+  if (my $document = $metaschema_cache->{$uri}) {
+    return $evaluator->add_document($document);
+  }
+
+  my $file = path(dist_dir('OpenAPI-Modern'), BUNDLED_SCHEMAS->{$uri});
+  my $schema = $evaluator->_json_decoder->decode($file->slurp_raw);
+  return $metaschema_cache->{$uri} = $evaluator->add_schema($schema);
 }
 
 1;
@@ -155,5 +158,6 @@ OAS_VOCABULARY
 STRICT_DIALECT
 STRICT_METASCHEMA
 add_vocab_and_default_schemas
+load_bundled_document
 
 =cut
