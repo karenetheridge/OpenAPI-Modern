@@ -447,7 +447,7 @@ sub find_path ($self, $options, $state = {}) {
       # note: this might not be the intended match, as multiple templates can match the same URI
       $path_template = $pt, last if $captures;
 
-      # the initial match succeeded, but something else went wrong
+      # the initial match succeeded, but something else went wrong and we will still stop iterating
       if ($state->{errors}->@*) {
         $options->{path_template} = $pt;
         $options->{_path_item} = $state->{path_item};
@@ -469,6 +469,7 @@ sub find_path ($self, $options, $state = {}) {
     $captures = $self->_match_uri($options->{request}->method, $options->{request}->url, $path_template, $state);
 
     if (not $captures) {
+      #  no path-item and operation found that matches the request's method and uri
       delete $options->{operation_id};
 
       # the initial match succeeded, but something else went wrong
@@ -494,6 +495,7 @@ sub find_path ($self, $options, $state = {}) {
   }
 
   else {
+    # we were provided $options->{path_template}, and we have already confirmed that it exists.
     $state->{path_item} = $schema->{paths}{$path_template};
     $state->{schema_path} = jsonp('/paths', $path_template);
     while (defined(my $ref = $state->{path_item}{'$ref'})) {
@@ -596,7 +598,8 @@ sub recursive_get ($self, $uri_reference, $entity_type = undef) {
 
 ######## NO PUBLIC INTERFACES FOLLOW THIS POINT ########
 
-# given a request uri and a path_template, check that these match, and extract capture values.
+# given a request's method and uri, and a path_template, check that these match (taking into
+# consideration additional information in the current path-item), and extract capture values.
 # returns false on error, possibly adding errors to $state.
 sub _match_uri ($self, $method, $uri, $path_template, $state) {
   my $uri_path = $uri->path->to_string;
@@ -617,6 +620,8 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
     if exists $state->{debug};
   return if $uri_path !~ m/$path_pattern$/;
 
+  # we set aside $state for potential restoration because we might still encounter issues later on
+  # that require us to keep iterating for another URI match
   my $local_state = +{ %$state };
 
   while (defined(my $ref = $local_state->{path_item}{'$ref'})) {
@@ -682,6 +687,8 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
 
     my ($valid, %seen) = (1);
     foreach my $name (@uri_capture_names) {
+      # TODO: ideally this should be caught at document load time, but the use of $refs between
+      # /paths entries and path-items makes this difficult
       $valid = E({ %$state, keyword => 'url', data_path => '/request/uri',
             defined $base_schema_uri
               ? (initial_schema_uri => $base_schema_uri, traversed_schema_path => '', schema_path => '/servers/'.$index)

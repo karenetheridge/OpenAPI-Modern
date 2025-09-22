@@ -112,7 +112,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     errors => [],
     evaluator => $evaluator,
     identifiers => {},
-    # note that this is the JSON Schema specification version, not OpenAPI
+    # note that this is the JSON Schema specification version, not OpenAPI version
     specification_version => $evaluator->SPECIFICATION_VERSION_DEFAULT,
     vocabularies => [],
     subschemas => [],
@@ -128,7 +128,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     type => 'object',
     required => ['openapi'],
     properties => {
-      '$self' => {
+      '$self' => {    # not in 3.1, but we patch our schema to allow it so we can test
         type => 'string',
         format => 'uri-reference',
         pattern => '',  # just here for the callback so we can customize the error
@@ -196,7 +196,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
       ? Mojo::URL->new($schema->{jsonSchemaDialect})->to_abs($self->canonical_uri)
       : DEFAULT_DIALECT;
 
-    # traverse an empty schema with this metaschema uri to confirm it is valid, and add an entry in
+    # traverse an empty schema with this dialect uri to confirm it is valid, and add an entry in
     # the evaluator's _metaschema_vocabulary_classes
     my $check_metaschema_state = $evaluator->traverse({}, {
       metaschema_uri => $json_schema_dialect,

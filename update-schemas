@@ -18,6 +18,7 @@ use JSON::Schema::Modern;
 use lib 'lib';  # make sure we load the newly-patched version of our modules
 
 # see https://spec.openapis.org/#openapi-specification-schemas for the latest links
+# these are updated automatically at build time via 'update-schemas'
 
 # note that these entries are duplicated in JSON::Schema::Modern::Document::OpenAPI
 my %files = (
