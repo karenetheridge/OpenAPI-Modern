@@ -66,10 +66,10 @@ use constant STRICT_DIALECT => 'https://raw.githubusercontent.com/karenetheridge
 
 # identifier => local filename (under share/)
 use constant BUNDLED_SCHEMAS => {
-  DEFAULT_METASCHEMA, 'oas/schema.json',
-  DEFAULT_DIALECT, 'oas/dialect/base.schema.json',
-  DEFAULT_BASE_METASCHEMA, 'oas/schema-base.json',
-  OAS_VOCABULARY, 'oas/meta/base.schema.json',
+  DEFAULT_METASCHEMA, 'oas/3.1/schema.json',
+  DEFAULT_DIALECT, 'oas/3.1/dialect.json',
+  DEFAULT_BASE_METASCHEMA, 'oas/3.1/schema-base.json',
+  OAS_VOCABULARY, 'oas/3.1/vocabulary.json',
   STRICT_METASCHEMA, '3.1/strict-schema.json',
   STRICT_DIALECT, '3.1/strict-dialect.json',
 };
