@@ -86,8 +86,8 @@ sub _eval_keyword_discriminator ($self, $data, $schema, $state) {
     );
   }
   else {
-    # §4.8.25.4: "If the discriminator value does not match an implicit or explicit mapping, no
-    # schema can be determined and validation SHOULD fail."
+    # v3.2.0 §4.25.5, "Discriminator Property": If the discriminating value does not match an
+    # implicit or explicit mapping, no schema can be determined and validation SHOULD fail.
     return E({ %$state, data_path => jsonp($state->{data_path}, $discriminator_key) },
       'invalid %s: "%s"', $discriminator_key, $discriminator_value);
   }
@@ -121,11 +121,13 @@ __END__
 =for stopwords metaschema
 
 Implementation of the JSON Schema "OpenAPI" vocabulary, indicated in metaschemas
-with the URI C<https://spec.openapis.org/oas/3.1/vocab/base> and formally specified in
-L<https://spec.openapis.org/oas/v3.1#schema-object>.
+with the URI C<https://spec.openapis.org/oas/3.1/vocab/base>
+or C<https://spec.openapis.org/oas/3.2/vocab/base>
+and formally specified in L<https://spec.openapis.org/oas/latest#schema-object>.
 
 This vocabulary is normally made available by using the default OpenAPI metaschema
-(currently L<https://spec.openapis.org/oas/3.1/schema/2025-09-15>).
+(currently L<https://spec.openapis.org/oas/3.1/schema/2025-09-15> and
+L<https://spec.openapis.org/oas/3.2/schema/2025-09-17>).
 
 =head1 SEE ALSO
 
@@ -137,6 +139,6 @@ This vocabulary is normally made available by using the default OpenAPI metasche
 * L<https://json-schema.org>
 * L<https://www.openapis.org/>
 * L<https://learn.openapis.org/>
-* L<https://spec.openapis.org/oas/v3.1>
+* L<https://spec.openapis.org/oas/latest>
 
 =cut

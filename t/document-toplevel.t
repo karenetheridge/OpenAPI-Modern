@@ -168,6 +168,30 @@ ERRORS
 
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
+    schema => {
+      openapi => '3.1.0',
+      info => { title => '', version => '' },
+      '$self' => 'https://example.com/api',
+    },
+  );
+  cmp_result(
+    [ map $_->TO_JSON, $doc->errors ],
+    [
+      {
+        instanceLocation => '',
+        keywordLocation => '/$self',
+        error => 'additional property not permitted',
+      },
+    ],
+    '$self is not permitted before OAS version 3.2.0',
+  );
+  is(document_result($doc), substr(<<'ERRORS', 0, -1), 'stringified errors');
+'/$self': additional property not permitted
+ERRORS
+
+
+  $doc = JSON::Schema::Modern::Document::OpenAPI->new(
+    canonical_uri => 'http://localhost:1234/api',
     schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
 $self: '#frag\\ment'
 YAML
@@ -266,7 +290,7 @@ subtest 'openapi version checks' => sub {
   foreach my $version (map {
         my @oad_version = split /\./, $_;
         map join('.', @oad_version[0..1], $_), 0 .. $oad_version[2]
-      } OAD_VERSION) {
+      } SUPPORTED_OAD_VERSIONS->@*) {
     cmp_result(
       [ warnings {
         JSON::Schema::Modern::Document::OpenAPI->new(
@@ -287,9 +311,9 @@ YAML
   foreach my $version (map {
         my @oad_version = split /\./, $_;
         map join('.', @oad_version[0..1], $_), (map $oad_version[2]+$_, 1..10)
-      } OAD_VERSION) {
+      } SUPPORTED_OAD_VERSIONS->@*) {
     my $prefix = join('.', (split(/\./, $version))[0..1], '');
-    my ($tested_version) = grep /^\Q$prefix\E/, OAD_VERSION;
+    my ($tested_version) = grep /^\Q$prefix\E/, SUPPORTED_OAD_VERSIONS->@*;
     cmp_result(
       [ warnings {
         JSON::Schema::Modern::Document::OpenAPI->new(
@@ -307,7 +331,7 @@ YAML
     );
   }
 
-  foreach my $version (qw(3.0.3 3.2.0 3.2.5 4.0.0 4.1.0 4.1.1)) {
+  foreach my $version (qw(3.0.3 3.3.5 4.0.0 4.1.0 4.1.1)) {
     die_result(
       sub {
         JSON::Schema::Modern::Document::OpenAPI->new(

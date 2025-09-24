@@ -642,6 +642,13 @@ paths:
         required: false
         schema:
           type: string
+      - name: qs
+        in: querystring
+        required: false
+        content:
+          text/plain:
+            schema:
+              type: string
 YAML
 
   cmp_result(
@@ -655,9 +662,15 @@ YAML
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post parameters 0)))->to_string,
           error => 'cookie parameters not yet supported',
         },
+        {
+          instanceLocation => '/request/uri/query',
+          keywordLocation => jsonp(qw(/paths /foo post parameters 1)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post parameters 1)))->to_string,
+          error => 'querystring parameters not yet supported',
+        },
       ],
     },
-    'cookies are not yet supported',
+    'neither cookies nor querystrings are yet supported',
   );
 
 

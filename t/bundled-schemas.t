@@ -30,7 +30,7 @@ subtest 'OAS metaschemas sanity check for version '.$_ => sub {
       STRICT_METASCHEMA->{$version},
     ) {
     my $result = JSON::Schema::Modern::Document::OpenAPI->validate(
-      schema => $oad_schema,
+      schema => { %$oad_schema, openapi => $version.'.0' },
       metaschema_uri => $metaschema_uri,
       evaluator => $evaluator,
     );
