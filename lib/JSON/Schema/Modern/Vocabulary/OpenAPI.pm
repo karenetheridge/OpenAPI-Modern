@@ -25,6 +25,7 @@ with 'JSON::Schema::Modern::Vocabulary';
 
 sub vocabulary {
   'https://spec.openapis.org/oas/3.1/vocab/base' => 'draft2020-12',
+  'https://spec.openapis.org/oas/3.2/vocab/base' => 'draft2020-12',
 }
 
 sub keywords {

@@ -29,6 +29,8 @@ done_testing;
 __DATA__
 share/3.1/strict-dialect.json d13df15c1f7475a477cdff7c3dfa0bca
 share/3.1/strict-schema.json 94554b65920faa88f89d0e65d2e099c1
+share/3.2/strict-dialect.json a80b5152ba84ab569593fb995584c0d0
+share/3.2/strict-schema.json f4f4545eb1565c40fb8485e93f736c1e
 share/oas/3.1/dialect.json 06cea984f8807c13e2916914251e22c3
 share/oas/3.1/schema-base.json c7384a02a8fa98ba83488c09d76a1df1
 share/oas/3.1/schema.json 724962b927e62a5a578604093e5ecc78

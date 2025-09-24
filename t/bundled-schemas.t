@@ -68,6 +68,7 @@ subtest 'customized 3.1 strict schema and dialect when version is omitted' => su
     metaschema_uri => (STRICT_METASCHEMA->{3.1} =~ s{/3\.1/}{/}r),
     schema => {
       %$oad_schema,
+      openapi => '3.1.0',
       jsonSchemaDialect => (STRICT_DIALECT->{3.1} =~ s{/3\.1/}{/}r),
     },
   );

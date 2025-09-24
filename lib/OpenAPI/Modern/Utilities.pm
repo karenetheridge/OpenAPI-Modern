@@ -47,7 +47,7 @@ our %EXPORT_TAGS = (
 # it is likely the case that we can support a version beyond what's stated here -- but we may not,
 # so we'll warn to that effect. Every effort will be made to upgrade this implementation to fully
 # support the latest point release as soon as possible.
-use constant SUPPORTED_OAD_VERSIONS => [ '3.1.2' ];
+use constant SUPPORTED_OAD_VERSIONS => [ '3.1.2', '3.2.0' ];
 
 # in most things, e.g. schemas, we only use major.minor as the version number
 use constant OAS_VERSIONS => [ map s/^\d+\.\d+\K\.\d+$//r, SUPPORTED_OAD_VERSIONS->@* ];
@@ -58,32 +58,38 @@ use constant OAS_VERSIONS => [ map s/^\d+\.\d+\K\.\d+$//r, SUPPORTED_OAD_VERSION
 # the main OpenAPI document schema, with permissive (unvalidated) JSON Schemas
 use constant DEFAULT_METASCHEMA => {
   3.1 => 'https://spec.openapis.org/oas/3.1/schema/2025-09-15',
+  3.2 => 'https://spec.openapis.org/oas/3.2/schema/0000-00-00',
 };
 
 # metaschema for JSON Schemas contained within OpenAPI documents:
 # standard JSON Schema (presently draft2020-12) + OpenAPI vocabulary
 use constant DEFAULT_DIALECT => {
   3.1 => 'https://spec.openapis.org/oas/3.1/dialect/2024-11-10',
+  3.2 => 'https://spec.openapis.org/oas/3.2/dialect/0000-00-00',
 };
 
 # OpenAPI document schema that forces the use of the JSON Schema dialect (no $schema overrides
 # permitted)
 use constant DEFAULT_BASE_METASCHEMA => {
   3.1 => 'https://spec.openapis.org/oas/3.1/schema-base/2025-09-15',
+  3.2 => 'https://spec.openapis.org/oas/3.2/schema-base/0000-00-00',
 };
 
 # OpenAPI vocabulary definition
 use constant OAS_VOCABULARY => {
   3.1 => 'https://spec.openapis.org/oas/3.1/meta/2024-11-10',
+  3.2 => 'https://spec.openapis.org/oas/3.2/meta/0000-00-00',
 };
 
 # an OpenAPI schema and JSON Schema dialect which prohibit unknown keywords
 use constant STRICT_METASCHEMA => {
   3.1 => 'https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/3.1/strict-schema.json',
+  3.2 => 'https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/3.2/strict-schema.json',
 };
 
 use constant STRICT_DIALECT => {
   3.1 => 'https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/3.1/strict-dialect.json',
+  3.2 => 'https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/3.2/strict-dialect.json',
 };
 
 # identifier => local filename (under share/)
