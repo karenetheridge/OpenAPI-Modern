@@ -58,27 +58,27 @@ use constant OAS_VERSIONS => [ map s/^\d+\.\d+\K\.\d+$//r, SUPPORTED_OAD_VERSION
 # the main OpenAPI document schema, with permissive (unvalidated) JSON Schemas
 use constant DEFAULT_METASCHEMA => {
   3.1 => 'https://spec.openapis.org/oas/3.1/schema/2025-09-15',
-  3.2 => 'https://spec.openapis.org/oas/3.2/schema/0000-00-00',
+  3.2 => 'https://spec.openapis.org/oas/3.2/schema/2025-09-17',
 };
 
 # metaschema for JSON Schemas contained within OpenAPI documents:
 # standard JSON Schema (presently draft2020-12) + OpenAPI vocabulary
 use constant DEFAULT_DIALECT => {
   3.1 => 'https://spec.openapis.org/oas/3.1/dialect/2024-11-10',
-  3.2 => 'https://spec.openapis.org/oas/3.2/dialect/0000-00-00',
+  3.2 => 'https://spec.openapis.org/oas/3.2/dialect/2025-09-17',
 };
 
 # OpenAPI document schema that forces the use of the JSON Schema dialect (no $schema overrides
 # permitted)
 use constant DEFAULT_BASE_METASCHEMA => {
   3.1 => 'https://spec.openapis.org/oas/3.1/schema-base/2025-09-15',
-  3.2 => 'https://spec.openapis.org/oas/3.2/schema-base/0000-00-00',
+  3.2 => 'https://spec.openapis.org/oas/3.2/schema-base/2025-09-17',
 };
 
 # OpenAPI vocabulary definition
 use constant OAS_VOCABULARY => {
   3.1 => 'https://spec.openapis.org/oas/3.1/meta/2024-11-10',
-  3.2 => 'https://spec.openapis.org/oas/3.2/meta/0000-00-00',
+  3.2 => 'https://spec.openapis.org/oas/3.2/meta/2025-09-17',
 };
 
 # an OpenAPI schema and JSON Schema dialect which prohibit unknown keywords

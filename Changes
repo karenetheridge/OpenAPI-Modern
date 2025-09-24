@@ -1,6 +1,8 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - updated bundled schemas for OAS version 3.2 to their latest
+            published versions
 
 0.099     2025-10-13 19:44:43Z
           - fixed bug: properly support operation_id = '0'
