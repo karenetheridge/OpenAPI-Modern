@@ -56,6 +56,12 @@ has _operationIds => (
 sub operationId_path { $_[0]->_operationIds->{$_[1]} }
 sub _add_operationId { $_[0]->_operationIds->{$_[1]} = json_pointer_type->($_[2]) }
 
+# the minor.major version of the OpenAPI specification used for this document
+has oas_version => (
+  is => 'rwp',
+  isa => Str->where(q{/^[1-9]\.(?:0|[1-9][0-9]*)$/}),
+);
+
 # we define the sub directly, rather than using an 'around', since our root base class is not
 # Moo::Object, so we never got a BUILDARGS to modify
 sub BUILDARGS ($class, @args) {
@@ -87,11 +93,12 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     if $schema->{openapi} !~ /^[0-9]+\.[0-9]+\.[0-9]+(-.+)?$/;
 
   my @oad_version = split /[.-]/, $schema->{openapi};
+  $self->_set_oas_version(join('.', @oad_version[0..1]));
 
   my ($max_supported) = grep {
     my @supported = split /\./;
     $supported[0] == $oad_version[0] && $supported[1] == $oad_version[1]
-  } (OAD_VERSION);
+  } reverse SUPPORTED_OAD_VERSIONS->@*;
 
   croak 'unrecognized/unsupported openapi version ', $schema->{openapi} if not defined $max_supported;
   carp 'WARNING: your document was written for version ', $schema->{openapi},
@@ -99,7 +106,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
       ': this may be okay but you should upgrade your OpenAPI::Modern installation soon'
     if defined $oad_version[2] and (split(/\./, $max_supported))[2] < $oad_version[2];
 
-  add_vocab_and_default_schemas($evaluator);
+  add_vocab_and_default_schemas($evaluator, $self->oas_version);
 
   my $state = {
     traversed_keyword_path => '',
@@ -124,12 +131,12 @@ sub traverse ($self, $evaluator, $config_override = {}) {
         or not ($schema->{'$self'} !~ /#/ || E($state, '$self cannot contain a fragment'));
 
     # dirty hack! patch in support for $self, until v3.2
-    $evaluator->{_resource_index}{+DEFAULT_METASCHEMA}{document}->schema->{properties}{'$self'} = {
+    $evaluator->{_resource_index}{DEFAULT_METASCHEMA->{3.1}}{document}->schema->{properties}{'$self'} = {
       type => 'string',
       format => 'uri-reference',
       '$comment' => 'MUST NOT be empty, and MUST NOT contain a fragment',
       pattern => '^[^#]+$',
-    };
+    } if $self->oas_version eq '3.1';
   }
 
   # determine canonical uri using rules from §?? (v3.2) "Establishing the Base URI"
@@ -151,7 +158,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     # defined by [RFC3986] Section 4.2."
     my $json_schema_dialect = exists $schema->{jsonSchemaDialect}
       ? Mojo::URL->new($schema->{jsonSchemaDialect})->to_abs($self->canonical_uri)
-      : DEFAULT_DIALECT;
+      : DEFAULT_DIALECT->{$self->oas_version};
 
     # continue to support the old strict dialect and metaschema which didn't have "3.1" in the $id
     if ($json_schema_dialect eq (STRICT_DIALECT->{3.1} =~ s{/3.1/}{/}r)) {
@@ -159,12 +166,12 @@ sub traverse ($self, $evaluator, $config_override = {}) {
       $schema->{jsonSchemaDialect} = $json_schema_dialect;
     }
     $self->_set_metaschema_uri($self->metaschema_uri =~ s{share/\K}{3.1/}r)
-      if $self->_has_metaschema_uri and $self->metaschema_uri eq (STRICT_METASCHEMA =~ s{/3.1/}{/}r);
+      if $self->_has_metaschema_uri and $self->metaschema_uri eq (STRICT_METASCHEMA->{3.1} =~ s{/3.1/}{/}r);
 
     # we used to always preload these, so we need to do it as needed for users who are using them
-    load_bundled_document($evaluator, STRICT_DIALECT)
-      if $self->_has_metaschema_uri and $self->metaschema_uri eq STRICT_METASCHEMA
-        or $json_schema_dialect eq STRICT_DIALECT;
+    load_bundled_document($evaluator, STRICT_DIALECT->{$self->oas_version})
+      if $self->_has_metaschema_uri and $self->metaschema_uri eq STRICT_METASCHEMA->{$self->oas_version}
+        or $json_schema_dialect eq STRICT_DIALECT->{$self->oas_version};
 
     # traverse an empty schema with this dialect uri to confirm it is valid, and add an entry in
     # the evaluator's _metaschema_vocabulary_classes
@@ -184,12 +191,12 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     $state->{json_schema_dialect} = $json_schema_dialect; # subsequent '$schema' keywords can still override this
 
     $self->_set_metaschema_uri(
-          $json_schema_dialect eq DEFAULT_DIALECT ? DEFAULT_BASE_METASCHEMA
+          $json_schema_dialect eq DEFAULT_DIALECT->{$self->oas_version} ? DEFAULT_BASE_METASCHEMA->{$self->oas_version}
         : $self->_dynamic_metaschema_uri($json_schema_dialect, $evaluator))
       if not $self->_has_metaschema_uri;
 
-    load_bundled_document($evaluator, STRICT_METASCHEMA)
-      if $self->_has_metaschema_uri and $self->metaschema_uri eq STRICT_METASCHEMA;
+    load_bundled_document($evaluator, STRICT_METASCHEMA->{$self->oas_version})
+      if $self->_has_metaschema_uri and $self->metaschema_uri eq STRICT_METASCHEMA->{$self->oas_version};
   }
 
   $state->{identifiers}{$state->{initial_schema_uri}} = {
@@ -436,7 +443,7 @@ sub _dynamic_metaschema_uri ($self, $json_schema_dialect, $evaluator) {
 
   # we use the definition of https://spec.openapis.org/oas/3.1/schema-base/<date> but swap out the
   # dialect reference.
-  my $schema = dclone($evaluator->_get_resource(DEFAULT_BASE_METASCHEMA)->{document}->schema);
+  my $schema = dclone($evaluator->_get_resource(DEFAULT_BASE_METASCHEMA->{$self->oas_version})->{document}->schema);
   $schema->{'$id'} = $dialect_uri;
   $schema->{'$defs'}{dialect}{const} = $json_schema_dialect;
   $schema->{'$defs'}{schema}{'$ref'} = $json_schema_dialect;
@@ -575,6 +582,14 @@ URI" in the OAS specification: the URL the document was originally sourced from,
 was used to add the document to the L<OpenAPI::Modern> instance.
 
 In OpenAPI version 3.1.x, this is the same as L</canonical_uri>.
+
+=head2 oas_version
+
+The C<major.minor> version of the OpenAPI specification being used; derived from the C<openapi>
+field at the top of the document. Used to determine the required document format and all derived
+behaviours.
+
+Read-only.
 
 =head2 operationId_path
 

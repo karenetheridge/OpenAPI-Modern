@@ -2627,7 +2627,7 @@ YAML
     JSON::Schema::Modern::Document::OpenAPI->new(
       canonical_uri => '/otherdoc/api/definitions', # intentionally relative, to see how uris resolve
       evaluator => $openapi->evaluator,
-      metaschema_uri => DEFAULT_METASCHEMA, # more lax, as we use multiple $schema values in schemas
+      metaschema_uri => DEFAULT_METASCHEMA->{+OAS_VERSION}, # more lax, as we use multiple $schema values in schemas
       schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML')));
 jsonSchemaDialect: https://mymetaschema
 components:

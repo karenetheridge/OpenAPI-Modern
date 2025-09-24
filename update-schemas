@@ -16,11 +16,11 @@ use Mojo::UserAgent;
 use Digest::MD5 'md5_hex';
 use JSON::Schema::Modern;
 use lib 'lib';  # make sure we load the newly-patched version of our modules
-use OpenAPI::Modern::Utilities qw(BUNDLED_SCHEMAS OAS_SCHEMAS);
+use OpenAPI::Modern::Utilities qw(BUNDLED_SCHEMAS OAS_SCHEMAS OAS_VERSIONS);
 
 # { download URL -> filename (in share) }
 my %files = (
-  BUNDLED_SCHEMAS->%{OAS_SCHEMAS->@*},
+  (map +(BUNDLED_SCHEMAS->{$_}->%{OAS_SCHEMAS->{$_}->@*}), OAS_VERSIONS->@*),
   'https://raw.githubusercontent.com/OAI/OpenAPI-Specification/main/LICENSE' => 'oas/LICENSE',
 );
 
@@ -39,10 +39,10 @@ my %new_schemas;
 my $links;
 foreach my $e ($res->dom->find('a[href]')->each) {
   my $link = $e->{href};
-  next if $link !~ m{^/oas/3.1/[a-z-]+/\d{4}-\d{2}-\d{2}$};
+  next if $link !~ m{^/oas/(?:${\ join('|', map quotemeta($_), OAS_VERSIONS->@*)})/[a-z-]+/\d{4}-\d{2}-\d{2}$};
 
   ++$links;
-  $link = Mojo::URL->new($web_url)->path($link)->to_string; # normalize slashes
+  $link = Mojo::URL->new($web_url)->path($link)->to_string; # get full URL, normalizing slashes
 
   if (my ($existing) = grep !/github/ && $link =~ m{^\Q${\substr($_, 0, -10)}\E}, keys %files) {
     $new_schemas{$existing} //= [];
@@ -96,7 +96,9 @@ foreach my $uri (sort keys %files) {
 
   $target = path('share', $target);
   $target->parent->mkpath;
+  my $exists = $target->exists;
   $target->spew_raw(my $content = $res->body);
+  system('git add '.$target) if not $exists;
   $checksums{$target} = md5_hex($content);
 
   next if $target->basename eq 'LICENSE';
@@ -117,17 +119,25 @@ path('t/checksums.t')->edit_raw(sub {
 });
 
 # only edit Changes file if there are updated files to be committed
-if (system('git diff --quiet --stat share/') >> 8) {
+my @changed_versions = grep +(
+  system('git diff --quiet --stat share/oas/'.$_) >> 8
+), OAS_VERSIONS->@*;
+
+if (@changed_versions) {
   my ($seen_next, $seen_blank);
-  say '# edited Changes file' if $ENV{DEBUG};
+  my $versions = (@changed_versions > 1 ? 's ' : ' ').join(', ', @changed_versions);
+  say '# edited Changes file for OAS version'.$versions if $ENV{DEBUG};
   path('Changes')->edit_lines_utf8(sub {
     if ($seen_next ||= /^\{\{\$NEXT\}\}/ and not $seen_blank and /^$/) {
-      s/^$/          - updated bundled schemas to their latest published versions\n/;
+      my $leader = ' 'x10;
+      my @string = ("updated bundled schemas for OAS version${versions} to their latest", 'published versions');
+
+      s/^$/$leader- $string[0]\n$leader  $string[1]/;
       $seen_blank = 1;
     }
   });
 
-  exec 'git commit -m"update bundled schemas to latest versions" Changes lib share t';
+  exec 'git commit -m"update bundled schemas for OAS '.join(', ', @changed_versions).' to latest versions" Changes lib share t';
 }
 else {
   say '# no changes to bundled schemas';

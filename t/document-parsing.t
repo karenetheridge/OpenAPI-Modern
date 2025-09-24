@@ -37,13 +37,13 @@ subtest 'basic document validation' => sub {
       (map +{
         instanceLocation => '',
         keywordLocation => '/$ref/anyOf/'.$iter.'/required',
-        absoluteKeywordLocation => DEFAULT_METASCHEMA.'#/anyOf/'.$iter++.'/required',
+        absoluteKeywordLocation => DEFAULT_METASCHEMA->{+OAS_VERSION}.'#/anyOf/'.$iter++.'/required',
         error => 'object is missing property: '.$_,
       }, qw(paths components webhooks)),
       {
         instanceLocation => '',
         keywordLocation => '/$ref/anyOf',
-        absoluteKeywordLocation => DEFAULT_METASCHEMA.'#/anyOf',
+        absoluteKeywordLocation => DEFAULT_METASCHEMA->{+OAS_VERSION}.'#/anyOf',
         error => 'no subschemas are valid',
       },
       do {
@@ -77,7 +77,7 @@ subtest 'basic document validation' => sub {
       {
         instanceLocation => '',
         keywordLocation => "/\$ref/properties",
-        absoluteKeywordLocation => DEFAULT_METASCHEMA.'#/properties',
+        absoluteKeywordLocation => DEFAULT_METASCHEMA->{+OAS_VERSION}.'#/properties',
         error => 'not all properties are valid',
       },
     ],
@@ -124,7 +124,7 @@ ERRORS
       {
         instanceLocation => '',
         keywordLocation => '/$ref/properties',
-        absoluteKeywordLocation => DEFAULT_METASCHEMA.'#/properties',
+        absoluteKeywordLocation => DEFAULT_METASCHEMA->{+OAS_VERSION}.'#/properties',
         error => 'not all properties are valid',
       },
     ],
@@ -301,7 +301,7 @@ subtest 'bad subschemas' => sub {
     canonical_uri => 'http://localhost:1234/api',
     schema => {
       $yamlpp->load_string(OPENAPI_PREAMBLE)->%*,
-      jsonSchemaDialect => DEFAULT_DIALECT,
+      jsonSchemaDialect => DEFAULT_DIALECT->{+OAS_VERSION},
       components => {
         schemas => {
           alpha_schema => {
@@ -429,7 +429,7 @@ YAML
 
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
-    metaschema_uri => DEFAULT_METASCHEMA,  # needed to override $schema
+    metaschema_uri => DEFAULT_METASCHEMA->{+OAS_VERSION},  # needed to override $schema
     schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
 components:
   schemas:

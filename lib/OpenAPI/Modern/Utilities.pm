@@ -23,13 +23,14 @@ use namespace::clean;
 use Exporter 'import';
 
 our @EXPORT = qw(
+  SUPPORTED_OAD_VERSIONS
+  OAS_VERSIONS
   DEFAULT_DIALECT
   DEFAULT_BASE_METASCHEMA
   DEFAULT_METASCHEMA
   STRICT_METASCHEMA
   STRICT_DIALECT
   OAS_VOCABULARY
-  OAD_VERSION
 );
 
 our @EXPORT_OK = qw(
@@ -43,49 +44,70 @@ our %EXPORT_TAGS = (
   constants => \@EXPORT,
 );
 
+# it is likely the case that we can support a version beyond what's stated here -- but we may not,
+# so we'll warn to that effect. Every effort will be made to upgrade this implementation to fully
+# support the latest point release as soon as possible.
+use constant SUPPORTED_OAD_VERSIONS => [ '3.1.2' ];
+
+# in most things, e.g. schemas, we only use major.minor as the version number
+use constant OAS_VERSIONS => [ map s/^\d+\.\d+\K\.\d+$//r, SUPPORTED_OAD_VERSIONS->@* ];
+
 # see https://spec.openapis.org/#openapi-specification-schemas for the latest links
 # these are updated automatically at build time via 'update-schemas'
 
 # the main OpenAPI document schema, with permissive (unvalidated) JSON Schemas
-use constant DEFAULT_METASCHEMA => 'https://spec.openapis.org/oas/3.1/schema/2025-09-15';
+use constant DEFAULT_METASCHEMA => {
+  3.1 => 'https://spec.openapis.org/oas/3.1/schema/2025-09-15',
+};
 
 # metaschema for JSON Schemas contained within OpenAPI documents:
 # standard JSON Schema (presently draft2020-12) + OpenAPI vocabulary
-use constant DEFAULT_DIALECT => 'https://spec.openapis.org/oas/3.1/dialect/2024-11-10';
+use constant DEFAULT_DIALECT => {
+  3.1 => 'https://spec.openapis.org/oas/3.1/dialect/2024-11-10',
+};
 
 # OpenAPI document schema that forces the use of the JSON Schema dialect (no $schema overrides
 # permitted)
-use constant DEFAULT_BASE_METASCHEMA => 'https://spec.openapis.org/oas/3.1/schema-base/2025-09-15';
+use constant DEFAULT_BASE_METASCHEMA => {
+  3.1 => 'https://spec.openapis.org/oas/3.1/schema-base/2025-09-15',
+};
 
 # OpenAPI vocabulary definition
-use constant OAS_VOCABULARY => 'https://spec.openapis.org/oas/3.1/meta/2024-11-10';
+use constant OAS_VOCABULARY => {
+  3.1 => 'https://spec.openapis.org/oas/3.1/meta/2024-11-10',
+};
 
 # an OpenAPI schema and JSON Schema dialect which prohibit unknown keywords
-use constant STRICT_METASCHEMA => 'https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/3.1/strict-schema.json';
-use constant STRICT_DIALECT => 'https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/3.1/strict-dialect.json';
+use constant STRICT_METASCHEMA => {
+  3.1 => 'https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/3.1/strict-schema.json',
+};
+
+use constant STRICT_DIALECT => {
+  3.1 => 'https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/3.1/strict-dialect.json',
+};
 
 # identifier => local filename (under share/)
 use constant BUNDLED_SCHEMAS => {
-  DEFAULT_METASCHEMA, 'oas/3.1/schema.json',
-  DEFAULT_DIALECT, 'oas/3.1/dialect.json',
-  DEFAULT_BASE_METASCHEMA, 'oas/3.1/schema-base.json',
-  OAS_VOCABULARY, 'oas/3.1/vocabulary.json',
-  STRICT_METASCHEMA, '3.1/strict-schema.json',
-  STRICT_DIALECT, '3.1/strict-dialect.json',
+  map +($_ => +{
+    DEFAULT_METASCHEMA->{$_}      => 'oas/'.$_.'/schema.json',
+    DEFAULT_DIALECT->{$_}         => 'oas/'.$_.'/dialect.json',
+    DEFAULT_BASE_METASCHEMA->{$_} => 'oas/'.$_.'/schema-base.json',
+    OAS_VOCABULARY->{$_}          => 'oas/'.$_.'/vocabulary.json',
+    STRICT_METASCHEMA->{$_}       => $_.'/strict-schema.json',
+    STRICT_DIALECT->{$_}          => $_.'/strict-dialect.json',
+  }), OAS_VERSIONS->@*
 };
 
 # these are all pre-loaded, and also made available as s/<date>/latest/
-use constant OAS_SCHEMAS => [
-  grep m{/oas/3\.1/}, keys BUNDLED_SCHEMAS->%*,
-];
-
-# it is likely the case that we can support a version beyond what's stated here -- but we may not,
-# so we'll warn to that effect. Every effort will be made to upgrade this implementation to fully
-# support the latest version as soon as possible.
-use constant OAD_VERSION => '3.1.2';
+use constant OAS_SCHEMAS => {
+  map {
+    my $version = $_;
+    $version => [ grep m{/oas/$version/}, keys BUNDLED_SCHEMAS->{$version}->%* ]
+  } OAS_VERSIONS->@*
+};
 
 
-sub add_vocab_and_default_schemas ($evaluator) {
+sub add_vocab_and_default_schemas ($evaluator, $version = OAS_VERSIONS->[-1]) {
   $evaluator->add_vocabulary('JSON::Schema::Modern::Vocabulary::OpenAPI');
 
   $evaluator->add_format_validation(int32 => +{
@@ -114,7 +136,7 @@ sub add_vocab_and_default_schemas ($evaluator) {
   $evaluator->add_format_validation(double => +{ type => 'number', sub => sub ($x) { 1 } });
   $evaluator->add_format_validation(password => +{ type => 'string', sub => sub ($) { 1 } });
 
-  foreach my $uri (OAS_SCHEMAS->@*) {
+  foreach my $uri (OAS_SCHEMAS->{$version}->@*) {
     my $document = load_bundled_document($evaluator, $uri);
     $evaluator->add_document(($document->canonical_uri =~ s{/\d{4}-\d{2}-\d{2}$}{}r).'/latest', $document);
   }
@@ -129,7 +151,8 @@ sub load_bundled_document ($evaluator, $uri) {
     return $evaluator->add_document($document);
   }
 
-  my $file = path(dist_dir('OpenAPI-Modern'), BUNDLED_SCHEMAS->{$uri});
+  my ($version) = $uri =~ m{/(\d+\.\d+)/};
+  my $file = path(dist_dir('OpenAPI-Modern'), BUNDLED_SCHEMAS->{$version}{$uri});
   my $schema = $evaluator->_json_decoder->decode($file->slurp_raw);
   return $metaschema_cache->{$uri} = $evaluator->add_schema($schema);
 }
@@ -152,11 +175,12 @@ BUNDLED_SCHEMAS
 DEFAULT_BASE_METASCHEMA
 DEFAULT_DIALECT
 DEFAULT_METASCHEMA
-OAD_VERSION
 OAS_SCHEMAS
+OAS_VERSIONS
 OAS_VOCABULARY
 STRICT_DIALECT
 STRICT_METASCHEMA
+SUPPORTED_OAD_VERSIONS
 add_vocab_and_default_schemas
 load_bundled_document
 
