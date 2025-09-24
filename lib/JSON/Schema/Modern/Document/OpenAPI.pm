@@ -33,7 +33,7 @@ use namespace::clean;
 
 extends 'JSON::Schema::Modern::Document';
 
-our @CARP_NOT = qw(Sereal Sereal::Decoder);
+our @CARP_NOT = qw(Sereal Sereal::Decoder JSON::Schema::Modern::Document);
 
 # schema files to add by default
 # these are also available as URIs with 'latest' instead of the timestamp.
