@@ -25,7 +25,7 @@ subtest 'basic construction' => sub {
     [ warnings {
       JSON::Schema::Modern::Document::OpenAPI->new(
         canonical_uri => 'http://localhost:1234/api',
-        schema => {},
+        schema => $yamlpp->load_string(OPENAPI_PREAMBLE."\npaths: {}\n"),
         json_schema_dialect => 'https://example.com/metaschema',
       )
     } ],
@@ -35,9 +35,7 @@ subtest 'basic construction' => sub {
 
   my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
-    schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
-paths: {}
-YAML
+    schema => $yamlpp->load_string(OPENAPI_PREAMBLE."\npaths: {}\n"));
 
   cmp_result([ $doc->errors ], [], 'no errors when loading empty document');
   cmp_result(
@@ -104,26 +102,10 @@ YAML
   );
 
 
-  $doc = JSON::Schema::Modern::Document::OpenAPI->new(
-    canonical_uri => 'http://localhost:1234/api',
-    schema => {},
-  );
-  cmp_result(
-    [ map $_->TO_JSON, $doc->errors ],
-    [
-      {
-        instanceLocation => '',
-        keywordLocation => '/required',
-        absoluteKeywordLocation => DEFAULT_METASCHEMA.'#/required',
-        error => 'object is missing property: openapi',
-      },
-    ],
+  die_result(
+    sub { $doc = JSON::Schema::Modern::Document::OpenAPI->new(schema => {}) },
+    qr/missing openapi version/,
     'missing openapi',
-  );
-  is(
-    document_result($doc),
-    q!'': object is missing property: openapi!,
-    'stringified errors',
   );
 
 
@@ -162,33 +144,6 @@ ERRORS
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
     schema => {
-      openapi => '2.1.3',
-    },
-  );
-
-  cmp_result(
-    [ map $_->TO_JSON, $doc->errors ],
-    [
-      {
-        instanceLocation => '/openapi',
-        keywordLocation => '/properties/openapi/pattern',
-        absoluteKeywordLocation => DEFAULT_METASCHEMA.'#/properties/openapi/pattern',
-        error => 'unrecognized/unsupported openapi version 2.1.3',
-      },
-      {
-        instanceLocation => '',
-        keywordLocation => '/properties',
-        absoluteKeywordLocation => DEFAULT_METASCHEMA.'#/properties',
-        error => 'not all properties are valid',
-      },
-    ],
-    'invalid openapi version',
-  );
-
-
-  $doc = JSON::Schema::Modern::Document::OpenAPI->new(
-    canonical_uri => 'http://localhost:1234/api',
-    schema => {
       openapi => OAS_VERSION,
       info => {
         title => 'my title',
@@ -201,23 +156,16 @@ ERRORS
     [ map $_->TO_JSON, $doc->errors ],
     [
       {
-        instanceLocation => '/jsonSchemaDialect',
-        keywordLocation => '/properties/jsonSchemaDialect/type',
-        absoluteKeywordLocation => DEFAULT_METASCHEMA.'#/properties/jsonSchemaDialect/type',
-        error => 'got null, not string',
-      },
-      {
         instanceLocation => '',
-        keywordLocation => '/properties',
-        absoluteKeywordLocation => DEFAULT_METASCHEMA.'#/properties',
-        error => 'not all properties are valid',
+        keywordLocation => '/jsonSchemaDialect',
+        absoluteKeywordLocation => 'http://localhost:1234/api#/jsonSchemaDialect',
+        error => 'jsonSchemaDialect value is not a string',
       },
     ],
     'null jsonSchemaDialect is rejected',
   );
   is(document_result($doc), substr(<<'ERRORS', 0, -1), 'stringified errors');
-'/jsonSchemaDialect': got null, not string
-'': not all properties are valid
+'/jsonSchemaDialect': jsonSchemaDialect value is not a string
 ERRORS
 
 
@@ -226,30 +174,33 @@ ERRORS
     schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
 $self: '#frag\\ment'
 YAML
-
   cmp_result(
     [ map $_->TO_JSON, $doc->errors ],
     [
       {
-        instanceLocation => '/$self',
-        keywordLocation => '/properties/$self/pattern',
-        absoluteKeywordLocation => DEFAULT_METASCHEMA.'#/properties/$self/pattern',
-        error => '$self cannot contain a fragment',
-      },
-      {
-        instanceLocation => '/$self',
-        keywordLocation => '/properties/$self/format',
-        absoluteKeywordLocation => DEFAULT_METASCHEMA.'#/properties/$self/format',
-        error => 'not a valid uri-reference string',
-      },
-      {
         instanceLocation => '',
-        keywordLocation => '/properties',
-        absoluteKeywordLocation => DEFAULT_METASCHEMA.'#/properties',
-        error => 'not all properties are valid',
+        keywordLocation => '/$self',
+        error => re(qr/^\$self value is not a valid URI-reference$/i),
       },
     ],
-    'invalid $self uri, with custom error message',
+    '$self must be a uri-reference',
+  );
+
+  $doc = JSON::Schema::Modern::Document::OpenAPI->new(
+    canonical_uri => 'http://localhost:1234/api',
+    schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
+$self: '#fragment'
+YAML
+  cmp_result(
+    [ map $_->TO_JSON, $doc->errors ],
+    [
+      {
+        instanceLocation => '',
+        keywordLocation => '/$self',
+        error => '$self cannot contain a fragment',
+      },
+    ],
+    '$self cannot contain a fragment',
   );
 
 
@@ -263,19 +214,13 @@ YAML
     [ map $_->TO_JSON, $doc->errors ],
     [
       {
-        instanceLocation => '/jsonSchemaDialect',
-        keywordLocation => '/properties/jsonSchemaDialect/format',
-        absoluteKeywordLocation => DEFAULT_METASCHEMA.'#/properties/jsonSchemaDialect/format',
-        error => 'not a valid uri-reference string',
-      },
-      {
         instanceLocation => '',
-        keywordLocation => '/properties',
-        absoluteKeywordLocation => DEFAULT_METASCHEMA.'#/properties',
-        error => 'not all properties are valid',
+        keywordLocation => '/jsonSchemaDialect',
+        absoluteKeywordLocation => 'http://localhost:1234/api#/jsonSchemaDialect',
+        error => re(qr/^jsonSchemaDialect value is not a valid URI-reference$/i),
       },
     ],
-    'invalid jsonSchemaDialect uri',
+    'jsonSchemaDialect must be a uri-reference',
   );
 
 
@@ -321,7 +266,10 @@ ERRORS
 };
 
 subtest 'openapi version checks' => sub {
-  foreach my $version (qw(3.1.3 3.1.9 3.1.10)) {    # TODO: 3.2.5 4.0.0 4.1.0
+  foreach my $version (map {
+        my @oad_version = split /\./, $_;
+        map join('.', @oad_version[0..1], $_), 0 .. $oad_version[2]
+      } OAS_VERSION) {
     cmp_result(
       [ warnings {
         JSON::Schema::Modern::Document::OpenAPI->new(
@@ -334,8 +282,49 @@ info:
 paths: {}
 YAML
       } ],
-    [ re(qr/^\QWARNING: your document was written for version $version but this implementation has only been tested up to ${\ OAS_VERSION }: this may be okay but you should upgrade your OpenAPI::Modern installation soon\E/) ],
-      'warning (not error) is given when the OAD version ('.$version.') exceeds what we know about',
+      [],
+      'no warnings when the OAD version ('.$version.') is within support range',
+    );
+  }
+
+  foreach my $version (map {
+        my @oad_version = split /\./, $_;
+        map join('.', @oad_version[0..1], $_), (map $oad_version[2]+$_, 1..10)
+      } OAS_VERSION) {
+    my $prefix = join('.', (split(/\./, $version))[0..1], '');
+    my ($tested_version) = grep /^\Q$prefix\E/, OAS_VERSION;
+    cmp_result(
+      [ warnings {
+        JSON::Schema::Modern::Document::OpenAPI->new(
+          schema => $yamlpp->load_string(<<"YAML"))
+---
+openapi: $version
+info:
+  title: Test API
+  version: 1.2.3
+paths: {}
+YAML
+      } ],
+    [ re(qr/^\QWARNING: your document was written for version $version but this implementation has only been tested up to $tested_version: this may be okay but you should upgrade your OpenAPI::Modern installation soon\E/) ],
+      'warning (not error) is given when the OAD version ('.$version.') surpasses what we know about',
+    );
+  }
+
+  foreach my $version (qw(3.0.3 3.2.0 3.2.5 4.0.0 4.1.0 4.1.1)) {
+    die_result(
+      sub {
+        JSON::Schema::Modern::Document::OpenAPI->new(
+          schema => $yamlpp->load_string(<<"YAML"))
+---
+openapi: $version
+info:
+  title: Test API
+  version: 1.2.3
+paths: {}
+YAML
+      },
+      qr{unrecognized/unsupported openapi version $version},
+      'exception is thrown when the OAD version ('.$version.') has an unsupported major or minor version',
     );
   }
 };

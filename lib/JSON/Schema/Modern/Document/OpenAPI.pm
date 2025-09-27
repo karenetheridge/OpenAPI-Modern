@@ -19,7 +19,7 @@ no if "$]" >= 5.033001, feature => 'multidimensional';
 no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 no if "$]" >= 5.041009, feature => 'smartmatch';
 no feature 'switch';
-use JSON::Schema::Modern::Utilities qw(E canonical_uri jsonp is_equal json_pointer_type);
+use JSON::Schema::Modern::Utilities qw(E canonical_uri jsonp is_equal json_pointer_type assert_keyword_type assert_uri_reference);
 use Carp qw(croak carp);
 use Digest::MD5 'md5_hex';
 use Storable 'dclone';
@@ -103,11 +103,28 @@ sub traverse ($self, $evaluator, $config_override = {}) {
   croak join(', ', sort keys %$config_override), ' not supported as a config override in traverse'
     if keys %$config_override;
 
+  my $schema = $self->schema;
+
+  croak 'missing openapi version' if not exists $schema->{openapi};
+  croak 'bad openapi version format ', $schema->{openapi}
+    if $schema->{openapi} !~ /^[0-9]+\.[0-9]+\.[0-9]+(-.+)?$/;
+
+  my @oad_version = split /[.-]/, $schema->{openapi};
+
+  my ($max_supported) = grep {
+    my @supported = split /\./;
+    $supported[0] == $oad_version[0] && $supported[1] == $oad_version[1]
+  } (OAS_VERSION);
+
+  croak 'unrecognized/unsupported openapi version ', $schema->{openapi} if not defined $max_supported;
+  carp 'WARNING: your document was written for version ', $schema->{openapi},
+      ' but this implementation has only been tested up to ', $max_supported,
+      ': this may be okay but you should upgrade your OpenAPI::Modern installation soon'
+    if defined $oad_version[2] and (split(/\./, $max_supported))[2] < $oad_version[2];
+
   $self->_add_vocab_and_default_schemas($evaluator);
 
-  my $schema = $self->schema;
   my $state = {
-    # initial_schema_uri calculated from '$self' below
     traversed_keyword_path => '',
     keyword_path => '',
     data_path => '',
@@ -122,66 +139,20 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     traverse => 1,
   };
 
-  # this is an abridged form of https://spec.openapis.org/oas/3.1/schema/<date>
-  # just to validate the parts of the document we need to verify before parsing jsonSchemaDialect
-  # and switching to the real metaschema for this document
-  state $top_schema = {
-    '$schema' => 'https://json-schema.org/draft/2020-12/schema',
-    type => 'object',
-    required => ['openapi'],
-    properties => {
-      '$self' => {    # not in 3.1, but we patch our schema to allow it so we can test
-        type => 'string',
-        format => 'uri-reference',
-        pattern => '',  # just here for the callback so we can customize the error
-      },
-      openapi => {
-        type => 'string',
-        pattern => '',  # just here for the callback so we can customize the error
-      },
-      jsonSchemaDialect => {
-        type => 'string',
-        format => 'uri-reference',
-      },
-    },
-  };
+  if (exists $schema->{'$self'}) {
+    my $state = { %$state, keyword => '$self', initial_schema_uri => Mojo::URL->new };
+    return $state
+      if not assert_keyword_type($state, $schema, 'string')
+        or not assert_uri_reference($state, $schema)
+        or not ($schema->{'$self'} !~ /#/ || E($state, '$self cannot contain a fragment'));
 
-  my $top_result = $evaluator->evaluate(
-    $schema, $top_schema,
-    {
-      effective_base_uri => DEFAULT_METASCHEMA,
-      collect_annotations => 0,
-      validate_formats => 1,
-      callbacks => {
-        pattern => sub ($data, $schema, $state) {
-          return E($state, '$self cannot contain a fragment')
-            if $state->{data_path} eq '/$self' and $data =~ /#/;
-
-          if ($state->{data_path} eq '/openapi') {
-            return E($state, 'unrecognized/unsupported openapi version %s', $data)
-              if $data !~ /^3\.1\.[0-9]+(-.+)?$/;
-
-            my @oad_version = split /\./, $data;
-            my @supported_version = split /\./, OAS_VERSION;
-
-            if ($oad_version[0] > $supported_version[0]
-                || $oad_version[0] == $supported_version[0]
-                  && ($oad_version[1] > $supported_version[1]
-                || $oad_version[1] == $supported_version[1] && $oad_version[2] > $supported_version[2])) {
-              carp 'WARNING: your document was written for version ', $data,
-                ' but this implementation has only been tested up to ', OAS_VERSION,
-                ': this may be okay but you should upgrade your OpenAPI::Modern installation soon';
-            }
-          }
-
-          return 1;
-        },
-      },
-    },
-  );
-  if (not $top_result->valid) {
-    push $state->{errors}->@*, $top_result->errors;
-    return $state;
+    # dirty hack! patch in support for $self, until v3.2
+    $evaluator->{_resource_index}{+DEFAULT_METASCHEMA}{document}->schema->{properties}{'$self'} = {
+      type => 'string',
+      format => 'uri-reference',
+      '$comment' => 'MUST NOT be empty, and MUST NOT contain a fragment',
+      pattern => '^[^#]+$',
+    };
   }
 
   # determine canonical uri using rules from §?? (v3.2) "Establishing the Base URI"
@@ -190,6 +161,13 @@ sub traverse ($self, $evaluator, $config_override = {}) {
 
   # /jsonSchemaDialect: https://spec.openapis.org/oas/v3.1#specifying-schema-dialects
   {
+    if (exists $schema->{jsonSchemaDialect}) {
+      my $state = { %$state, keyword => 'jsonSchemaDialect' };
+      return $state
+        if not assert_keyword_type($state, $schema, 'string')
+          or not assert_uri_reference($state, $schema);
+    }
+
     # §4.8.24.5: "If [jsonSchemaDialect] is not set, then the OAS dialect schema id MUST be used for
     # these Schema Objects."
     # §4.6: "Unless specified otherwise, all fields that are URIs MAY be relative references as
@@ -451,14 +429,6 @@ sub _add_vocab_and_default_schemas ($self, $evaluator) {
     $evaluator->add_document($`.'/latest', $document)
       if $document->canonical_uri =~ m{/\d{4}-\d{2}-\d{2}$};
   }
-
-  # dirty hack! patch in support for $self, until v3.2
-  $evaluator->{_resource_index}{DEFAULT_METASCHEMA()}{document}->schema->{properties}{'$self'} = {
-    type => 'string',
-    format => 'uri-reference',
-    '$comment' => 'MUST NOT be empty, and MUST NOT contain a fragment',
-    pattern => '^[^#]+$',
-  } if exists $self->schema->{'$self'};
 }
 
 # https://spec.openapis.org/oas/v3.1#schema-object
