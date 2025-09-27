@@ -55,7 +55,7 @@ use constant OAS_VOCABULARY => 'https://spec.openapis.org/oas/3.1/meta/2024-11-1
 # it is likely the case that we can support a version beyond what's stated here -- but we may not,
 # so we'll warn to that effect. Every effort will be made to upgrade this implementation to fully
 # support the latest version as soon as possible.
-use constant OAS_VERSION => '3.1.1';
+use constant OAS_VERSION => '3.1.2';
 
 has '+schema' => (
   isa => HashRef,

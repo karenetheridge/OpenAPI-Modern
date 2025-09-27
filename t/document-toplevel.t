@@ -321,7 +321,7 @@ ERRORS
 };
 
 subtest 'openapi version checks' => sub {
-  foreach my $version (qw(3.1.2)) {    # TODO: 3.2.5 4.0.0 4.1.0
+  foreach my $version (qw(3.1.3 3.1.9 3.1.10)) {    # TODO: 3.2.5 4.0.0 4.1.0
     cmp_result(
       [ warnings {
         JSON::Schema::Modern::Document::OpenAPI->new(
