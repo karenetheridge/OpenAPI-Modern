@@ -40,11 +40,11 @@ use constant OAS_VOCABULARIES => [ map 'JSON::Schema::Modern::Vocabulary::'.$_,
 
 # technically all 3.1.x versions should be supported, but this is all we have tested for, and the
 # version of the schemas we're bundling.
-use constant OAS_VERSION => JSON::Schema::Modern::Document::OpenAPI::OAS_VERSION;
+use constant OAD_VERSION => JSON::Schema::Modern::Document::OpenAPI::OAD_VERSION;
 
 use constant OPENAPI_PREAMBLE => <<"YAML";
 ---
-openapi: ${\ OAS_VERSION() }
+openapi: ${\ OAD_VERSION() }
 info:
   title: Test API
   version: 1.2.3

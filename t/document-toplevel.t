@@ -112,7 +112,7 @@ YAML
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
     schema => {
-      openapi => OAS_VERSION,
+      openapi => OAD_VERSION,
       info => {},
       paths => {},
     },
@@ -144,7 +144,7 @@ ERRORS
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
     schema => {
-      openapi => OAS_VERSION,
+      openapi => OAD_VERSION,
       info => {
         title => 'my title',
         version => '1.2.3',
@@ -269,7 +269,7 @@ subtest 'openapi version checks' => sub {
   foreach my $version (map {
         my @oad_version = split /\./, $_;
         map join('.', @oad_version[0..1], $_), 0 .. $oad_version[2]
-      } OAS_VERSION) {
+      } OAD_VERSION) {
     cmp_result(
       [ warnings {
         JSON::Schema::Modern::Document::OpenAPI->new(
@@ -290,9 +290,9 @@ YAML
   foreach my $version (map {
         my @oad_version = split /\./, $_;
         map join('.', @oad_version[0..1], $_), (map $oad_version[2]+$_, 1..10)
-      } OAS_VERSION) {
+      } OAD_VERSION) {
     my $prefix = join('.', (split(/\./, $version))[0..1], '');
-    my ($tested_version) = grep /^\Q$prefix\E/, OAS_VERSION;
+    my ($tested_version) = grep /^\Q$prefix\E/, OAD_VERSION;
     cmp_result(
       [ warnings {
         JSON::Schema::Modern::Document::OpenAPI->new(

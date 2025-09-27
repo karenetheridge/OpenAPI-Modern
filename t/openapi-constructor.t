@@ -18,7 +18,7 @@ use lib 't/lib';
 use Helper;
 
 my $minimal_schema = {
-  openapi => OAS_VERSION,
+  openapi => OAD_VERSION,
   info => {
     title => 'Test API',
     version => '1.2.3',

@@ -55,7 +55,7 @@ use constant OAS_VOCABULARY => 'https://spec.openapis.org/oas/3.1/meta/2024-11-1
 # it is likely the case that we can support a version beyond what's stated here -- but we may not,
 # so we'll warn to that effect. Every effort will be made to upgrade this implementation to fully
 # support the latest version as soon as possible.
-use constant OAS_VERSION => '3.1.2';
+use constant OAD_VERSION => '3.1.2';
 
 has '+schema' => (
   isa => HashRef,
@@ -114,7 +114,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
   my ($max_supported) = grep {
     my @supported = split /\./;
     $supported[0] == $oad_version[0] && $supported[1] == $oad_version[1]
-  } (OAS_VERSION);
+  } (OAD_VERSION);
 
   croak 'unrecognized/unsupported openapi version ', $schema->{openapi} if not defined $max_supported;
   carp 'WARNING: your document was written for version ', $schema->{openapi},
@@ -560,7 +560,7 @@ JSON
   );
 
 =for Pod::Coverage THAW DEFAULT_BASE_METASCHEMA DEFAULT_DIALECT DEFAULT_METASCHEMA DEFAULT_SCHEMAS
-OAS_VOCABULARY OAS_VERSION get_operationId_path
+OAS_VOCABULARY OAD_VERSION get_operationId_path
 
 =head1 DESCRIPTION
 

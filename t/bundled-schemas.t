@@ -18,7 +18,7 @@ use Helper;
 use constant STRICT_METASCHEMA => 'https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/strict-schema.json';
 
 my $oad_schema = {
-  openapi => OAS_VERSION,
+  openapi => OAD_VERSION,
   info => { title => 'my api', version => '1.0' },
   components => {},
 };
