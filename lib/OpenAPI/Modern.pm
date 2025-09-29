@@ -114,23 +114,22 @@ sub validate_request ($self, $request, $options = {}) {
 
     $request = $options->{request};   # now guaranteed to be a Mojo::Message::Request
 
-    my $method = lc $request->method;
     my $path_item = delete $options->{_path_item};  # after following path-item $refs
-    my $operation = $path_item->{$method};
+    my $operation = $path_item->{lc $request->method};
 
     # PARAMETERS
-    # { $in => { $name => 'path-item'|$method } }  as we process each one.
+    # { $in => { $name => path-item|operation } }  as we process each one.
     my $request_parameters_processed = {};
 
     # first, consider parameters at the operation level.
     # parameters at the path-item level are also considered, if not already seen at the operation level
     SECTION:
-    foreach my $section ($method, 'path-item') {
+    foreach my $section (qw(operation path-item)) {
       ENTRY:
-      foreach my $idx (0 .. (($section eq $method ? $operation : $path_item)->{parameters}//[])->$#*) {
+      foreach my $idx (0 .. (($section eq 'operation' ? $operation : $path_item)->{parameters}//[])->$#*) {
         my $state = { %$state, keyword_path => jsonp($state->{keyword_path},
-          ($section eq $method ? $method : ()), 'parameters', $idx) };
-        my $param_obj = ($section eq $method ? $operation : $path_item)->{parameters}[$idx];
+          ($section eq 'operation' ? lc $request->method : ()), 'parameters', $idx) };
+        my $param_obj = ($section eq 'operation' ? $operation : $path_item)->{parameters}[$idx];
         while (defined(my $ref = $param_obj->{'$ref'})) {
           $param_obj = $self->_resolve_ref('parameter', $ref, $state);
         }
@@ -167,7 +166,7 @@ sub validate_request ($self, $request, $options = {}) {
         if not exists(($request_parameters_processed->{path}//{})->{$path_name});
     }
 
-    $state->{keyword_path} = jsonp($state->{keyword_path}, $method);
+    $state->{keyword_path} = jsonp($state->{keyword_path}, lc $request->method);
 
     # RFC9112 §6.2-2: "A sender MUST NOT send a Content-Length header field in any message that
     # contains a Transfer-Encoding header field."
