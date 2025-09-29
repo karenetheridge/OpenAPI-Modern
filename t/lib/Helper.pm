@@ -333,20 +333,20 @@ sub lives_result ($sub, $test_name) {
 }
 
 sub die_result ($sub, $pattern, $test_name) {
+  # we don't use Test2::Tools::Exception::dies because it tickles JSM::Result's boolean overload
   eval { $sub->() };
   my $result = $@;
-  if (defined $result) {
-    context_do {
-      my ($ctx, $result) = @_;
-      if (not like($result, $pattern, $test_name)) {
-        my $method =
-          # be less noisy for expected failures
-          (grep $_->{todo}, Test2::API::test2_stack->top->{_pre_filters}->@*) ? 'note'
-            : $ENV{AUTHOR_TESTING} || $ENV{AUTOMATED_TESTING} ? 'diag' : 'note';
-        $ctx->$method("got result:\n".$encoder->encode($result));
-      }
-    } $result;
-  }
+  return fail($test_name) if not defined $result;
+  context_do {
+    my ($ctx, $result) = @_;
+    if (not like($result, $pattern, $test_name)) {
+      my $method =
+        # be less noisy for expected failures
+        (grep $_->{todo}, Test2::API::test2_stack->top->{_pre_filters}->@*) ? 'note'
+          : $ENV{AUTHOR_TESTING} || $ENV{AUTOMATED_TESTING} ? 'diag' : 'note';
+      $ctx->$method("got result:\n".$encoder->encode($result));
+    }
+  } $result;
 }
 
 sub exception :prototype(&) {
