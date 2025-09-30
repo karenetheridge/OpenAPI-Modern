@@ -157,7 +157,7 @@ sub validate_request ($self, $request, $options = {}) {
           : $param_obj->{in} eq 'query' ? $self->_validate_query_parameter({ %$state, depth => $state->{depth}+1 }, $param_obj, $request->url)
           : $param_obj->{in} eq 'header' ? $self->_validate_header_parameter({ %$state, depth => $state->{depth}+1 }, $param_obj->{name}, $param_obj, $request->headers)
           : $param_obj->{in} eq 'cookie' ? $self->_validate_cookie_parameter({ %$state, depth => $state->{depth}+1 }, $param_obj)
-          : $param_obj->{in} eq 'querystring' ? $self->_validate_querystring_parameter({ %$state, depth => $state->{depth}+1 }, $param_obj)
+          : $param_obj->{in} eq 'querystring' ? $self->_validate_querystring_parameter({ %$state, depth => $state->{depth}+1 }, $param_obj, $request->url)
           : abort($state, 'unrecognized "in" value "%s"', $param_obj->{in});
       }
     }
@@ -876,16 +876,36 @@ sub _validate_cookie_parameter ($self, $state, $param_obj, @args) {
   return E($state, 'cookie parameters not yet supported');
 }
 
-sub _validate_querystring_parameter ($self, $state, $param_obj, @args) {
+sub _validate_querystring_parameter ($self, $state, $param_obj, $uri) {
   $state->{data_path} = '/request/uri/query';
 
-  return E($state, 'querystring parameters not yet supported');
+  # note: if something has caused the Mojo::Parameters object to be normalized (e.g. calling
+  # 'pairs'), the raw string value is lost
+  return E({ %$state, keyword => 'required' }, 'missing querystring')
+    if $param_obj->{required} and not length $uri->query->{string};
+
+  # Replace "+" with whitespace, unescape and decode as in Mojo::Parameters::pairs
+  my $content = url_unescape($uri->query->{string} =~ s/\+/ /gr);
+
+  $self->_validate_parameter_content({ %$state, depth => $state->{depth}+1 }, $param_obj, \$content)
 }
 
 sub _validate_parameter_content ($self, $state, $param_obj, $content_ref) {
-  abort({ %$state, keyword => 'content' }, 'more than one media type entry present')
-    if keys $param_obj->{content}->%* > 1;  # TODO: remove, when the spec schema is updated
   my ($media_type) = keys $param_obj->{content}->%*;  # there can only be one key
+
+  # FIXME: handle media-type parameters better when selecting for a decoder, see RFC9110 8.3.1
+
+  if ($media_type =~ m{^text/}
+      and my $charset = ($media_type =~ /\bcharset\s*=\s*"?([^"\s;]+)"?/i ? $1 : undef)) {
+    try {
+      # we don't use Mojo::Util::decode because it doesn't die on failure
+      $content_ref = \ Encode::decode($charset, $content_ref->$*, Encode::DIE_ON_ERR);
+    }
+    catch ($e) {
+      return E({ %$state, keyword => 'content', _keyword_path_suffix => $media_type },
+        'could not decode content as %s: %s', $charset, $e =~ s/^(.*)\n/$1/r);
+    }
+  }
 
   my $media_type_decoder = $self->get_media_type($media_type);  # case-insensitive, wildcard lookup
 
@@ -899,6 +919,8 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
   return E({ %$state, data_path => $state->{data_path} =~ s{body$}{header}r, keyword => 'content' },
       'missing header: Content-Type')
     if not length $content_type;
+
+  # FIXME: needs to handle media-type parameters when selecting for a decoder, see RFC9110 8.3.1
 
   my $media_type = (first { fc($content_type) eq fc } keys $content_obj->%*)
     // (first { m{([^/]+)/\*$} && fc($content_type) =~ m{^\F\Q$1\E/[^/]+$} } keys $content_obj->%*);
@@ -1039,10 +1061,11 @@ sub _evaluate_subschema ($self, $dataref, $schema, $state) {
     my @location = unjsonp($state->{data_path});
     my $location =
         $location[-1] eq 'body' ? join(' ', @location[-2..-1])
-      : $location[-2] eq 'query' ? 'query parameter'
-      : $location[-2] eq 'path' ? 'path parameter'  # this should never happen
+      : $location[-2] eq 'query' ? 'query parameter'  # query
+      : $location[-2] eq 'path' ? 'path parameter'    # this should never happen
       : $location[-2] eq 'header' ? join(' ', @location[-3..-2])
-      : $location[-2];  # cookie
+      : $location[-1] eq 'query' ? 'query parameter'  # querystring
+      : die 'unknown location';  # cookie TBD
     return E($state, '%s not permitted', $location);
   }
 

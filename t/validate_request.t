@@ -642,13 +642,6 @@ paths:
         required: false
         schema:
           type: string
-      - name: qs
-        in: querystring
-        required: false
-        content:
-          text/plain:
-            schema:
-              type: string
 YAML
 
   cmp_result(
@@ -662,15 +655,9 @@ YAML
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post parameters 0)))->to_string,
           error => 'cookie parameters not yet supported',
         },
-        {
-          instanceLocation => '/request/uri/query',
-          keywordLocation => jsonp(qw(/paths /foo post parameters 1)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post parameters 1)))->to_string,
-          error => 'querystring parameters not yet supported',
-        },
       ],
     },
-    'neither cookies nor querystrings are yet supported',
+    'cookie parameters are not yet supported',
   );
 
 
@@ -1009,12 +996,6 @@ YAML
       errors => [
         {
           instanceLocation => '/request/uri/query',
-          keywordLocation => jsonp(qw(/paths /bar get parameters 0)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /bar get parameters 0)))->to_string,
-          error => 'querystring parameters not yet supported',
-        },
-        {
-          instanceLocation => '/request/uri/query',
           keywordLocation => jsonp(qw(/paths /bar parameters 0)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /bar parameters 0)))->to_string,
           error => 'cannot use more than one querystring',
@@ -1022,6 +1003,171 @@ YAML
       ],
     },
     'two querystrings conflicting across path-item and operation is detected at runtime',
+  );
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri,
+    openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
+components:
+  schemas:
+    simple_object:
+      type: object
+      required: [key]
+      minProperties: 2
+      properties:
+        key:
+          type: string
+          maxLength: 1
+          const: ಠ
+paths:
+  /string:
+    get:
+      parameters:
+      - name: qs      # the name is not used in the querystring
+        in: querystring
+        required: true
+        content:
+          text/plain;charset=utf-8:
+            schema:
+              type: string
+              maxLength: 1
+              const: ಠ
+  /application/json:
+    get:
+      parameters:
+      - name: qs
+        in: querystring
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/simple_object'
+  /application/x-www-form-urlencoded:
+    get:
+      parameters:
+      - name: qs
+        in: querystring
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/simple_object'
+YAML
+
+  cmp_result(
+    $openapi->validate_request(request('GET', 'http://example.com/string'))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/uri/query',
+          keywordLocation => jsonp(qw(/paths /string get parameters 0 required)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /string get parameters 0 required)))->to_string,
+          error => 'missing querystring',
+        },
+      ],
+    },
+    'when querystring is required, the URI must have a query',
+  );
+
+  cmp_result(
+    $openapi->validate_request(request('GET', 'http://example.com/string?hi'))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/uri/query',
+          keywordLocation => jsonp(qw(/paths /string get parameters 0 content text/plain;charset=utf-8 schema const)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /string get parameters 0 content text/plain;charset=utf-8 schema const)))->to_string,
+          error => 'value does not match',
+        },
+        {
+          instanceLocation => '/request/uri/query',
+          keywordLocation => jsonp(qw(/paths /string get parameters 0 content text/plain;charset=utf-8 schema maxLength)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /string get parameters 0 content text/plain;charset=utf-8 schema maxLength)))->to_string,
+          error => 'length is greater than 1',
+        },
+      ],
+    },
+    'text/plain querystring is parsed as a string',
+  );
+
+  cmp_result(
+    $openapi->validate_request($request = request('GET', 'http://example.com/string?%23'))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/uri/query',
+          keywordLocation => jsonp(qw(/paths /string get parameters 0 content text/plain;charset=utf-8 schema const)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /string get parameters 0 content text/plain;charset=utf-8 schema const)))->to_string,
+          error => 'value does not match',
+        },
+      ],
+    },
+    'text/plain querystring is percent-decoded and then parsed as a string',
+  );
+
+  cmp_result(
+    $openapi->validate_request($request = request('GET', 'http://example.com/string?%e0%b2%a0'))->TO_JSON,
+    { valid => true },
+    'text/plain querystring is percent-decoded and then parsed as a string, respecting the charset',
+  );
+
+  cmp_result(
+    $openapi->validate_request($request = request('GET', 'http://example.com/application/json?%7B%7D'))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/uri/query',
+          keywordLocation => jsonp(qw(/paths /application/json get parameters 0 content application/json schema $ref minProperties)),
+          absoluteKeywordLocation => $doc_uri.'#/components/schemas/simple_object/minProperties',
+          error => 'object has fewer than 2 properties',
+        },
+        {
+          instanceLocation => '/request/uri/query',
+          keywordLocation => jsonp(qw(/paths /application/json get parameters 0 content application/json schema $ref required)),
+          absoluteKeywordLocation => $doc_uri.'#/components/schemas/simple_object/required',
+          error => 'object is missing property: key',
+        },
+      ],
+    },
+    'application/json querystring is parsed as an object',
+  );
+
+  # perl -Mutf8 -MMojo::Util=url_escape -MCpanel::JSON::XS -wlE'say url_escape(Cpanel::JSON::XS->new->pretty(0)->canonical->utf8->encode({ key => "ಠ", hello => 1 }))'
+  cmp_result(
+    $openapi->validate_request($request = request('GET', 'http://example.com/application/json?%7B%22hello%22%3A1%2C%22key%22%3A%22%E0%B2%A0%22%7D'))->TO_JSON,
+    { valid => true },
+    'application/json querystring is url-decoded and properly json-decoded',
+  );
+
+  cmp_result(
+    $openapi->validate_request($request = request('GET', 'http://example.com/application/x-www-form-urlencoded?foo=1'))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/uri/query',
+          keywordLocation => jsonp(qw(/paths /application/x-www-form-urlencoded get parameters 0 content application/x-www-form-urlencoded schema $ref minProperties)),
+          absoluteKeywordLocation => $doc_uri.'#/components/schemas/simple_object/minProperties',
+          error => 'object has fewer than 2 properties',
+        },
+        {
+          instanceLocation => '/request/uri/query',
+          keywordLocation => jsonp(qw(/paths /application/x-www-form-urlencoded get parameters 0 content application/x-www-form-urlencoded schema $ref required)),
+          absoluteKeywordLocation => $doc_uri.'#/components/schemas/simple_object/required',
+          error => 'object is missing property: key',
+        },
+      ],
+    },
+    'application/x-www-form-urlencoded querystring is parsed as an object',
+  );
+
+  cmp_result(
+    $openapi->validate_request($request = request('GET', 'http://example.com/application/x-www-form-urlencoded?key=%e0%b2%a0&bar=2'))->TO_JSON,
+    { valid => true },
+    'application/x-www-form-urlencoded querystring is url-decoded and properly decoded',
   );
 
 
@@ -2592,6 +2738,15 @@ paths:
         content:
           '*/*':
             schema: false
+  /bar:
+    post:
+      parameters:
+      - name: foo
+        in: querystring
+        content:
+          text/plain:
+            schema:
+              false
 YAML
 
   cmp_result(
@@ -2628,6 +2783,22 @@ YAML
       ],
     },
     'custom error message when the entity is not permitted',
+  );
+
+  cmp_result(
+    $openapi->validate_request(request('POST', 'http://example.com/bar?foo=1'))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/uri/query',
+          keywordLocation => jsonp(qw(/paths /bar post parameters 0 content text/plain schema)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /bar post parameters 0 content text/plain schema)))->to_string,
+          error => 'query parameter not permitted',
+        },
+      ],
+    },
+    'custom error message when the querystring is not permitted',
   );
 };
 
