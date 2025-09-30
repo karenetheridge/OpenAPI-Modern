@@ -115,7 +115,8 @@ sub validate_request ($self, $request, $options = {}) {
     $request = $options->{request};   # now guaranteed to be a Mojo::Message::Request
 
     my $path_item = delete $options->{_path_item};  # after following path-item $refs
-    my $operation = $path_item->{lc $request->method};
+    my $operation = delete $options->{_operation};
+    my $ops = delete $options->{_operation_path_suffix};   # jsonp-encoded
 
     # PARAMETERS
     # { $in => { $name => path-item|operation } }  as we process each one.
@@ -128,8 +129,7 @@ sub validate_request ($self, $request, $options = {}) {
     foreach my $section (qw(operation path-item)) {
       ENTRY:
       foreach my $idx (0 .. (($section eq 'operation' ? $operation : $path_item)->{parameters}//[])->$#*) {
-        my $state = { %$state, keyword_path => jsonp($state->{keyword_path},
-          ($section eq 'operation' ? lc $request->method : ()), 'parameters', $idx) };
+        my $state = { %$state, keyword_path => $state->{keyword_path}.($section eq 'operation' ? $ops : '').'/parameters/'.$idx };
         my $param_obj = ($section eq 'operation' ? $operation : $path_item)->{parameters}[$idx];
         while (defined(my $ref = $param_obj->{'$ref'})) {
           $param_obj = $self->_resolve_ref('parameter', $ref, $state);
@@ -174,7 +174,7 @@ sub validate_request ($self, $request, $options = {}) {
         if not exists(($request_parameters_processed->{path}//{})->{$path_name});
     }
 
-    $state->{keyword_path} = jsonp($state->{keyword_path}, lc $request->method);
+    $state->{keyword_path} .= $ops;
 
     # RFC9112 §6.2-2: "A sender MUST NOT send a Content-Length header field in any message that
     # contains a Transfer-Encoding header field."
@@ -248,11 +248,11 @@ sub validate_response ($self, $response, $options = {}) {
     return $self->_result($state, 1, 1) if not $path_ok;
 
     my $path_item = delete $options->{_path_item};
-    my $operation = $path_item->{lc $options->{method}};
+    my $operation = delete $options->{_operation};
 
     return $self->_result($state, 0, 1) if not exists $operation->{responses};
 
-    $state->{keyword_path} = jsonp($state->{keyword_path}, lc $options->{method});
+    $state->{keyword_path} .= delete $options->{_operation_path_suffix};  # jsonp-encoded
     $response = _convert_response($response);   # now guaranteed to be a Mojo::Message::Response
 
     if ($response->headers->header('Transfer-Encoding')) {
@@ -409,6 +409,8 @@ sub find_path ($self, $options, $state = {}) {
       # callbacks, but they are still usable via operationId for validating responses
       $state->{keyword_path} = $path_item_path;
       $options->{_path_item} = $self->document_get($path_item_path);
+      $options->{_operation} = $self->document_get($operation_path);
+      $options->{_operation_path_suffix} = substr($operation_path, length($path_item_path));
 
       # FIXME: this is not accurate if the operation lives in another document
       # (and in that case, get_operation_uri_by_id can be returned as-is)
@@ -442,8 +444,8 @@ sub find_path ($self, $options, $state = {}) {
         # a URI can match multiple /paths entries, and an operationId can be reachable from multiple
         # /paths entries, so keep searching until both are a match
         next if exists $options->{operation_id}
-          and (not exists $local_state->{path_item}{lc $method}{operationId}
-            or $local_state->{path_item}{lc $method}{operationId} ne $options->{operation_id});
+          and (not exists $local_state->{operation}{operationId}
+            or $local_state->{operation}{operationId} ne $options->{operation_id});
 
         %$state = %$local_state;
         $options->{path_template} = $pt;
@@ -454,7 +456,7 @@ sub find_path ($self, $options, $state = {}) {
       if ($local_state->{errors}->@*) {
         %$state = %$local_state;
         $options->{path_template} = $pt;
-        $options->{_path_item} = $state->{path_item};
+        $options->@{qw(_path_item _operation _operation_path_suffix)} = $state->@{qw(path_item operation operation_path_suffix)};
         return;
       }
     }
@@ -477,7 +479,7 @@ sub find_path ($self, $options, $state = {}) {
 
       # the initial match succeeded, but something else went wrong
       if ($state->{errors}->@*) {
-        $options->{_path_item} = $state->{path_item};
+        $options->@{qw(_path_item _operation _operation_path_suffix)} = $state->@{qw(path_item operation operation_path_suffix)};
         return;
       }
 
@@ -487,11 +489,11 @@ sub find_path ($self, $options, $state = {}) {
     }
 
     if (exists $options->{operation_id}
-        and (not exists $state->{path_item}{lc $method}{operationId}
-          or $state->{path_item}{lc $method}{operationId} ne $options->{operation_id})) {
-      delete $options->@{qw(_path_item path_captures uri_captures operation_uri)};
-      return E({ %$state, keyword_path => jsonp($state->{keyword_path}, lc $method,
-          (exists $state->{path_item}{lc $method}{operationId} ? 'operationId' : ())),
+        and (not exists $state->{operation}{operationId}
+          or $state->{operation}{operationId} ne $options->{operation_id})) {
+      delete $options->@{qw(_path_item _operation _operation_path_suffix path_captures uri_captures operation_uri)};
+      return E({ %$state, keyword_path => $state->{keyword_path}.$state->{operation_path_suffix}
+          .(exists $state->{operation}{operationId} ? '/operationId' : ''),
           recommended_response => [ 500 ] },
         'provided path_template and operation_id do not match request %s %s',
         $options->{request}->method, $options->{request}->url->clone->query('')->fragment(undef));
@@ -506,31 +508,35 @@ sub find_path ($self, $options, $state = {}) {
       $state->{path_item} = $self->_resolve_ref('path-item', $ref, $state);
     }
 
+    $state->{operation} = $state->{path_item}{lc $method};
+
     return E({ %$state, recommended_response => [ 405 ] },
         'missing operation for HTTP method "%s" under "%s"%s', $method, $options->{path_template},
         exists $options->{method} && $options->{method} eq lc $options->{method}
           && exists $state->{path_item}{$options->{method}} ? (' (should be '.uc $method.')') : '')
       if $options->{method} ne uc $method # all currently-supported methods are uppercased
-        or not exists $state->{path_item}{lc $method};
+        or not $state->{operation};
 
-    return E({ %$state, keyword_path => jsonp($state->{keyword_path}, lc $method,
-          (exists $state->{path_item}{lc $method}{operationId} ? 'operationId' : ())),
+    $state->{operation_path_suffix} = '/'.lc $method;
+
+    return E({ %$state, keyword_path => $state->{keyword_path}.$state->{operation_path_suffix}
+          .(exists $state->{operation}{operationId} ? '/operationId' : ''),
         recommended_response => [ 500 ] },
         'templated operation does not match provided operation_id')
       if exists $options->{operation_id}
-        and (not exists $state->{path_item}{lc $method}{operationId}
-          or $state->{path_item}{lc $method}{operationId} ne $options->{operation_id});
+        and (not exists $state->{operation}{operationId}
+          or $state->{operation}{operationId} ne $options->{operation_id});
   }
 
-  $options->{_path_item} = $state->{path_item};
+  $options->@{qw(_path_item _operation _operation_path_suffix)} = $state->@{qw(path_item operation operation_path_suffix)};
 
   # if initial_schema_uri still points to the head of the entry document, then we have not followed
   # a $ref and the path-item is located at /paths/<path_template>
   $options->{operation_uri} = $state->{initial_schema_uri}->clone
-    ->fragment(($state->{initial_schema_uri}->fragment // $state->{keyword_path}).'/'.lc $method);
+    ->fragment(($state->{initial_schema_uri}->fragment // $state->{keyword_path}).$options->{_operation_path_suffix});
 
-  $options->{operation_id} = $options->{_path_item}{lc $method}{operationId}
-    if exists $options->{_path_item}{lc $method}{operationId};
+  $options->{operation_id} = $options->{_operation}{operationId}
+    if exists $options->{_operation}{operationId};
 
   # note: we aren't doing anything special with escaped slashes. this bit of the spec is hazy.
   # { for the editor
@@ -640,17 +646,20 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
   # path_template or (preferrably) operationId to be used in the search.
   return if $method ne uc $method or not exists $local_state->{path_item}{lc $method};
 
+  $local_state->{operation} = $local_state->{path_item}{lc $method};
+  $local_state->{operation_path_suffix} = '/'.lc $method;
+
   my $full_uri = $uri->clone->path($uri_path)->fragment(undef)->query('')->to_string;
 
   # we need to keep track of the traversed path to the servers object, as well as its absolute
   # location, for usage in error objects
   my ($servers, $more_keyword_path, $base_schema_uri) =
-      exists $local_state->{path_item}{lc $method}{servers}
-        ? ($local_state->{path_item}{lc $method}{servers}, [lc $method])
+      exists $local_state->{operation}{servers}
+        ? ($local_state->{operation}{servers}, '/'.lc $method)
     : exists $local_state->{path_item}{servers}
-        ? ($local_state->{path_item}{servers}, [])
+        ? ($local_state->{path_item}{servers}, '')
     : exists $self->openapi_document->schema->{servers}
-        ? ($self->openapi_document->schema->{servers}, [], $self->openapi_uri)
+        ? ($self->openapi_document->schema->{servers}, '', $self->openapi_uri)
     : ();
 
   # v3.2.0 §4.1.1, "OpenAPI Object -> servers": "If the servers field is not provided, or is an
@@ -698,7 +707,7 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
       $valid = E({ %$state, keyword => 'url', data_path => '/request/uri',
             defined $base_schema_uri
               ? (initial_schema_uri => $base_schema_uri, traversed_keyword_path => '', keyword_path => '/servers/'.$index)
-              : (keyword_path => jsonp($state->{keyword_path}, @$more_keyword_path, 'servers', $index)) },
+              : (keyword_path => $state->{keyword_path}.$more_keyword_path.'/servers/'.$index) },
           'duplicate template name "%s" in server url and path template', $name)
         if $seen{$name}++;
     }
@@ -714,7 +723,7 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
             defined $base_schema_uri
               ? (initial_schema_uri => $base_schema_uri, traversed_keyword_path => '',
                   keyword_path => jsonp('/servers', $index, 'variables', $name))
-              : (keyword_path => jsonp($state->{keyword_path}, @$more_keyword_path, 'servers', $index, 'variables', $name)) },
+              : (keyword_path => jsonp($state->{keyword_path}.$more_keyword_path, 'servers', $index, 'variables', $name)) },
           'server url value does not match any of the allowed values')
         if not any { $captures{$name} eq $_ } $server->{variables}{$name}{enum}->@*;
     }
