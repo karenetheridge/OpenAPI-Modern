@@ -256,7 +256,21 @@ sub traverse ($self, $evaluator, $config_override = {}) {
   );
 
   if (not $result->valid) {
-    push $state->{errors}->@*, $result->errors;
+    foreach my $e ($result->errors) {
+      if ($e->keyword eq 'not'
+          and $e->absolute_keyword_location->fragment eq '/$defs/parameters/not'
+          and $e->absolute_keyword_location->clone->fragment(undef) eq DEFAULT_METASCHEMA->{$self->oas_version}
+      ) {
+        push $state->{errors}->@*, $e->clone(
+          keyword_location => '',
+          absolute_keyword_location => undef,
+          error => 'cannot use query and querystring together',
+        );
+      }
+
+      push $state->{errors}->@*, $e;
+    }
+
     return $state;
   }
 
