@@ -959,6 +959,77 @@ YAML
     openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
 paths:
   /foo:
+    parameters:
+    - name: qs
+      in: querystring
+      content:
+        text/plain:
+          schema: {}
+    get:
+      parameters:
+      - name: q
+        in: query
+        schema: {}
+  /bar:
+    parameters:
+    - name: qs
+      in: querystring
+      content:
+        text/plain:
+          schema: {}
+    get:
+      parameters:
+      - name: qs
+        in: querystring
+        content:
+          text/plain:
+            schema: {}
+YAML
+
+  cmp_result(
+    $openapi->validate_request(request('GET', 'http://example.com/foo?q=1'))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/uri/query',
+          keywordLocation => jsonp(qw(/paths /foo parameters 0)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo parameters 0)))->to_string,
+          error => 'cannot use query and querystring together',
+        },
+      ],
+    },
+    'query and querystring conflicting across path-item and operation is detected at runtime',
+  );
+
+  cmp_result(
+    $openapi->validate_request(request('GET', 'http://example.com/bar?q=1'))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/uri/query',
+          keywordLocation => jsonp(qw(/paths /bar get parameters 0)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /bar get parameters 0)))->to_string,
+          error => 'querystring parameters not yet supported',
+        },
+        {
+          instanceLocation => '/request/uri/query',
+          keywordLocation => jsonp(qw(/paths /bar parameters 0)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /bar parameters 0)))->to_string,
+          error => 'cannot use more than one querystring',
+        },
+      ],
+    },
+    'two querystrings conflicting across path-item and operation is detected at runtime',
+  );
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri,
+    openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
+paths:
+  /foo:
     get:
       parameters:
       - name: query1

@@ -120,6 +120,7 @@ sub validate_request ($self, $request, $options = {}) {
     # PARAMETERS
     # { $in => { $name => path-item|operation } }  as we process each one.
     my $request_parameters_processed = {};
+    my %seen_q;
 
     # first, consider parameters at the operation level.
     # parameters at the path-item level are also considered, if not already seen at the operation level
@@ -138,6 +139,13 @@ sub validate_request ($self, $request, $options = {}) {
 
         abort($state, 'duplicate %s parameter "%s"', $param_obj->{in}, $param_obj->{name})
           if (($request_parameters_processed->{$param_obj->{in}}//{})->{$fc_name} // '') eq $section;
+
+        ++$seen_q{$param_obj->{in}};
+        abort({ %$state, data_path => '/request/uri/query' }, 'cannot use query and querystring together')
+          if $seen_q{query} and $seen_q{querystring};
+
+        abort({ %$state, data_path => '/request/uri/query' }, 'cannot use more than one querystring')
+          if ($seen_q{querystring}//0) >= 2;
 
         { use autovivification qw(exists store);
           next ENTRY if exists $request_parameters_processed->{$param_obj->{in}}{$fc_name};
