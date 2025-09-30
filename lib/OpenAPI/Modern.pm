@@ -144,14 +144,11 @@ sub validate_request ($self, $request, $options = {}) {
           $request_parameters_processed->{$param_obj->{in}}{$fc_name} = $section;
         }
 
-        $state->{data_path} = jsonp('/request',
-          ((grep $param_obj->{in} eq $_, qw(path query)) ? 'uri' : ()), $param_obj->{in},
-          $param_obj->{name});
         my $valid =
             $param_obj->{in} eq 'path' ? $self->_validate_path_parameter({ %$state, depth => $state->{depth}+1 }, $param_obj, $options->{path_captures})
           : $param_obj->{in} eq 'query' ? $self->_validate_query_parameter({ %$state, depth => $state->{depth}+1 }, $param_obj, $request->url)
           : $param_obj->{in} eq 'header' ? $self->_validate_header_parameter({ %$state, depth => $state->{depth}+1 }, $param_obj->{name}, $param_obj, $request->headers)
-          : $param_obj->{in} eq 'cookie' ? $self->_validate_cookie_parameter({ %$state, depth => $state->{depth}+1 }, $param_obj, $request)
+          : $param_obj->{in} eq 'cookie' ? $self->_validate_cookie_parameter({ %$state, depth => $state->{depth}+1 }, $param_obj)
           : abort($state, 'unrecognized "in" value "%s"', $param_obj->{in});
       }
     }
@@ -299,8 +296,7 @@ sub validate_response ($self, $response, $options = {}) {
         $header_obj = $self->_resolve_ref('header', $ref, $state);
       }
 
-      ()= $self->_validate_header_parameter({ %$state,
-          data_path => jsonp('/response/header', $header_name), depth => $state->{depth}+1 },
+      ()= $self->_validate_header_parameter({ %$state, depth => $state->{depth}+1 },
         $header_name, $header_obj, $response->headers);
     }
 
@@ -716,10 +712,13 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
 }
 
 sub _validate_path_parameter ($self, $state, $param_obj, $path_captures) {
+  $state->{data_path} .= '/uri/path';
+
   # 'required' is always true for path parameters
-  return E({ %$state, data_path => $state->{data_path} =~ s{/$param_obj->{name}$}{}r, keyword => 'required' },
-      'missing path parameter: %s', $param_obj->{name})
+  return E({ %$state, keyword => 'required' }, 'missing path parameter: %s', $param_obj->{name})
     if not exists $path_captures->{$param_obj->{name}};
+
+  $state->{data_path} = jsonp($state->{data_path}, $param_obj->{name});
 
   my $data = $path_captures->{$param_obj->{name}};
   $data .= '';
@@ -744,16 +743,18 @@ sub _validate_path_parameter ($self, $state, $param_obj, $path_captures) {
 }
 
 sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
+  $state->{data_path} .= '/uri/query';
+
   # parse the query parameters out of uri
   my $query_params = +{ $uri->query->pairs->@* };
 
   if (not exists $query_params->{$param_obj->{name}}) {
-    return E({ %$state, data_path => $state->{data_path} =~ s{/$param_obj->{name}$}{}r, keyword => 'required' },
-        'missing query parameter: %s', $param_obj->{name})
+    return E({ %$state, keyword => 'required' }, 'missing query parameter: %s', $param_obj->{name})
       if $param_obj->{required};
     return 1;
   }
 
+  $state->{data_path} = jsonp($state->{data_path}, $param_obj->{name});
   my $data = $query_params->{$param_obj->{name}};
 
   return $self->_validate_parameter_content({ %$state, depth => $state->{depth}+1 }, $param_obj, \$data)
@@ -795,12 +796,15 @@ sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
 sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $headers) {
   return 1 if grep fc $header_name eq fc $_, qw(Accept Content-Type Authorization);
 
+  $state->{data_path} .= '/header';
+
   if (not $headers->every_header($header_name)->@*) {
-    return E({ %$state, data_path => $state->{data_path} =~ s{/$header_name$}{}r,
-        keyword => 'required' }, 'missing header: %s', $header_name)
+    return E({ %$state, keyword => 'required' }, 'missing header: %s', $header_name)
       if $header_obj->{required};
     return 1;
   }
+
+  $state->{data_path} = jsonp($state->{data_path}, $header_name);
 
   # validate as a single comma-concatenated string, presumably to be decoded
   return $self->_validate_parameter_content({ %$state, depth => $state->{depth}+1 }, $header_obj, \ $headers->header($header_name))
@@ -850,7 +854,9 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
   $self->_evaluate_subschema(\$data, $header_obj->{schema}, $state);
 }
 
-sub _validate_cookie_parameter ($self, $state, $param_obj, $request) {
+sub _validate_cookie_parameter ($self, $state, $param_obj, @args) {
+  $state->{data_path} = jsonp($state->{data_path}, qw(headers Cookie), $param_obj->{name});
+
   return E($state, 'cookie parameters not yet supported');
 }
 

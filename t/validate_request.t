@@ -651,7 +651,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/cookie/yum',
+          instanceLocation => '/request/headers/Cookie/yum',
           keywordLocation => jsonp(qw(/paths /foo post parameters 0)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post parameters 0)))->to_string,
           error => 'cookie parameters not yet supported',
