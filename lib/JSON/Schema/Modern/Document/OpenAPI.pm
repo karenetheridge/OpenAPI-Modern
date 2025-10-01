@@ -206,7 +206,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
 
   # evaluate the document against its metaschema to find any errors, to identify all schema
   # resources within to add to the global resource index, and to extract all operationIds
-  my (@json_schema_paths, @operation_paths, %bad_path_item_refs, @additional_operations_paths, @servers_paths);
+  my (@json_schema_paths, @operation_paths, %bad_path_item_refs, @servers_paths);
   my $result = $evaluator->evaluate(
     $schema, $self->metaschema_uri,
     {
@@ -241,9 +241,6 @@ sub traverse ($self, $evaluator, $config_override = {}) {
             delete @path_item{qw(summary description $ref)};
             $bad_path_item_refs{$state->{data_path}} = join(', ', sort keys %path_item) if keys %path_item;
           }
-
-          push @additional_operations_paths, $state->{data_path}.'/additionalOperations'
-            if $entity and $entity eq 'path-item' and exists $data->{additionalOperations};
 
           # will contain duplicates; filter out later
           push @servers_paths, ($state->{data_path} =~ s{/[0-9]+$}{}r)
@@ -301,10 +298,6 @@ sub traverse ($self, $evaluator, $config_override = {}) {
   foreach my $path_item (sort keys %bad_path_item_refs) {
     ()= E({ %$state, keyword_path => $path_item },
       'invalid keywords used adjacent to $ref in a path-item: %s', $bad_path_item_refs{$path_item});
-  }
-
-  foreach my $aop (sort @additional_operations_paths) {
-    ()= E({ %$state, schema_path => $aop }, 'not-yet-supported use of additionalOperations');
   }
 
   my %seen_servers;
