@@ -386,7 +386,13 @@ sub find_path ($self, $options, $state = {}) {
 
     # the operation path always ends with the method
     my @parts = unjsonp($operation_path);
-    my ($path_item_path, $method) = (jsonp(@parts[0..$#parts-1]), uc($parts[-1]));
+    my ($path_item_path, $method) = $parts[-2] ne 'additionalOperations'
+          # differentiate between these operation paths:
+          # /components/pathItems/additionalOperations/get (method = 'GET') vs
+          # /components/pathItems/additionalOperations/additionalOperations/get (method = 'get')
+        || $self->openapi_document->get_entity_at_location(jsonp(@parts[0..$#parts-1])) eq 'path-item'
+      ? (jsonp(@parts[0..$#parts-1]), uc($parts[-1]))
+      : (jsonp(@parts[0..$#parts-2]), $parts[-1]);
 
     return E({ %$state, ($options->{request} ? (data_path => '/request/method') : ()), keyword_path => $operation_path.'/operationId' },
         'operation at operation_id does not match %s method "%s"%s',
@@ -502,16 +508,16 @@ sub find_path ($self, $options, $state = {}) {
       $state->{path_item} = $self->_resolve_ref('path-item', $ref, $state);
     }
 
-    $state->{operation} = $state->{path_item}{lc $options->{method}};
+    $state->@{qw(operation operation_path_suffix)} =
+        (any { $options->{method} eq $_ } qw(GET PUT POST DELETE OPTIONS HEAD PATCH TRACE QUERY))
+      ? ($state->{path_item}{lc $options->{method}}, '/'.lc $options->{method})
+      : (($state->{path_item}{additionalOperations}//{})->{$options->{method}}, jsonp('/additionalOperations', $options->{method}));
 
     return E({ %$state, recommended_response => [ 405 ] },
         'missing operation for HTTP method "%s" under "%s"%s', $options->@{qw(method path_template)},
         exists $options->{method} && $options->{method} eq lc $options->{method}
           && exists $state->{path_item}{$options->{method}} ? (' (should be '.uc $options->{method}.')') : '')
-      if $options->{method} ne uc $options->{method} # all currently-supported methods are uppercased
-        or not $state->{operation};
-
-    $state->{operation_path_suffix} = '/'.lc $options->{method};
+      if not $state->{operation};
 
     return E({ %$state, keyword_path => $state->{keyword_path}.$state->{operation_path_suffix}
           .(exists $state->{operation}{operationId} ? '/operationId' : ''),
@@ -638,10 +644,13 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
   # implemented, so we return false and keep searching. Since we may still match to the wrong URI,
   # the correct operation can be forced to match by explicitly passing the corresponding
   # path_template or (preferrably) operationId to be used in the search.
-  return if $method ne uc $method or not exists $local_state->{path_item}{lc $method};
 
-  $local_state->{operation} = $local_state->{path_item}{lc $method};
-  $local_state->{operation_path_suffix} = '/'.lc $method;
+  $local_state->@{qw(operation operation_path_suffix)} =
+    (any { $method eq $_ } qw(GET PUT POST DELETE OPTIONS HEAD PATCH TRACE QUERY))
+      ? ($local_state->{path_item}{lc $method}, '/'.lc $method)
+      : (($local_state->{path_item}{additionalOperations}//{})->{$method}, jsonp('/additionalOperations', $method));
+
+  return if not $local_state->{operation};
 
   my $full_uri = $uri->clone->path($uri_path)->fragment(undef)->query('')->to_string;
 
@@ -649,7 +658,7 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
   # location, for usage in error objects
   my ($servers, $more_keyword_path, $base_schema_uri) =
       exists $local_state->{operation}{servers}
-        ? ($local_state->{operation}{servers}, '/'.lc $method)
+        ? ($local_state->{operation}{servers}, $local_state->{operation_path_suffix})
     : exists $local_state->{path_item}{servers}
         ? ($local_state->{path_item}{servers}, '')
     : exists $self->openapi_document->schema->{servers}

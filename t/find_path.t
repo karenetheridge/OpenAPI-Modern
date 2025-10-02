@@ -70,11 +70,17 @@ paths:
       operationId: my_get_operation
     post:
       operationId: my_post_operation
+    additionalOperations:
+      PoST:
+        operationId: my_new_post_operation
   /foo/{foo_id}:
     post:
       operationId: another_post_operation
     delete:
       operationId: another_delete_operation
+    additionalOperations:
+      PoST:
+        operationId: another_new_post_operation
   /nothing:
     delete:
       operationId: nothing_operation
@@ -181,6 +187,26 @@ YAML
     'Post does not map to post, only POST does, so the operation does not exist under the matching path-item',
   );
 
+  ok($openapi->find_path($options = { request => $request = request('PoST', 'http://example.com/foo/bar') }),
+    to_str($request).': lookup succeeded');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      method => 'PoST',
+      path_template => '/foo/bar',
+      path_captures => {},
+      uri_captures => {},
+      _path_item => { map +($_ => ignore), qw(get post additionalOperations) },
+      _operation => ignore,
+      _operation_path_suffix => '/additionalOperations/PoST',
+      operation_id => 'my_new_post_operation',
+      operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar additionalOperations PoST)))),
+      errors => [],
+    },
+    'found an operation from request alone using new-style method',
+  );
+
   ok($openapi->find_path($options = { request => $request = request('DELETE', 'http://example.com/foo/bar') }),
     to_str($request).': lookup succeeded');
   cmp_result(
@@ -191,7 +217,7 @@ YAML
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => 'bar' },
       uri_captures => { foo_id => 'bar' },
-      _path_item => { post => ignore, delete => ignore },
+      _path_item => { map +($_ => ignore), qw(post delete additionalOperations) },
       _operation => ignore,
       _operation_path_suffix => '/delete',
       operation_id => 'another_delete_operation',
@@ -284,7 +310,29 @@ YAML
     'path_template and operation_id are inconsistent, even if path_template at provided operation_id would match',
   );
 
-  ok(!$openapi->find_path($options = { request => $request,
+  ok(!$openapi->find_path($options = { request => $request = request('PoST', 'http://example.com/foo/bar'),
+      path_template => '/foo/{foo_id}', operation_id => 'my_new_post_operation' }),
+    to_str($request).': lookup failed');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      method => 'PoST',
+      path_template => '/foo/{foo_id}',
+      operation_id => 'my_new_post_operation',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id} additionalOperations PoST operationId)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} additionalOperations PoST operationId)))->to_string,
+          error => 'provided path_template and operation_id do not match request PoST http://example.com/foo/bar',
+        }),
+      ],
+    },
+    'path_template and operation_id are inconsistent, even if path_template at provided operation_id would match',
+  );
+
+  ok(!$openapi->find_path($options = { request => $request = request('POST', 'http://example.com/foo/bar'),
       path_template => '/foo/bar', operation_id => 'another_post_operation' }),
     to_str($request).': lookup failed');
   cmp_result(
@@ -355,7 +403,7 @@ YAML
       path_template => '/foo/bar',
       path_captures => {},
       uri_captures => {},
-      _path_item => { get => ignore, post => ignore },
+      _path_item => { map +($_ => ignore), qw(get post additionalOperations) },
       _operation => ignore,
       _operation_path_suffix => '/post',
       operation_id => 'my_post_operation',
@@ -375,7 +423,7 @@ YAML
       method => 'POST',
       path_template => '/foo/{foo_id}',
       path_captures => { bloop => 'bar' },
-      _path_item => { post => ignore, delete => ignore },
+      _path_item => { map +($_ => ignore), qw(post delete additionalOperations) },
       _operation => ignore,
       _operation_path_suffix => '/post',
       operation_id => 'another_post_operation',
@@ -401,7 +449,7 @@ YAML
       method => 'POST',
       path_template => '/foo/bar',
       path_captures => { bloop => 'bar' },
-      _path_item => { get => ignore, post => ignore },
+      _path_item => { map +($_ => ignore), qw(get post additionalOperations) },
       _operation => ignore,
       _operation_path_suffix => '/post',
       operation_id => 'my_post_operation',
@@ -450,7 +498,7 @@ YAML
       path_captures => {},
       uri_captures => {},
       operation_id => 'my_get_operation',
-      _path_item => { get => ignore, post => ignore },
+      _path_item => { map +($_ => ignore), qw(get post additionalOperations) },
       _operation => ignore,
       _operation_path_suffix => '/get',
       operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar get)))),
@@ -683,7 +731,7 @@ YAML
       uri_captures => { foo_id => 'hello' },
       operation_id => 'another_post_operation',
       operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} post)))),
-      _path_item => { post => ignore, delete => ignore },
+      _path_item => { map +($_ => ignore), qw(post delete additionalOperations) },
       _operation => ignore,
       _operation_path_suffix => '/post',
       errors => [
@@ -709,7 +757,7 @@ YAML
       path_captures => { foo_id => 123 },
       uri_captures => { foo_id => 123 },
       path_template => '/foo/{foo_id}',
-      _path_item => { post => ignore, delete => ignore },
+      _path_item => { map +($_ => ignore), qw(post delete additionalOperations) },
       _operation => ignore,
       _operation_path_suffix => '/post',
       operation_id => 'another_post_operation',
@@ -731,7 +779,7 @@ YAML
       path_captures => { foo_id => 123 },
       uri_captures => { foo_id => 123 },
       path_template => '/foo/{foo_id}',
-      _path_item => { post => ignore, delete => ignore },
+      _path_item => { map +($_ => ignore), qw(post delete additionalOperations) },
       _operation => ignore,
       _operation_path_suffix => '/post',
       operation_id => 'another_post_operation',
@@ -753,7 +801,7 @@ YAML
       path_captures => { foo_id => 'bar' },
       uri_captures => { foo_id => 'bar' },
       method => 'POST',
-      _path_item => { post => { operationId => 'another_post_operation' }, delete => ignore },
+      _path_item => { map +($_ => ignore), qw(post delete additionalOperations) },
       _operation => ignore,
       _operation_path_suffix => '/post',
       operation_id => 'another_post_operation',
@@ -773,7 +821,7 @@ YAML
       path_captures => { foo_id => 'bar' },
       uri_captures => { foo_id => 'bar' },
       method => 'POST',
-      _path_item => { post => { operationId => 'another_post_operation' }, delete => ignore },
+      _path_item => { map +($_ => ignore), qw(post delete additionalOperations) },
       _operation => ignore,
       _operation_path_suffix => '/post',
       operation_id => 'another_post_operation',
@@ -1474,6 +1522,16 @@ components:
               host:
                 default: prod
                 enum: [dev, stg, prod]
+      additionalOperations:
+        ~FOO-bar:
+          servers:
+            - url: http://dev.example.com
+            - url: http://dev.example.com/subdir
+            - url: http://{host}.example2.com
+              variables:
+                host:
+                  default: prod
+                  enum: [dev, stg, prod]
     bar-barid:
       servers:
         - url: http://stg.example.com
@@ -1565,7 +1623,7 @@ YAML
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => 1 },
       uri_captures => { foo_id => 1 },
-      _path_item => { get => ignore },
+      _path_item => { map +($_ => ignore), qw(get additionalOperations) },
       _operation => ignore,
       _operation_path_suffix => '/get',
       operation_uri => str($doc_uri.'#/components/pathItems/foo-fooid/get'),
@@ -1580,6 +1638,25 @@ YAML
     'with the correct host, the uri matches on a server url from operation + path_template',
   );
   local $OpenAPI::Modern::DEBUG = 0;
+
+  ok($openapi->find_path($options = { request => $request = request('~FOO-bar', 'http://dev.example.com/foo/1?x=1') }),
+    to_str($request).': lookup succeeded');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      method => '~FOO-bar',
+      path_template => '/foo/{foo_id}',
+      path_captures => { foo_id => 1 },
+      uri_captures => { foo_id => 1 },
+      _path_item => { map +($_ => ignore), qw(get additionalOperations) },
+      _operation => ignore,
+      _operation_path_suffix => '/additionalOperations/~0FOO-bar',
+      operation_uri => str($doc_uri.'#/components/pathItems/foo-fooid/additionalOperations/~0FOO-bar'),
+      errors => [],
+    },
+    '..and also when using an unconventional method',
+  );
 
   ok($openapi->find_path($options = { request => $request = request('GET', 'http://stg.example.com/bar/1?x=1') }),
     to_str($request).': lookup succeeded');
@@ -1629,7 +1706,7 @@ YAML
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => 1 },
       uri_captures => { foo_id => 1 },
-      _path_item => { get => ignore },
+      _path_item => { map +($_ => ignore), qw(get additionalOperations) },
       _operation => ignore,
       _operation_path_suffix => '/get',
       operation_uri => str($doc_uri.'#/components/pathItems/foo-fooid/get'),
@@ -1810,7 +1887,7 @@ YAML
       request => isa('Mojo::Message::Request'),
       method => 'GET',
       path_template => '/foo/{foo_id}',
-      _path_item => { get => ignore },
+      _path_item => { map +($_ => ignore), qw(get additionalOperations) },
       _operation => ignore,
       _operation_path_suffix => '/get',
       errors => [
@@ -1823,6 +1900,29 @@ YAML
       ],
     },
     'server url templated value must match the enum specification; error from servers at operation',
+  );
+
+  ok(!$openapi->find_path($options = { request => $request = request('~FOO-bar', 'http://zip.example2.com/foo/1') }),
+    to_str($request).': lookup failed');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      method => '~FOO-bar',
+      path_template => '/foo/{foo_id}',
+      _path_item => { map +($_ => ignore), qw(get additionalOperations) },
+      _operation => ignore,
+      _operation_path_suffix => '/additionalOperations/~0FOO-bar',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '/request/uri',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id} $ref additionalOperations ~FOO-bar servers 2 variables host enum)),
+          absoluteKeywordLocation => $doc_uri.'#/components/pathItems/foo-fooid/additionalOperations/~0FOO-bar/servers/2/variables/host/enum',
+          error => 'server url value does not match any of the allowed values',
+        }),
+      ],
+    },
+    '...and also when using an unconventional method',
   );
 
   ok(!$openapi->find_path($options = { request => $request = request('GET', 'http://zip.example2.com/bar/1') }),
@@ -1881,7 +1981,7 @@ YAML
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => 1 },
       uri_captures => { host => 'dev', foo_id => 1 },
-      _path_item => { get => ignore },
+      _path_item => { map +($_ => ignore), qw(get additionalOperations) },
       _operation => ignore,
       _operation_path_suffix => '/get',
       operation_uri => str($doc_uri.'#/components/pathItems/foo-fooid/get'),
@@ -1956,7 +2056,7 @@ YAML
       request => isa('Mojo::Message::Request'),
       method => 'GET',
       path_template => '/foo/{foo_id}',
-      _path_item => { get => ignore },
+      _path_item => { map +($_ => ignore), qw(get additionalOperations) },
       _operation => ignore,
       _operation_path_suffix => '/get',
       uri_captures => { not_host => 'dev', foo_id => 1 },
@@ -1982,7 +2082,7 @@ YAML
       request => isa('Mojo::Message::Request'),
       method => 'GET',
       path_template => '/foo/{foo_id}',
-      _path_item => { get => ignore },
+      _path_item => { map +($_ => ignore), qw(get additionalOperations) },
       _operation => ignore,
       _operation_path_suffix => '/get',
       uri_captures => { host => 'not_dev', foo_id => 1 },
@@ -2008,7 +2108,7 @@ YAML
       request => isa('Mojo::Message::Request'),
       method => 'GET',
       path_template => '/foo/{foo_id}',
-      _path_item => { get => ignore },
+      _path_item => { map +($_ => ignore), qw(get additionalOperations) },
       _operation => ignore,
       _operation_path_suffix => '/get',
       uri_captures => { host => 'dev', foo_id => 1 },
@@ -2035,7 +2135,7 @@ YAML
       request => isa('Mojo::Message::Request'),
       method => 'GET',
       path_template => '/foo/{foo_id}',
-      _path_item => { get => ignore },
+      _path_item => { map +($_ => ignore), qw(get additionalOperations) },
       _operation => ignore,
       _operation_path_suffix => '/get',
       uri_captures => { host => 'dev', foo_id => 1 },
@@ -2436,6 +2536,15 @@ components:
     my_path_item:
       post:
         operationId: my_reffed_component_operation
+      additionalOperations:
+        GeT:
+          operationId: my_new_component_operation
+    additionalOperations:
+      post:
+        operationId: my_weird_component_operation
+      additionalOperations:
+        GeT:
+          operationId: my_new_and_weird_component_operation
 paths:
   /foo:
     $ref: '#/components/pathItems/my_path_item'
@@ -2444,6 +2553,13 @@ paths:
       operationId: my_get_operation
     delete:
       operationId: '0'
+    additionalOperations:
+      post:
+        operationId: my_new_post_operation
+      0:
+        operationId: my_0_operation
+      zero:
+        operationId: my_zero_operation
   /nothing:
     delete:
       operationId: nothing_operation
@@ -2490,7 +2606,7 @@ YAML
       # no path_template
       method => 'DELETE',
       operation_id => '0',
-      _path_item => { map +($_ => ignore), qw(get delete) },
+      _path_item => { map +($_ => ignore), qw(get delete additionalOperations) },
       _operation => ignore,
       _operation_path_suffix => '/delete',
       operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} delete)))),
@@ -2518,22 +2634,54 @@ YAML
     'operation_id is not consistent with request method, where the method is a numeric zero',
   );
 
-  ok(!$openapi->find_path($options = { path_template => '/foo/{foo_id}', method => '0' }), 'lookup failed');
+  ok($openapi->find_path($options = { path_template => '/foo/{foo_id}', method => '0' }), 'lookup succeeded');
   cmp_result(
     $options,
     {
       path_template => '/foo/{foo_id}',
       method => '0',
+      operation_id => 'my_0_operation',
+      _path_item => { map +($_ => ignore), qw(get delete additionalOperations) },
+      _operation => ignore,
+      _operation_path_suffix => '/additionalOperations/0',
+      operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} additionalOperations 0)))),
+      errors => [],
+    },
+    'path_template and method can be used for lookup, even when the method is numerically zero',
+  );
+
+  ok($openapi->find_path($options = { operation_id => 'my_0_operation' }), 'lookup succeeded');
+  cmp_result(
+    $options,
+    {
+      # no path_template
+      method => '0',
+      operation_id => 'my_0_operation',
+      _path_item => { map +($_ => ignore), qw(get delete additionalOperations) },
+      _operation => ignore,
+      _operation_path_suffix => '/additionalOperations/0',
+      operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} additionalOperations 0)))),
+      errors => [],
+    },
+    'operation with numeric zero as method can still be found via operation_id',
+  );
+
+  ok(!$openapi->find_path($options = { operation_id => 'my_zero_operation', method => '0' }), 'lookup failed');
+  cmp_result(
+    $options,
+    {
+      method => '0',
+      operation_id => 'my_zero_operation',
       errors => [
         methods(TO_JSON => {
           instanceLocation => '',
-          keywordLocation => jsonp(qw(/paths /foo/{foo_id})),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
-          error => 'missing operation for HTTP method "0" under "/foo/{foo_id}"',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id} additionalOperations zero operationId)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} additionalOperations zero operationId)))->to_string,
+          error => 'operation at operation_id does not match provided HTTP method "0"',
         }),
       ],
     },
-    'path_template and method can be used for lookup, even when the method is numerically zero',
+    'method mismatch is reported, even with numeric zero method',
   );
 
   ok(!$openapi->find_path($options = { operation_id => 'my_get_operation', method => 'POST' }),
@@ -2582,7 +2730,7 @@ YAML
       # no path_template
       method => 'POST',
       operation_id => 'my_reffed_component_operation',
-      _path_item => { post => ignore },
+      _path_item => { map +($_ => ignore), qw(post additionalOperations) },
       _operation => ignore,
       _operation_path_suffix => '/post',
       operation_uri => str($doc_uri.'#/components/pathItems/my_path_item/post'),
@@ -2629,6 +2777,76 @@ YAML
     'wrongly-cased method does not match operation at operationId (with extra hint)',
   );
 
+  ok($openapi->find_path($options = { operation_id => 'my_new_component_operation', method => 'GeT' }),
+    'lookup succeeded');
+  cmp_result(
+    $options,
+    {
+      # no path_template
+      method => 'GeT',
+      operation_id => 'my_new_component_operation',
+      _path_item => { map +($_ => ignore), qw(post additionalOperations) },
+      _operation => ignore,
+      _operation_path_suffix => '/additionalOperations/GeT',
+      operation_uri => str($doc_uri.'#/components/pathItems/my_path_item/additionalOperations/GeT'),
+      errors => [],
+    },
+    'operation outside /paths can be found with operation_id and new-style method'
+  );
+
+  ok(!$openapi->find_path($options = { operation_id => 'my_new_component_operation', method => 'bloop' }),
+    'lookup failed');
+  cmp_result(
+    $options,
+    {
+      method => 'bloop',
+      operation_id => 'my_new_component_operation',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '',
+          keywordLocation => '/components/pathItems/my_path_item/additionalOperations/GeT/operationId',
+          absoluteKeywordLocation => $doc_uri.'#/components/pathItems/my_path_item/additionalOperations/GeT/operationId',
+          error => 'operation at operation_id does not match provided HTTP method "bloop"',
+        }),
+      ],
+    },
+    'wrongly-cased new-style method does not match operation at operationId',
+  );
+
+  ok($openapi->find_path($options = { operation_id => 'my_weird_component_operation', method => 'POST' }),
+    'lookup succeeded');
+  cmp_result(
+    $options,
+    {
+      # no path_template
+      method => 'POST',
+      operation_id => 'my_weird_component_operation',
+      _path_item => { map +($_ => ignore), qw(post additionalOperations) },
+      _operation => ignore,
+      _operation_path_suffix => '/post',
+      operation_uri => str($doc_uri.'#/components/pathItems/additionalOperations/post'),
+      errors => [],
+    },
+    'operation outside /paths is not confused by a path-item called additionalOperations',
+  );
+
+  ok($openapi->find_path($options = { operation_id => 'my_new_and_weird_component_operation', method => 'GeT' }),
+    'lookup succeeded');
+  cmp_result(
+    $options,
+    {
+      # no path_template
+      method => 'GeT',
+      operation_id => 'my_new_and_weird_component_operation',
+      _path_item => { map +($_ => ignore), qw(post additionalOperations) },
+      _operation => ignore,
+      _operation_path_suffix => '/additionalOperations/GeT',
+      operation_uri => str($doc_uri.'#/components/pathItems/additionalOperations/additionalOperations/GeT'),
+      errors => [],
+    },
+    'new-style operation outside /paths is not confused by a path-item called additionalOperations',
+  );
+
   ok($openapi->find_path($options = { operation_id => 'my_get_operation', method => 'GET' }),
     'lookup succeeded');
   cmp_result(
@@ -2637,7 +2855,7 @@ YAML
       operation_id => 'my_get_operation',
       method => 'GET',
       # note: no path_template
-      _path_item => { map +($_ => ignore), qw(get delete) },
+      _path_item => { map +($_ => ignore), qw(get delete additionalOperations) },
       _operation => ignore,
       _operation_path_suffix => '/get',
       operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get)))),
@@ -2723,7 +2941,7 @@ YAML
       path_template => '/foo/{foo_id}',
       path_captures => {},
       method => 'GET',
-      _path_item => { map +($_ => ignore), qw(get delete) },
+      _path_item => { map +($_ => ignore), qw(get delete additionalOperations) },
       _operation => ignore,
       _operation_path_suffix => '/get',
       operation_id => 'my_get_operation',
@@ -2748,7 +2966,7 @@ YAML
       path_captures => { foo_id => 'a' },
       # note: no path_template
       method => 'GET',
-      _path_item => { map +($_ => ignore), qw(get delete) },
+      _path_item => { map +($_ => ignore), qw(get delete additionalOperations) },
       _operation => ignore,
       _operation_path_suffix => '/get',
       operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get)))),
@@ -2765,7 +2983,7 @@ YAML
       path_captures => { foo_id => 'a' },
       path_template => '/foo/{foo_id}',
       method => 'GET',
-      _path_item => { map +($_ => ignore), qw(get delete) },
+      _path_item => { map +($_ => ignore), qw(get delete additionalOperations) },
       _operation => ignore,
       _operation_path_suffix => '/get',
       operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get)))),
@@ -2782,7 +3000,7 @@ YAML
       path_template => '/foo/{foo_id}',
       # note: no path_captures
       method => 'GET',
-      _path_item => { map +($_ => ignore), qw(get delete) },
+      _path_item => { map +($_ => ignore), qw(get delete additionalOperations) },
       _operation => ignore,
       _operation_path_suffix => '/get',
       operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get)))),
@@ -2829,6 +3047,25 @@ YAML
     'operation does not exist for path-item when provided method is wrongly cased',
   );
 
+  ok(!$openapi->find_path($options = { method => 'PosT', path_template => '/foo/{foo_id}' }), 'lookup failed');
+  cmp_result(
+    $options,
+    {
+      path_template => '/foo/{foo_id}',
+      method => 'PosT',
+      errors => [ methods(
+        TO_JSON => {
+          instanceLocation => '',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id})),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
+          error => 'missing operation for HTTP method "PosT" under "/foo/{foo_id}"',
+        },
+        recommended_response => [ 405, 'Method Not Allowed' ],
+      )],
+    },
+    'operation does not exist for path-item when provided method is wrongly cased',
+  );
+
   ok(!$openapi->find_path($options = { path_template => '/foo/{foo_id}', method => 'POST' }), 'lookup failed');
   cmp_result(
     $options,
@@ -2854,7 +3091,7 @@ YAML
     {
       operation_id => 'my_get_operation',
       operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get)))),
-      _path_item => { map +($_ => ignore), qw(get delete) },
+      _path_item => { map +($_ => ignore), qw(get delete additionalOperations) },
       _operation => ignore,
       _operation_path_suffix => '/get',
       # note: no path_template or path_captures
@@ -2908,7 +3145,7 @@ YAML
       operation_id => 'my_reffed_component_operation',
       # note: no path_captures or path_template
       method => 'POST',
-      _path_item => { post => { operationId => 'my_reffed_component_operation' }},
+      _path_item => { map +($_ => ignore), qw(post additionalOperations) },
       _operation => ignore,
       _operation_path_suffix => '/post',
       operation_uri => str($doc_uri.'#/components/pathItems/my_path_item/post'),
@@ -2925,7 +3162,7 @@ YAML
       # note: no path_captures
       path_template => '/foo',
       method => 'POST',
-      _path_item => { post => { operationId => 'my_reffed_component_operation' }},
+      _path_item => { map +($_ => ignore), qw(post additionalOperations) },
       _operation => ignore,
       _operation_path_suffix => '/post',
       operation_uri => str($doc_uri.'#/components/pathItems/my_path_item/post'),
@@ -2987,7 +3224,7 @@ YAML
     {
       method => 'POST',
       _path_item => $lots_of_options->{components}{pathItems}{my_path_item},
-      _operation => ignore,
+      _operation => $lots_of_options->{components}{pathItems}{my_path_item}{post},
       _operation_path_suffix => '/post',
       operation_id => 'my_components_pathItem_operation',
       operation_uri => str($doc_uri.'#/components/pathItems/my_path_item/post'),
@@ -3044,7 +3281,7 @@ YAML
     {
       method => 'POST',
       _path_item => $lots_of_options->{webhooks}{my_hook},
-      _operation => ignore,
+      _operation => $lots_of_options->{webhooks}{my_hook}{post},
       _operation_path_suffix => '/post',
       operation_id => 'my_webhook_operation',
       operation_uri => str($doc_uri.'#/webhooks/my_hook/post'),
@@ -3060,7 +3297,7 @@ YAML
     {
       method => 'POST',
       _path_item => $lots_of_options->{paths}{'/foo/bar'}{post}{callbacks}{my_callback}{'{$request.query.queryUrl}'},
-      _operation => ignore,
+      _operation => $lots_of_options->{paths}{'/foo/bar'}{post}{callbacks}{my_callback}{'{$request.query.queryUrl}'}{post},
       _operation_path_suffix => '/post',
       operation_id => 'my_paths_pathItem_callback_operation',
       operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar post callbacks my_callback {$request.query.queryUrl} post)))),
@@ -3076,7 +3313,7 @@ YAML
     {
       method => 'POST',
       _path_item => $lots_of_options->{components}{pathItems}{my_path_item}{post}{callbacks}{my_callback}{'{$request.query.queryUrl}'},
-      _operation => ignore,
+      _operation => $lots_of_options->{components}{pathItems}{my_path_item}{post}{callbacks}{my_callback}{'{$request.query.queryUrl}'}{post},
       _operation_path_suffix => '/post',
       operation_id => 'my_components_pathItem_callback_operation',
       operation_uri => str($doc_uri->clone->fragment('/components/pathItems/my_path_item/post/callbacks/my_callback/{$request.query.queryUrl}/post')),
