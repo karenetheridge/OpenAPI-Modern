@@ -374,10 +374,15 @@ sub find_path ($self, $options, $state = {}) {
     # provide an unambiguous result, provide the operation_id as well.
 
     # the operation path always ends with the method
-    $method = uc((unjsonp($operation_path))[-1]);
+    my @parts = unjsonp($operation_path);
+    ((my $path_item_path), $method) = (jsonp(@parts[0..$#parts-1]), uc($parts[-1]));
 
     return E({ %$state, ($options->{request} ? (data_path => '/request/method') : ()), keyword_path => $operation_path.'/operationId' },
-        'operation at operation_id does not match HTTP method "%s"', $options->{method})
+        'operation at operation_id does not match %s method "%s"%s',
+          exists $options->{request} ? 'request' : 'provided HTTP', $options->{method},
+          (!exists $options->{request} && $options->{method} eq lc $options->{method}
+              && exists $self->openapi_document->get($path_item_path)->{$options->{method}}
+            ? (' (should be '.uc $options->{method}.')') : ''))
       if $options->{method} and $options->{method} ne $method;
 
     $options->{method} = $method;
@@ -494,8 +499,10 @@ sub find_path ($self, $options, $state = {}) {
 
     return E({ %$state, data_path => '/request/method', recommended_response => [ 405 ] },
         'missing operation for HTTP method "%s" under "%s"%s', $method, $options->{path_template},
-        exists $state->{path_item}{lc $method} ? (' (should be '.uc $method.')') : '')
-      if $method ne uc $method or not exists $state->{path_item}{lc $method};
+        exists $options->{method} && $options->{method} eq lc $options->{method}
+          && exists $state->{path_item}{$options->{method}} ? (' (should be '.uc $method.')') : '')
+      if $options->{method} ne uc $method # all currently-supported methods are uppercased
+        or not exists $state->{path_item}{lc $method};
 
     return E({ %$state, keyword_path => jsonp($state->{keyword_path}, lc $method,
           (exists $state->{path_item}{lc $method}{operationId} ? 'operationId' : ())),

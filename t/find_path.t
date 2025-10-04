@@ -272,7 +272,7 @@ YAML
           instanceLocation => '/request/method',
           keywordLocation => jsonp(qw(/paths /foo/bar get operationId)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar get operationId)))->to_string,
-          error => 'operation at operation_id does not match HTTP method "POST"',
+          error => 'operation at operation_id does not match request method "POST"',
         }),
       ],
     },
@@ -336,7 +336,7 @@ YAML
           instanceLocation => '/request/method',
           keywordLocation => jsonp(qw(/paths /foo/bar get operationId)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar get operationId)))->to_string,
-          error => 'operation at operation_id does not match HTTP method "POST"',
+          error => 'operation at operation_id does not match request method "POST"',
         }),
       ],
     },
@@ -442,7 +442,7 @@ YAML
           instanceLocation => '/request/method',
           keywordLocation => jsonp(qw(/paths /foo/bar get operationId)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/bar get operationId)))->to_string,
-          error => 'operation at operation_id does not match HTTP method "Get"',
+          error => 'operation at operation_id does not match request method "Get"',
         }),
       ],
     },
@@ -2350,7 +2350,7 @@ YAML
           instanceLocation => '',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id} get operationId)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get operationId)))->to_string,
-          error => 'operation at operation_id does not match HTTP method "POST"',
+          error => 'operation at operation_id does not match provided HTTP method "POST"',
         }),
       ],
     },
@@ -2369,7 +2369,7 @@ YAML
           instanceLocation => '',
           keywordLocation => '/components/pathItems/my_path_item/post/operationId',
           absoluteKeywordLocation => $doc_uri.'#/components/pathItems/my_path_item/post/operationId',
-          error => 'operation at operation_id does not match HTTP method "GET"',
+          error => 'operation at operation_id does not match provided HTTP method "GET"',
         }),
       ],
     },
@@ -2403,11 +2403,30 @@ YAML
           instanceLocation => '',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id} get operationId)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get operationId)))->to_string,
-          error => 'operation at operation_id does not match HTTP method "Get"',
+          error => 'operation at operation_id does not match provided HTTP method "Get"',
         }),
       ],
     },
     'wrongly-cased method does not match operation at operationId',
+  );
+
+  ok(!$openapi->find_path($options = { operation_id => 'my_get_operation', method => 'get' }),
+    'lookup failed');
+  cmp_result(
+    $options,
+    {
+      method => 'get',
+      operation_id => 'my_get_operation',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id} get operationId)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get operationId)))->to_string,
+          error => 'operation at operation_id does not match provided HTTP method "get" (should be GET)',
+        }),
+      ],
+    },
+    'wrongly-cased method does not match operation at operationId (with extra hint)',
   );
 
   ok($openapi->find_path($options = { operation_id => 'my_get_operation', method => 'GET' }),
@@ -2423,6 +2442,25 @@ YAML
       errors => [],
     },
     'operation can be found with operation_id and exact-cased method',
+  );
+
+  ok(!$openapi->find_path($options = { operation_id => 'my_reffed_component_operation', method => 'get' }),
+    'lookup failed');
+  cmp_result(
+    $options,
+    {
+      method => 'get',
+      operation_id => 'my_reffed_component_operation',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '',
+          keywordLocation => '/components/pathItems/my_path_item/post/operationId',
+          absoluteKeywordLocation => $doc_uri.'#/components/pathItems/my_path_item/post/operationId',
+          error => 'operation at operation_id does not match provided HTTP method "get"',
+        }),
+      ],
+    },
+    'wrongly-cased method does not match operation at operationId (mismatched, so no hint)',
   );
 
   ok(!$openapi->find_path($options = { method => 'GET' }), 'lookup failed');
@@ -2559,7 +2597,7 @@ YAML
         recommended_response => [ 405, 'Method Not Allowed' ],
       )],
     },
-    'operation does not exist for path-item when provided method is wrongly cased',
+    'operation does not exist for path-item when provided method is wrongly cased (with extra hint)',
   );
 
   ok(!$openapi->find_path($options = { method => 'Get', path_template => '/foo/{foo_id}' }), 'lookup failed');
@@ -2573,7 +2611,7 @@ YAML
           instanceLocation => '/request/method',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id})),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
-          error => 'missing operation for HTTP method "Get" under "/foo/{foo_id}" (should be GET)',
+          error => 'missing operation for HTTP method "Get" under "/foo/{foo_id}"',
         },
         recommended_response => [ 405, 'Method Not Allowed' ],
       )],
