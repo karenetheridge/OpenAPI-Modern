@@ -1420,17 +1420,23 @@ a L<JSON::Schema::Modern::Error> object, and the return value is false.
 
 In addition, these values are also populated in the options hash (when available):
 
-=for :list
+=begin :list
+
 * C<uri_captures>: a hashref mapping placeholders in the entire uri template (server url plus path
   template) to their actual values in the request URI
 * C<operation_uri>: a URI indicating the document location of the operation object for the
   request, after following any references (usually something under C</paths/>, but may be in another
   document). Use C<< $openapi->evaluator->get($uri) >> to fetch this content (see
-  L<JSON::Schema::Modern/get>). Note that this is the same as
-  C<< $openapi->recursive_get(Mojo::URL->new->fragment(JSON::Schema::Modern::Utilities::jsonp('/paths', $options->{path_template}{$options->{method}}))) >>.
-  (See the documentation for an operation at L<https://learn.openapis.org/specification/paths.html#the-endpoints-list> or in the specification at
-  L<§4.8.10 of the specification|https://spec.openapis.org/oas/v3.1#operation-object>.)
+  L<JSON::Schema::Modern/get>). Note that this is the same as:
+
+    $openapi->document_get(Mojo::URL->new($openapi->openapi_uri)->fragment(< path to operation >);
+
+(See the documentation for an operation at L<https://learn.openapis.org/specification/paths.html#the-endpoints-list>
+or in the specification at
+L<§4.8.10 of the specification|https://spec.openapis.org/oas/v3.1#operation-object>.)
 * C<request> (not necessarily what was passed in: this is always a L<Mojo::Message::Request>)
+
+=end :list
 
 You can find the associated operation object in the OpenAPI document by using either C<operation_uri>,
 or by calling C<< $openapi->openapi_document->get_operationId_path($operation_id) >>
