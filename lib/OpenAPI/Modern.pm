@@ -376,10 +376,9 @@ sub find_path ($self, $options, $state = {}) {
     # the operation path always ends with the method
     $method = uc((unjsonp($operation_path))[-1]);
 
-    if ($options->{method} and $options->{method} ne $method) {
-      return E({ %$state, ($options->{request} ? ( data_path => '/request/method' ) : ()), keyword_path => $operation_path.'/operationId' },
-        'operation at operation_id does not match HTTP method "%s"', $options->{method});
-    }
+    return E({ %$state, ($options->{request} ? (data_path => '/request/method') : ()), keyword_path => $operation_path.'/operationId' },
+        'operation at operation_id does not match HTTP method "%s"', $options->{method})
+      if $options->{method} and $options->{method} ne $method;
 
     $options->{method} = $method;
   }
@@ -395,10 +394,8 @@ sub find_path ($self, $options, $state = {}) {
   my $schema = $self->openapi_document->schema;
 
   # path_template from options
-  if (exists $options->{path_template}) {
-    return E({ %$state, data_path => '/request/uri', keyword => 'paths' }, 'missing path "%s"', $options->{path_template})
-      if not exists $schema->{paths}{$options->{path_template}};
-  }
+  return E({ %$state, data_path => '/request/uri', keyword => 'paths' }, 'missing path "%s"', $options->{path_template})
+    if exists $options->{path_template} and not exists $schema->{paths}{$options->{path_template}};
 
   if (not $options->{path_template} and not $options->{request}) {
     # some operations don't exist directly under a /paths/$path_template - e.g. webhooks or
