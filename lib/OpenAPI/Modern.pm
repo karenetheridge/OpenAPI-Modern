@@ -180,7 +180,7 @@ sub validate_request ($self, $request, $options = {}) {
         and not $request->content->is_chunked;
 
     if (my $body_obj = $operation->{requestBody}) {
-      $state->{keyword_path} = $state->{keyword_path}.'/requestBody';
+      $state->{keyword_path} .= '/requestBody';
 
       while (defined(my $ref = $body_obj->{'$ref'})) {
         $body_obj = $self->_resolve_ref('request-body', $ref, $state);
@@ -879,7 +879,7 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
   # strip media-type parameters (e.g. charset) from Content-Type
   my $content_type = (split(/;/, $message->headers->content_type//'', 2))[0] // '';
 
-  return E({ %$state, data_path => $state->{data_path} =~ s{body}{header}r, keyword => 'content' },
+  return E({ %$state, data_path => $state->{data_path} =~ s{body$}{header}r, keyword => 'content' },
       'missing header: Content-Type')
     if not length $content_type;
 
