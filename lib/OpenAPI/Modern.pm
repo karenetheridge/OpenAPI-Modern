@@ -532,7 +532,7 @@ sub find_path ($self, $options, $state = {}) {
   # note: we aren't doing anything special with escaped slashes. this bit of the spec is hazy.
   # { for the editor
   my @path_capture_names = ($path_template =~ m!\{([^}]+)\}!g);
-  return E({ %$state, $options->{request} ? ( data_path => '/request/uri' ) : (), recommended_response => [ 500 ] }, 'provided path_captures names do not match path template "%s"', $path_template)
+  return E({ %$state, $options->{request} ? (data_path => '/request/uri') : (), recommended_response => [ 500 ] }, 'provided path_captures names do not match path template "%s"', $path_template)
     if exists $options->{path_captures}
       and not is_equal([ sort keys $options->{path_captures}->%* ], [ sort @path_capture_names ]);
 
@@ -541,7 +541,7 @@ sub find_path ($self, $options, $state = {}) {
   my @uri_capture_names = keys %$captures;
 
   if (exists $options->{uri_captures}) {
-    return E({ %$state, $options->{request} ? ( data_path => '/request/uri' ) : (), recommended_response => [ 500 ] },
+    return E({ %$state, $options->{request} ? (data_path => '/request/uri') : (), recommended_response => [ 500 ] },
         'provided uri_captures names do not match extracted values')
       if not is_equal([ sort keys $options->{uri_captures}->%* ], [ sort @uri_capture_names ]);
 
@@ -956,11 +956,11 @@ sub _result ($self, $state, $is_exception = 0, $is_response = 0) {
     output_format => $self->evaluator->output_format,
     formatted_annotations => 0,
     valid => !$state->{errors}->@*,
-    $is_exception ? ( exception => 1 ) : (), # -> recommended_response: [ 500, 'Internal Server Error' ]
+    $is_exception ? (exception => 1) : (), # -> recommended_response: [ 500, 'Internal Server Error' ]
     !$state->{errors}->@*
       ? (annotations => $state->{annotations}//[])
       : (errors => $state->{errors}),
-    $is_response ? ( recommended_response => undef ) : (),  # responses don't have responses
+    $is_response ? (recommended_response => undef) : (),  # responses don't have responses
   );
 }
 
@@ -1036,7 +1036,7 @@ sub _evaluate_subschema ($self, $dataref, $schema, $state) {
     {
       data_path => $state->{data_path},
       traversed_keyword_path => $state->{traversed_keyword_path}.$state->{keyword_path},
-      $state->{stringy_numbers} ? ( stringy_numbers => 1 ) : (),
+      $state->{stringy_numbers} ? (stringy_numbers => 1) : (),
     },
   );
 

@@ -53,8 +53,7 @@ YAML
 
   # start line is missing "HTTP/1.1"
   my $request = HTTP::Request->new(GET => 'http://example.com/', [ Host => 'example.com' ]);
-  ok(!$openapi->find_path($options = { request => $request }),
-    to_str($request).': lookup failed');
+  ok(!$openapi->find_path($options = { request => $request }), to_str($request).': lookup failed');
   cmp_result(
     $options,
     {
@@ -2064,8 +2063,7 @@ paths:
       operationId: my_get_operation
 YAML
 
-  ok(!$openapi->find_path(my $options = { path_template => '/foo/{foo_id}' }),
-    'lookup failed');
+  ok(!$openapi->find_path(my $options = { path_template => '/foo/{foo_id}' }), 'lookup failed');
   cmp_result(
     $options,
     {
@@ -2082,8 +2080,7 @@ YAML
     'method can only be derived from request or operation_id',
   );
 
-  ok(!$openapi->find_path($options = { path_captures => {} }),
-    'lookup failed');
+  ok(!$openapi->find_path($options = { path_captures => {} }), 'lookup failed');
   cmp_result(
     $options,
     {
