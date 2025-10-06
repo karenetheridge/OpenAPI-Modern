@@ -97,6 +97,9 @@ paths:
       operationId: another_post_operation
     delete:
       operationId: another_delete_operation
+  /nothing:
+    delete:
+      operationId: nothing_operation
 YAML
 
   my $request = request('GET', 'http://example.com/foo/bar');
@@ -632,6 +635,52 @@ YAML
       ],
     },
     'operation_id is not consistent with request URI, but the real operation does exist (with the same method)',
+  );
+
+{
+  ok(!$openapi->find_path($options = { request => $request = request('0', 'http://example/nothing'), operation_id => 'nothing_operation' }),
+    to_str($request).': lookup failed');
+
+  my $TODO;
+  $TODO = todo 'HTTP::Request does not parse a method of 0: see https://github.com/libwww-perl/HTTP-Message/pull/211' if $::TYPE eq 'lwp';
+  $TODO = todo 'Mojolicious does not parse an %ENV with method of 0: see https://github.com/mojolicious/mojo/pull/2280' if $::TYPE eq 'plack' or $::TYPE eq 'catalyst';
+
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      method => '0',
+      operation_id => 'nothing_operation',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '/request/method',
+          keywordLocation => jsonp(qw(/paths /nothing delete operationId)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /nothing delete operationId)))->to_string,
+          error => 'operation at operation_id does not match request method "0"',
+        }),
+      ],
+    },
+    'operation_id is not consistent with request method, where the method is a numeric zero',
+  );
+}
+
+  ok(!$openapi->find_path($options = { request => $request = request('GET', 'http://example/nothing'), method => '0' }),
+    to_str($request).': lookup failed');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      method => '0',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '/request/method',
+          keywordLocation => '',
+          absoluteKeywordLocation => $doc_uri->to_string,
+          error => 'wrong HTTP method "GET"',
+        }),
+      ],
+    },
+    'request method is not consistent with provided method, where the method is a numeric zero',
   );
 
   ok(!$openapi->find_path($options = { request => $request = request('POST', 'http://example.com/foo/hello'),
@@ -2304,6 +2353,9 @@ paths:
       operationId: my_get_operation
     delete:
       operationId: '0'
+  /nothing:
+    delete:
+      operationId: nothing_operation
 YAML
 
   ok(!$openapi->find_path(my $options = { path_template => '/foo/{foo_id}' }), 'lookup failed');
@@ -2352,6 +2404,43 @@ YAML
       errors => [],
     },
     'operation can be found via numeric zero operation_id',
+  );
+
+  ok(!$openapi->find_path($options = { operation_id => 'nothing_operation', method => '0' }),
+    'lookup failed');
+  cmp_result(
+    $options,
+    {
+      method => '0',
+      operation_id => 'nothing_operation',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '',
+          keywordLocation => jsonp(qw(/paths /nothing delete operationId)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /nothing delete operationId)))->to_string,
+          error => 'operation at operation_id does not match provided HTTP method "0"',
+        }),
+      ],
+    },
+    'operation_id is not consistent with request method, where the method is a numeric zero',
+  );
+
+  ok(!$openapi->find_path($options = { path_template => '/foo/{foo_id}', method => '0' }), 'lookup failed');
+  cmp_result(
+    $options,
+    {
+      path_template => '/foo/{foo_id}',
+      method => '0',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id})),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
+          error => 'missing operation for HTTP method "0" under "/foo/{foo_id}"',
+        }),
+      ],
+    },
+    'path_template and method can be used for lookup, even when the method is numerically zero',
   );
 
   ok(!$openapi->find_path($options = { operation_id => 'my_get_operation', method => 'POST' }),

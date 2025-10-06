@@ -335,7 +335,7 @@ sub find_path ($self, $options, $state = {}) {
   return E({ %$state, exception => 1, recommended_response => [ 500 ] },
       'at least one of $options->{request}, ($options->{path_template} and $options->{method}), or $options->{operation_id} must be provided')
     if not $options->{request}
-      and not ($options->{path_template} and $options->{method})
+      and not ($options->{path_template} and exists $options->{method})
       and not exists $options->{operation_id};
 
   # now guaranteed to be a Mojo::Message::Request
@@ -387,7 +387,7 @@ sub find_path ($self, $options, $state = {}) {
           (!exists $options->{request} && $options->{method} eq lc $options->{method}
               && exists $self->openapi_document->get($path_item_path)->{$options->{method}}
             ? (' (should be '.uc $options->{method}.')') : ''))
-      if $options->{method} and $options->{method} ne $method;
+      if exists $options->{method} and $options->{method} ne $method;
 
     $options->{method} = $method;
 
