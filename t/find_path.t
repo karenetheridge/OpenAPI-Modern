@@ -2302,6 +2302,8 @@ paths:
   /foo/{foo_id}:
     get:
       operationId: my_get_operation
+    delete:
+      operationId: '0'
 YAML
 
   ok(!$openapi->find_path(my $options = { path_template => '/foo/{foo_id}' }), 'lookup failed');
@@ -2336,6 +2338,20 @@ YAML
       ],
     },
     'method can only be derived from request or operation_id',
+  );
+
+  ok($openapi->find_path($options = { operation_id => '0' }), 'lookup succeeded');
+  cmp_result(
+    $options,
+    {
+      # no path_template
+      method => 'DELETE',
+      operation_id => '0',
+      _path_item => { map +($_ => ignore), qw(get delete) },
+      operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} delete)))),
+      errors => [],
+    },
+    'operation can be found via numeric zero operation_id',
   );
 
   ok(!$openapi->find_path($options = { operation_id => 'my_get_operation', method => 'POST' }),
@@ -2437,7 +2453,7 @@ YAML
       operation_id => 'my_get_operation',
       method => 'GET',
       # note: no path_template
-      _path_item => { get => ignore },
+      _path_item => { map +($_ => ignore), qw(get delete) },
       operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get)))),
       errors => [],
     },
@@ -2521,7 +2537,7 @@ YAML
       path_template => '/foo/{foo_id}',
       path_captures => {},
       method => 'GET',
-      _path_item => { get => ignore },
+      _path_item => { map +($_ => ignore), qw(get delete) },
       operation_id => 'my_get_operation',
       operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get)))),
       errors => [
@@ -2544,7 +2560,7 @@ YAML
       path_captures => { foo_id => 'a' },
       # note: no path_template
       method => 'GET',
-      _path_item => { get => ignore },
+      _path_item => { map +($_ => ignore), qw(get delete) },
       operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get)))),
       errors => [],
     },
@@ -2559,7 +2575,7 @@ YAML
       path_captures => { foo_id => 'a' },
       path_template => '/foo/{foo_id}',
       method => 'GET',
-      _path_item => { get => ignore },
+      _path_item => { map +($_ => ignore), qw(get delete) },
       operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get)))),
       errors => [],
     },
@@ -2574,7 +2590,7 @@ YAML
       path_template => '/foo/{foo_id}',
       # note: no path_captures
       method => 'GET',
-      _path_item => { get => ignore },
+      _path_item => { map +($_ => ignore), qw(get delete) },
       operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get)))),
       errors => [],
     },
@@ -2644,7 +2660,7 @@ YAML
     {
       operation_id => 'my_get_operation',
       operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get)))),
-      _path_item => { get => ignore },
+      _path_item => { map +($_ => ignore), qw(get delete) },
       # note: no path_template or path_captures
       method => 'GET',
       errors => [],

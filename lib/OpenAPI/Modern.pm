@@ -332,6 +332,12 @@ sub find_path ($self, $options, $state = {}) {
   $state->{depth} = 0;
   $state->{debug} = $options->{debug} = {} if $DEBUG or $self->debug;
 
+  return E({ %$state, exception => 1, recommended_response => [ 500 ] },
+      'at least one of $options->{request}, ($options->{path_template} and $options->{method}), or $options->{operation_id} must be provided')
+    if not $options->{request}
+      and not ($options->{path_template} and $options->{method})
+      and not exists $options->{operation_id};
+
   # now guaranteed to be a Mojo::Message::Request
   if ($options->{request}) {
     $options->{request} = _convert_request($options->{request});
@@ -397,14 +403,6 @@ sub find_path ($self, $options, $state = {}) {
       return 1;
     }
   }
-
-  # TODO: support passing $options->{operation_uri}
-
-  # by now we will have extracted method from request or operation_id (or we were provided with it)
-  return E({ %$state, exception => 1, recommended_response => [ 500 ] }, 'at least one of $options->{request}, ($options->{path_template} and $options->{method}), or $options->{operation_id} must be provided')
-    if not $options->{request}
-      and not ($options->{path_template} and $method)
-      and not $options->{operation_id};
 
   my $schema = $self->openapi_document->schema;
 
