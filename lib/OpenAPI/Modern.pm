@@ -356,13 +356,11 @@ sub find_path ($self, $options, $state = {}) {
     $method = $options->{method};
   }
 
-  my $operation_path;
-
   # method from operation_id from options
   if (exists $options->{operation_id}) {
     # FIXME: what if the operation is defined in another document? Need to look it up across
     # all documents, and localize $state->{initial_schema_uri}
-    $operation_path = $self->openapi_document->get_operationId_path($options->{operation_id});
+    my $operation_path = $self->openapi_document->get_operationId_path($options->{operation_id});
     return E({ %$state, recommended_response => [ 500 ] }, 'unknown operation_id "%s"', $options->{operation_id})
       if not $operation_path;
 
@@ -386,6 +384,18 @@ sub find_path ($self, $options, $state = {}) {
       if $options->{method} and $options->{method} ne $method;
 
     $options->{method} = $method;
+
+    if (not $options->{path_template} and not $options->{request}) {
+      # some operations don't live under a /paths/$path_template (even via a $ref), e.g. webhooks or
+      # callbacks, but they are still usable via operationId for validating responses
+      $state->{keyword_path} = $path_item_path;
+      $options->{_path_item} = $self->document_get($path_item_path);
+
+      # FIXME: this is not accurate if the operation lives in another document
+      # (and in that case, get_operation_uri_by_id can be returned as-is)
+      $options->{operation_uri} = $state->{initial_schema_uri}->clone->fragment($operation_path);
+      return 1;
+    }
   }
 
   # TODO: support passing $options->{operation_uri}
@@ -402,19 +412,6 @@ sub find_path ($self, $options, $state = {}) {
   return E({ %$state, (exists $options->{request} ? (data_path => '/request/uri') : ()),
         keyword => 'paths' }, 'missing path "%s"', $options->{path_template})
     if exists $options->{path_template} and not exists $schema->{paths}{$options->{path_template}};
-
-  if (not $options->{path_template} and not $options->{request}) {
-    # some operations don't exist directly under a /paths/$path_template - e.g. webhooks or
-    # callbacks, but they are still usable
-    my $path_item_path = $operation_path =~ s{/\L$method$}{}r;
-    $state->{keyword_path} = $path_item_path;
-    $options->{_path_item} = $self->document_get($path_item_path);
-
-    # FIXME: this is not accurate if the operation lives in another document
-    # (and in that case, get_operation_uri_by_id can be returned as-is)
-    $options->{operation_uri} = $state->{initial_schema_uri}->clone->fragment($operation_path);
-    return 1;
-  }
 
   my $captures;  # hashref of template variable names -> concrete values from the uri
 
