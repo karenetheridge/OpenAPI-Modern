@@ -260,7 +260,6 @@ sub validate_response ($self, $response, $options = {}) {
         'RFC9112 §6.1-10: "A server MUST NOT send a Transfer-Encoding header field in any response with a status code of 1xx (Informational) or 204 (No Content)"')
         if $response->is_info or $response->code == 204;
 
-      # CONNECT method is not supported until OpenAPI 3.2
       ()= E({ %$state, data_path => '/response/header/Transfer-Encoding' },
         'RFC9112 §6.1-10: "A server MUST NOT send a Transfer-Encoding header field in any 2xx (Successful) response to a CONNECT request"')
         if $response->is_success and $options->{method} eq 'CONNECT';
