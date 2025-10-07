@@ -2138,7 +2138,6 @@ YAML
   cmp_result(
     $options,
     {
-      operation_id => 'my_reffed_component_operation',
       # no path_template
       method => 'POST',
       _path_item => { post => ignore },
