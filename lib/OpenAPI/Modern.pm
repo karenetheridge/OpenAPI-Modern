@@ -399,7 +399,8 @@ sub find_path ($self, $options, $state = {}) {
   my $schema = $self->openapi_document->schema;
 
   # path_template from options
-  return E({ %$state, data_path => '/request/uri', keyword => 'paths' }, 'missing path "%s"', $options->{path_template})
+  return E({ %$state, (exists $options->{request} ? (data_path => '/request/uri') : ()),
+        keyword => 'paths' }, 'missing path "%s"', $options->{path_template})
     if exists $options->{path_template} and not exists $schema->{paths}{$options->{path_template}};
 
   if (not $options->{path_template} and not $options->{request}) {
@@ -497,7 +498,7 @@ sub find_path ($self, $options, $state = {}) {
       $state->{path_item} = $self->_resolve_ref('path-item', $ref, $state);
     }
 
-    return E({ %$state, data_path => '/request/method', recommended_response => [ 405 ] },
+    return E({ %$state, recommended_response => [ 405 ] },
         'missing operation for HTTP method "%s" under "%s"%s', $method, $options->{path_template},
         exists $options->{method} && $options->{method} eq lc $options->{method}
           && exists $state->{path_item}{$options->{method}} ? (' (should be '.uc $method.')') : '')

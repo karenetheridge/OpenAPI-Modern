@@ -2504,7 +2504,7 @@ YAML
       method => 'GET',
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/uri',
+          instanceLocation => '',
           keywordLocation => '/paths',
           absoluteKeywordLocation => $doc_uri.'#/paths',
           error => 'missing path "/blurp"',
@@ -2589,7 +2589,7 @@ YAML
       method => 'get',
       errors => [ methods(
         TO_JSON => {
-          instanceLocation => '/request/method',
+          instanceLocation => '',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id})),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
           error => 'missing operation for HTTP method "get" under "/foo/{foo_id}" (should be GET)',
@@ -2608,7 +2608,7 @@ YAML
       method => 'Get',
       errors => [ methods(
         TO_JSON => {
-          instanceLocation => '/request/method',
+          instanceLocation => '',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id})),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
           error => 'missing operation for HTTP method "Get" under "/foo/{foo_id}"',
@@ -2627,7 +2627,7 @@ YAML
       method => 'POST',
       errors => [ methods(
         TO_JSON => {
-          instanceLocation => '/request/method',
+          instanceLocation => '',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id})),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id})))->to_string,
           error => 'missing operation for HTTP method "POST" under "/foo/{foo_id}"',
@@ -2679,7 +2679,7 @@ YAML
       operation_id => 'my_get_operation',
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/method',
+          instanceLocation => '',
           keywordLocation => jsonp(qw(/paths /foo $ref)),
           absoluteKeywordLocation => $doc_uri.'#/components/pathItems/my_path_item',
           error => 'missing operation for HTTP method "GET" under "/foo"',
