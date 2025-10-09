@@ -361,18 +361,12 @@ sub find_path ($self, $options, $state = {}) {
     }
   }
 
-  my $method; # case-sensitive! matches the request, NOT the field name for the operation.
-
   # method from request
   if ($options->{request}) {
     return E({ %$state, data_path => '/request/method', recommended_response => [ 500 ] },
         'wrong HTTP method "%s"', $options->{request}->method)
       if exists $options->{method} and $options->{request}->method ne $options->{method};
-    $method = $options->{method} = $options->{request}->method;
-  }
-  # no request; take method from options
-  elsif (exists $options->{method}) {
-    $method = $options->{method};
+    $options->{method} = $options->{request}->method;
   }
 
   # method from operation_id from options
@@ -392,7 +386,7 @@ sub find_path ($self, $options, $state = {}) {
 
     # the operation path always ends with the method
     my @parts = unjsonp($operation_path);
-    ((my $path_item_path), $method) = (jsonp(@parts[0..$#parts-1]), uc($parts[-1]));
+    my ($path_item_path, $method) = (jsonp(@parts[0..$#parts-1]), uc($parts[-1]));
 
     return E({ %$state, ($options->{request} ? (data_path => '/request/method') : ()), keyword_path => $operation_path.'/operationId' },
         'operation at operation_id does not match %s method "%s"%s',
@@ -508,16 +502,16 @@ sub find_path ($self, $options, $state = {}) {
       $state->{path_item} = $self->_resolve_ref('path-item', $ref, $state);
     }
 
-    $state->{operation} = $state->{path_item}{lc $method};
+    $state->{operation} = $state->{path_item}{lc $options->{method}};
 
     return E({ %$state, recommended_response => [ 405 ] },
-        'missing operation for HTTP method "%s" under "%s"%s', $method, $options->{path_template},
+        'missing operation for HTTP method "%s" under "%s"%s', $options->@{qw(method path_template)},
         exists $options->{method} && $options->{method} eq lc $options->{method}
-          && exists $state->{path_item}{$options->{method}} ? (' (should be '.uc $method.')') : '')
-      if $options->{method} ne uc $method # all currently-supported methods are uppercased
+          && exists $state->{path_item}{$options->{method}} ? (' (should be '.uc $options->{method}.')') : '')
+      if $options->{method} ne uc $options->{method} # all currently-supported methods are uppercased
         or not $state->{operation};
 
-    $state->{operation_path_suffix} = '/'.lc $method;
+    $state->{operation_path_suffix} = '/'.lc $options->{method};
 
     return E({ %$state, keyword_path => $state->{keyword_path}.$state->{operation_path_suffix}
           .(exists $state->{operation}{operationId} ? '/operationId' : ''),
