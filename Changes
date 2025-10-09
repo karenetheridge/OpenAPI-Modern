@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.098     2025-10-09 21:01:35Z
           - fixed bug: we no longer assume that a /paths entry can be inferred
             from an operation_id alone
