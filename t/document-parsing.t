@@ -460,7 +460,6 @@ components:
             $id: parameter2_id
   responses:
     my_response4:
-      description: bad response
       content:
         media_type_4:
           schema:
@@ -486,7 +485,6 @@ components:
                 $id: pathItem0_get_requestBody_id
         responses:
           200:
-            description: normal response
             content:
               media_type_2:
                 schema:
