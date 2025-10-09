@@ -1053,7 +1053,13 @@ sub _convert_request ($request) {
   my $req = Mojo::Message::Request->new;
 
   if ($request->isa('HTTP::Request')) {
-    $req->parse($request->as_string);
+    $req->method($request->method);
+    $req->url(Mojo::URL->new($request->uri));
+    $req->version($request->protocol =~ s{^HTTP/(\d\.\d)$}{$1}r) if $request->protocol;
+    $req->headers->add(@$_) foreach pairs $request->headers->flatten;
+
+    my $body = $request->content;
+    $req->body($body) if length $body;
   }
   elsif ($request->isa('Plack::Request') or $request->isa('Catalyst::Request')) {
     $req->parse($request->env);
@@ -1062,7 +1068,7 @@ sub _convert_request ($request) {
       : do { +require Plack::Request; Plack::Request->new($request->env) };
 
     my $body = $plack_request->content;
-    $req->parse($body) if length $body;
+    $req->body($body) if length $body;
 
     # Plack is unable to distinguish between %2F and /, so the raw (undecoded) uri can be passed
     # here. see PSGI::FAQ
@@ -1075,7 +1081,7 @@ sub _convert_request ($request) {
   # we could call $req->fix_headers here to add a missing Content-Length or Host, but proper
   # requests from the network should always have these set.
 
-  warn 'parse error when converting '.ref($request) if not $req->is_finished;
+  $req->finish;
   return $req;
 }
 
@@ -1086,13 +1092,16 @@ sub _convert_response ($response) {
   my $res = Mojo::Message::Response->new;
 
   if ($response->isa('HTTP::Response')) {
-    $res->parse($response->as_string);
-    warn 'parse error when converting HTTP::Response' if not $res->is_finished;
+    $res->code($response->code);
+    $res->version($response->protocol =~ s{^HTTP/(\d\.\d)$}{$1}r) if $response->protocol;
+    $res->headers->add(@$_) foreach pairs $response->headers->flatten;
+    my $body = $response->content;
+    $res->body($body) if length $body;
   }
   elsif ($response->isa('Plack::Response')) {
     $res->code($response->status);
     $res->headers->add(@$_) foreach pairs $response->headers->psgi_flatten_without_sort->@*;
-    my $body = $response->body;
+    my $body = $response->content;
     $res->body($body) if length $body;
   }
   elsif ($response->isa('Catalyst::Response')) {
@@ -1109,6 +1118,7 @@ sub _convert_response ($response) {
   # we could call $res->fix_headers here to add a missing Content-Length, but proper responses from
   # the network should always have it set.
 
+  $res->finish;
   return $res;
 }
 

@@ -14,7 +14,6 @@ use utf8;
 use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 
 use JSON::Schema::Modern::Utilities 'jsonp';
-use Test::Warnings 0.033 qw(:no_end_test allow_patterns);
 
 use lib 't/lib';
 use Helper;
@@ -100,46 +99,6 @@ YAML
     },
     qr/^\$response->request and \$options->\{request\} are inconsistent/,
     'if request is passed twice, it must be the same object (not just the same values)',
-  );
-
-
-  test_needs 'HTTP::Request', 'HTTP::Response';
-  cmp_result(
-    $openapi->validate_response(HTTP::Response->new(404),
-      { request => HTTP::Request->new(GET => 'http://example.com/', [ Host => 'example.com' ]) })->TO_JSON,
-    {
-      valid => false,
-      errors => [
-        {
-          instanceLocation => '/request',
-          keywordLocation => '',
-          absoluteKeywordLocation => $doc_uri->to_string,
-          error => 'Failed to parse request: Bad request start-line',
-        },
-      ],
-    },
-    'invalid request object is detected before parsing the response',
-  );
-
-  my $req = Mojo::Message::Request->new(method => 'GET', url => Mojo::URL->new('http://example.com/'));
-  $req->headers->header('Host', 'example.com');
-  cmp_result(
-    # start line is missing "HTTP/1.1"
-    $openapi->validate_response(HTTP::Response->new(404), { request => $req })->TO_JSON,
-    {
-      valid => false,
-      errors => [
-        {
-          instanceLocation => '/response',
-          keywordLocation => jsonp(qw(/paths / get)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths / get)))->to_string,
-          error => 'Failed to parse response: Bad response start-line',
-        },
-      ],
-    },
-    # checking definedness of $response->code is only a proxy to detecting errors, since
-    # $response->error is overloaded with the long form of the HTTP response code
-    'invalid response object is detected',
   );
 };
 
@@ -747,10 +706,7 @@ YAML
   remove_header($response, 'Content-Length');
 
   cmp_result(
-    do {
-      my $x = allow_patterns(qr/^parse error when converting HTTP::Response/) if $::TYPE eq 'lwp';
-      $openapi->validate_response($response, { path_template => '/foo', method => 'POST' });
-    }->TO_JSON,
+    $openapi->validate_response($response, { path_template => '/foo', method => 'POST' })->TO_JSON,
     {
       valid => false,
       errors => [
@@ -924,12 +880,9 @@ YAML
   );
 
   cmp_result(
-    do {
-      my $x = allow_patterns(qr/^parse error when converting HTTP::Response/) if $::TYPE eq 'lwp';
-      $openapi->validate_response(
-        response(400, [ 'Content-Length' => 12, 'Content-Type' => 'text/plain' ], ''), # Content-Length lies!
-          { path_template => '/foo', method => 'POST' });
-    }->TO_JSON,
+    $openapi->validate_response(
+      response(400, [ 'Content-Length' => 12, 'Content-Type' => 'text/plain' ], ''), # Content-Length lies!
+        { path_template => '/foo', method => 'POST' })->TO_JSON,
     {
       valid => false,
       errors => [
@@ -966,10 +919,7 @@ YAML
   remove_header($response, 'Content-Length');
 
   cmp_result(
-    do {
-      my $x = allow_patterns(qr/^parse error when converting HTTP::Response/) if $::TYPE eq 'lwp';
-      $openapi->validate_response($response, { path_template => '/foo', method => 'POST' });
-    }->TO_JSON,
+    $openapi->validate_response($response, { path_template => '/foo', method => 'POST' })->TO_JSON,
     {
       valid => false,
       errors => [

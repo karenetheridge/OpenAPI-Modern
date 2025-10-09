@@ -47,28 +47,6 @@ YAML
     },
     'invalid request object is detected early',
   );
-
-
-  test_needs('HTTP::Request', 'URI');
-
-  # start line is missing "HTTP/1.1"
-  my $request = HTTP::Request->new(GET => 'http://example.com/', [ Host => 'example.com' ]);
-  ok(!$openapi->find_path($options = { request => $request }), to_str($request).': lookup failed');
-  cmp_result(
-    $options,
-    {
-      request => isa('Mojo::Message::Request'),
-      errors => [
-        methods(TO_JSON => {
-          instanceLocation => '/request',
-          keywordLocation => '',
-          absoluteKeywordLocation => $doc_uri->to_string,
-          error => 'Failed to parse request: Bad request start-line',
-        }),
-      ],
-    },
-    'invalid request object is detected early',
-  );
 };
 
 my $type_index = 0;
@@ -642,7 +620,6 @@ YAML
     to_str($request).': lookup failed');
 
   my $TODO;
-  $TODO = todo 'HTTP::Request does not parse a method of 0: see https://github.com/libwww-perl/HTTP-Message/pull/211' if $::TYPE eq 'lwp';
   $TODO = todo 'Mojolicious does not parse an %ENV with method of 0: see https://github.com/mojolicious/mojo/pull/2280' if $::TYPE eq 'plack' or $::TYPE eq 'catalyst';
 
   cmp_result(
