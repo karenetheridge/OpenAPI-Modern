@@ -8,7 +8,7 @@ OpenAPI::Modern - Validate HTTP requests and responses against an OpenAPI v3.1 d
 
 =head1 VERSION
 
-version 0.097
+version 0.098
 
 =head1 SYNOPSIS
 
@@ -319,7 +319,13 @@ C<uri_captures>: a hashref mapping placeholders in the entire uri template (serv
 
 =item *
 
-C<operation_uri>: a URI indicating the document location of the operation object for the request, after following any references (usually something under C</paths/>, but may be in another document). Use C<< $openapi->evaluator->get($uri) >> to fetch this content (see L<JSON::Schema::Modern/get>). Note that this is the same as C<< $openapi->recursive_get(Mojo::URL->new->fragment(JSON::Schema::Modern::Utilities::jsonp('/paths', $options->{path_template}{$options->{method}}))) >>. (See the documentation for an operation at L<https://learn.openapis.org/specification/paths.html#the-endpoints-list> or in the specification at L<§4.8.10 of the specification|https://spec.openapis.org/oas/v3.1#operation-object>.)
+C<operation_uri>: a URI indicating the document location of the operation object for the request, after following any references (usually something under C</paths/>, but may be in another document). Use C<< $openapi->evaluator->get($uri) >> to fetch this content (see L<JSON::Schema::Modern/get>). Note that this is the same as:
+
+    $openapi->document_get(Mojo::URL->new($openapi->openapi_uri)->fragment(< path to operation >);
+
+(See the documentation for an operation at L<https://learn.openapis.org/specification/paths.html#the-endpoints-list>
+or in the specification at
+L<§4.8.10 of the specification|https://spec.openapis.org/oas/v3.1#operation-object>.)
 
 =item *
 
