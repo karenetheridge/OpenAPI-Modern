@@ -56,6 +56,7 @@ subtest 'invalid request type, bad conversion to Mojo::Message::Request' => sub 
       $options,
       {
         request => isa('Mojo::Message::Request'),
+        uri => isa('Mojo::URL'),
         method => '0',
         errors => [
           methods(TO_JSON => {
@@ -87,6 +88,7 @@ subtest 'mismatched options' => sub {
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'POST',
       errors => [
         methods(TO_JSON => {
@@ -106,6 +108,7 @@ subtest 'mismatched options' => sub {
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => '0',
       errors => [
         methods(TO_JSON => {
@@ -117,6 +120,25 @@ subtest 'mismatched options' => sub {
       ],
     },
     'request method is not consistent with provided method, where the method is a numeric zero',
+  );
+
+  ok(!$openapi->find_path($options = { request => $request, uri => 'http://example.com/bar' }),
+    to_str($request).': lookup failed');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      uri => 'http://example.com/bar',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '/request/uri',
+          keywordLocation => '',
+          absoluteKeywordLocation => $doc_uri->to_string,
+          error => 'mismatched uri "http://example.com/foo"',
+        }),
+      ],
+    },
+    'request uri is not consistent with provided uri',
   );
 };
 
@@ -136,7 +158,7 @@ subtest 'missing options' => sub {
           instanceLocation => '',
           keywordLocation => '',
           absoluteKeywordLocation => $doc_uri->to_string,
-          error => 'at least one of $options->{request}, ($options->{path_template} and $options->{method}), or $options->{operation_id} must be provided',
+          error => 'at least one of $options->{request}, ($options->{uri} and $options->{method}), ($options->{path_template} and $options->{method}), or $options->{operation_id} must be provided',
         }),
       ],
     },
@@ -212,6 +234,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       path_template => '/blurp',
       method => 'GET',
       errors => [
@@ -233,6 +256,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       path_template => '/foo/baz',
       method => 'GET',
       errors => [
@@ -254,6 +278,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       operation_id => 'bloop',
       errors => [
@@ -274,6 +299,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'PUT',
       errors => [
         methods(TO_JSON => {
@@ -293,6 +319,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'Post',
       errors => [
         methods(TO_JSON => {
@@ -312,6 +339,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'PoST',
       path_template => '/foo/bar',
       path_captures => {},
@@ -332,6 +360,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'DELETE',
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => 'bar' },
@@ -352,6 +381,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'PUT',
       errors => [
         methods(TO_JSON => {
@@ -371,6 +401,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'PUT',
       path_template => '/blech/bar',
       errors => [
@@ -392,6 +423,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'POST',
       path_template => '/foo/{foo_id}',
       operation_id => 'my_get_operation',
@@ -414,6 +446,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'POST',
       path_template => '/foo/{foo_id}',
       operation_id => 'my_post_operation',
@@ -436,6 +469,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'PoST',
       path_template => '/foo/{foo_id}',
       operation_id => 'my_new_post_operation',
@@ -458,6 +492,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'POST',
       path_template => '/foo/bar',
       operation_id => 'another_post_operation',
@@ -479,6 +514,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'POST',
       operation_id => 'my_get_operation',
       errors => [
@@ -499,6 +535,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'POST',
       path_template => '/foo/bar',
       path_captures => {},
@@ -520,6 +557,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'POST',
       path_template => '/foo/{foo_id}',
       path_captures => { bloop => 'bar' },
@@ -546,6 +584,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'POST',
       path_template => '/foo/bar',
       path_captures => { bloop => 'bar' },
@@ -572,6 +611,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'Get',
       operation_id => 'my_get_operation',
       errors => [
@@ -593,6 +633,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       path_template => '/foo/bar',
       path_captures => {},
@@ -614,6 +655,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       path_template => '/foo/bar',
       errors => [
@@ -635,6 +677,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'POST',
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => 123 },
@@ -656,6 +699,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'POST',
       path_template => '/foo/{foo_id}',
       errors => [
@@ -676,6 +720,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       path_template => '/foo/bar',
       errors => [
@@ -696,6 +741,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'POST',
       path_template => '/foo/bar',
       errors => [
@@ -716,6 +762,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'POST',
       path_template => '/foo/{foo_id}',
       operation_id => 'my_post_operation',
@@ -738,6 +785,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       operation_id => 'my_get_operation',
       errors => [
@@ -759,6 +807,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'POST',
       operation_id => 'my_post_operation',
       errors => [
@@ -779,6 +828,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => '0',
       operation_id => 'nothing_operation',
       errors => [
@@ -800,6 +850,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       path_template => '/foo/{foo_id}',
       method => 'POST',
       path_captures => { foo_id => 'goodbye' },
@@ -828,6 +879,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'POST',
       path_captures => { foo_id => 123 },
       uri_captures => { foo_id => 123 },
@@ -850,6 +902,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'POST',
       path_captures => { foo_id => 123 },
       uri_captures => { foo_id => 123 },
@@ -872,6 +925,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => 'bar' },
       uri_captures => { foo_id => 'bar' },
@@ -892,6 +946,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => 'bar' },
       uri_captures => { foo_id => 'bar' },
@@ -923,6 +978,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'POST',
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => 'blah' },
@@ -944,6 +1000,7 @@ YAML
     $options,
     my $expected = {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => '123' },
       uri_captures => { foo_id => '123' },
@@ -993,6 +1050,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => 'a' },
@@ -1021,6 +1079,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       errors => [
         methods(TO_JSON => {
@@ -1044,6 +1103,7 @@ YAML
     $options,
     $expected = {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => 'hello // there ಠ_ಠ!' },
@@ -1090,6 +1150,7 @@ YAML
     $options,
     $expected = {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       path_captures => {},
       uri_captures => {},
       path_template => '/foo/bar',
@@ -1109,6 +1170,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       operation_id => 'dotted_foo_bar',
       errors => [
@@ -1136,6 +1198,7 @@ YAML
     my $got_options = $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       path_captures => { foo_id => 'x' },
       uri_captures => { foo_id => 'x' },
       path_template => '/foo/{foo_id}.bar',
@@ -1155,6 +1218,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       operation_id => 'all_dots',
       errors => [
@@ -1175,6 +1239,7 @@ YAML
     {
       %$got_options,
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       operation_uri => str($got_options->{operation_uri}),
     },
     'inferred (correct) path_template matches request uri',
@@ -1195,6 +1260,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => 'bar' },
       uri_captures => { foo_id => 'bar' },
@@ -1214,6 +1280,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => 'bar' },
       uri_captures => { foo_id => 'bar' },
@@ -1242,6 +1309,7 @@ YAML
     $options,
     $expected = {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       path_template => '/',
       path_captures => {},
       uri_captures => {},
@@ -1308,6 +1376,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'POST',
       operation_id => 'my_components_pathItem_operation',
       errors => [
@@ -1328,6 +1397,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       path_template => '/foo/bar',
       method => 'POST',
       operation_id => 'my_components_pathItem_operation',
@@ -1351,6 +1421,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'POST',
       operation_id => 'my_webhook_operation',
       errors => [
@@ -1371,6 +1442,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'POST',
       operation_id => '0',
       errors => [
@@ -1393,6 +1465,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'POST',
       operation_id => 'my_paths_pathItem_callback_operation',
       errors => [
@@ -1413,6 +1486,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'POST',
       operation_id => 'my_components_pathItem_callback_operation',
       errors => [
@@ -1434,6 +1508,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       operation_id => 'my_reffed_component_operation',
       path_captures => {},
       uri_captures => {},
@@ -1453,6 +1528,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       operation_id => 'my_reffed_component_operation',
       path_captures => {},
       uri_captures => {},
@@ -1472,6 +1548,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       operation_id => 'my_reffed_component_operation',
       path_captures => {},
       uri_captures => {},
@@ -1492,6 +1569,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       _path_item => { description => ignore, post => { operationId => 'my_reffed_component_operation' }},
       _operation => ignore,
       _operation_path_suffix => '/post',
@@ -1529,6 +1607,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'POST',
       errors => [
         methods(TO_JSON => {
@@ -1548,6 +1627,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'POST',
       path_template => '/bar',
       errors => [
@@ -1568,6 +1648,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'POST',
       errors => [
         methods(TO_JSON => {
@@ -1674,6 +1755,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       errors => [
         methods(TO_JSON => {
@@ -1694,6 +1776,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => 1 },
@@ -1720,6 +1803,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => '~FOO-bar',
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => 1 },
@@ -1739,6 +1823,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       path_template => '/bar/{bar_id}',
       path_captures => { bar_id => 1 },
@@ -1758,6 +1843,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       path_template => '/qux/{qux_id}',
       path_captures => { qux_id => 1 },
@@ -1777,6 +1863,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => 1 },
@@ -1796,6 +1883,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       path_template => '/bar/{bar_id}',
       path_captures => { bar_id => 1 },
@@ -1815,6 +1903,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       path_template => '/qux/{qux_id}',
       path_captures => { qux_id => 1 },
@@ -1834,6 +1923,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       path_template => '/subdir-operation',
       path_captures => {},
@@ -1853,6 +1943,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       path_template => '/subdir-path-item',
       path_captures => {},
@@ -1872,6 +1963,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       path_template => '/subdir-global',
       path_captures => {},
@@ -1891,6 +1983,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       path_template => '/bad/{host}',
       _path_item => { get => ignore, post => ignore, servers => ignore },
@@ -1914,6 +2007,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'POST',
       path_template => '/bad/{host}',
       _path_item => { get => ignore, post => ignore, servers => ignore },
@@ -1937,6 +2031,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       path_template => '/worse/{host}',
       _path_item => { get => ignore },
@@ -1960,6 +2055,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       path_template => '/foo/{foo_id}',
       _path_item => { map +($_ => ignore), qw(get additionalOperations) },
@@ -1983,6 +2079,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => '~FOO-bar',
       path_template => '/foo/{foo_id}',
       _path_item => { map +($_ => ignore), qw(get additionalOperations) },
@@ -2006,6 +2103,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       path_template => '/bar/{bar_id}',
       _path_item => { get => ignore, post => ignore, servers => ignore },
@@ -2029,6 +2127,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       path_template => '/qux/{qux_id}',
       _path_item => { get => ignore },
@@ -2052,6 +2151,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       path_template => '/foo/{foo_id}',
       path_captures => { foo_id => 1 },
@@ -2071,6 +2171,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       path_template => '/bar/{bar_id}',
       path_captures => { bar_id => 1 },
@@ -2090,6 +2191,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       path_template => '/qux/{qux_id}',
       path_captures => { qux_id => 1 },
@@ -2109,6 +2211,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'POST',
       path_template => '/bar/{bar_id}',
       path_captures => { bar_id => 1 },
@@ -2129,6 +2232,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       path_template => '/foo/{foo_id}',
       _path_item => { map +($_ => ignore), qw(get additionalOperations) },
@@ -2155,6 +2259,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       path_template => '/foo/{foo_id}',
       _path_item => { map +($_ => ignore), qw(get additionalOperations) },
@@ -2181,6 +2286,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       path_template => '/foo/{foo_id}',
       _path_item => { map +($_ => ignore), qw(get additionalOperations) },
@@ -2208,6 +2314,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       path_template => '/foo/{foo_id}',
       _path_item => { map +($_ => ignore), qw(get additionalOperations) },
@@ -2254,6 +2361,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       path_template => '/foo',
       path_captures => {},
@@ -2273,6 +2381,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       path_template => '/bar',
       path_captures => {},
@@ -2292,6 +2401,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       path_template => '/baz',
       path_captures => {},
@@ -2320,6 +2430,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       path_template => '/foo',
       path_captures => {},
@@ -2339,6 +2450,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       path_template => '/foo',
       path_captures => {},
@@ -2389,6 +2501,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       operation_id => 'user_get',
       path_template => '/user/{id}',
@@ -2409,6 +2522,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       operation_id => 'user_get',
       path_template => '/company/{id}',
@@ -2429,6 +2543,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       operation_id => 'tiger_get',
       errors => [
@@ -2449,6 +2564,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       operation_id => 'animal_get',
       path_template => '/animal/{name}',
@@ -2469,6 +2585,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       operation_id => 'animal_get',
       path_template => '/animal/{name}',
@@ -2488,6 +2605,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       operation_id => 'user_get',
       errors => [
@@ -2508,6 +2626,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       operation_id => 'user_get',
       path_template => '/company/{id}',
@@ -2527,6 +2646,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       operation_id => 'animal_get',
       path_template => '/animal/giraffe',
@@ -2547,6 +2667,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       path_template => '/animal/{name}',
       operation_id => 'tiger_get',
@@ -2567,6 +2688,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       operation_id => '',
       errors => [
@@ -2586,6 +2708,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       path_template => '/animal/giraffe',
       operation_id => '',
@@ -3381,6 +3504,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       _path_item => { get => ignore },
       _operation => ignore,
@@ -3409,6 +3533,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       _path_item => { get => ignore },
       _operation => ignore,
@@ -3445,6 +3570,7 @@ YAML
     $options,
     {
       request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
       method => 'GET',
       _path_item => { get => ignore },
       _operation => ignore,
