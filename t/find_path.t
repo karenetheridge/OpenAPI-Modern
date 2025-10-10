@@ -47,16 +47,35 @@ YAML
     },
     'invalid request object is detected early',
   );
+
+  for (my $type_index = 0; $::TYPE = $::TYPES[$type_index]; $type_index++) {
+    my $TODO = todo 'Mojolicious does not parse an %ENV with method of 0: see https://github.com/mojolicious/mojo/pull/2280' if $::TYPE eq 'plack' or $::TYPE eq 'catalyst';
+
+    my $request = request('0', 'http://example/nothing');
+    ok(!$openapi->find_path($options = { request => $request }), to_str($request).': lookup failed');
+    cmp_result(
+      $options,
+      {
+        request => isa('Mojo::Message::Request'),
+        method => '0',
+        errors => [
+          methods(TO_JSON => {
+            instanceLocation => '/request',
+            keywordLocation => '/paths',
+            absoluteKeywordLocation => $doc_uri.'#/paths',
+            error => 'no match found for request 0 http://example/nothing',
+          }),
+        ],
+      },
+      $::TYPE.': 0 method is correctly parsed',
+    );
+  }
 };
 
-my $type_index = 0;
+$::TYPE = 'mojo';
 my $lots_of_options;  # populated lower down, and used in multiple subtests
 
-START:
-$::TYPE = $::TYPES[$type_index];
-note 'REQUEST/RESPONSE TYPE: '.$::TYPE;
-
-subtest $::TYPE.': request is parsed to get path information' => sub {
+subtest 'request is parsed to get path information' => sub {
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => $doc_uri,
     openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
@@ -673,13 +692,8 @@ YAML
     'operation_id is not consistent with request URI, but the real operation does exist (with the same method)',
   );
 
-{
   ok(!$openapi->find_path($options = { request => $request = request('0', 'http://example/nothing'), operation_id => 'nothing_operation' }),
     to_str($request).': lookup failed');
-
-  my $TODO;
-  $TODO = todo 'Mojolicious does not parse an %ENV with method of 0: see https://github.com/mojolicious/mojo/pull/2280' if $::TYPE eq 'plack' or $::TYPE eq 'catalyst';
-
   cmp_result(
     $options,
     {
@@ -697,7 +711,6 @@ YAML
     },
     'operation_id is not consistent with request method, where the method is a numeric zero',
   );
-}
 
   ok(!$openapi->find_path($options = { request => $request = request('GET', 'http://example/nothing'), method => '0' }),
     to_str($request).': lookup failed');
@@ -2527,7 +2540,7 @@ YAML
   );
 };
 
-subtest $::TYPE.': no request is provided: options are relied on as the sole source of truth' => sub {
+subtest 'no uri is provided: other values are relied on as the sole source of truth' => sub {
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => $doc_uri,
     openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
@@ -3355,7 +3368,7 @@ YAML
   );
 };
 
-subtest $::TYPE.': URI resolution' => sub {
+subtest 'URI resolution' => sub {
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => $doc_uri_rel,
     openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
@@ -3456,10 +3469,5 @@ YAML
     'when openapi document URI is absolute, request scheme and host are not used in error locations or operation_uri',
   );
 };
-
-if (++$type_index < @::TYPES) {
-  bail_if_not_passing if $ENV{AUTHOR_TESTING};
-  goto START;
-}
 
 done_testing;
