@@ -1019,7 +1019,11 @@ YAML
   ok($openapi->find_path($options = { request => $request, operation_id => 'templated_foo_bar' }), to_str($request).': lookup succeeded');
   cmp_result(
     $options,
-    { %$got_options, request => isa('Mojo::Message::Request'), operation_uri => str($got_options->{operation_uri}) },
+    {
+      %$got_options,
+      request => isa('Mojo::Message::Request'),
+      operation_uri => str($got_options->{operation_uri}),
+    },
     'inferred (correct) path_template matches request uri',
   );
 
@@ -1352,7 +1356,7 @@ paths:
     $ref: '#/components/pathItems/foo-bar'
 YAML
 
-  ok(!$openapi->find_path($options = { request => $request = request('POST', 'http://example.com/blech/bar' ) }),
+  ok(!$openapi->find_path($options = { request => $request = request('POST', 'http://example.com/blech/bar') }),
     to_str($request).': lookup failed');
   cmp_result(
     $options,
@@ -1391,7 +1395,7 @@ YAML
     'error locations are correct after a single unanchored match of uri against paths',
   );
 
-  ok(!$openapi->find_path($options = { request => $request = request('POST', 'http://example.com/foo/bar' ) }),
+  ok(!$openapi->find_path($options = { request => $request = request('POST', 'http://example.com/foo/bar') }),
     to_str($request).': lookup failed');
   cmp_result(
     $options,
