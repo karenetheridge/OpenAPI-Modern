@@ -131,7 +131,7 @@ YAML
         },
       ],
     },
-    'match failure from find_path()',
+    'match failure from find_path_item()',
   );
 
   if ($::TYPE eq 'lwp') {

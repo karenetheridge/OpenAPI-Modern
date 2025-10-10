@@ -338,7 +338,7 @@ subtest $::TYPE.': path-item lookup' => sub {
         },
       ],
     },
-    'match failure from find_path()',
+    'match failure from find_path_item()',
   );
 };
 

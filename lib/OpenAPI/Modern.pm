@@ -97,15 +97,15 @@ sub validate_request ($self, $request, $options = {}) {
   croak '$request and $options->{request} are inconsistent'
     if $options->{request} and $request != $options->{request};
 
-  # mostly populated by find_path
+  # mostly populated by find_path_item
   my $state = { data_path => '/request' };
 
   try {
     $options->{request} //= $request;
-    my $path_ok = $self->find_path($options, $state);
+    my $path_ok = $self->find_path_item($options, $state);
     delete $options->{errors};
 
-    # Reporting a failed find_path as an exception will result in a recommended response of
+    # Reporting a failed find_path_item as an exception will result in a recommended response of
     # [ 500, Internal Server Error ], which is warranted if we consider the lack of a specification
     # entry for this incoming request as an unexpected, server-side error.
     # Callers can decide if this should instead be reported as a [ 404, Not Found ], but that sort
@@ -237,13 +237,13 @@ sub validate_response ($self, $response, $options = {}) {
     $options->{request} //= $request;
   }
 
-  # mostly populated by find_path
+  # mostly populated by find_path_item
   my $state = { data_path => '/response' };
 
   try {
     # FIXME: if the operation is shared by multiple paths, path_template may not be inferrable, and
     # we also don't need path_captures
-    my $path_ok = $self->find_path($options, $state);
+    my $path_ok = $self->find_path_item($options, $state);
     delete $options->{errors};
     return $self->_result($state, 1, 1) if not $path_ok;
 
