@@ -26,9 +26,8 @@ my $yamlpp = YAML::PP->new(boolean => 'JSON::PP');
 subtest 'invalid request type, bad conversion to Mojo::Message::Request' => sub {
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => $doc_uri,
-    openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
-paths: {}
-YAML
+    openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE."\npaths: {}\n"),
+  );
 
   ok(!$openapi->find_path(my $options = { request => bless({}, 'Bespoke::Request') }),
     'lookup failed');
@@ -73,6 +72,107 @@ YAML
 };
 
 $::TYPE = 'mojo';
+
+subtest 'mismatched options' => sub {
+  my $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri,
+    openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE."\npaths: {}\n"),
+  );
+
+  my $request = request('GET', 'http://example.com/foo');
+
+  ok(!$openapi->find_path(my $options = { request => $request, method => 'POST' }),
+    to_str($request).': lookup failed');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      method => 'POST',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '/request/method',
+          keywordLocation => '',
+          absoluteKeywordLocation => $doc_uri->to_string,
+          error => 'wrong HTTP method "GET"',
+        }),
+      ],
+    },
+    'request HTTP method does not match method option',
+  );
+
+  ok(!$openapi->find_path($options = { request => $request, method => '0' }),
+    to_str($request).': lookup failed');
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      method => '0',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '/request/method',
+          keywordLocation => '',
+          absoluteKeywordLocation => $doc_uri->to_string,
+          error => 'wrong HTTP method "GET"',
+        }),
+      ],
+    },
+    'request method is not consistent with provided method, where the method is a numeric zero',
+  );
+};
+
+subtest 'missing options' => sub {
+  my $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri,
+    openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE."\npaths: {}\n"),
+  );
+
+  ok(!$openapi->find_path(my $options = { path_template => '/foo' }), 'lookup failed');
+  cmp_result(
+    $options,
+    {
+      path_template => '/foo',
+      errors => my $errors = [
+        methods(TO_JSON => {
+          instanceLocation => '',
+          keywordLocation => '',
+          absoluteKeywordLocation => $doc_uri->to_string,
+          error => 'at least one of $options->{request}, ($options->{path_template} and $options->{method}), or $options->{operation_id} must be provided',
+        }),
+      ],
+    },
+    'method can only be derived from request or operation_id',
+  );
+
+  ok(!$openapi->find_path($options = { path_captures => {} }), 'lookup failed');
+  cmp_result(
+    $options,
+    {
+      path_captures => {},
+      errors => $errors,
+    },
+    'method can only be derived from request or operation_id',
+  );
+
+  ok(!$openapi->find_path($options = { method => 'GET' }), 'lookup failed');
+  cmp_result(
+    $options,
+    {
+      method => 'GET',
+      errors => $errors,
+    },
+    'path_template can only be derived from request or operation_id',
+  );
+
+  ok(!$openapi->find_path($options = {}), 'lookup failed');
+  cmp_result(
+    $options,
+    {
+      errors => $errors,
+    },
+    'cannot do any lookup when provided no options',
+  );
+};
+
 my $lots_of_options;  # populated lower down, and used in multiple subtests
 
 subtest 'request is parsed to get path information' => sub {
@@ -393,25 +493,6 @@ YAML
     'request HTTP method does not match operation',
   );
 
-  ok(!$openapi->find_path($options = { request => $request, method => 'GET' }),
-    to_str($request).': lookup failed');
-  cmp_result(
-    $options,
-    {
-      request => isa('Mojo::Message::Request'),
-      method => 'GET',
-      errors => [
-        methods(TO_JSON => {
-          instanceLocation => '/request/method',
-          keywordLocation => '',
-          absoluteKeywordLocation => $doc_uri->to_string,
-          error => 'wrong HTTP method "POST"',
-        }),
-      ],
-    },
-    'request HTTP method does not match method option',
-  );
-
   ok($openapi->find_path($options = { request => $request, method => 'POST' }),
     to_str($request).': lookup succeeded');
   cmp_result(
@@ -710,25 +791,6 @@ YAML
       ],
     },
     'operation_id is not consistent with request method, where the method is a numeric zero',
-  );
-
-  ok(!$openapi->find_path($options = { request => $request = request('GET', 'http://example/nothing'), method => '0' }),
-    to_str($request).': lookup failed');
-  cmp_result(
-    $options,
-    {
-      request => isa('Mojo::Message::Request'),
-      method => '0',
-      errors => [
-        methods(TO_JSON => {
-          instanceLocation => '/request/method',
-          keywordLocation => '',
-          absoluteKeywordLocation => $doc_uri->to_string,
-          error => 'wrong HTTP method "GET"',
-        }),
-      ],
-    },
-    'request method is not consistent with provided method, where the method is a numeric zero',
   );
 
   ok(!$openapi->find_path($options = { request => $request = request('POST', 'http://example.com/foo/hello'),
@@ -2578,41 +2640,7 @@ paths:
       operationId: nothing_operation
 YAML
 
-  ok(!$openapi->find_path(my $options = { path_template => '/foo/{foo_id}' }), 'lookup failed');
-  cmp_result(
-    $options,
-    {
-      path_template => '/foo/{foo_id}',
-      errors => [
-        methods(TO_JSON => {
-          instanceLocation => '',
-          keywordLocation => '',
-          absoluteKeywordLocation => $doc_uri->to_string,
-          error => 'at least one of $options->{request}, ($options->{path_template} and $options->{method}), or $options->{operation_id} must be provided',
-        }),
-      ],
-    },
-    'method can only be derived from request or operation_id',
-  );
-
-  ok(!$openapi->find_path($options = { path_captures => {} }), 'lookup failed');
-  cmp_result(
-    $options,
-    {
-      path_captures => {},
-      errors => [
-        methods(TO_JSON => {
-          instanceLocation => '',
-          keywordLocation => '',
-          absoluteKeywordLocation => $doc_uri->to_string,
-          error => 'at least one of $options->{request}, ($options->{path_template} and $options->{method}), or $options->{operation_id} must be provided',
-        }),
-      ],
-    },
-    'method can only be derived from request or operation_id',
-  );
-
-  ok($openapi->find_path($options = { operation_id => '0' }), 'lookup succeeded');
+  ok($openapi->find_path(my $options = { operation_id => '0' }), 'lookup succeeded');
   cmp_result(
     $options,
     {
@@ -2896,38 +2924,6 @@ YAML
     'wrongly-cased method does not match operation at operationId (mismatched, so no hint)',
   );
 
-  ok(!$openapi->find_path($options = { method => 'GET' }), 'lookup failed');
-  cmp_result(
-    $options,
-    {
-      method => 'GET',
-      errors => [
-        methods(TO_JSON => {
-          instanceLocation => '',
-          keywordLocation => '',
-          absoluteKeywordLocation => $doc_uri->to_string,
-          error => 'at least one of $options->{request}, ($options->{path_template} and $options->{method}), or $options->{operation_id} must be provided',
-        }),
-      ],
-    },
-    'path_template can only be derived from request or operation_id',
-  );
-
-  ok(!$openapi->find_path($options = {}), 'lookup failed');
-  cmp_result(
-    $options,
-    {
-      errors => [
-        methods(TO_JSON => {
-          instanceLocation => '',
-          keywordLocation => '',
-          absoluteKeywordLocation => $doc_uri->to_string,
-          error => 'at least one of $options->{request}, ($options->{path_template} and $options->{method}), or $options->{operation_id} must be provided',
-        }),
-      ],
-    },
-    'cannot do any lookup when provided no options',
-  );
 
   ok(!$openapi->find_path($options = { path_template => '/blurp', method => 'GET' }), 'lookup failed');
   cmp_result(
