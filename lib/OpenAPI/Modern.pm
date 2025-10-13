@@ -1583,9 +1583,10 @@ Only certain permutations of OpenAPI documents are supported at this time:
 * for query parameters, only C<style: form> and C<explode: true> is supported, only the first value
   of each parameter name is considered, and C<allowEmptyValue> and C<allowReserved> are not checked
 * cookie parameters are not checked at all yet
-* C<application/x-www-form-urlencoded> and C<multipart/*> messages are not yet supported
-* OpenAPI descriptions must be contained in a single document; C<$ref>erences to other documents are
-  not fully supported at this time.
+* C<multipart/*> messages are not yet supported
+* OpenAPI descriptions must be contained in a single document; while C<$ref>erences to other
+  documents (such as within a C</components> structure) are supported, C</paths> entries in other
+  documents are not considered at this time.
 * The use of C<$ref> within a path-item object is only allowed when not adjacent to any other
   path-item properties (C<parameters>, C<servers>, request methods)
 * Security schemes in the OpenAPI description, and the use of any C<Authorization> headers in
