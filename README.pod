@@ -8,7 +8,7 @@ OpenAPI::Modern - Validate HTTP requests and responses against an OpenAPI v3.1 d
 
 =head1 VERSION
 
-version 0.098
+version 0.099
 
 =head1 SYNOPSIS
 
@@ -249,28 +249,34 @@ provided to the document constructor).
 The second argument is an optional hashref that contains extra information about the request
 corresponding to the response, as in L</validate_request> and L</find_path>.
 
-C<request> is also accepted as a key in the hashref, representing the original request object that
-corresponds to this response (as not all HTTP libraries link to the request in the response object).
+C<request> in the hashref represents the original request object that
+corresponds to this response, which can be used to find the appropriate section of the document if
+other values (such as C<operationId>) are not known.
 
 =head2 find_path
 
   $result = $self->find_path($options);
 
-Finds the appropriate entry in the OpenAPI document corresponding to a request. Called
+Finds the appropriate L<path-item|https://spec.openapis.org/oas/latest#path-item-object> entry
+in the OpenAPI document corresponding to a request. Called
 internally by both L</validate_request> and L</validate_response>.
 
-The single argument is a hashref that contains information about the request. Possible values
-include:
+The single argument is a hashref that contains information about the request. Various combinations
+of values can be provided; possible values are:
 
 =over 4
 
 =item *
 
-C<request>: the object representing the HTTP request. Should be provided when available. Supported types are: L<HTTP::Request>, L<Plack::Request>, L<Catalyst::Request>, L<Mojo::Message::Request>.
+C<request>: the object representing the HTTP request. Supported types are: L<HTTP::Request>, L<Plack::Request>, L<Catalyst::Request>, L<Mojo::Message::Request>. Converted to a L<Mojo::Message::Request>.
 
 =item *
 
-C<path_template>: a string representing the request URI, with placeholders in braces (e.g. C</pets/{petId}>); see L<https://spec.openapis.org/oas/v3.1#paths-object>.
+C<method>: the HTTP method used by the request (case-sensitive)
+
+=item *
+
+C<path_template>: a string representing the (possibly partial) path portion of the request URI, with placeholders in braces (e.g. C</pets/{petId}>); see L<https://spec.openapis.org/oas/v3.1#paths-object>.
 
 =item *
 
@@ -280,26 +286,9 @@ C<operation_id>: a string corresponding to the L<operationId|https://learn.opena
 
 C<path_captures>: a hashref mapping placeholders in the path template to their actual values in the request URI
 
-=item *
-
-C<method>: the HTTP method used by the request (case-sensitive)
-
-=item *
-
-C<debug>: when C<$OpenAPI::Modern::DEBUG> or L</debug> is set on the OpenAPI::Modern object, additional diagnostic information is stored here in separate keys:
-
-=over 4
-
-=item *
-
-C<uri_patterns>: an arrayref of patterns that were attempted to be matched against the URI
-
 =back
 
-=back
-
-All of these values are optional (unless C<request> is omitted), and will be derived from the
-request as needed (albeit less
+All values are optional, and will be derived from each other as needed (albeit less
 efficiently than if they were provided). All passed-in values MUST be consistent with each other and
 the request or the return value from this method is false and appropriate errors will be included
 in the C<$options> hash.
@@ -329,7 +318,15 @@ L<§4.8.10 of the specification|https://spec.openapis.org/oas/v3.1#operation-obj
 
 =item *
 
-C<request> (not necessarily what was passed in: this is always a L<Mojo::Message::Request>)
+C<debug>: when C<$OpenAPI::Modern::DEBUG> or L</debug> is set on the OpenAPI::Modern object, additional diagnostic information is stored here in separate keys:
+
+=over 4
+
+=item *
+
+C<uri_patterns>: an arrayref of patterns that were attempted to be matched against the URI
+
+=back
 
 =back
 
@@ -481,11 +478,11 @@ cookie parameters are not checked at all yet
 
 =item *
 
-C<application/x-www-form-urlencoded> and C<multipart/*> messages are not yet supported
+C<multipart/*> messages are not yet supported
 
 =item *
 
-OpenAPI descriptions must be contained in a single document; C<$ref>erences to other documents are not fully supported at this time.
+OpenAPI descriptions must be contained in a single document; while C<$ref>erences to other documents (such as within a C</components> structure) are supported, C</paths> entries in other documents are not considered at this time.
 
 =item *
 
