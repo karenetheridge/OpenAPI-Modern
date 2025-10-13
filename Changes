@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.099     2025-10-13 19:44:43Z
           - fixed bug: properly support operation_id = '0'
 
