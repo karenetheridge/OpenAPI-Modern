@@ -1381,24 +1381,27 @@ provided to the document constructor).
 The second argument is an optional hashref that contains extra information about the request
 corresponding to the response, as in L</validate_request> and L</find_path>.
 
-C<request> is also accepted as a key in the hashref, representing the original request object that
-corresponds to this response (as not all HTTP libraries link to the request in the response object).
+C<request> in the hashref represents the original request object that
+corresponds to this response, which can be used to find the appropriate section of the document if
+other values (such as C<operationId>) are not known.
 
 =head2 find_path
 
   $result = $self->find_path($options);
 
-Finds the appropriate entry in the OpenAPI document corresponding to a request. Called
+Finds the appropriate L<path-item|https://spec.openapis.org/oas/latest#path-item-object> entry
+in the OpenAPI document corresponding to a request. Called
 internally by both L</validate_request> and L</validate_response>.
 
-The single argument is a hashref that contains information about the request. Possible values
-include:
+The single argument is a hashref that contains information about the request. Various combinations
+of values can be provided; possible values are:
 
-=begin :list
-
-* C<request>: the object representing the HTTP request. Should be provided when available.
-  Supported types are: L<HTTP::Request>, L<Plack::Request>, L<Catalyst::Request>, L<Mojo::Message::Request>.
-* C<path_template>: a string representing the request URI, with placeholders in braces (e.g.
+=for :list
+* C<request>: the object representing the HTTP request.
+  Supported types are: L<HTTP::Request>, L<Plack::Request>, L<Catalyst::Request>, L<Mojo::Message::Request>. Converted to a L<Mojo::Message::Request>.
+* C<method>: the HTTP method used by the request (case-sensitive)
+* C<path_template>: a string representing the (possibly partial) path portion of the request URI,
+  with placeholders in braces (e.g.
   C</pets/{petId}>); see L<https://spec.openapis.org/oas/v3.1#paths-object>.
 * C<operation_id>: a string corresponding to the
   L<operationId|https://learn.openapis.org/specification/paths.html#the-endpoints-list>
@@ -1408,17 +1411,8 @@ include:
   also more efficient as not all path-item entries need to be searched to find a match.
 * C<path_captures>: a hashref mapping placeholders in the path template to their actual values in
   the request URI
-* C<method>: the HTTP method used by the request (case-sensitive)
-* C<debug>: when C<$OpenAPI::Modern::DEBUG> or L</debug> is set on the OpenAPI::Modern object,
-  additional diagnostic information is stored here in separate keys:
 
-=for :list
-* C<uri_patterns>: an arrayref of patterns that were attempted to be matched against the URI
-
-=end :list
-
-All of these values are optional (unless C<request> is omitted), and will be derived from the
-request as needed (albeit less
+All values are optional, and will be derived from each other as needed (albeit less
 efficiently than if they were provided). All passed-in values MUST be consistent with each other and
 the request or the return value from this method is false and appropriate errors will be included
 in the C<$options> hash.
@@ -1444,7 +1438,11 @@ In addition, these values are also populated in the options hash (when available
 (See the documentation for an operation at L<https://learn.openapis.org/specification/paths.html#the-endpoints-list>
 or in the specification at
 L<§4.8.10 of the specification|https://spec.openapis.org/oas/v3.1#operation-object>.)
-* C<request> (not necessarily what was passed in: this is always a L<Mojo::Message::Request>)
+* C<debug>: when C<$OpenAPI::Modern::DEBUG> or L</debug> is set on the OpenAPI::Modern object,
+  additional diagnostic information is stored here in separate keys:
+
+=for :list
+* C<uri_patterns>: an arrayref of patterns that were attempted to be matched against the URI
 
 =end :list
 
