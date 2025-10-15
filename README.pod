@@ -4,18 +4,19 @@
 
 =head1 NAME
 
-OpenAPI::Modern - Validate HTTP requests and responses against an OpenAPI v3.1 document
+OpenAPI::Modern - Validate HTTP requests and responses against an OpenAPI v3.1 or v3.2 document
 
 =head1 VERSION
 
-version 0.099
+version 0.100
 
 =head1 SYNOPSIS
 
   my $openapi = OpenAPI::Modern->new(
-    openapi_uri => 'https://prod.example.com/api',
+    openapi_uri => 'https://prod.example.com',  # adjust for each deployment environment
     openapi_schema => YAML::PP->new(boolean => 'JSON::PP')->load_string(<<'YAML'));
-  openapi: 3.1.1
+  $self: /api         # canonical_uri will become https://prod.example.com/api
+  openapi: 3.2.0
   info:
     title: Test API
     version: 1.2.3
@@ -129,10 +130,9 @@ prints:
 =head1 DESCRIPTION
 
 This module provides various tools for working with an
-L<OpenAPI Specification v3.1 document|https://spec.openapis.org/oas/v3.1#openapi-document> within
+L<OpenAPI Specification v3.1 or v3.2 document|https://spec.openapis.org/oas/latest#openapi-document> within
 your application. The JSON Schema evaluator is fully specification-compliant; the OpenAPI evaluator
-aims to be but some features are not yet available. My belief is that missing features are better
-than features that seem to work but actually cut corners for simplicity.
+aims to be but some features are not yet available.
 
 =for Pod::Coverage BUILDARGS FREEZE THAW
 
@@ -163,8 +163,8 @@ It is strongly recommended that this resulting URI is absolute.
 
 =head2 openapi_schema
 
-The data structure describing the OpenAPI v3.1 document (as specified at
-L<https://spec.openapis.org/oas/v3.1>); an alias to C<< ->openapi_document->schema >>.
+The data structure describing the OpenAPI document (as specified at
+L<https://spec.openapis.org/oas/latest>; an alias to C<< ->openapi_document->schema >>.
 See L<JSON::Schema::Modern::Document::OpenAPI/schema>.
 Ignored if L</openapi_document> is provided, otherwise required.
 
@@ -216,7 +216,7 @@ L</recursive_get>.
   );
 
 Validates an L<HTTP::Request>, L<Plack::Request>, L<Catalyst::Request> or L<Mojo::Message::Request>
-object against the corresponding OpenAPI v3.1 document, returning a
+object against the corresponding OpenAPI document, returning a
 L<JSON::Schema::Modern::Result> object.
 
 Absolute URIs in the result object are constructed by resolving the openapi document path against
@@ -239,7 +239,7 @@ to improve performance.
   );
 
 Validates an L<HTTP::Response>, L<Plack::Response>, L<Catalyst::Response> or L<Mojo::Message::Response>
-object against the corresponding OpenAPI v3.1 document, returning a
+object against the corresponding OpenAPI document, returning a
 L<JSON::Schema::Modern::Result> object.
 
 Absolute URIs in the result object are constructed by resolving the openapi document path against
@@ -276,7 +276,7 @@ C<method>: the HTTP method used by the request (case-sensitive)
 
 =item *
 
-C<path_template>: a string representing the (possibly partial) path portion of the request URI, with placeholders in braces (e.g. C</pets/{petId}>); see L<https://spec.openapis.org/oas/v3.1#paths-object>.
+C<path_template>: a string representing the (possibly partial) path portion of the request URI, with placeholders in braces (e.g. C</pets/{petId}>); see L<https://spec.openapis.org/oas/latest#paths-object>.
 
 =item *
 
@@ -314,7 +314,7 @@ C<operation_uri>: a URI indicating the document location of the operation object
 
 (See the documentation for an operation at L<https://learn.openapis.org/specification/paths.html#the-endpoints-list>
 or in the specification at
-L<§4.8.10 of the specification|https://spec.openapis.org/oas/v3.1#operation-object>.)
+L<§4.10 of the specification|https://spec.openapis.org/oas/latest#operation-object>.)
 
 =item *
 
@@ -331,8 +331,8 @@ C<uri_patterns>: an arrayref of patterns that were attempted to be matched again
 =back
 
 You can find the associated operation object in the OpenAPI document by using either C<operation_uri>,
-or by calling C<< $openapi->openapi_document->get_operationId_path($operation_id) >>
-(see L<JSON::Schema::Modern::Document::OpenAPI/get_operationId_path>) (note that the latter will
+or by calling C<< $openapi->openapi_document->operationId_path($operation_id) >>
+(see L<JSON::Schema::Modern::Document::OpenAPI/operationId_path>) (note that the latter will
 be changed in a subsequent release, in order to support operations existing in other documents).
 
 =head2 recursive_get
@@ -420,7 +420,7 @@ L<https://spec.openapis.org/#openapi-specification-schemas>.
 The default metaschema used by this tool does not permit the use of C<$schema> keywords
 in subschemas (where the value differs from the default OAS dialect), but a more permissive
 dialect is also available (or you can define your own), which you declare by providing the
-C<L<jsonSchemaDialect/https://spec.openapis.org/oas/v3.1#fixed-fields>> property in your OpenAPI
+C<L<jsonSchemaDialect/https://spec.openapis.org/oas/latest#openapi-object>> property in your OpenAPI
 Document.
 
 The schemas are also available under the URIs C<< s/<date>/latest/ >> so you don't have to change your
@@ -430,10 +430,10 @@ code or configurations to keep pace with internal changes.
 
 Embedded JSON Schemas, through the use of the C<schema> keyword, are fully draft2020-12-compliant,
 as per the spec, and implemented with L<JSON::Schema::Modern>. Unless overridden with the use of the
-L<jsonSchemaDialect|https://spec.openapis.org/oas/v3.1#specifying-schema-dialects> keyword, their
-metaschema is L<https://spec.openapis.org/oas/3.1/dialect/2024-11-10>, which allows for use of the
+L<jsonSchemaDialect|https://spec.openapis.org/oas/latest#specifying-schema-dialects> keyword, their
+metaschema is the "dialect" schema listed at L<https://spec.openapis.org/oas/#schema-iterations>, which allows for use of the
 OpenAPI-specific keywords (C<discriminator>, C<xml>, C<externalDocs>, and C<example>), as defined in
-L<the specification/https://spec.openapis.org/oas/v3.1#schema-object>. Format validation is turned
+L<the specification/https://spec.openapis.org/oas/latest#schema-object>. Format validation is turned
 B<on>, and the use of content* keywords is off (see
 L<JSON::Schema::Modern/validate_content_schemas>).
 
@@ -530,7 +530,23 @@ L<https://learn.openapis.org/>
 
 L<https://spec.openapis.org/oas/v3.1>
 
+=item *
+
+L<https://spec.openapis.org/oas/v3.2>
+
+=item *
+
+L<https://spec.openapis.org/oas/>
+
 =back
+
+=head1 GIVING THANKS
+
+=for stopwords MetaCPAN GitHub
+
+If you found this module to be useful, please show your appreciation by
+adding a +1 in L<MetaCPAN|https://metacpan.org/dist/OpenAPI-Modern>
+and a star in L<GitHub|https://github.com/karenetheridge/OpenAPI-Modern>.
 
 =head1 SUPPORT
 
