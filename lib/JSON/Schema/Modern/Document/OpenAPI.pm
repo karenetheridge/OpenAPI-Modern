@@ -19,7 +19,7 @@ no if "$]" >= 5.033001, feature => 'multidimensional';
 no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 no if "$]" >= 5.041009, feature => 'smartmatch';
 no feature 'switch';
-use JSON::Schema::Modern::Utilities qw(E canonical_uri jsonp is_equal);
+use JSON::Schema::Modern::Utilities qw(E canonical_uri jsonp is_equal json_pointer_type);
 use Carp qw(croak carp);
 use Digest::MD5 'md5_hex';
 use Storable 'dclone';
@@ -69,13 +69,15 @@ sub __entities { qw(schema response parameter example request-body header securi
 # operationId => document path
 has _operationIds => (
   is => 'ro',
-  isa => HashRef[Str],
+  isa => HashRef[json_pointer_type],
   lazy => 1,
   default => sub { {} },
 );
 
-sub get_operationId_path { $_[0]->_operationIds->{$_[1]} }
-sub _add_operationId { $_[0]->_operationIds->{$_[1]} = Str->($_[2]) }
+*get_operationId_path = \&operationId_path; # deprecated
+
+sub operationId_path { $_[0]->_operationIds->{$_[1]} }
+sub _add_operationId { $_[0]->_operationIds->{$_[1]} = json_pointer_type->($_[2]) }
 
 # we define the sub directly, rather than using an 'around', since our root base class is not
 # Moo::Object, so we never got a BUILDARGS to modify
@@ -382,7 +384,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
 
   foreach my $pair (@operation_paths) {
     my ($operation_id, $path) = @$pair;
-    if (my $existing = $self->get_operationId_path($operation_id)) {
+    if (my $existing = $self->operationId_path($operation_id)) {
       ()= E({ %$state, keyword_path => $path .'/operationId' },
         'duplicate of operationId at %s', $existing);
     }
@@ -588,7 +590,7 @@ JSON
   );
 
 =for Pod::Coverage THAW DEFAULT_BASE_METASCHEMA DEFAULT_DIALECT DEFAULT_METASCHEMA DEFAULT_SCHEMAS
-OAS_VOCABULARY OAS_VERSION
+OAS_VOCABULARY OAS_VERSION get_operationId_path
 
 =head1 DESCRIPTION
 
@@ -660,7 +662,9 @@ was used to add the document to the L<OpenAPI::Modern> instance.
 
 In OpenAPI version 3.1.x, this is the same as L</canonical_uri>.
 
-=head2 get_operationId_path
+=head2 operationId_path
+
+  my $path = $document->operationId_path($operation_id);
 
 Returns the json pointer location of the operation containing the provided C<operationId> (suitable
 for passing to C<< $document->get(..) >>), or C<undef> if the operation does not exist in the

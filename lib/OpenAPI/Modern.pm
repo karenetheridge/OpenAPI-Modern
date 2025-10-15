@@ -366,7 +366,7 @@ sub find_path ($self, $options, $state = {}) {
   if (exists $options->{operation_id}) {
     # FIXME: what if the operation is defined in another document? Need to look it up across
     # all documents, and localize $state->{initial_schema_uri}
-    my $operation_path = $self->openapi_document->get_operationId_path($options->{operation_id});
+    my $operation_path = $self->openapi_document->operationId_path($options->{operation_id});
     return E({ %$state, recommended_response => [ 500 ] }, 'unknown operation_id "%s"', $options->{operation_id})
       if not $operation_path;
 
@@ -1447,8 +1447,8 @@ L<§4.8.10 of the specification|https://spec.openapis.org/oas/v3.1#operation-obj
 =end :list
 
 You can find the associated operation object in the OpenAPI document by using either C<operation_uri>,
-or by calling C<< $openapi->openapi_document->get_operationId_path($operation_id) >>
-(see L<JSON::Schema::Modern::Document::OpenAPI/get_operationId_path>) (note that the latter will
+or by calling C<< $openapi->openapi_document->operationId_path($operation_id) >>
+(see L<JSON::Schema::Modern::Document::OpenAPI/operationId_path>) (note that the latter will
 be changed in a subsequent release, in order to support operations existing in other documents).
 
 =head2 recursive_get
