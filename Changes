@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.100     2025-10-15 19:38:38Z
           - support added for OpenAPI v3.2 documents!
             See https://github.com/OAI/OpenAPI-Specification/releases/tag/3.2.0
