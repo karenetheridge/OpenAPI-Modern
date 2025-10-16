@@ -89,8 +89,8 @@ sub traverse ($self, $evaluator, $config_override = {}) {
   my $schema = $self->schema;
 
   croak 'missing openapi version' if not exists $schema->{openapi};
-  croak 'bad openapi version format ', $schema->{openapi}
-    if $schema->{openapi} !~ /^[0-9]+\.[0-9]+\.[0-9]+(-.+)?$/;
+  croak 'bad openapi version: "', $schema->{openapi}//'', '"'
+    if ($schema->{openapi}//'') !~ /^[0-9]+\.[0-9]+\.[0-9]+(-.+)?$/;
 
   my @oad_version = split /[.-]/, $schema->{openapi};
   $self->_set_oas_version(join('.', @oad_version[0..1]));
