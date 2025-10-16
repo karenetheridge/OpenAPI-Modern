@@ -1449,16 +1449,17 @@ In addition, these values are also populated in the options hash (when available
   document). Use C<< $openapi->evaluator->get($uri) >> to fetch this content (see
   L<JSON::Schema::Modern/get>). Note that this is the same as:
 
-    $openapi->document_get(Mojo::URL->new($openapi->openapi_uri)->fragment(< path to operation >);
+    $openapi->document_get(Mojo::URL->new($openapi->openapi_uri)->fragment($path_to_operation);
 
-(See the documentation for an operation at L<https://learn.openapis.org/specification/paths.html#the-endpoints-list>
-or in the specification at
+(See the L<documentation for an operation/https://learn.openapis.org/specification/paths.html#the-endpoints-list>
+or in
 L<§4.10 of the specification|https://spec.openapis.org/oas/latest#operation-object>.)
 * C<debug>: when C<$OpenAPI::Modern::DEBUG> or L</debug> is set on the OpenAPI::Modern object,
   additional diagnostic information is stored here in separate keys:
 
 =for :list
-* C<uri_patterns>: an arrayref of patterns that were attempted to be matched against the URI
+* C<uri_patterns>: an arrayref of patterns that were attempted to be matched against the URI,
+  in match order
 
 =end :list
 
