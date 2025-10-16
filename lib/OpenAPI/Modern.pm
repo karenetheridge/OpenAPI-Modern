@@ -1551,13 +1551,18 @@ you need earlier versions, you can find them at
 L<https://spec.openapis.org/#openapi-specification-schemas>.
 
 The default metaschema used by this tool does not permit the use of C<$schema> keywords
-in subschemas (where the value differs from the default OAS dialect), but a more permissive
+in subschemas (unless the value is equal to the default OAS dialect), but a more permissive
 dialect is also available (or you can define your own), which you declare by providing the
 C<L<jsonSchemaDialect/https://spec.openapis.org/oas/latest#openapi-object>> property in your OpenAPI
 Document.
 
 The schemas are also available under the URIs C<< s/<date>/latest/ >> so you don't have to change your
 code or configurations to keep pace with internal changes.
+
+An even stricter schema and dialect are available, via the metaschema_uri
+C<https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/3.2/strict-schema.json>,
+which prevents any unknown keywords from being used in JSON Schemas. This is useful to avoid
+spelling mistakes from going unnoticed and resulting in false positive results.
 
 =head1 ON THE USE OF JSON SCHEMAS
 
