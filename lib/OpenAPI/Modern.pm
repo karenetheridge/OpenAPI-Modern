@@ -162,8 +162,8 @@ sub validate_request ($self, $request, $options = {}) {
       }
     }
 
-    # v3.2.0 §4.8.2, "Path Templating": "Each template expression in the path MUST correspond to a path
-    # parameter that is included in the Path Item itself and/or in each of the Path Item’s
+    # v3.2.0 §4.8.2, "Path Templating": "Each template expression in the path MUST correspond to a
+    # path parameter that is included in the Path Item itself and/or in each of the Path Item’s
     # Operations."
     # We could validate this at document parse time, except the path-item can also be reached via a
     # $ref and the referencing path could be from another document and is therefore unknowable until
@@ -772,33 +772,33 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
 
 sub _validate_path_parameter ($self, $state, $param_obj, $path_captures) {
   # 'required' is always true for path parameters
+  # v3.2.0 §4.12.2.1: "If "in" is "path", the name field MUST correspond to a single template
+  # expression occurring within the path field in the Paths Object."
   return E({ %$state, keyword => 'required' }, 'missing path parameter: %s', $param_obj->{name})
     if not exists $path_captures->{$param_obj->{name}};
 
-  $state->{data_path} = jsonp($state->{data_path}, $param_obj->{name});
+  my $data = $path_captures->{$param_obj->{name}}.'';
 
-  my $data = uri_decode($path_captures->{$param_obj->{name}});
-
-  return $self->_validate_parameter_content({ %$state, depth => $state->{depth}+1 }, $param_obj, \$data) if exists $param_obj->{content};
-
-  return E({ %$state, keyword => 'style' }, 'only style: simple is supported in path parameters')
-    if ($param_obj->{style}//'simple') ne 'simple';
-
-  my @types = $self->_type_in_schema($param_obj->{schema}, { %$state, keyword_path => $state->{keyword_path}.'/schema' });
-
-  if (any { $_ eq 'string' || $_ eq 'number' || $_ eq 'boolean' || $_ eq 'null' } @types) {
-    return E($state, 'cannot deserialize to %s type%s', 'requested', @types > 1 ? 's' : '')
-      if not coerce_primitive(\$data, \@types);
+  if (exists $param_obj->{content}) {
+    $data = uri_decode($data);
+    return $self->_validate_parameter_content({ %$state, depth => $state->{depth}+1,
+      data_path => jsonp($state->{data_path}, $param_obj->{name}) }, $param_obj, \$data);
   }
-  elsif (any { $_ eq 'array' || $_ eq 'object'} @types) {
-    return E($state, 'deserializing path parameters to arrays or objects is not currently supported');
-  }
-  else {
-    return E($state, 'cannot deserialize to %s type%s', !@types ? 'any' : 'requested', @types > 1 ? 's' : '');
+
+  $data = $self->_deserialize_style($data, my $s = { %$state, errors => [] },
+    style => $param_obj->{style}//'simple',
+    explode => $param_obj->{explode}//false,
+    $param_obj->%{qw(name schema)},
+  );
+
+  if ($s->{errors}->@*) {
+    push $state->{errors}->@*, $s->{errors}->@*;
+    return;
   }
 
   $self->_evaluate_subschema(\$data, $param_obj->{schema},
-    { %$state, keyword_path => $state->{keyword_path}.'/schema', depth => $state->{depth}+1 });
+    { %$state, data_path => jsonp($state->{data_path}, $param_obj->{name}),
+      keyword_path => $state->{keyword_path}.'/schema', depth => $state->{depth}+1 });
 }
 
 sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
@@ -930,6 +930,167 @@ sub _validate_querystring_parameter ($self, $state, $param_obj, $uri) {
   my $content = url_unescape($uri->query->{string} =~ s/\+/ /gr);
 
   $self->_validate_parameter_content({ %$state, depth => $state->{depth}+1 }, $param_obj, \$content)
+}
+
+# data comes in as a string
+# when parsing fails, $state->{errors} is populated;
+# otherwise, the return value is the fully deserialized data, parsed into the correct type(s)
+# (which may be undef = null; note the difference from () which indicates an error)
+# This method is not appropriate for header parameters, which should never be percent-decoded.
+# %opt is (:$style, :$explode, :$name, :$schema)
+sub _deserialize_style ($self, $data, $state, %opt) {
+  # numbers and builtin bools can be treated as strings, but reject undef and references
+  croak 'only strings can be deserialized' if not defined $data or ref $data;
+
+  my ($style, $explode, $name, $schema) = @opt{qw(style explode name schema)};
+  my @types = $self->_type_in_schema($schema, { %$state, keyword_path => $state->{keyword_path}.'/schema' });
+
+  if ($style eq 'simple' or $style eq 'matrix' or $style eq 'label') {
+    my $state = +{ %$state, data_path => jsonp($state->{data_path}, $name) };
+
+    # RFC6570 §3.2.1: "A variable that is undefined (Section 2.3) has no value and is ignored by the
+    # expansion process. If all of the variables in an expression are undefined, then the
+    # expression's expansion is the empty string."
+    if ($data eq '') {
+      if (any { $_ eq 'null' } @types) {
+        return undef;
+      }
+      elsif (any { $_ eq 'array' } @types) {
+        # RFC6570 §2.3-6: "A variable defined as a list value is considered undefined if the list
+        # contains zero members."
+        return [];
+      }
+      elsif (any { $_ eq 'object' } @types) {
+        # RFC6570 §2.3-6: "A variable defined as an associative array of (name, value) pairs is
+        # considered undefined if the array contains zero members or if all member names in the
+        # array are associated with undefined values."
+        return {};
+      }
+    }
+
+    my $prefix =
+        $style eq 'simple' ? ''
+      : $style eq 'label' ? '\.'
+      : $style eq 'matrix' ? ';'
+      : die;
+
+    return E({ %$state, keyword => 'style' },
+        'data does not match indicated style "%s" (invalid prefix)', $style)
+      if length $prefix and $data !~ s/^$prefix//;
+
+    my $delimiter =
+        !$explode ? ','
+      : $style eq 'simple' ? ','
+      : $style eq 'matrix' ? ';'
+      : $style eq 'label' ? '\.'
+      : die;
+
+    my @errors;
+
+    # if all types are acceptable, fall through to returning string immediately
+
+    # this block is for:
+    # style=simple, explode=true, object
+    # style=label, explode=true, object
+    # style=matrix, explode=true, object
+    # style=matrix, explode=true, array
+    # but NOT: explode=false (any style), or style=simple/label, explode=true for arrays.
+    if (@types != 6 and $explode
+        and ((($style eq 'simple' or $style eq 'label') and any { $_ eq 'object' } @types)
+          or ($style eq 'matrix' and any { $_ eq 'object' || $_ eq 'array' } @types))) {
+
+      my @values = split($delimiter, $data, -1);
+
+      my $type = (any { $_ eq 'object' } @types) ? 'object' : 'array';
+      my $idx = -1;
+
+      # we only make one attempt, even if both types are requested, because any errors when
+      # deserializing to an object will also occur for array
+      # RFC6570 §3.2.1-7: for arrays with style=matrix and explode=true, expand as an object,
+      # where the key names are the parameter name
+
+      my @keys_and_values = map uri_decode($_),
+        map {
+          ++$idx;
+          # RFC6570 §3.2.1-6: empty value does not use '='
+          my ($key, $val) = split(/=/, $_, -1);
+          ()= E({ %$state, keyword => 'style', errors => \@errors },
+              'data does not match indicated style "%s" for %s (invalid separator at %s)',
+              $style, $type, $type eq 'object' ? 'key "'.$key.'"' : 'index '.$idx)
+            if defined $val and not length $val;
+          ($key, $val//'');
+        }
+        @values;
+
+      my $data = $type eq 'object' ? +{ @keys_and_values }
+        : [ map {
+            ()= E({ %$state, keyword => 'style', errors => \@errors },
+                'data does not match indicated style "matrix" for array (invalid element name%s)',
+                defined $_->[0] ? ' at "'.$_->[0].'"' : '')
+              if not defined $_->[0] or $_->[0] ne $name;
+            $_->[1];
+          }
+          pairs @keys_and_values
+        ];
+
+      if (not @errors) {
+        $self->_coerce_object_elements($data, $schema, { %$state, keyword_path => $state->{keyword_path}.'/schema' }) if $type eq 'object';
+        $self->_coerce_array_elements($data, $schema, { %$state, keyword_path => $state->{keyword_path}.'/schema' }) if $type eq 'array';
+        return $data;
+      }
+    }
+
+    # process matrix prefix for primitives, and for array and object when explode=false
+    if ($style eq 'matrix'
+        and (not $explode or any { $_ eq 'string' || $_ eq 'number' || $_ eq 'boolean' || $_ eq 'null' } @types)
+        # '=' is included after the name iff the variable's value is not empty; name is still encoded
+        and ($data !~ s/^([^{}=]+)(?:=(?=.)|$)// or uri_decode($1) ne $name)) {
+      ()= E({ %$state, keyword => 'style', errors => \@errors },
+        'data does not match indicated style "matrix" (invalid prefix)');
+      push $state->{errors}->@*, @errors;
+      return;
+    }
+
+    # this block is for:
+    # all styles, explode=false, objects
+    # style=simple or label, explode=false, array
+    # style=simple or label, explode=true, array
+    # style=matrix, explode=false, array
+
+    if (@types != 6 and any { $_ eq 'array' || $_ eq 'object' } @types) {
+      my @values = map uri_decode($_), split($delimiter, $data, -1);
+
+      if (not $explode and any { $_ eq 'object' } @types) {
+        if (not @values % 2) {
+          $data = +{ @values };
+          $self->_coerce_object_elements($data, $schema, { %$state, keyword_path => $state->{keyword_path}.'/schema' });
+          return $data;
+        }
+        # fall through to primitive
+      }
+
+      if (any { $_ eq 'array' } @types
+          and (any { $style eq $_ } qw(simple label) or ($style eq 'matrix' and not $explode))) {
+        $data = \@values;
+        $self->_coerce_array_elements($data, $schema, { %$state, keyword_path => $state->{keyword_path}.'/schema' });
+        return $data;
+      }
+    }
+
+    $data = uri_decode($data);
+    return $data if coerce_primitive(\$data, \@types);
+
+    if (@errors) {
+      push $state->{errors}->@*, @errors;
+      return;
+    }
+  }
+  else {
+    die 'unsupported style ', $style;
+  }
+
+  return E({ %$state, data_path => jsonp($state->{data_path}, $name) },
+    'cannot deserialize to %s type%s', !@types ? 'any' : 'requested', @types > 1 ? 's' : '');
 }
 
 sub _validate_parameter_content ($self, $state, $param_obj, $content_ref) {
@@ -1947,7 +2108,6 @@ Mojolicious messages (see L<Mojo::Message/parse>).
 Only certain permutations of OpenAPI documents are supported at this time:
 
 =for :list
-* for path parameters, only C<style: simple> and C<explode: false> is supported
 * for query parameters, only C<style: form> and C<explode: true> is supported, only the first value
   of each parameter name is considered, and C<allowEmptyValue> and C<allowReserved> are not checked
 * cookie parameters are not checked at all yet

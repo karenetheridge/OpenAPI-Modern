@@ -10,11 +10,12 @@ no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 no if "$]" >= 5.041009, feature => 'smartmatch';
 no feature 'switch';
 use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
+use utf8;
 
 use lib 't/lib';
 use Helper;
 use JSON::Schema::Modern::Utilities qw(is_bool get_type is_type);
-use OpenAPI::Modern::Utilities 'coerce_primitive';
+use OpenAPI::Modern::Utilities qw(coerce_primitive uri_encode);
 
 my $yamlpp = YAML::PP->new(boolean => 'JSON::PP');
 
@@ -80,48 +81,717 @@ subtest 'path parameters' => sub {
     # style=simple
 
     # style, explode, deserialized data, serialized string
+    [ 'simple', true,  undef, '' ],
+    [ 'simple', true,  0, '0' ],
+    [ 'simple', true,  1, '1' ],
+    [ 'simple', true,  false, '' ],
+    [ 'simple', true,  false, '0' ],
+    [ 'simple', true,  true, '1' ],
+    [ 'simple', true,  false, 'false' ],
+    [ 'simple', true,  true, 'true' ],
+    [ 'simple', true,  0, '0' ],
+    [ 'simple', true,  1, '1' ],
     [ 'simple', true,  3, '3' ],
+    [ 'simple', true,  -42, '-42' ],
+    [ 'simple', true,  '', '' ],
     [ 'simple', true,  'red', 'red' ],
     [ 'simple', true,  " i have spaces  \t ", " i have spaces  \t " ],
     [ 'simple', true,  ' red,  green ', ' red,  green ' ],
-    # [ 'simple', false, [ 'red' ], 'red' ],
-    # [ 'simple', false, { R => '100', G => '200', B => '' }, 'R,100,G,200,B,' ],
-    # [ 'simple', true,  { R => '100', G => '200', B => '' }, 'R=100,G=200,B' ],
-    # [ 'simple', false, { qw(R 100 G 200 B 150) }, 'R,100,G,200,B,150' ],
-    # [ 'simple', true,  { qw(R 100 G 200 B 150) }, 'R=100,G=200,B=150' ],
+    [ 'simple', true,  'red﹠green', uri_encode('red﹠green') ],
+    [ 'simple', false, [], '' ],
+    [ 'simple', true,  [], '' ],
+    [ 'simple', false, {}, '' ],
+    [ 'simple', true,  {}, '' ],
+    [ 'simple', false, [ '', '', '' ], ',,' ],
+    [ 'simple', true,  [ '', '', '' ], ',,' ],
+    [ 'simple', false, [ 'red' ], 'red' ],
+    [ 'simple', true,  [ 'red' ], 'red' ],
+    [ 'simple', false, [ qw(blue black brown) ], 'blue,black,brown' ],
+    [ 'simple', true,  [ qw(blue black brown) ], 'blue,black,brown' ],
+    [ 'simple', false, { R => '', G => '', B => '' }, 'R,,G,,B,' ],
+    [ 'simple', true,  { R => '', G => '', B => '' }, 'R,G,B' ],
+    [ 'simple', false, { R => '100', G => '200', B => '' }, 'R,100,G,200,B,' ],
+    [ 'simple', true,  { R => '100', G => '200', B => '' }, 'R=100,G=200,B' ],
+    [ 'simple', false, { qw(R 100 G 200 B 150) }, 'R,100,G,200,B,150' ],
+    [ 'simple', true,  { qw(R 100 G 200 B 150) }, 'R=100,G=200,B=150' ],
 
     {
-      name => 'no type specified',
-      param_obj => { name => 'color', schema => { maxLength => 3 } },
-      input => 'R,100,G,200,B,150',
-      content => 'R,100,G,200,B,150',
+      name => 'any type is permitted, default to string',
+      param_obj => { name => 'color', schema => {} },
+      input => 'red',
+      content => 'red',
     },
     {
-      name => 'number or string',
+      name => 'no type is permitted',
+      param_obj => { name => 'color', schema => { allOf => [ { type => 'string' }, { type => 'null' } ] } },
+      input => 'red',
+      errors => [
+        {
+          instanceLocation => '/request/uri/path/color',
+          keywordLocation => $keyword_path,
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path,
+          error => 'cannot deserialize to any type',
+        },
+      ],
+    },
+    {
+      name => 'empty string but not deserializable',
+      param_obj => { name => 'color', schema => { type => 'number' } },
+      input => '',
+      errors => [
+        {
+          instanceLocation => '/request/uri/path/color',
+          keywordLocation => $keyword_path,
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path,
+          error => 'cannot deserialize to requested type',
+        },
+      ],
+    },
+    {
+      name => 'string with spaces',
+      param_obj => { name => 'spaces' },
+      input => " i have spaces  \t ",
+      content => " i have spaces  \t ",
+    },
+    {
+      name => 'number or string prefers number',
       param_obj => { name => 'color', schema => { type => [ qw(string number) ] } },
       input => '3',
       content => 3,
+    },
+    {
+      # we do not normalize whitespace in path parameters
+      name => 'comma-separated string',
+      param_obj => { name => 'color' },
+      input => ' red,  green ',
+      content => ' red,  green ',
+    },
+    {
+      name => 'explode=false, array with non-string items',
+      param_obj => { name => 'color', schema => {
+          type => 'array',
+          prefixItems => [
+            { type => 'null' },
+            { type => 'boolean' },
+            { type => 'integer' },
+            { type => 'string' },
+          ],
+        } },
+      input => ',0,42,100',
+      content => [ undef, false, 42, '100' ],
+    },
+    {
+      name => 'explode=false, array with non-ascii name and values',
+      param_obj => { name => 'cølör', schema => { type => 'array' } },
+      input => 'blue%E2%88%92black,blackish%2Cgreen,100%F0%9D%91%A5brown',
+      content => [ 'blue−black', 'blackish,green', '100𝑥brown' ],
+    },
+    {
+      name => 'explode=true, array with non-string items',
+      param_obj => { name => 'color', explode => true, schema => {
+          type => 'array',
+          prefixItems => [
+            { type => 'null' },
+            { type => 'boolean' },
+            { type => 'integer' },
+            { type => 'string' },
+          ],
+        } },
+      input => ',0,42,100',
+      content => [ undef, false, 42, '100' ],
+    },
+    {
+      name => 'explode=true, array with non-ascii name and values',
+      param_obj => { name => 'cølör', explode => true, schema => { type => 'array' } },
+      input => 'blue%E2%88%92black,blackish%2Cgreen,100%F0%9D%91%A5brown',
+      content => [ 'blue−black', 'blackish,green', '100𝑥brown' ],
+    },
+    {
+      name => 'string or object prefers object',
+      param_obj => { name => 'color', schema => { type => [ qw(string object) ] } },
+      input => 'R,100,G,200,B,',
+      content => { R => '100', G => '200', B => '' },
+    },
+    {
+      name => 'explode=false, bad object',
+      param_obj => { name => 'color', schema => { type => 'object' } },
+      input => 'R,100,G,200,B',
+      errors => [
+        {
+          instanceLocation => '/request/uri/path/color',
+          keywordLocation => $keyword_path,
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path,
+          error => 'cannot deserialize to requested type',
+        },
+      ],
+    },
+    {
+      name => 'explode=false, bad object, fall through to string',
+      param_obj => { name => 'color', schema => { type => [ qw(object string) ] } },
+      input => 'R,100,G,200,B',
+      content => 'R,100,G,200,B',
+    },
+    {
+      name => 'explode=false, bad object, fall through to array',
+      param_obj => { name => 'color', schema => { type => [ qw(array object string) ] } },
+      input => 'R,100,G,200,B',
+      content => [ qw(R 100 G 200 B) ],
+    },
+    {
+      name => 'explode=false, prefer object over array or string',
+      param_obj => { name => 'color', schema => { type => [ qw(array string object) ] } },
+      input => 'R,100,G,200,B,150',
+      content => { R => '100', G => '200', B => '150' },
+    },
+    {
+      name => 'explode=false, object with non-string properties',
+      param_obj => { name => 'color', schema => {
+          type => 'object',
+          properties => {
+            a => { type => 'null' },
+            b => { type => 'boolean' },
+            c => { type => 'integer' },
+            d => { type => 'string' },
+          },
+        } },
+      input => 'a,,b,0,c,42,d,100',
+      content => { a => undef, b => false, c => 42, d => '100' },
+    },
+    {
+      name => 'explode=false, object with non-ascii name and values',
+      param_obj => { name => 'cølör', schema => { type => 'object' } },
+      input => 'blue%E2%88%92black,yes!,blackish%2Cgreen,%C2%BFno%3f,100%F0%9D%91%A5brown,fl%C2%A1p',
+      content => { 'blue−black' => 'yes!', 'blackish,green' => '¿no?', '100𝑥brown' => 'fl¡p' },
+    },
+    {
+      name => 'explode=true, bad object',
+      param_obj => { name => 'color', explode => true, schema => { type => 'object' } },
+      input => 'R=100,G=200,B=',
+      errors => [
+        {
+          instanceLocation => '/request/uri/path/color',
+          keywordLocation => $keyword_path.'/style',
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path.'/style',
+          error => 'data does not match indicated style "simple" for object (invalid separator at key "B")',
+        },
+      ],
+    },
+    {
+      name => 'explode=true, bad object, fall through to string',
+      param_obj => { name => 'color', explode => true, schema => { type => [ qw(object string) ] } },
+      input => 'R=100,G=200,B=',
+      content => 'R=100,G=200,B=',
+    },
+    {
+      name => 'explode=true, bad object, fall through to array',
+      param_obj => { name => 'color', explode => true, schema => { type => [ qw(array object) ] } },
+      input => 'R=100,G=200,B=',
+      content => [ qw(R=100 G=200 B=) ],
+    },
+    {
+      name => 'explode=true, object with empty value, prefer object',
+      param_obj => { name => 'color', explode => true, schema => { type => [ qw(array object) ] } },
+      input => 'R=100,G=200,B',
+      content => { R => '100', G => '200', B => '' },
+    },
+    {
+      name => 'explode=true, object with non-string properties',
+      param_obj => { name => 'color', explode => true, schema => {
+          type => 'object',
+          properties => {
+            a => { type => 'null' },
+            b => { type => 'boolean' },
+            c => { type => 'integer' },
+            d => { type => 'string' },
+          },
+        } },
+      input => 'a,b=0,c=42,d=100',
+      content => { a => undef, b => false, c => 42, d => '100' },
+    },
+    {
+      name => 'explode=true, object with non-ascii name and values',
+      param_obj => { name => 'cølör', explode => true, schema => { type => 'object' } },
+      input => 'blue%E2%88%92black=yes!,blackish%2Cgreen=%C2%BFno%3f,100%F0%9D%91%A5brown=fl%C2%A1p',
+      content => { 'blue−black' => 'yes!', 'blackish,green' => '¿no?', '100𝑥brown' => 'fl¡p' },
     },
 
     # style=matrix
 
     # style, explode, deserialized data, serialized string
+    [ 'matrix', true, undef, '' ],
+    [ 'matrix', true, 0, ';color=0' ],
+    [ 'matrix', true, 1, ';color=1' ],
+    [ 'matrix', true, false, ';color' ],
+    [ 'matrix', true, false, ';color=0' ],
+    [ 'matrix', true, true, ';color=1' ],
+    [ 'matrix', true, false, ';color=false' ],
+    [ 'matrix', true, true, ';color=true' ],
+    [ 'matrix', true, 3, ';color=3' ],
     [ 'matrix', true, '', ';color' ],
     [ 'matrix', true, 'red', ';color=red' ],
+    [ 'matrix', false, [], '' ],
+    [ 'matrix', true, [], '' ],
+    [ 'matrix', false, {}, '' ],
+    [ 'matrix', true,  {}, '' ],
+    [ 'matrix', false, [], ';color' ],  # not reversible
+    [ 'matrix', true, [''], ';color' ],
+    [ 'matrix', false, {}, ';color' ],  # not reversible
+    [ 'matrix', true, {}, ';' ],        # ""
+    [ 'matrix', false, [ '', '', '' ], ';color=,,' ],
+    [ 'matrix', true,  [ '', '', '' ], ';color;color;color' ],
     [ 'matrix', false, [ qw(blue black brown) ], ';color=blue,black,brown' ],
     [ 'matrix', true, [ qw(blue black brown) ], ';color=blue;color=black;color=brown' ],
+    [ 'matrix', false, { R => '', G => '', B => '' }, ';color=R,,G,,B,' ],
+    [ 'matrix', true,  { R => '', G => '', B => '' }, ';R;G;B' ],
+    [ 'matrix', false, { R => '100', G => '200', B => '' }, ';color=R,100,G,200,B,' ],
+    [ 'matrix', true,  { R => '100', G => '200', B => '' }, ';R=100;G=200;B' ],
     [ 'matrix', false, { qw(R 100 G 200 B 150) }, ';color=R,100,G,200,B,150' ],
     [ 'matrix', true, { qw(R 100 G 200 B 150) }, ';R=100;G=200;B=150' ],
+    [ 'matrix', true, { color => 'brown' }, ';color=blue;color=black;color=brown' ],
+
+    {
+      name => 'any type is permitted, default to string',
+      param_obj => { name => 'color', style => 'matrix', schema => {} },
+      input => ';color=red,green,blue',
+      content => 'red,green,blue',
+    },
+    {
+      name => 'no type is permitted',
+      param_obj => { name => 'color', style => 'matrix', schema => { allOf => [ { type => 'string' }, { type => 'null' } ] } },
+      input => ';color=red,green,blue',
+      errors => [
+        {
+          instanceLocation => '/request/uri/path/color',
+          keywordLocation => $keyword_path,
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path,
+          error => 'cannot deserialize to any type',
+        },
+      ],
+    },
+    {
+      name => 'empty string without prefix',
+      param_obj => { name => 'color', style => 'matrix' },
+      input => '',
+      errors => [
+        {
+          instanceLocation => '/request/uri/path/color',
+          keywordLocation => $keyword_path.'/style',
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path.'/style',
+          error => 'data does not match indicated style "matrix" (invalid prefix)',
+        },
+      ],
+    },
+    {
+      name => 'empty string with bad prefix',
+      param_obj => { name => 'color', style => 'matrix' },
+      input => ';color=',
+      errors => [
+        {
+          instanceLocation => '/request/uri/path/color',
+          keywordLocation => $keyword_path.'/style',
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path.'/style',
+          error => 'data does not match indicated style "matrix" (invalid prefix)',
+        },
+      ],
+    },
+    {
+      name => 'string with non-ascii name and value',
+      param_obj => { name => 'cølör', style => 'matrix' },
+      input => uri_encode(';cølör=red﹠green'), # ; and = are not encoded
+      content => 'red﹠green',
+    },
+    {
+      name => 'explode=false, array with non-string items',
+      param_obj => { name => 'color', style => 'matrix', schema => {
+          type => 'array',
+          prefixItems => [
+            { type => 'null' },
+            { type => 'boolean' },
+            { type => 'integer' },
+            { type => 'string' },
+          ],
+        } },
+      input => ';color=,0,42,100',
+      content => [ undef, false, 42, '100' ],
+    },
+    {
+      name => 'explode=false, array with non-ascii name and values',
+      param_obj => { name => 'cølör', style => 'matrix', schema => { type => 'array' } },
+      input => ';c%C3%B8l%C3%B6r=blue%E2%88%92black,blackish%2Cgreen,100%F0%9D%91%A5brown',
+      content => [ 'blue−black', 'blackish,green', '100𝑥brown' ],
+    },
+    {
+      name => 'explode=true, array of empty values with error',
+      param_obj => { name => 'color', style => 'matrix', explode => true, schema => { type => 'array' } },
+      input => ';color=;color=;color=',
+      errors => [
+        (map +{
+          instanceLocation => '/request/uri/path/color',
+          keywordLocation => $keyword_path.'/style',
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path.'/style',
+          error => 'data does not match indicated style "matrix" for array (invalid separator at index '.$_.')',
+        }, 0..2),
+      ],
+    },
+    {
+      name => 'explode=true, empty array, with bad key name',
+      param_obj => { name => 'color', style => 'matrix', explode => true, schema => { type => 'array' } },
+      input => ';color=red;color1=green;color=blue',
+      errors => [
+        {
+          instanceLocation => '/request/uri/path/color',
+          keywordLocation => $keyword_path.'/style',
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path.'/style',
+          error => 'data does not match indicated style "matrix" for array (invalid element name at "color1")',
+        },
+      ],
+    },
+    {
+      name => 'explode=true, bad array, fall through to object',
+      param_obj => { name => 'color', style => 'matrix', explode => true, schema => { type => [ qw(array object) ] } },
+      input => ';R=100;G=200;B=150',
+      content => { R => '100', G => '200', B => '150' },
+    },
+    {
+      name => 'explode=true, array with non-string items',
+      param_obj => { name => 'color', style => 'matrix', explode => true, schema => {
+          type => 'array',
+          prefixItems => [
+            { type => 'null' },
+            { type => 'boolean' },
+            { type => 'integer' },
+            { type => 'string' },
+          ],
+        } },
+      input => ';color;color=0;color=42;color=100',
+      content => [ undef, false, 42, '100' ],
+    },
+    {
+      name => 'explode=true, array with non-ascii name and values',
+      param_obj => { name => 'cølör', style => 'matrix', explode => true, schema => { type => 'array' } },
+      input => ';c%C3%B8l%C3%B6r=blue%E2%88%92black;c%C3%B8l%C3%B6r=blackish%2Cgreen;c%C3%B8l%C3%B6r=100%F0%9D%91%A5brown=fl%C2%A1p',
+      content => [ 'blue−black', 'blackish,green', '100𝑥brown' ],
+    },
+    {
+      # '=' is only appended when the serialized value is not empty
+      name => 'explode=false, empty object with error',
+      param_obj => { name => 'color', style => 'matrix', schema => { type => 'object' } },
+      input => ';color=',
+      errors => [
+        {
+          instanceLocation => '/request/uri/path/color',
+          keywordLocation => $keyword_path.'/style',
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path.'/style',
+          error => 'data does not match indicated style "matrix" (invalid prefix)',
+        },
+      ],
+    },
+    {
+      name => 'explode=false, bad object',
+      param_obj => { name => 'color', style => 'matrix', schema => { type => 'object' } },
+      input => ';color=R,100,G,200,B',
+      errors => [
+        {
+          instanceLocation => '/request/uri/path/color',
+          keywordLocation => $keyword_path,
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path,
+          error => 'cannot deserialize to requested type',
+        },
+      ],
+    },
+    {
+      name => 'explode=false, bad object, fall through to string',
+      param_obj => { name => 'color', style => 'matrix', schema => { type => [ qw(object string) ] } },
+      input => ';color=R,100,G,200,B',
+      content => 'R,100,G,200,B',
+    },
+    {
+      name => 'explode=false, bad object, fall through to array',
+      param_obj => { name => 'color', style => 'matrix', schema => { type => [ qw(array object) ] } },
+      input => ';color=R,100,G,200,B',
+      content => [ qw(R 100 G 200 B) ],
+    },
+    {
+      name => 'explode=false, prefer object over array or string',
+      param_obj => { name => 'color', style => 'matrix', schema => { type => [qw(array string object)] } },
+      input => ';color=R,100,G,200,B,150',
+      content => { R => '100', G => '200', B => '150' },
+    },
+    {
+      name => 'explode=false, object with non-string properties',
+      param_obj => { name => 'color', style => 'matrix', schema => {
+          type => 'object',
+          properties => {
+            a => { type => 'null' },
+            b => { type => 'boolean' },
+            c => { type => 'integer' },
+            d => { type => 'string' },
+          },
+        } },
+      input => ';color=a,,b,0,c,42,d,100',
+      content => { a => undef, b => false, c => 42, d => '100' },
+    },
+    {
+      name => 'explode=false, object with non-ascii name and values',
+      param_obj => { name => 'cølör', style => 'matrix', schema => { type => 'object' } },
+      input => ';c%C3%B8l%C3%B6r=blue%E2%88%92black,yes!,blackish%2Cgreen,%C2%BFno%3f,100%F0%9D%91%A5brown,fl%C2%A1p',
+      content => { 'blue−black' => 'yes!', 'blackish,green' => '¿no?', '100𝑥brown' => 'fl¡p' },
+    },
+    {
+      name => 'explode=true, object of empty values with bad =',
+      param_obj => { name => 'color', style => 'matrix', explode => true, schema => { type => [qw(array object)] } },
+      input => ';R=',
+      errors => [
+        {
+          instanceLocation => '/request/uri/path/color',
+          keywordLocation => $keyword_path.'/style',
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path.'/style',
+          error => 'data does not match indicated style "matrix" for object (invalid separator at key "R")',
+        },
+      ],
+    },
+    {
+      name => 'explode=true, bad object',
+      param_obj => { name => 'color', style => 'matrix', explode => true, schema => { type => 'object' } },
+      input => ';R=100;G=200;B=',
+      errors => [
+        {
+          instanceLocation => '/request/uri/path/color',
+          keywordLocation => $keyword_path.'/style',
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path.'/style',
+          error => 'data does not match indicated style "matrix" for object (invalid separator at key "B")',
+        },
+      ],
+    },
+    {
+      name => 'explode=true, object with non-string properties',
+      param_obj => { name => 'color', style => 'matrix', explode => true, schema => {
+          type => 'object',
+          properties => {
+            a => { type => 'null' },
+            b => { type => 'boolean' },
+            c => { type => 'integer' },
+            d => { type => 'string' },
+          },
+        } },
+      input => ';a;b=0;c=42;d=100',
+      content => { a => undef, b => false, c => 42, d => '100' },
+    },
+    {
+      name => 'explode=true, object with non-ascii name and values',
+      param_obj => { name => 'cølör', style => 'matrix', explode => true, schema => { type => 'object' } },
+      input => ';blue%E2%88%92black=yes!;blackish%2Cgreen=%C2%BFno%3f;100%F0%9D%91%A5brown=fl%C2%A1p',
+      content => { 'blue−black' => 'yes!', 'blackish,green' => '¿no?', '100𝑥brown' => 'fl¡p' },
+    },
 
     # style=label
 
     # style, explode, deserialized data, serialized string
+    [ 'label', true, undef, '' ],
+    [ 'label', true, 0, '.0' ],
+    [ 'label', true, 1, '.1' ],
+    [ 'label', true, false, '.' ],
+    [ 'label', true, false, '.0' ],
+    [ 'label', true, true, '.1' ],
+    [ 'label', true, false, '.false' ],
+    [ 'label', true, true, '.true' ],
+    [ 'label', true, 3, '.3' ],
     [ 'label', true, '', '.' ],
     [ 'label', true, 'red', '.red' ],
+    [ 'label', true, 'red﹠gr.e.en', '.red%EF%B9%A0gr%2Ee%2Een' ], # . is in "unreserved" - must be manually encoded
+    [ 'label', false, [], '' ],
+    [ 'label', true,  [], '' ],
+    [ 'label', false, {}, '' ],
+    [ 'label', true,  {}, '' ],
+    [ 'label', false, [], '.' ],    # not reversible
+    [ 'label', true, [], '.' ],     # ""
+    [ 'label', false, {}, '.' ],    # ""
+    [ 'label', true, {}, '.' ],     # ""
+    [ 'label', false, [ '', '', '' ], '.,,' ],
+    [ 'label', true, [ '', '', '' ], '...' ],
+    [ 'label', false, { R => '', G => '', B => '' }, '.R,,G,,B,' ],
+    [ 'label', true, { R => '', G => '', B => '' }, '.R.G.B' ],
+    [ 'label', false, { R => '100', G => '200', B => '' }, '.R,100,G,200,B,' ],
+    [ 'label', true, { R => '100', G => '200', B => '' }, '.R=100.G=200.B' ],
     [ 'label', false, [ qw(blue black brown) ], '.blue,black,brown' ],
     [ 'label', true, [ qw(blue black brown) ], '.blue.black.brown' ],
     [ 'label', false, { qw(R 100 G 200 B 150) }, '.R,100,G,200,B,150' ],
     [ 'label', true,  { qw(R 100 G 200 B 150) }, '.R=100.G=200.B=150' ],
+
+    {
+      name => 'any type is permitted, default to string',
+      param_obj => { name => 'color', style => 'label', schema => {} },
+      input => '.red,green,blue',
+      content => 'red,green,blue',
+    },
+    {
+      name => 'no type is permitted',
+      param_obj => { name => 'color', style => 'label', schema => { allOf => [ { type => 'string' }, { type => 'null' } ] } },
+      input => '.red,green,blue',
+      errors => [
+        {
+          instanceLocation => '/request/uri/path/color',
+          keywordLocation => $keyword_path,
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path,
+          error => 'cannot deserialize to any type',
+        },
+      ],
+    },
+    {
+      name => 'explode=false, array with non-string items',
+      param_obj => { name => 'color', style => 'label', schema => {
+          type => 'array',
+          prefixItems => [
+            { type => 'null' },
+            { type => 'boolean' },
+            { type => 'integer' },
+            { type => 'string' },
+          ],
+        } },
+      input => '.,0,42,100',
+      content => [ undef, false, 42, '100' ],
+    },
+    {
+      name => 'explode=false, array with non-ascii name and values',
+      param_obj => { name => 'cølör', style => 'label', schema => { type => 'array' } },
+      input => '.blue%E2%88%92black,blackish%2Cgr%2Ee%2Een,100%F0%9D%91%A5brown',
+      content => [ 'blue−black', 'blackish,gr.e.en', '100𝑥brown' ],
+    },
+    {
+      name => 'explode=true, array with non-string items',
+      param_obj => { name => 'color', style => 'label', explode => true, schema => {
+          type => 'array',
+          prefixItems => [
+            { type => 'null' },
+            { type => 'boolean' },
+            { type => 'integer' },
+            { type => 'string' },
+          ],
+        } },
+      input => '..0.42.100',
+      content => [ undef, false, 42, '100' ],
+    },
+    {
+      name => 'explode=true, array with non-ascii name and values',
+      param_obj => { name => 'cølör', style => 'label', explode => true, schema => { type => 'array' } },
+      input => '.blue%E2%88%92black.blackish%2Cgr%2Ee%2Een.100%F0%9D%91%A5brown',
+      content => [ 'blue−black', 'blackish,gr.e.en', '100𝑥brown' ],
+    },
+    {
+      name => 'explode=false, bad object',
+      param_obj => { name => 'color', style => 'label', schema => { type => 'object' } },
+      input => '.R,100,G,200,B',
+      errors => [
+        {
+          instanceLocation => '/request/uri/path/color',
+          keywordLocation => $keyword_path,
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path,
+          error => 'cannot deserialize to requested type',
+        },
+      ],
+    },
+    {
+      name => 'explode=false, bad object, fall through to string',
+      param_obj => { name => 'color', style => 'label', schema => { type => [ qw(object string) ] } },
+      input => '.R,100,G,200,B',
+      content => 'R,100,G,200,B',
+    },
+    {
+      name => 'explode=false, bad object, fall through to array',
+      param_obj => { name => 'color', style => 'label', schema => { type => [ qw(array object) ] } },
+      input => '.R,100,G,200,B',
+      content => [ qw(R 100 G 200 B) ],
+    },
+    {
+      name => 'explode=false, prefer object',
+      param_obj => { name => 'color', style => 'label', schema => { type => [qw(array object)] } },
+      input => '.R,100,G,200,B,150',
+      content => { R => '100', G => '200', B => '150' },
+    },
+    {
+      name => 'explode=false, object with non-string properties',
+      param_obj => { name => 'color', style => 'label', schema => {
+          type => 'object',
+          properties => {
+            a => { type => 'null' },
+            b => { type => 'boolean' },
+            c => { type => 'integer' },
+            d => { type => 'string' },
+          },
+        } },
+      input => '.a,,b,0,c,42,d,100',
+      content => { a => undef, b => false, c => 42, d => '100' },
+    },
+    {
+      name => 'explode=false, object with non-ascii name and values',
+      param_obj => { name => 'cølör', style => 'label', schema => { type => 'object' } },
+      input => '.blue%E2%88%92black,yes!,blackish%2Cgr%2Ee%2Een,%C2%BFno%3f,100%F0%9D%91%A5brown,fl%C2%A1p',
+      content => { 'blue−black' => 'yes!', 'blackish,gr.e.en' => '¿no?', '100𝑥brown' => 'fl¡p' },
+    },
+    {
+      name => 'explode=true, object with bad =',
+      param_obj => { name => 'color', style => 'label', explode => true, schema => { type => 'object' } },
+      input => '.R=',
+      errors => [
+        {
+          instanceLocation => '/request/uri/path/color',
+          keywordLocation => $keyword_path.'/style',
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path.'/style',
+          error => 'data does not match indicated style "label" for object (invalid separator at key "R")',
+        },
+      ],
+    },
+    {
+      name => 'explode=true, bad object',
+      param_obj => { name => 'color', style => 'label', explode => true, schema => { type => 'object' } },
+      input => '.R=100.G=200.B=',
+      errors => [
+        {
+          instanceLocation => '/request/uri/path/color',
+          keywordLocation => $keyword_path.'/style',
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path.'/style',
+          error => 'data does not match indicated style "label" for object (invalid separator at key "B")',
+        },
+      ],
+    },
+    {
+      name => 'explode=true, bad object, fall through to array',
+      param_obj => { name => 'color', style => 'label', explode => true, schema => { type => [ qw(array object) ] } },
+      input => '.R=100.G=200.B=',
+      content => [ qw(R=100 G=200 B=) ],
+    },
+    {
+      name => 'explode=true, bad object, fall through to string',
+      param_obj => { name => 'color', style => 'label', explode => true, schema => { type => [ qw(string object) ] } },
+      input => '.R=100.G=200.B=',
+      content => 'R=100.G=200.B=',
+    },
+    {
+      name => 'explode=true, prefer object',
+      param_obj => { name => 'color', style => 'label', explode =>true, schema => { type => [qw(array object)] } },
+      input => '.R=100.G=200.B=150',
+      content => { R => '100', G => '200', B => '150' },
+    },
+    {
+      name => 'explode=true, object with non-string properties',
+      param_obj => { name => 'color', style => 'label', explode => true, schema => {
+          type => 'object',
+          properties => {
+            a => { type => 'null' },
+            b => { type => 'boolean' },
+            c => { type => 'integer' },
+            d => { type => 'string' },
+          },
+        } },
+      input => '.a.b=0.c=42.d=100',
+      content => { a => undef, b => false, c => 42, d => '100' },
+    },
+    {
+      name => 'explode=true, object with non-ascii name and values',
+      param_obj => { name => 'cølör', style => 'label', explode => true, schema => { type => 'object' } },
+      input => '.blue%E2%88%92black=yes!.blackish%2Cgr%2Ee%2Een=%C2%BFno%3f.100%F0%9D%91%A5brown=fl%C2%A1p',
+      content => { 'blue−black' => 'yes!', 'blackish,gr.e.en' => '¿no?', '100𝑥brown' => 'fl¡p' },
+    },
   );
 
   foreach my $test (@tests) {
@@ -174,8 +844,6 @@ subtest 'path parameters' => sub {
 
       my $todo;
       $todo = todo $test->{todo} if $test->{todo};
-      $todo = todo 'style='.$param_obj->{style}.' is still TODO'
-         if ($param_obj->{style}//'') eq 'matrix' or ($param_obj->{style}//'') eq 'label';
 
       if (not exists $test->{content}) {
         is($call_count, $previous_call_count, 'no content was extracted')

@@ -3,6 +3,8 @@ Revision history for OpenAPI-Modern
 {{$NEXT}}
           - BREAKING CHANGE: "path_captures" in find_path_item and
             validate_request is no longer percent-decoded
+          - full support for parsing of "path" parameters: simple, matrix and
+            label styles, as well as parsing into arrays and objects
 
 0.123     2026-01-21 22:53:30Z
           - more scenarios are supported in OAD 3.0 -> 3.[1,2] upgrade
