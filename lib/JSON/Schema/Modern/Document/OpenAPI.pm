@@ -82,6 +82,12 @@ has oas_version => (
   isa => Str->where(q{/^[1-9]\.(?:0|[1-9][0-9]*)$/}),
 );
 
+# list of /paths/* path templates, in canonical search order
+has path_templates => (
+  is => 'rwp',
+  isa => ArrayRef[Str],
+);
+
 # we define the sub directly, rather than using an 'around', since our root base class is not
 # Moo::Object, so we never got a BUILDARGS to modify
 sub BUILDARGS ($class, @args) {
@@ -298,11 +304,15 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     return $state;
   }
 
+  # sorting (ascii-wise) gives us the desired results that concrete path components sort ahead of
+  # templated components, except when the concrete component is a non-ascii character or matches
+  # 0x7c (pipe), 0x7d (close-brace) or 0x7e (tilde)
+  $self->_set_path_templates(my $sorted_paths = [ sort grep !/^x-/, keys(($schema->{paths}//{})->%*) ]);
+
   # v3.2.0 §4.8.1, "Patterned Fields": "Templated paths with the same hierarchy but different
   # templated names MUST NOT exist as they are identical."
   my %seen_path;
-  foreach my $path (sort keys(($schema->{paths}//{})->%*)) {
-    next if $path =~ '^x-';
+  foreach my $path (@$sorted_paths) {
     my %seen_names;
     # { for the editor
     foreach my $name ($path =~ m!\{([^}]+)\}!g) {
@@ -691,6 +701,10 @@ Note that a tag name can still be used by an operation even if it has no definit
 =head2 operations_with_tag
 
 Returns the list of json pointer location(s) of operations that use the provided tag.
+
+=head2 path_templates
+
+All path templates under C</paths/>, sorted in canonical search order.
 
 =head1 SEE ALSO
 

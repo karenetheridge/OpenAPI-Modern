@@ -439,10 +439,7 @@ sub find_path_item ($self, $options, $state = {}) {
   if (not $options->{path_template} and $options->{uri}) {
     # derive path_template and capture values from the request URI
 
-    # sorting (ascii-wise) gives us the desired results that concrete path components sort ahead of
-    # templated components, except when the concrete component is a non-ascii character or matches
-    # 0x7c (pipe), 0x7d (close-brace) or 0x7e (tilde)
-    foreach my $pt (sort keys(($schema->{paths}//{})->%*)) {
+    foreach my $pt ($self->openapi_document->path_templates->@*) {
       my $local_state = +{ %$state };
       $local_state->{path_item} = $schema->{paths}{$pt};
       $local_state->{keyword_path} = jsonp('/paths', $pt);
