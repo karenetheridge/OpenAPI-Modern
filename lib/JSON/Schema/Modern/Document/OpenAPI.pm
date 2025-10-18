@@ -330,7 +330,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     }
 
     # { for the editor
-    my $normalized = $path =~ s/\{[^}]+\}/\x00/r;
+    my $normalized = $path =~ s/\{[^}]+\}/\x00/gr;
     if (my $first_path = $seen_path{$normalized}) {
       ()= E({ %$state, keyword_path => jsonp('/paths', $path) },
         'duplicate of templated path "%s"', $first_path);
@@ -359,7 +359,8 @@ sub traverse ($self, $evaluator, $config_override = {}) {
       }
 
       # { for the editor
-      my $normalized = $servers->[$server_idx]{url} =~ s/\{[^}]+\}/\x00/r;
+      my $normalized = $servers->[$server_idx]{url} =~ s/\{[^}]+\}/\x00/gr;
+
       # { for the editor
       my @url_variables = $servers->[$server_idx]{url} =~ /\{([^}]+)\}/g;
 

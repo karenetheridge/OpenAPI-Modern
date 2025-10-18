@@ -153,8 +153,9 @@ subtest '/paths correctness' => sub {
       paths => {
         '/a/{a}' => {},
         '/a/{b}' => {},
-        '/b/{a}/hi' => {},
-        '/b/{b}/hi' => {},
+        '/b/{a}/hi/{yes}' => {},
+        '/b/{b}/hi/{yes}' => {},
+        '/b/{x}/hi/{no}' => {},
         '/c/{c}/d/{c}/e/{e}/f/{e}' => {},
         'x-{alpha}' => {},
         'x-{beta}' => {},
@@ -174,9 +175,15 @@ subtest '/paths correctness' => sub {
       },
       +{
         instanceLocation => '',
-        keywordLocation => '/paths/~1b~1{b}~1hi',
-        absoluteKeywordLocation => str(Mojo::URL->new('http://localhost:1234/api#/paths/~1b~1{b}~1hi')),
-        error => 'duplicate of templated path "/b/{a}/hi"',
+        keywordLocation => '/paths/~1b~1{b}~1hi~1{yes}',
+        absoluteKeywordLocation => str(Mojo::URL->new('http://localhost:1234/api#/paths/~1b~1{b}~1hi~1{yes}')),
+        error => 'duplicate of templated path "/b/{a}/hi/{yes}"',
+      },
+      +{
+        instanceLocation => '',
+        keywordLocation => '/paths/~1b~1{x}~1hi~1{no}',
+        absoluteKeywordLocation => str(Mojo::URL->new('http://localhost:1234/api#/paths/~1b~1{x}~1hi~1{no}')),
+        error => 'duplicate of templated path "/b/{a}/hi/{yes}"',
       },
       +{
         instanceLocation => '',
@@ -196,7 +203,8 @@ subtest '/paths correctness' => sub {
 
   is(document_result($doc), substr(<<'ERRORS', 0, -1), 'stringified errors');
 '/paths/~1a~1{b}': duplicate of templated path "/a/{a}"
-'/paths/~1b~1{b}~1hi': duplicate of templated path "/b/{a}/hi"
+'/paths/~1b~1{b}~1hi~1{yes}': duplicate of templated path "/b/{a}/hi/{yes}"
+'/paths/~1b~1{x}~1hi~1{no}': duplicate of templated path "/b/{a}/hi/{yes}"
 '/paths/~1c~1{c}~1d~1{c}~1e~1{e}~1f~1{e}': duplicate path template variable "c"
 '/paths/~1c~1{c}~1d~1{c}~1e~1{e}~1f~1{e}': duplicate path template variable "e"
 ERRORS
@@ -641,7 +649,7 @@ servers:
         default: hi
       unused:
         default: nope
-  - url: https://example.com/{v}/{greeting}
+  - url: https://example.com/{v}/{g}
   - url: https://example.com/{foo}/{foo}
     variables: {}
   - url: http://example.com/literal
@@ -695,6 +703,12 @@ YAML
         },
         {
           instanceLocation => '',
+          keywordLocation => $_.'/servers/2/url',
+          absoluteKeywordLocation => 'http://localhost:1234/api#'.$_.'/servers/2/url',
+          error => 'duplicate of templated server url "https://example.com/{v}/{g}"',
+        },
+        {
+          instanceLocation => '',
           keywordLocation => $_.'/servers/2/variables',
           absoluteKeywordLocation => 'http://localhost:1234/api#'.$_.'/servers/2/variables',
           error => 'missing "variables" definition for servers template variable "foo"',
@@ -729,6 +743,7 @@ YAML
 '/servers/0/variables/version/default': servers default is not a member of enum
 '/servers/1/url': duplicate of templated server url "https://example.com/{version}/{greeting}"
 '/servers/1': "variables" property is required for templated server urls
+'/servers/2/url': duplicate of templated server url "https://example.com/{v}/{g}"
 '/servers/2/variables': missing "variables" definition for servers template variable "foo"
 '/servers/2': duplicate servers template variable "foo"
 '/servers/3/variables/version/default': servers default is not a member of enum
@@ -738,6 +753,7 @@ YAML
 '/components/pathItems/path0/servers/0/variables/version/default': servers default is not a member of enum
 '/components/pathItems/path0/servers/1/url': duplicate of templated server url "https://example.com/{version}/{greeting}"
 '/components/pathItems/path0/servers/1': "variables" property is required for templated server urls
+'/components/pathItems/path0/servers/2/url': duplicate of templated server url "https://example.com/{v}/{g}"
 '/components/pathItems/path0/servers/2/variables': missing "variables" definition for servers template variable "foo"
 '/components/pathItems/path0/servers/2': duplicate servers template variable "foo"
 '/components/pathItems/path0/servers/3/variables/version/default': servers default is not a member of enum
@@ -747,6 +763,7 @@ YAML
 '/components/pathItems/path0/get/servers/0/variables/version/default': servers default is not a member of enum
 '/components/pathItems/path0/get/servers/1/url': duplicate of templated server url "https://example.com/{version}/{greeting}"
 '/components/pathItems/path0/get/servers/1': "variables" property is required for templated server urls
+'/components/pathItems/path0/get/servers/2/url': duplicate of templated server url "https://example.com/{v}/{g}"
 '/components/pathItems/path0/get/servers/2/variables': missing "variables" definition for servers template variable "foo"
 '/components/pathItems/path0/get/servers/2': duplicate servers template variable "foo"
 '/components/pathItems/path0/get/servers/3/variables/version/default': servers default is not a member of enum
