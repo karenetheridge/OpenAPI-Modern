@@ -673,6 +673,26 @@ servers:
   - url: http://example.com/
   - url: http://example.com?foo=1
   - url: http://example.com#bar
+  - url: http://{host}.com/{path1}{path2} # valid, but inadvised
+    variables:
+      host:
+        default: a
+      path1:
+        default: b
+      path2:
+        default: c
+  - url: http://{host}.com/{pa{th}
+  - url: http://example.com/^illegal
+  - url: http://example.com/d/{d}.d       # valid
+    variables:
+      d:
+        default: d
+  - url: http://example.com/{foo}%20{bar}   # valid
+    variables:
+      foo:
+        default: foo
+      bar:
+        default: bar
 YAML
 
   my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
@@ -745,7 +765,19 @@ YAML
             absoluteKeywordLocation => 'http://localhost:1234/api#'.$base.'/servers/'.$_.'/url',
             error => 'server url cannot end in / or contain query or fragment components',
           }, 5,6,7
-        }
+        },
+        {
+          instanceLocation => '',
+          keywordLocation => $_.'/servers/9/url',
+          absoluteKeywordLocation => 'http://localhost:1234/api#'.$_.'/servers/9/url',
+          error => 'invalid server url "http://{host}.com/{pa{th}"',
+        },
+        {
+          instanceLocation => '',
+          keywordLocation => $_.'/servers/10/url',
+          absoluteKeywordLocation => 'http://localhost:1234/api#'.$_.'/servers/10/url',
+          error => 'invalid server url "http://example.com/^illegal"',
+        },
       ), '', '/components/pathItems/path0', '/components/pathItems/path0/get',
     ],
     'all issues with server entries found',
@@ -762,6 +794,8 @@ YAML
 '/servers/5/url': server url cannot end in / or contain query or fragment components
 '/servers/6/url': server url cannot end in / or contain query or fragment components
 '/servers/7/url': server url cannot end in / or contain query or fragment components
+'/servers/9/url': invalid server url "http://{host}.com/{pa{th}"
+'/servers/10/url': invalid server url "http://example.com/^illegal"
 '/components/pathItems/path0/servers/0/variables/version/default': servers default is not a member of enum
 '/components/pathItems/path0/servers/1/url': duplicate of templated server url "https://example.com/{version}/{greeting}"
 '/components/pathItems/path0/servers/1': "variables" property is required for templated server urls
@@ -772,6 +806,8 @@ YAML
 '/components/pathItems/path0/servers/5/url': server url cannot end in / or contain query or fragment components
 '/components/pathItems/path0/servers/6/url': server url cannot end in / or contain query or fragment components
 '/components/pathItems/path0/servers/7/url': server url cannot end in / or contain query or fragment components
+'/components/pathItems/path0/servers/9/url': invalid server url "http://{host}.com/{pa{th}"
+'/components/pathItems/path0/servers/10/url': invalid server url "http://example.com/^illegal"
 '/components/pathItems/path0/get/servers/0/variables/version/default': servers default is not a member of enum
 '/components/pathItems/path0/get/servers/1/url': duplicate of templated server url "https://example.com/{version}/{greeting}"
 '/components/pathItems/path0/get/servers/1': "variables" property is required for templated server urls
@@ -782,6 +818,8 @@ YAML
 '/components/pathItems/path0/get/servers/5/url': server url cannot end in / or contain query or fragment components
 '/components/pathItems/path0/get/servers/6/url': server url cannot end in / or contain query or fragment components
 '/components/pathItems/path0/get/servers/7/url': server url cannot end in / or contain query or fragment components
+'/components/pathItems/path0/get/servers/9/url': invalid server url "http://{host}.com/{pa{th}"
+'/components/pathItems/path0/get/servers/10/url': invalid server url "http://example.com/^illegal"
 ERRORS
 
   memory_cycle_ok($doc, 'no leaks in the document object');

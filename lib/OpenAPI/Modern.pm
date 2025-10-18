@@ -688,7 +688,7 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
 
     my $uri_pattern = join '',
       map +(substr($_, 0, 1) eq '{' ? '([^/?#]*)' : quotemeta($_)), # { for the editor
-      split /(\{[^}]+\})/, $uri_template;
+      split /(\{[^{}]+\})/, $uri_template;
     do { use autovivification 'store'; push $state->{debug}{uri_patterns}->@*, '^'.$uri_pattern.'$' }
       if exists $state->{debug};
     next if $full_uri !~ m/^$uri_pattern$/;
@@ -703,8 +703,7 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
     %$state = %$local_state;
 
     # note: we aren't doing anything special with escaped slashes. this bit of the spec is hazy.
-    # { for the editor
-    my @uri_capture_names = ($uri_template =~ m!\{([^}]+)\}!g);
+    my @uri_capture_names = ($uri_template =~ m!\{([^{}]+)\}!g);
 
     my ($valid, %seen) = (1);
     foreach my $name (@uri_capture_names) {
