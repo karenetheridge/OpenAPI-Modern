@@ -543,9 +543,7 @@ sub find_path_item ($self, $options, $state = {}) {
   $options->{operation_id} = $options->{_operation}{operationId}
     if exists $options->{_operation}{operationId};
 
-  # note: we aren't doing anything special with escaped slashes. this bit of the spec is hazy.
-  # { for the editor
-  my @path_capture_names = ($options->{path_template} =~ m!\{([^}]+)\}!g);
+  my @path_capture_names = ($options->{path_template} =~ /\{([^{}]+)\}/g);
   return E({ %$state, $options->{uri} ? (data_path => '/request/uri') : (), recommended_response => [ 500 ] }, 'provided path_captures names do not match path template "%s"', $options->{path_template})
     if exists $options->{path_captures}
       and not is_equal([ sort keys $options->{path_captures}->%* ], [ sort @path_capture_names ]);
@@ -627,7 +625,7 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
   # marks (?), or hashes (#)."
   my $path_pattern = join '',
     map +(substr($_, 0, 1) eq '{' ? '([^/?#]*)' : quotemeta($_)), # { for the editor
-    split /(\{[^}]+\})/, $path_template;
+    split /(\{[^{}]+\})/, $path_template;
 
   # if the uri doesn't match against the path alone, we can immediately bail (and keep looking for
   # another /paths entry that might match)... this also saves us needless parsing of server objects

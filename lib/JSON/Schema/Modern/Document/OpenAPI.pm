@@ -316,21 +316,25 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     keys(($schema->{paths}//{})->%*)          # all entries in /paths/*
   ]);
 
-  # v3.2.0 §4.8.1, "Patterned Fields": "Templated paths with the same hierarchy but different
-  # templated names MUST NOT exist as they are identical."
   my %seen_path;
   foreach my $path (@$sorted_paths) {
+    # see ABNF at v3.2.0 §4.8.2
+    die "invalid path: $path" if substr($path, 0, 1) ne '/'; # schema validation catches this
+    ()= E({ %$state, keyword_path => jsonp('/paths', $path) }, 'invalid path template "%s"', $path)
+      if grep !/^(?:\{[^{}]+\}|%[0-9A-F]{2}|[:@!\$&'()*+,;=A-Za-z0-9._~-]+)+$/,
+        split('/', substr($path, 1)); # split by segment, omitting leading /
+
     my %seen_names;
-    # { for the editor
-    foreach my $name ($path =~ m!\{([^}]+)\}!g) {
+    foreach my $name ($path =~ /\{([^{}]+)\}/g) {
+      # v3.2.0 §4.8.1, "Patterned Fields": "Templated paths with the same hierarchy but different
+      # templated names MUST NOT exist as they are identical."
       if (++$seen_names{$name} == 2) {
         ()= E({ %$state, keyword_path => jsonp('/paths', $path) },
           'duplicate path template variable "%s"', $name);
       }
     }
 
-    # { for the editor
-    my $normalized = $path =~ s/\{[^}]+\}/\x00/gr;
+    my $normalized = $path =~ s/\{[^{}]+\}/\x00/gr;
     if (my $first_path = $seen_path{$normalized}) {
       ()= E({ %$state, keyword_path => jsonp('/paths', $path) },
         'duplicate of templated path "%s"', $first_path);
