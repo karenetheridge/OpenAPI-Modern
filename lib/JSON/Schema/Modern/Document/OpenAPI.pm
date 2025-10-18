@@ -356,11 +356,9 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     my %seen_url;
 
     foreach my $server_idx (0 .. $servers->$#*) {
-      if ($servers->[$server_idx]{url} =~ m{(?:/$|\?|#)}) {
-        ()= E({ %$state, keyword_path => jsonp($servers_location, $server_idx, 'url') },
-          'server url cannot end in / or contain query or fragment components');
-        next;
-      }
+      ()= E({ %$state, keyword_path => jsonp($servers_location, $server_idx, 'url') },
+          'server url cannot end in / or contain query or fragment components'), next
+        if $servers->[$server_idx]{url} =~ m{(?:/$|\?|#)};
 
       # { for the editor
       my $normalized = $servers->[$server_idx]{url} =~ s/\{[^}]+\}/\x00/gr;
