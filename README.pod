@@ -8,7 +8,7 @@ OpenAPI::Modern - Validate HTTP requests and responses against an OpenAPI v3.1 o
 
 =head1 VERSION
 
-version 0.100
+version 0.101
 
 =head1 SYNOPSIS
 
@@ -310,10 +310,10 @@ C<uri_captures>: a hashref mapping placeholders in the entire uri template (serv
 
 C<operation_uri>: a URI indicating the document location of the operation object for the request, after following any references (usually something under C</paths/>, but may be in another document). Use C<< $openapi->evaluator->get($uri) >> to fetch this content (see L<JSON::Schema::Modern/get>). Note that this is the same as:
 
-    $openapi->document_get(Mojo::URL->new($openapi->openapi_uri)->fragment(< path to operation >);
+    $openapi->document_get(Mojo::URL->new($openapi->openapi_uri)->fragment($path_to_operation);
 
-(See the documentation for an operation at L<https://learn.openapis.org/specification/paths.html#the-endpoints-list>
-or in the specification at
+(See the L<documentation for an operation/https://learn.openapis.org/specification/paths.html#the-endpoints-list>
+or in
 L<§4.10 of the specification|https://spec.openapis.org/oas/latest#operation-object>.)
 
 =item *
@@ -324,7 +324,7 @@ C<debug>: when C<$OpenAPI::Modern::DEBUG> or L</debug> is set on the OpenAPI::Mo
 
 =item *
 
-C<uri_patterns>: an arrayref of patterns that were attempted to be matched against the URI
+C<uri_patterns>: an arrayref of patterns that were attempted to be matched against the URI, in match order
 
 =back
 
@@ -418,13 +418,18 @@ you need earlier versions, you can find them at
 L<https://spec.openapis.org/#openapi-specification-schemas>.
 
 The default metaschema used by this tool does not permit the use of C<$schema> keywords
-in subschemas (where the value differs from the default OAS dialect), but a more permissive
+in subschemas (unless the value is equal to the default OAS dialect), but a more permissive
 dialect is also available (or you can define your own), which you declare by providing the
 C<L<jsonSchemaDialect/https://spec.openapis.org/oas/latest#openapi-object>> property in your OpenAPI
 Document.
 
 The schemas are also available under the URIs C<< s/<date>/latest/ >> so you don't have to change your
 code or configurations to keep pace with internal changes.
+
+An even stricter schema and dialect are available, via the metaschema_uri
+C<https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/3.2/strict-schema.json>,
+which prevents any unknown keywords from being used in JSON Schemas. This is useful to avoid
+spelling mistakes from going unnoticed and resulting in false positive results.
 
 =head1 ON THE USE OF JSON SCHEMAS
 
