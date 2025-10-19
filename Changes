@@ -1,6 +1,8 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - improved specification compliance when matching URIs to path
+            patterns and server url patterns
 
 0.104     2025-10-29 17:54:47Z
           - support added for tagged operations (tag heirarchies are new in

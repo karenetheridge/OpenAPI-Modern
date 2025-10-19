@@ -35,7 +35,7 @@ use OpenAPI::Modern::Utilities qw(add_vocab_and_default_schemas);
 use JSON::Schema::Modern::Document::OpenAPI;
 use MooX::TypeTiny 0.002002;
 use Types::Standard qw(InstanceOf Bool);
-use Mojo::Util 'url_unescape';
+use Mojo::Util qw(url_unescape punycode_decode);
 use Mojo::Message::Request;
 use Mojo::Message::Response;
 use Storable 'dclone';
@@ -614,11 +614,11 @@ sub recursive_get ($self, $uri_reference, $entity_type = undef) {
 # consideration additional information in the current path-item), and extract capture values.
 # returns false on error, possibly adding errors to $state.
 sub _match_uri ($self, $method, $uri, $path_template, $state) {
-  my $uri_path = $uri->path->to_string;
+  $uri = $uri->clone->fragment(undef)->query('');
 
   # RFC9112 §3.2.1-3: "If the target URI's path component is empty, the client MUST send "/" as the
-  # path within the origin-form of request-target."
-  $uri_path = '/' if not length $uri_path;
+  # path within the origin-form of request-target." This also lets us match a path template of "/".
+  $uri->path->leading_slash(1); # no effect on stringified URI unless path is empty
 
   # v3.2.0 §4.8.2, "Path Templating": "The value for these path parameters MUST NOT contain any
   # unescaped “generic syntax” characters described by [RFC3986]: forward slashes (/), question
@@ -631,7 +631,14 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
   # another /paths entry that might match)... this also saves us needless parsing of server objects
   do { use autovivification 'store'; push $state->{debug}{uri_patterns}->@*, $path_pattern.'$' }
     if exists $state->{debug};
-  return if $uri_path !~ m/$path_pattern$/;
+  return if $uri !~ m/$path_pattern$/;
+
+  # identify the unmatched part of the request URI, to be later matched against server urls
+  my $uri_prefix = substr($uri, 0, -length($&));
+
+  # extract all capture values from path template variables: ($1 .. $n)
+  # perldoc perlvar, @-: $n coincides with "substr $_, $-[n], $+[n] - $-[n]" if "$-[n]" is defined
+  my @path_capture_values = map _uri_decode(substr($uri, $-[$_], $+[$_]-$-[$_])), 1 .. $#-;
 
   # we set aside $state for potential restoration because we might still encounter issues later on
   # that require us to keep iterating for another URI match
@@ -655,8 +662,6 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
 
   return if not $local_state->{operation};
 
-  my $full_uri = $uri->clone->path($uri_path)->fragment(undef)->query('')->to_string;
-
   # we need to keep track of the traversed path to the servers object, as well as its absolute
   # location, for usage in error objects
   my ($servers, $more_keyword_path, $base_schema_uri) =
@@ -673,38 +678,48 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
   # url value of `/`."
   $servers = [{ url => '/' }] if not $servers or not @$servers;
 
+  my @path_capture_names = ($path_template =~ /\{([^{}]+)\}/g);
+
   foreach my $index_and_server (pairs indexed @$servers) {
     my ($index, $server) = @$index_and_server;
 
-    # we need a full uri to match against the full uri taken from the request (scheme and host)
+    # We need a full uri to match against the full uri taken from the request (scheme and host)
     # we fall back to using the request's scheme, host and port, otherwise the match can never
     # succeed.
-    my $server_url = Mojo::URL->new($server->{url})->to_abs($self->openapi_document->retrieval_uri);
-    $server_url = $server_url->to_abs($uri)->query('');
-    $server_url->path->leading_slash(0)->trailing_slash(0);
+    # But before we apply URI logic to the server url, we must first protect any templated sections
+    # so they are not altered by normalization. We use NUL, as it is unchanged in the host during
+    # punycode-encoding
+    my $normalized_server_url = Mojo::URL->new($server->{url} =~ s/\{[^{}]+\}/\x00/gr)
+      ->to_abs($self->openapi_document->retrieval_uri)
+      ->to_abs($uri);
 
-    # turn %7B and %7D back into { and }
-    my $uri_template = url_unescape($server_url) . $path_template;
+    # strips slash if path is '/'; otherwise has no effect on stringified URI
+    $normalized_server_url->path->leading_slash(0);
 
-    my $uri_pattern = join '',
-      map +(substr($_, 0, 1) eq '{' ? '([^/?#]*)' : quotemeta($_)), # { for the editor
-      split /(\{[^{}]+\})/, $uri_template;
-    do { use autovivification 'store'; push $state->{debug}{uri_patterns}->@*, '^'.$uri_pattern.'$' }
+    my $server_pattern = join '',
+      map +($_ eq '%00' ? '([^/?#]*)' : quotemeta($_)),
+      split /(%00)/, $normalized_server_url;  # all NULs appear as %00 in the stringified form
+    do { use autovivification 'store'; push $state->{debug}{uri_patterns}->@*, '^'.$server_pattern }
       if exists $state->{debug};
-    next if $full_uri !~ m/^$uri_pattern$/;
+    next if $uri_prefix !~ m/^$server_pattern$/;
 
-    # extract all capture values from server variables and path template variables: ($1 .. $n)
+    # extract all capture values from server variables: ($1 .. $n)...
     # perldoc perlvar, @-: $n coincides with "substr $_, $-[n], $+[n] - $-[n]" if "$-[n]" is defined
-    my @uri_capture_values = map _uri_decode(substr($full_uri, $-[$_], $+[$_]-$-[$_])), 1 .. $#-;
+    my @server_capture_values = map substr($uri_prefix, $-[$_], $+[$_]-$-[$_]), 1 .. $#-;
+
+    # ...and punycode-decode those from the host, and url-unescape those from the path
+    my $host_variable_count = ()= ($normalized_server_url->host//'') =~ /\x00/g;
+    @server_capture_values = (
+      (map +(/^xn--(.+)$/ ? punycode_decode($1) : $_), @server_capture_values[0 .. $host_variable_count-1]),
+      (map _uri_decode($_), @server_capture_values[$host_variable_count .. $#server_capture_values]));
 
     # we have a match, so preserve our new $state values created via _resolve_ref
     %$state = %$local_state;
 
-    # note: we aren't doing anything special with escaped slashes. this bit of the spec is hazy.
-    my @uri_capture_names = ($uri_template =~ m!\{([^{}]+)\}!g);
+    my @server_capture_names = ($server->{url} =~ /\{([^{}]+)\}/g);
 
     my ($valid, %seen) = (1);
-    foreach my $name (@uri_capture_names) {
+    foreach my $name (@server_capture_names, @path_capture_names) {
       # TODO: ideally this should be caught at document load time, but the use of $refs between
       # /paths entries and path-items makes this difficult
       $valid = E({ %$state, keyword => 'url', data_path => '/request/uri',
@@ -717,9 +732,9 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
     return if not $valid;
 
     my %captures;
-    @captures{@uri_capture_names} = @uri_capture_values;
+    @captures{@server_capture_names} = @server_capture_values;
 
-    foreach my $name (@uri_capture_names) {
+    foreach my $name (@server_capture_names) {
       next if not exists((($server->{variables}//{})->{$name}//{})->{enum});
 
       $valid = E({ %$state, data_path => '/request/uri', keyword => 'enum',
@@ -730,6 +745,8 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
           'server url value does not match any of the allowed values')
         if not any { $captures{$name} eq $_ } $server->{variables}{$name}{enum}->@*;
     }
+
+    @captures{@path_capture_names} = @path_capture_values;
 
     return if not $valid;
     return \%captures;
@@ -1477,7 +1494,7 @@ of values can be provided; possible values are:
   this value will serve to unambiguously state which path-item and operation are intended, and is
   also more efficient as not all path-item entries need to be searched to find a match.
 * C<path_captures>: a hashref mapping placeholders in the path template to their actual values in
-  the request URI
+  the request URI; these will be url-unescaped
 
 All values are optional, and will be derived from each other as needed (albeit less
 efficiently than if they were provided). All passed-in values MUST be consistent with each other and
@@ -1496,7 +1513,8 @@ In addition, these values are also populated in the options hash (when available
 =begin :list
 
 * C<uri_captures>: a hashref mapping placeholders in the entire uri template (server url plus path
-  template) to their actual values in the request URI
+  template) to their actual values in the request URI; these will be url-unescaped (for values
+  coming from the path) and punycode-decoded (for values coming from the host).
 * C<operation_uri>: a URI indicating the document location of the operation object for the
   request, after following any references (usually something under C</paths/>, but may be in another
   document). Use C<< $openapi->evaluator->get($uri) >> to fetch this content (see
