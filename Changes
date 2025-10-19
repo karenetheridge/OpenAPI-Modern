@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.101     2025-10-19 20:09:38Z
           - support added for "in: querystring" in parameter descriptions, new
             in OpenAPI 3.2
