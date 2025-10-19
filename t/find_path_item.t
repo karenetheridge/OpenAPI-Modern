@@ -2622,6 +2622,36 @@ YAML
     },
     'requesting an empty-string operation_id with path_template does not match an operation with no operationId',
   );
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri,
+    openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
+paths:
+  /login/{username}:  # { ascii-sorts ahead of ~, so a simple string comparison would match this first
+    get: {}
+  /login/~ether:      # concrete components should always match first ahead of templated ones
+    get: {}
+YAML
+
+  ok($openapi->find_path_item($options = { @request = (method => 'GET', uri => 'http://example.com/login/~ether') }),
+    to_str(@request).': lookup succeeded');
+  cmp_result(
+    $options,
+    {
+      uri => isa('Mojo::URL'),
+      method => 'GET',
+      path_template => '/login/~ether',
+      path_captures => {},
+      uri_captures => {},
+      _path_item => { get => ignore },
+      _operation => ignore,
+      _operation_path_suffix => '/get',
+      operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /login/~ether get)))),
+      errors => [],
+    },
+    'correct sort order is used when finding the first matching path-item',
+  );
 };
 
 subtest 'no uri is provided: other values are relied on as the sole source of truth' => sub {

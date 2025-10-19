@@ -304,10 +304,17 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     return $state;
   }
 
-  # sorting (ascii-wise) gives us the desired results that concrete path components sort ahead of
-  # templated components, except when the concrete component is a non-ascii character or matches
-  # 0x7c (pipe), 0x7d (close-brace) or 0x7e (tilde)
-  $self->_set_path_templates(my $sorted_paths = [ sort grep !/^x-/, keys(($schema->{paths}//{})->%*) ]);
+  # v3.2.0 §4.8.1, "Patterned Fields": "When matching URLs, concrete (non-templated) paths would be
+  # matched before their templated counterparts."
+
+  # caution, Schwartzian transform ahead!
+  $self->_set_path_templates(my $sorted_paths = [
+    map $_->[0],                              # remove transformed entries
+    sort { $a->[1] cmp $b->[1] || $a->[0] cmp $b->[0] }  # sort by the transformed entries
+    map [ $_, s/\{[^{}]+\}/\x{10FFFF}/rg ],   # transform template names into the highest Unicode char
+    grep !/^x-/,                              # remove extension keywords
+    keys(($schema->{paths}//{})->%*)          # all entries in /paths/*
+  ]);
 
   # v3.2.0 §4.8.1, "Patterned Fields": "Templated paths with the same hierarchy but different
   # templated names MUST NOT exist as they are identical."

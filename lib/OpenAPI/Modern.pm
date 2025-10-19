@@ -1490,6 +1490,8 @@ a L<JSON::Schema::Modern::Error> object, and the return value is false.
 
 In addition, these values are also populated in the options hash (when available):
 
+=for stopwords punycode
+
 =begin :list
 
 * C<uri_captures>: a hashref mapping placeholders in the entire uri template (server url plus path
