@@ -8,7 +8,7 @@ OpenAPI::Modern - Validate HTTP requests and responses against an OpenAPI v3.1 o
 
 =head1 VERSION
 
-version 0.102
+version 0.103
 
 =head1 SYNOPSIS
 
@@ -224,7 +224,7 @@ the L</openapi_uri> (which is derived from the document's C<$self> keyword as we
 provided to the document constructor).
 
 The second argument is an optional hashref that contains extra information about the request,
-corresponding to the values expected by L</find_path> below. The method populates the hashref
+corresponding to the values expected by L</find_path_item> below. The method populates the hashref
 with some information about the request:
 save it and pass it to a later L</validate_response> call (that corresponds to a response for this request)
 to improve performance.
@@ -247,15 +247,17 @@ the L</openapi_uri> (which is derived from the document's C<$self> keyword as we
 provided to the document constructor).
 
 The second argument is an optional hashref that contains extra information about the request
-corresponding to the response, as in L</validate_request> and L</find_path>.
+corresponding to the response, as in L</validate_request> and L</find_path_item>.
 
 C<request> in the hashref represents the original request object that
 corresponds to this response, which can be used to find the appropriate section of the document if
 other values (such as C<operationId>) are not known.
 
-=head2 find_path
+=head2 find_path_item
 
-  $result = $self->find_path($options);
+=for Pod::Coverage find_path
+
+  $result = $self->find_path_item($options);
 
 Finds the appropriate L<path-item|https://spec.openapis.org/oas/latest#path-item-object> entry
 in the OpenAPI document corresponding to a request. Called
@@ -269,6 +271,10 @@ of values can be provided; possible values are:
 =item *
 
 C<request>: the object representing the HTTP request. Supported types are: L<HTTP::Request>, L<Plack::Request>, L<Catalyst::Request>, L<Mojo::Message::Request>. Converted to a L<Mojo::Message::Request>.
+
+=item *
+
+C<uri>: the URI of the HTTP request. Converted from any string-compatible type to a L<Mojo::URL>.
 
 =item *
 
