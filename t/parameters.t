@@ -37,15 +37,16 @@ my $keyword_path = '/paths/~1foo/get/parameters/0';
 
 subtest 'path parameters' => sub {
   my @tests = (
-    # param_obj
-    # path_captures
-    # content => data that was passed to _evaluate_subschema (expected)
-    # errors => collected from state (expected), defaults to []
+    # name (test name)
+    # param_obj (from OAD)
+    # input (value of path_captures, as provided by find_path_item, or undef if missing)
+    # content => expected data to be passed to _evaluate_subschema (omit when evaluation is skipped)
+    # errors => compared to what is collected from $state, defaults to []
     # todo
     {
-      param_obj => { name => 'missing', required => true },
-      path_captures => {},
-      content => undef,
+      name => 'missing parameter (always required)',
+      param_obj => { name => 'missing' },
+      input => undef,
       errors => [
         {
           instanceLocation => '/request/uri/path',
@@ -57,9 +58,9 @@ subtest 'path parameters' => sub {
     },
     # encoded with media-type
     {
-      param_obj => { name => 'missing_json_content', in => 'path', content => { 'application/json' => { schema => { type => 'integer' } } } },
-      path_captures => {},
-      content => undef,
+      name => 'missing',
+      param_obj => { name => 'missing_json_content', content => { 'application/json' => { schema => {} } } },
+      input => undef,
       errors => [
         {
           instanceLocation => '/request/uri/path',
@@ -70,198 +71,131 @@ subtest 'path parameters' => sub {
       ],
     },
     {
-      param_obj => { name => 'json_content', in => 'path', content => { 'application/json' => { schema => { type => 'integer' } } } },
-      path_captures => { json_content => '3' },
+      name => 'numeric string',
+      param_obj => { name => 'json_content', content => { 'application/json' => { schema => {} } } },
+      input => '3',
       content => 3, # numeric, not string!
     },
+
     # style=simple
+
+    # style, explode, deserialized data, serialized string
+    [ 'simple', true,  3, '3' ],
+    [ 'simple', true,  'red', 'red' ],
+    [ 'simple', true,  " i have spaces  \t ", " i have spaces  \t " ],
+    [ 'simple', true,  ' red,  green ', ' red,  green ' ],
+    # [ 'simple', false, [ 'red' ], 'red' ],
+    # [ 'simple', false, { R => '100', G => '200', B => '' }, 'R,100,G,200,B,' ],
+    # [ 'simple', true,  { R => '100', G => '200', B => '' }, 'R=100,G=200,B' ],
+    # [ 'simple', false, { qw(R 100 G 200 B 150) }, 'R,100,G,200,B,150' ],
+    # [ 'simple', true,  { qw(R 100 G 200 B 150) }, 'R=100,G=200,B=150' ],
+
     {
-      param_obj => { name => 'no_type', in => 'path', schema => { maxLength => 3 } },
-      path_captures => { no_type => 'R,100,G,200,B,150' },
+      name => 'no type specified',
+      param_obj => { name => 'color', schema => { maxLength => 3 } },
+      input => 'R,100,G,200,B,150',
       content => 'R,100,G,200,B,150',
     },
     {
-      param_obj => { name => 'spaces', in => 'path' },
-      path_captures => { spaces => " i have spaces  \t " },
-      content => " i have spaces  \t ",
-    },
-    {
-      param_obj => { name => 'single_value_false', in => 'path' },
-      path_captures => { single_value_false => 'foo' },
-      content => 'foo',
-    },
-    {
-      param_obj => { name => 'single_value_number', in => 'path', schema => { type => 'number' } },
-      path_captures => { single_value_number => '3' },
+      name => 'number or string',
+      param_obj => { name => 'color', schema => { type => [ qw(string number) ] } },
+      input => '3',
       content => 3,
     },
-    {
-      param_obj => { name => 'single_value_number_over_string', in => 'path', schema => { type => [ qw(string number) ] } },
-      path_captures => { single_value_number_over_string => '3' },
-      content => 3,
-    },
-    {
-      param_obj => { name => 'single_value_string', in => 'path' },
-      path_captures => { single_value_string => 'foo' },
-      content => 'foo',
-    },
-    {
-      # we do not normalize whitespace in path parameters
-      param_obj => { name => 'comma_separated_string', in => 'path' },
-      path_captures => { comma_separated_string => ' foo,  bar ' },
-      content => ' foo,  bar ',
-    },
-    {
-      # a single value is passed as an array iff when array is requested
-      param_obj => { name => 'single_value_array', schema => { type => 'array' } },
-      path_captures => { single_value_array => 'foo' },
-      content => [ 'foo' ],
-      todo => 'parse as array',
-    },
-    {
-      # split individual values on comma when type=array; no space normalizing
-      param_obj => { name => 'multiple_values_array', schema => { type => 'array' } },
-      path_captures => { multiple_values_array => ' foo,  bar ' },
-      content => [ ' foo', '  bar ' ],
-      todo => 'parse as array',
-    },
-    {
-      param_obj => { name => 'object_explode_false_spaces', explode => false, schema => { type => 'object' } },
-      path_captures => { object_explode_false_spaces => ' R, 100 ,  B, 150,  G , 200 ' },
-      content => { ' R' => ' 100 ', '  G ' => ' 200 ', '  B' => ' 150' },
-      todo => 'parse as object',
-    },
-    {
-      param_obj => { name => 'object_explode_false', explode => false, schema => { type => 'object', additionalProperties => { type => 'number' } } },
-      path_captures => { object_explode_false => 'R,100,B,150,G,200' },
-      content => { R => '100', G => '200', B => '150' },  # this can be validated as numbers
-      todo => 'parse as object',
-    },
-    {
-      param_obj => { name => 'object_explode_true_spaces', explode => true, schema => { type => 'object' } },
-      path_captures => { object_explode_true_spaces => ' R= 100 ,  B= 150,  G = 200 ' },
-      content => { ' R' => ' 100 ', '  G ' => ' 200 ', '  B' => ' 150' },
-      todo => 'parse as object',
-    },
-    {
-      param_obj => { name => 'object_explode_true', explode => true, schema => { type => 'object', additionalProperties => { type => 'number' } } },
-      path_captures => { object_explode_true => 'R=100,B=150,G=200' },
-      content => { R => '100', G => '200', B => '150' },  # this can be validated as numbers
-      todo => 'parse as object',
-    },
+
     # style=matrix
-    {
-      param_obj => { name => 'matrix_string_empty', style => 'matrix' },
-      path_captures => { matrix_string_empty => ';color' },
-      content => '',
-      todo => 'style=matrix',
-    },
-    {
-      param_obj => { name => 'matrix_string', style => 'matrix' },
-      path_captures => { matrix_string => ';color=blue' },
-      content => 'blue',
-      todo => 'style=matrix',
-    },
-    {
-      param_obj => { name => 'matrix_array_false', style => 'matrix', schema => { type => 'array' } },
-      path_captures => { matrix_array_false => ';color=blue,black,brown' },
-      content => [ qw(blue black brown) ],
-      todo => 'style=matrix, parse as array',
-    },
-    {
-      param_obj => { name => 'matrix_array_true', style => 'matrix', explode => true, schema => { type => 'array' } },
-      path_captures => { matrix_array_true => ';color=blue;color=black;color=brown' },
-      content => [ qw(blue black brown) ],
-      todo => 'style=matrix, parse as array',
-    },
-    {
-      param_obj => { name => 'matrix_object_false', style => 'matrix', schema => { type => 'object' } },
-      path_captures => { matrix_object_false => ';color=R,100,G,200,B,150' },
-      content => { R => '100', G => '200', B => '150' },
-      todo => 'style=matrix, parse as object',
-    },
-    {
-      param_obj => { name => 'matrix_object_true', style => 'matrix', explode => true, schema => { type => 'object' } },
-      path_captures => { matrix_object_true => 'R=100;G=200;B=150' },
-      content => { R => '100', G => '200', B => '150' },
-      todo => 'style=matrix, parse as object',
-    },
+
+    # style, explode, deserialized data, serialized string
+    [ 'matrix', true, '', ';color' ],
+    [ 'matrix', true, 'red', ';color=red' ],
+    [ 'matrix', false, [ qw(blue black brown) ], ';color=blue,black,brown' ],
+    [ 'matrix', true, [ qw(blue black brown) ], ';color=blue;color=black;color=brown' ],
+    [ 'matrix', false, { qw(R 100 G 200 B 150) }, ';color=R,100,G,200,B,150' ],
+    [ 'matrix', true, { qw(R 100 G 200 B 150) }, ';R=100;G=200;B=150' ],
+
     # style=label
-    {
-      param_obj => { name => 'label_string_empty', style => 'label' },
-      path_captures => { label_string_empty => '.' },
-      content => '',
-      todo => 'style=label',
-    },
-    {
-      param_obj => { name => 'label_string', style => 'label' },
-      path_captures => { label_string => '.blue' },
-      content => 'blue',
-      todo => 'style=label',
-    },
-    {
-      param_obj => { name => 'label_array_false', style => 'label', schema => { type => 'array' } },
-      path_captures => { label_array_false => '.blue,black,brown' },
-      content => [ qw(blue black brown) ],
-      todo => 'style=label, parse as array',
-    },
-    {
-      param_obj => { name => 'label_array_true', style => 'label', explode => true, schema => { type => 'array' } },
-      path_captures => { label_array_true => '.blue.black.brown' },
-      content => [ qw(blue black brown) ],
-      todo => 'style=label, parse as array',
-    },
-    {
-      param_obj => { name => 'label_object_false', style => 'label', schema => { type => 'object' } },
-      path_captures => { label_object_false => '.R,100,G,200,B,150' },
-      content => { R => '100', G => '200', B => '150' },
-      todo => 'style=label, parse as object',
-    },
-    {
-      param_obj => { name => 'label_object_true', style => 'label', explode => true, schema => { type => 'object' } },
-      path_captures => { label_object_true => '.R=100.G=200.B=150' },
-      content => { R => '100', G => '200', B => '150' },
-      todo => 'style=label, parse as object',
-    },
+
+    # style, explode, deserialized data, serialized string
+    [ 'label', true, '', '.' ],
+    [ 'label', true, 'red', '.red' ],
+    [ 'label', false, [ qw(blue black brown) ], '.blue,black,brown' ],
+    [ 'label', true, [ qw(blue black brown) ], '.blue.black.brown' ],
+    [ 'label', false, { qw(R 100 G 200 B 150) }, '.R,100,G,200,B,150' ],
+    [ 'label', true,  { qw(R 100 G 200 B 150) }, '.R=100.G=200.B=150' ],
   );
 
   foreach my $test (@tests) {
-    my $param_obj = +{
-      # default to type=string in the absence of an override
-      exists $test->{param_obj}{content} ? () : (schema => { type => 'string' }),
-      $test->{param_obj}->%*,
-      in => 'path',
-      required => true,
-    };
+    $test = +{
+      name => 'explode='.($test->[1]?'true':'false').': '.$::dumper->encode($test->[2]),
+      param_obj => {
+        name => 'color',
+        style => $test->[0],
+        explode => $test->[1],
+        schema => { type => get_type($test->[2]) },
+      },
+      input => $test->[3],
+      content => $test->[2],
+    } if ref $test eq 'ARRAY';
 
-    undef $parameter_content;
-    my $state = {
-      initial_schema_uri => $openapi->openapi_uri,
-      traversed_keyword_path => '',
-      keyword_path => $keyword_path,
-      data_path => '/request/uri/path',
-      specification_version => 'draft2020-12',
-      vocabularies => OAS_VOCABULARIES,
-      errors => [],
-      depth => 0,
-    };
+    subtest 'path '
+        .($test->{param_obj}{content} ? 'encoded with media-type' : 'style='.($test->{param_obj}{style}//'simple'))
+        .', '.$test->{name}.': '
+        .(defined $test->{input} ? '"'.$test->{input}.'"' : '<missing>') => sub {
+      my $param_obj = +{
+        # default to type=string in the absence of an override
+        exists $test->{param_obj}{content} ? () : (schema => { type => 'string' }),
+        $test->{param_obj}->%*,
+        in => 'path',
+        required => true,
+      };
 
-    my $name = $param_obj->{name};
-    ()= $openapi->_validate_path_parameter($state, $param_obj, $test->{path_captures});
+      my $result = $openapi->evaluator->evaluate(
+        $param_obj,
+        OpenAPI::Modern::Utilities::DEFAULT_METASCHEMA()->{'3.2'}.'#/$defs/parameter',
+      );
+      fail('parameter object is valid'), note($result), return if not $result->valid;
 
-    todo_maybe($test->{todo}, sub {
-      is_equal(
+      undef $parameter_content;
+      my $previous_call_count = $call_count;
+      my $state = {
+        initial_schema_uri => $openapi->openapi_uri,
+        traversed_keyword_path => '',
+        keyword_path => $keyword_path,
+        data_path => '/request/uri/path',
+        specification_version => 'draft2020-12',
+        vocabularies => OAS_VOCABULARIES,
+        errors => [],
+        depth => 0,
+      };
+
+      my $valid = $openapi->_validate_path_parameter($state, $param_obj,
+        { defined $test->{input} ? ($param_obj->{name} => $test->{input}) : () });
+      die 'validity inconsistent with error count' if $valid xor !$state->{errors}->@*;
+
+      my $todo;
+      $todo = todo $test->{todo} if $test->{todo};
+      $todo = todo 'style='.$param_obj->{style}.' is still TODO'
+         if ($param_obj->{style}//'') eq 'matrix' or ($param_obj->{style}//'') eq 'label';
+
+      if (not exists $test->{content}) {
+        is($call_count, $previous_call_count, 'no content was extracted')
+          or note("extracted content:\n", $::encoder->encode($parameter_content));
+      }
+      else {
+        is($call_count, $previous_call_count+1, 'schema would be evaluated');
+        is_equal(
+          $parameter_content,
+          $test->{content},
+          'path '.$test->{name}.': '.(defined $test->{content} ? 'the correct content was extracted' : 'no content was extracted'),
+        );
+      }
+
+      cmp_result(
         [ map $_->TO_JSON, $state->{errors}->@* ],
         $test->{errors}//[],
-        'path '.$name.': '.(($test->{errors}//[])->@* ? 'the correct error was returned' : 'no errors occurred'),
+        'path '.$test->{name}.': '.(($test->{errors}//[])->@* ? 'the correct error was returned' : 'no errors occurred'),
       );
-
-      is_equal(
-        $parameter_content,
-        $test->{content},
-        'path '.$name.': '.(defined $test->{content} ? 'the correct content was extracted' : 'no content was extracted'),
-      );
-    });
+    };
   }
 };
 
