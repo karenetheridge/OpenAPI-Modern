@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.104     2025-10-29 17:54:47Z
           - support added for tagged operations (tag heirarchies are new in
             OpenAPI 3.2)
