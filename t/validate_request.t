@@ -1079,6 +1079,136 @@ YAML
   }
 
 
+  # see examples in 3.2.0 §4.12.8
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri,
+    openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
+paths:
+  /foo:
+    get: {}
+    parameters:
+      - name: thing
+        in: query
+        required: true
+        schema:
+          type: array
+          items:
+            type: string
+          const:
+            - one thing
+            - another thing
+        style: form
+        explode: true
+        examples:
+          ObjectList:
+            dataValue:
+              - one thing
+              - another thing
+            serializedValue: "thing=one%20thing&thing=another%20thing"
+      - name: coordinates
+        in: query
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - lat
+                - long
+              properties:
+                lat:
+                  type: number
+                long:
+                  type: number
+            examples:
+              New York:
+                dataValue:
+                  lat: 40.6
+                  long: -73.9
+                serializedValue: '{"lat":40.6,"long":-73.9}'
+        examples:
+          New York:
+            dataValue:
+              lat: 40.6
+              long: -73.9
+            serializedValue: coordinates=%7B%22lat%22%3A40.6%2C%22long%22%3A-73.9%7D
+YAML
+
+  $request = request('GET', 'http://example.com/foo?'.join('&',
+      'thing=one%20thing&thing=another%20thing',
+      'coordinates=%7B%22lat%22%3A40.6%2C%22long%22%3A-73.9%7D'));
+  is_equal(
+    $openapi->validate_request($request)->TO_JSON,
+    { valid => true },
+    'all query parameters are deserialized correctly',
+  );
+
+
+  # see examples in 3.2.0 §4.12.8
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri,
+    openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
+paths:
+  /foo:
+    get: {}
+    parameters:
+      - description: 'A free-form query parameter, allowing arbitrary parameters of type: "integer"'
+        name: freeForm
+        in: query
+        required: true
+        schema:
+          type: object
+          additionalProperties:
+            type: integer
+          const:
+            page: 4
+            pageSize: 50
+        style: form
+        examples:
+          Pagination:
+            dataValue:
+              page: 4
+              pageSize: 50
+            serializedValue: page=4&pageSize=50
+YAML
+
+  $request = request('GET', 'http://example.com/foo?page=4&pageSize=50');
+  is_equal(
+    $openapi->validate_request($request)->TO_JSON,
+    { valid => true },
+    'entire querystring is deserialized correctly into an object',
+  );
+
+
+  # see examples in 3.2.0 §4.12.8
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri,
+    openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
+paths:
+  /foo:
+    get: {}
+    parameters:
+      - name: selector
+        in: querystring
+        content:
+          application/jsonpath:
+            schema:
+              type: string
+            example: $.a.b[1:1]
+        examples:
+          Selector:
+            serializedValue: "%24.a.b%5B1%3A1%5D"
+YAML
+
+  $openapi->add_media_type('application/jsonpath', sub ($x) { $x });
+  $request = request('GET', 'http://example.com/foo?%24.a.b%5B1%3A1%5D');
+  is_equal(
+    $openapi->validate_request($request)->TO_JSON,
+    { valid => true },
+    'entire querystring is deserialized correctly as a string',
+  );
+
+
   $openapi = OpenAPI::Modern->new(
     openapi_uri => $doc_uri,
     openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
@@ -1279,6 +1409,68 @@ paths:
         schema:
           type: object
           const: { blue−black: yes!, blackish﹠green: ¿no?, 100𝑥brown: fl¡p }
+      - name: query−form−string
+        in: query
+        required: true
+        schema:
+          type: string
+          const: blue/blåck
+      - name: query−form−array−false
+        in: query
+        required: true
+        explode: false
+        schema:
+          type: array
+          const: [ blue−black, black/ish﹠green, 100𝑥brown ]
+      - name: query−form−array−true
+        in: query
+        required: true
+        schema:
+          type: array
+          const: [ blue−black, black/ish﹠green, 100𝑥brown ]
+      - name: query−form−object−false
+        in: query
+        required: true
+        explode: false
+        schema:
+          type: object
+          const: { réd: 100𝑥, grɘɇn: ¡ja, bløö: ¿neîn }
+      # style=form, explode=true, type=object not tested here, as it pulls in the entire querystring
+
+      - name: query−spaceDelimited−array
+        in: query
+        required: true
+        style: spaceDelimited
+        schema:
+          type: array
+          const: [ blue−black, black/ish﹠green, 100𝑥brown ]
+      - name: query−spaceDelimited−object
+        in: query
+        required: true
+        style: spaceDelimited
+        schema:
+          type: object
+          const: { réd: 100𝑥, grɘɇn: ¡ja, bløö: ¿neîn }
+      - name: query−pipeDelimited−array
+        in: query
+        required: true
+        style: pipeDelimited
+        schema:
+          type: array
+          const: [ blue−black, black/ish﹠green, 100𝑥brown ]
+      - name: query−pipeDelimited−object
+        in: query
+        required: true
+        style: pipeDelimited
+        schema:
+          type: object
+          const: { réd: 100𝑥, grɘɇn: ¡ja, bløö: ¿neîn }
+      - name: query−deepObject
+        in: query
+        required: true
+        style: deepObject
+        schema:
+          const: { réd: 100𝑥, grɘɇn: ¡ja, bløö: ¿neîn }
 YAML
 
   $request = request('GET', 'http://st💩g.example.com/'.join('/', map uri_encode($_), '🐙',
@@ -1296,7 +1488,22 @@ YAML
     '.blue−black.blackish﹠green.100𝑥brown',
     '.blue−black,yes!,blackish﹠green,¿no?,100𝑥brown,fl¡p',
     '.blue−black=yes!.blackish﹠green=¿no?.100𝑥brown=fl¡p',
-  ),
+    )
+    .'?'.join('&', map uri_encode($_->[0]).'='.$_->[1], pairs(
+      'query−form−string', 'blue%2Fbl%C3%A5ck',
+      'query−form−array−false', 'blue%E2%88%92black,black%2Fish%EF%B9%A0green,100%F0%9D%91%A5brown',
+      'query−form−array−true', 'blue%E2%88%92black',
+      'query−form−array−true', 'black%2Fish%EF%B9%A0green',
+      'query−form−array−true', '100%F0%9D%91%A5brown',
+      'query−form−object−false', 'r%C3%A9d,100%F0%9D%91%A5,gr%C9%98%C9%87n,%C2%A1ja,bl%C3%B8%C3%B6,%C2%BFne%C3%AEn',
+      'query−spaceDelimited−array', 'blue%E2%88%92black%20black%2Fish%EF%B9%A0green%20100%F0%9D%91%A5brown',
+      'query−spaceDelimited−object', 'r%C3%A9d%20100%F0%9D%91%A5%20gr%C9%98%C9%87n%20%C2%A1ja%20bl%C3%B8%C3%B6%20%C2%BFne%C3%AEn',
+      'query−pipeDelimited−array', 'blue%E2%88%92black%7Cblack%2Fish%EF%B9%A0green%7C100%F0%9D%91%A5brown',
+      'query−pipeDelimited−object', 'r%C3%A9d%7C100%F0%9D%91%A5%7Cgr%C9%98%C9%87n%7C%C2%A1ja%7Cbl%C3%B8%C3%B6%7C%C2%BFne%C3%AEn',
+      'query−deepObject[réd]', '100%F0%9D%91%A5',
+      'query−deepObject[grɘɇn]', '%C2%A1ja',
+      'query−deepObject[bløö]', '%C2%BFne%C3%AEn',
+    )),
     [
       "header-simple-string" => "red\xef\xb9\xa0green",
       "header-simple-array-false" => "blue\xe2\x88\x92black,blackish\xef\xb9\xa0green,100\xf0\x9d\x91\xa5brown",
@@ -1309,7 +1516,33 @@ YAML
   is_equal(
     $openapi->validate_request($request)->TO_JSON,
     { valid => true },
-    'all path and header parameters are validated',
+    'all path, header and query parameters are validated',
+  );
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri,
+    openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
+paths:
+  /:
+    get: {}
+    parameters:
+      - name: query-form-object-true
+        in: query
+        required: true
+        explode: true
+        schema:
+          type: object
+          const: { réd: 100𝑥, grɘɇn: ¡ja, bløö: ¿neîn }
+YAML
+
+  $request = request('GET', 'http://example.com?'
+    .join('&', map join('=', @$_), pairs map uri_encode($_), qw(réd 100𝑥 grɘɇn ¡ja bløö ¿neîn)));
+
+  is_equal(
+    $openapi->validate_request($request)->TO_JSON,
+    { valid => true },
+    'all query parameters are deserialized correctly',
   );
 
 
