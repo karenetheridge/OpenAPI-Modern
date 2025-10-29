@@ -945,158 +945,221 @@ subtest 'path parameters' => sub {
 
 subtest 'query parameters' => sub {
   my @tests = (
-    # param_obj
-    # queries => raw query string
-    # content => data passed to _evaluate_subschema (expected)
-    # errors => collected from state (expected), defaults to []
+    # name (test name)
+    # param_obj (from OAD)
+    # queries => raw query string, without leading '?'
+    # content => expected data to be passed to _evaluate_subschema (omit when evaluation is omitted)
+    # errors => compared to what is collected from $state, defaults to []
     # todo
     {
-      param_obj => { name => 'reserved', in => 'query', allowEmptyValue => true },
-      queries => 'reserved=bloop',
-      content => 'bloop', # parameter is validated as normal
-      errors => [],
-    },
-    {
-      param_obj => { name => 'reserved', in => 'query', allowEmptyValue => true },
-      queries => 'reserved=',
-      content => undef, # empty parameter is not validated
-      errors => [],
-    },
-    {
-      param_obj => { name => 'missing_encoded_not_required', in => 'query', content => { 'application/json' => { schema => { type => 'object' } } } },
+      name => 'missing but not required',
+      param_obj => { name => 'q', content => { 'application/json' => { schema => { type => 'object' } } } },
       queries => 'foo=1&bar=2',
-      content => undef,
+      # content not extracted, but also no errors
     },
     {
-      param_obj => { name => 'missing_encoded_required', in => 'query', required => true, content => { 'application/json' => { schema => { type => 'object' } } } },
+      name => 'missing, required',
+      param_obj => { name => 'q', required => true, content => { 'application/json' => { schema => { type => 'object' } } } },
       queries => 'foo=1&bar=2',
-      content => undef,
       errors => [
         {
           instanceLocation => '/request/uri/query',
           keywordLocation => $keyword_path.'/required',
           absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path.'/required',
-          error => 'missing query parameter: missing_encoded_required',
+          error => 'missing query parameter: q',
         },
       ],
     },
     {
-      param_obj => { name => 'foo', in => 'query', content => { 'application/json' => { schema => { type => 'integer' } } } },
+      name => 'object properties are decoded correctly',
+      param_obj => { name => 'foo', content => { 'application/json' => { schema => {} } } },
       queries => 'foo=1&bar=2',
       content => 1, # number, not string!
     },
+
+    # style=form
+
+    [
+      [ qw(style content queries) ],
+      [ 'form', 3, 'q=3' ],
+      [ 'form', '', 'q=' ],
+      [ 'form', 'red', 'q=red' ],
+      [ 'form', '3', 'q=3' ],
+      [ 'form', '3', 'q=1&q=2&q=3&a=1&b=2' ],
+#      [ 'form', [ qw(blue black brown) ], 'q=blue,black,brown' ],
+#      [ 'form', [ qw(blue black brown) ], 'q=blue&q=black&q=brown' ],
+#      [ 'form', { qw(R 100 G 200 B 150) }, 'q=R,100,G,200,B,150' ],
+#      [ 'form', { qw(R 100 G 200 B 150) }, 'R=100&G=200&B=150' ],
+    ],
+
     {
-      param_obj => { name => 'reserved', in => 'query', allowReserved => true },
-      queries => 'reserved=!@$',
-      content => undef,
-      errors => [
-        {
-          instanceLocation => '/request/uri/query/reserved',
-          keywordLocation => $keyword_path.'/allowReserved',
-          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path.'/required',
-          error => 'allowReserved: true is not yet supported',
-        },
-      ],
-      todo => 'allowReserved not yet supported',
+      name => 'string with allowEmptyValue=true',
+      param_obj => { name => 'q', allowEmptyValue => true },
+      queries => 'q=bloop',
+      content => 'bloop',
     },
     {
-      param_obj => { name => 'color', in => 'query', schema => { type => 'integer' } },
+      name => 'empty string with allowEmptyValue=true',
+      param_obj => { name => 'reserved', allowEmptyValue => true },
+      queries => 'reserved=',
+      # content not extracted, but also no errors
+    },
+    {
+      param_obj => { name => 'color', schema => { type => 'integer' } },
       queries => 'R=100&G=200&B=150',
-      content => undef,
+      # content not extracted, but also no errors
     },
     {
-      param_obj => { name => 'R', in => 'query', schema => { type => 'integer' } },
-      queries => 'color=blue&R=100&G=200&B=150',
-      content => 100,
-    },
-    { # form, string, empty
-      param_obj => { name => 'color' },
-      queries => 'color=&R=100&G=200&B=150',
-      content => '',
-    },
-    { # form, string
-      param_obj => { name => 'color' },
-      queries => 'color=20',
-      content => '20',
-    },
-    { # form, number
-      param_obj => { name => 'color', schema => { type => 'number' } },
-      queries => 'color=20',
-      content => 20,
-    },
-    { # form, number chosen over string
+      name => 'number over string',
       param_obj => { name => 'color', schema => { type => [ qw(string number) ] } },
       queries => 'color=20',
       content => 20,
     },
-    { # form, array, false
-      param_obj => { name => 'color', explode => false },
-      queries => 'color=blue,black,brown&R=100&G=200&B=150',
-      content => [ qw(blue black brown) ],
-      todo => 'style=form, explode=false, parse as array',
-    },
-    { # form, array, true
-      param_obj => { name => 'color', explode => true, schema => { type => 'array' } },
-      queries => 'color=blue&color=black&color=brown&R=100&G=200&B=150',
-      content => [ qw(blue black brown) ],
-      todo => 'style=form, explode=true, parse as array',
-    },
-    { # form, object, false
-      param_obj => { name => 'color', explode => false, required => true, schema => { type => 'object' } },
-      queries => 'color=R,100,G,200,B,150&R=1&G=2&B=3',
-      content => { R => '100', G => '200', B => '150' },
-      todo => 'style=form, explode=false, parse as object',
-    },
-    { # form, object, true
-      param_obj => { name => 'color', explode => true, required => true, schema => { type => 'object' } },
-      queries => 'color=blue&R=100&G=200&B=150',
-      content => { color => 'blue', R => '100', G => '200', B => '150' },
-      todo => 'style=form, explode=true, parse as object',
-    },
+
+    # style=spaceDelimited
+
+    [
+      [ qw(style content queries) ],
+      # [ 'spaceDelimited', [ qw(blue black brown) ], 'q=blue%20black%20brown' ],
+      # [ 'spaceDelimited', { qw(R 100 G 200 B 150) }, 'q=R%20100%20G%20200%20B%20150' ],
+    ],
+
+    # style=pipeDelimited
 
     # TODO:
+    # other styles with allowEmptyValue=true that can be serialized
+    # other styles with allowEmptyValue=true with n/a serialization
+
     # spaceDelimited, string - not supported
-    # spaceDelimited, array/object, true - not supported
-    # spaceDelimited, array, false
-    # spaceDelimited, object, false
+    # spaceDelimited, array, explode=false
+    # spaceDelimited, object, explode=false
+    # spaceDelimited, array/object, explode=true - not supported
+    #
     # pipeDelimited, string - not supported
-    # pipeDelimited, array/object, true - not supported
-    # pipeDelimited, array, false
-    # pipeDelimited, object, false
-    # deepObject, string - not supported
-    # deepObject, array - not supported
-    # deepObject, object, false - not supported
-    # deepObject, object, true
+    # pipeDelimited, array, explode=false
+    # pipeDelimited, object, exlodee=false
+    # pipeDelimited, array/object, explode=true - not supported
+    {
+      name => 'explode=true',
+      param_obj => { name => 'color', style => 'pipeDelimited', explode => true, schema => {} },
+      queries => 'color=blue%7Cblack%7Cbrown',
+      todo => 'style=pipeDelimited',
+      errors => [
+        {
+          instanceLocation => '/request/uri/query/color',
+          keywordLocation => $keyword_path.'/explode',
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path.'/explode',
+          error => 'explode=true is not supported for style=pipeDelimited',
+        },
+      ],
+    },
+
+    # style=deepObject
+
+    [
+      [ qw(style explode content queries) ],
+      # [ 'deepObject', true,  { qw(R 100 G 200 B 150) }, 'color%5BR%5D=100&color%5BG%5D=200&color%5BB%5D=150' ],
+      # [ 'deepObject', true,  { qw(R 100 G 200 B 150) }, 'color[R]=100&color[G]=200&color[B]=150' ],
+    ],
+
+    {
+      name => 'no values',
+      param_obj => { name => 'color', style => 'deepObject', required => true, schema => {} },
+      queries => 'floop[a]=1&floop[b]=2',
+      todo => 'style=deepObject',
+      errors => [
+        {
+          instanceLocation => '/request/uri/query/color',
+          keywordLocation => $keyword_path.'/required',
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path.'/required',
+          error => 'missing query parameter: color',
+        },
+      ],
+    },
   );
 
+  # clone spaceDelimited tests to pipeDelimited
+  @tests = map +(
+    (($_->{param_obj}{style}//'form') eq 'spaceDelimited' ? ($_, +{
+    %$_,
+    name => $_->{name} =~ s/spaceDelimited/pipeDelimited/r,
+    param_obj => { $_->{param_obj}->%*, style => 'pipeDelimited' },
+    queries => $_->{queries} =~ s/%20/%7C/gr,
+    $_->{errors} ? (errors => [ map +{ %$_, error => $_->{error} =~ s/spaceDelimited/pipeDelimited/r }, $_->{errors}->@* ]) : (),
+    }) : $_)
+  ),
+
+  map +(
+    ref eq 'ARRAY'
+      ? map +{
+          name => defined $_->{explode} ? 'explode='.($_->{explode}?'true':'false') : '',
+          param_obj => {
+            name => $_->{name}//'q',
+            style => $_->{style},
+            defined $_->{explode} ? $_->%{explode} : (),
+            schema => { type => get_type($_->{content}) },
+            defined $_->{allowReserved} ? $_->%{allowReserved} : (),
+
+          },
+          $_->%{qw(queries content)},
+        }, arrays_to_hashes($_)->@*
+      : $_
+  ), @tests;
+
   foreach my $test (@tests) {
-    my $param_obj = +{
-      # default to type=string in the absence of an override
-      exists $test->{param_obj}{content} ? () : (schema => { type => 'string' }),
-      $test->{param_obj}->%*,
-      in => 'query',
-    };
+    die 'missing test param "param_obj"' if not exists $test->{param_obj};
+    die 'missing test param "queries"' if not exists $test->{queries};
+    $test->{name} //= $test->{param_obj}{name}; # temporary
 
-    undef $parameter_content;
+    subtest 'query '
+        .($test->{param_obj}{content} ? 'encoded with media-type' : 'style='.($test->{param_obj}{style}//'form'))
+        .(length $test->{name} ? ', '.$test->{name} : '').': '
+        .'"'.$test->{queries}.'"'.(exists $test->{content} ? ' -> '.$::dumper->encode($test->{content}) : '') => sub {
 
-    my $state = _init_test('/request/uri/query', +{ $param_obj->%{qw(schema content)} });
+      my $param_obj = +{
+        # default to type=string in the absence of an override
+        exists $test->{param_obj}{content} ? () : (schema => { type => 'string' }),
+        $test->{param_obj}->%*,
+        in => 'query',
+      };
 
-    my $name = $param_obj->{name};
-    ()= $openapi->_validate_query_parameter($state, $param_obj, Mojo::URL->new('https://example.com/blah?'.$test->{queries}));
+      my $result = $openapi->evaluator->evaluate(
+        $param_obj,
+        OpenAPI::Modern::Utilities::DEFAULT_METASCHEMA()->{'3.2'}.'#/$defs/parameter',
+      );
+      fail('parameter object is valid'), note($result), return if not $result->valid;
 
-    todo_maybe($test->{todo}, sub {
+      undef $parameter_content;
+      my $previous_call_count = $call_count;
+
+      my $state = _init_test('/request/uri/query', +{ $param_obj->%{qw(schema content)} });
+
+      my $valid = $openapi->_validate_query_parameter($state, $param_obj, Mojo::URL->new('https://example.com/blah?'.$test->{queries}));
+      die 'validity inconsistent with error count; got valid=', 0+!!$valid, ', errors are: ',
+        $::encoder->encode($state->{errors}) if $valid xor !$state->{errors}->@*;
+
+      my $todo;
+      $todo = todo $test->{todo} if $test->{todo};
+
       is_equal(
         [ map $_->TO_JSON, $state->{errors}->@* ],
         $test->{errors}//[],
-        'query '.$name.' from '.$test->{queries}.': '.(($test->{errors}//[])->@* ? 'the correct error was returned' : 'no errors occurred'),
+        ($test->{errors}//[])->@* ? 'the correct error was returned' : 'no errors occurred',
       );
 
-      is_equal(
-        $parameter_content,
-        $test->{content},
-        'query '.$name.' from '.$test->{queries}.': '.(defined $test->{content} ? 'the correct content was extracted' : 'no content was extracted'),
-      );
-    });
+      if (not exists $test->{content}) {
+        is($call_count, $previous_call_count, 'no content was extracted')
+          or note("extracted content:\n", $::encoder->encode($parameter_content));
+      }
+      else {
+        is($call_count, $previous_call_count+1, 'schema would be evaluated');
+        is_equal(
+          $parameter_content,
+          $test->{content},
+          defined $test->{content} ? 'the correct content was extracted' : 'no content was extracted',
+        );
+      }
+    };
   }
 };
 

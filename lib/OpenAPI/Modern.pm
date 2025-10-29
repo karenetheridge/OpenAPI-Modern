@@ -839,7 +839,7 @@ sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
   # v3.2.0 §4.12, "Parameter Object -> allowEmptyValue": "If `true`, clients MAY pass a zero-length
   # string value in place of parameters that would otherwise be omitted entirely, which the server
   # SHOULD interpret as the parameter being unused."
-  return if $param_obj->{allowEmptyValue}
+  return 1 if $param_obj->{allowEmptyValue}
     and ($param_obj->{style}//'form') eq 'form'
     and not length($data);
 
