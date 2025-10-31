@@ -886,6 +886,26 @@ YAML
   );
   is(get_type($options->{path_captures}{foo_id}), 'integer', 'passed-in path value is preserved as a number');
 
+  ok($openapi->find_path_item($options = { @request = (method => 'POST', uri => 'http://example.com/foo/') }),
+    to_str(@request).': lookup succeeded');
+  cmp_result(
+    $options,
+    {
+      uri => isa('Mojo::URL'),
+      method => 'POST',
+      path_captures => { foo_id => '' },
+      uri_captures => { foo_id => '' },
+      path_template => '/foo/{foo_id}',
+      _path_item => { map +($_ => ignore), qw(post delete additionalOperations) },
+      _operation => ignore,
+      _operation_path_suffix => '/post',
+      operation_id => 'another_post_operation',
+      operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} post)))),
+      errors => [],
+    },
+    'path_capture value is the empty string',
+  );
+
   ok($openapi->find_path_item($options = { @request = (method => 'POST', uri => 'http://example.com/foo/bar'),
       path_template => '/foo/{foo_id}' }),
     to_str(@request).': lookup succeeded');
