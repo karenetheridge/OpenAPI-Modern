@@ -13,7 +13,7 @@ use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 
 use lib 't/lib';
 use Helper;
-use JSON::Schema::Modern::Utilities 'is_bool';
+use JSON::Schema::Modern::Utilities qw(is_bool get_type);
 
 my $yamlpp = YAML::PP->new(boolean => 'JSON::PP');
 
@@ -24,9 +24,12 @@ components: {}
 YAML
 
 my $parameter_content;
+my $call_count = 0; # incremented when data is passed down for further processing
 no warnings 'redefine';
 *OpenAPI::Modern::_evaluate_subschema = sub ($, $dataref, $, $) {
+  ++$call_count;
   $parameter_content = $dataref->$*;
+  1;
 };
 
 my $keyword_path = '/paths/~1foo/get/parameters/0';
@@ -428,43 +431,26 @@ subtest 'query parameters' => sub {
 
 subtest 'header parameters' => sub {
   my @tests = (
-    # header name
-    # header_obj
+    # name (header name, and test name)
+    # header_obj (from OAD)
     # raw header values (as an arrayref; one item per header line)
-    # content => data that was passed to _evaluate_subschema (expected)
-    # errors => collected from state (expected), defaults to []
+    # content => expected data to be passed to _evaluate_subschema
+    # errors => compared to what is collected from $state, defaults to []
     # todo
     {
       name => 'Accept',
       header_obj => {},
       values => [ 'application/json' ],
-      content => undef,
     },
     {
       name => 'Content-Type',
       header_obj => {},
       values => [ 'application/json' ],
-      content => undef,
     },
     {
       name => 'Authorization',
       header_obj => {},
       values => [ 'Basic whargarbl' ],
-      content => undef,
-    },
-    {
-      name => 'Missing',
-      header_obj => { required => true },
-      values => undef,
-      content => undef,
-      errors => [
-        {
-          instanceLocation => '/response/header',
-          keywordLocation => $keyword_path.'/required',,
-          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path.'/required',
-          error => 'missing header: Missing',
-        },
-      ],
     },
     {
       name => 'Encoded-Number',
@@ -472,141 +458,139 @@ subtest 'header parameters' => sub {
       values => [ '3' ],
       content => 3, # number, not string!
     },
+
     # style=simple
+
+    # explode, deserialized data, list of header strings
+    [ false, undef, [''] ],
+    [ false, false, [''] ],
+    [ false, false, ['0'] ],
+    [ false, true, ['1'] ],
+    [ false, '', [''] ],
+    [ false, 'i have spaces', [" i have spaces  \t "] ],
+    [ false, 'foo', ['foo'] ],
+    [ false, ['foo'], ['foo'] ],  # a single header is passed as an array iff when array is requested
+    [ false, 'foo,bar', [' foo ', ' bar '] ],
+    [ false, 'foo,  bar', [' foo,  bar '] ],      # internal comma-separated values are not altered
+    [ false, ['foo', 'bar'], [' foo,  bar '] ],   # split individual values on comma when type=array
+    [ false, ['foo', 'bar', 'baz'], [' foo,  bar ', ' baz '] ],
+    [ false, { qw(R 100 G 200 B 150) }, [' R, 100 ', ' G, 200,  B , 150 '] ],
+    [ true,  { qw(R 100 G 200 B 150) }, [' R=100  , G=200 ', '  B=150 '] ],
+    [ false, { foo => 'bar', baz => '' }, [ 'foo, bar, baz' ] ],
+
     {
-      name => 'Spaces',
-      header_obj => {},
-      values => [ " i have spaces  \t " ],
-      content => 'i have spaces',
-    },
-    {
-      name => 'Single-Header-String',
-      header_obj => {},
-      values => [ 'foo' ],
-      content => 'foo',
-    },
-    {
-      # a single header is passed as an array iff when array is requested
-      name => 'Single-Header-Array',
-      header_obj => { schema => { type => 'array' } },
-      values => [ 'foo' ],
-      content => [ 'foo' ],
-    },
-    {
-      name => 'Multiple-Headers-String',
-      header_obj => {},
-      values => [ ' foo ', ' bar ' ],
-      content => 'foo,bar',
-    },
-    {
-      # multiple headers are passed as an array iff when array is requested
-      name => 'Multiple-Headers-Array',
-      header_obj => { schema => { type => 'array' } },
-      values => [ ' foo ', ' bar ' ],
-      content => [ 'foo', 'bar' ],
-    },
-    {
-      # internal comma-separated values are not altered
-      name => 'Comma-Headers-String',
-      header_obj => {},
-      values => [ ' foo,  bar ' ],
-      content => 'foo,  bar',
-    },
-    {
-      # split individual values on comma when type=array
-      name => 'Comma-Headers-Array',
-      header_obj => { schema => { type => 'array' } },
-      values => [ ' foo,  bar ' ],
-      content => [ 'foo', 'bar' ],
-    },
-    {
-      name => 'Multi-Comma-Headers',
-      header_obj => { schema => { type => 'array' } },
-      values => [ ' foo,  bar ', ' baz ' ],
-      content => [ 'foo', 'bar', 'baz' ],
+      name => 'Missing',
+      header_obj => { required => true },
+      values => undef,
+      errors => [
+        {
+          instanceLocation => '/response/header',
+          keywordLocation => $keyword_path.'/required',
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path.'/required',
+          error => 'missing header: Missing',
+        },
+      ],
     },
     {
       name => 'Array-with-numeric-values',
       header_obj => { schema => { type => 'array', items => { type => 'number' } } },
       values => [ 'R,100,G,200,B,150' ],
-      content => [ R => '100', G => '200', B => '150' ],
-    },
-    {
-      name => 'Object-Explode-False',
-      header_obj => { explode => false, schema => { type => 'object' } },
-      values => [ ' R, 100 ', ' B, 150,  G , 200 ' ],
-      content => { R => '100', G => '200', B => '150' },
+      content => [ R => 100, G => 200, B => 150 ],
+      todo => 'no coercion of array items yet',
     },
     {
       name => 'Object-with-numeric-values-explode-false',
       header_obj => { schema => { type => 'object', additionalProperties => { type => 'number' } } },
       values => [ 'R,100,G,200,B,150' ],
-      content => { R => '100', G => '200', B => '150' },
-    },
-    {
-      name => 'Object-Explode-True',
-      header_obj => { explode => true, schema => { type => 'object' } },
-      values => [ ' R=100  , B=150 ', '  G=200 ' ],
-      content => { R => '100', G => '200', B => '150' },
+      content => { R => 100, G => 200, B => 150 },
+      todo => 'no coercion of object properties yet',
     },
     {
       name => 'Object-with-numeric-values-explode-true',
       header_obj => { explode => true, schema => { type => 'object', additionalProperties => { type => 'number' } } },
       values => [ 'R=100,G=200,B=150' ],
-      content => { R => '100', G => '200', B => '150' },
-    },
-    {
-      name => 'Odd-Headers-Object',
-      header_obj => { explode => false, schema => { type => 'object' } },
-      values => [ 'foo, bar, baz' ],
-      content => { foo => 'bar', baz => '' },
+      content => { R => 100, G => 200, B => 150 },
+      todo => 'no coercion of object properties yet',
     },
   );
 
-
   foreach my $test (@tests) {
-    my $header_obj = +{
-      # default to type=string in the absence of an override
-      exists $test->{header_obj}{content} ? () : (schema => { type => 'string' }),
-      $test->{header_obj}->%*,
-      name => $test->{name},
-      in => 'header',
-    };
+    $test = +{
+      name => "style=simple, explode=".($test->[0]?'true':'false').': '.$::dumper->encode($test->[1]),
+      header_obj => {
+        style => 'simple',
+        explode => $test->[0],
+        schema => { type => get_type($test->[1]) },
+      },
+      values => $test->[2],
+      content => $test->[1],
+    } if ref $test eq 'ARRAY';
 
-    undef $parameter_content;
-    my $state = {
-      initial_schema_uri => $openapi->openapi_uri,
-      traversed_keyword_path => '',
-      keyword_path => $keyword_path,
-      data_path => '/response',
-      specification_version => 'draft2020-12',
-      vocabularies => OAS_VOCABULARIES,
-      errors => [],
-      depth => 0,
-    };
+    subtest 'header '.$test->{name} => sub {
+      my $param_obj = +{
+        exists $test->{header_obj}{content} ? () : (schema => { type => 'string' }),
+        $test->{header_obj}->%*,
+        name => 'My-Header',
+        in => 'header',
+      };
 
-    my $headers = Mojo::Headers->new;
-    $headers->add($test->{name}, $test->{values}->@*) if defined $test->{values};
+      my $result = $openapi->evaluator->evaluate(
+        $param_obj,
+        OpenAPI::Modern::Utilities::DEFAULT_METASCHEMA()->{'3.2'}.'#/$defs/parameter',
+      );
+      fail('parameter object is valid'), note($result), return if not $result->valid;
 
-    my $exception = exception {
-      ()= $openapi->_validate_header_parameter($state, $test->{name}, $header_obj, $headers);
-    };
+      my $header_obj = +{ %$param_obj };
+      delete $header_obj->@{qw(in name)};
 
-    todo_maybe($test->{todo}, sub {
-      is($exception, undef, 'no exceptions');
+      $result = $openapi->evaluator->evaluate(
+        $header_obj,
+        OpenAPI::Modern::Utilities::DEFAULT_METASCHEMA()->{'3.2'}.'#/$defs/header',
+      );
+      fail('header object is valid'), note($result), return if not $result->valid;
 
-      is_equal(
+      undef $parameter_content;
+      my $previous_call_count = $call_count;
+      my $state = {
+        initial_schema_uri => $openapi->openapi_uri,
+        traversed_keyword_path => '',
+        keyword_path => $keyword_path,
+        data_path => '/response',
+        specification_version => 'draft2020-12',
+        vocabularies => OAS_VOCABULARIES,
+        errors => [],
+        depth => 0,
+      };
+
+      my $header_name = $test->{name} =~ /^[A-Z]/ ? $test->{name} : 'My-Header';
+      my $headers = Mojo::Headers->new;
+      $headers->add($header_name, $test->{values}->@*) if defined $test->{values};
+
+      my $valid = $openapi->_validate_header_parameter($state, $header_name, $header_obj, $headers);
+      die 'validity inconsistent with error count' if $valid xor !$state->{errors}->@*;
+
+      my $todo;
+      $todo = todo $test->{todo} if $test->{todo};
+
+      if (not exists $test->{content}) {
+        is($call_count, $previous_call_count, 'no content was extracted')
+          or note("extracted content:\n", $::encoder->encode($parameter_content));
+      }
+      else {
+        is($call_count, $previous_call_count+1, 'schema would be evaluated');
+        is_equal(
+          $parameter_content,
+          $test->{content},
+          'header '.$test->{name}.': '.(defined $test->{content} ? 'the correct content was extracted' : 'no content was extracted'),
+        );
+      }
+
+      cmp_result(
         [ map $_->TO_JSON, $state->{errors}->@* ],
         $test->{errors}//[],
         'header '.$test->{name}.': '.(($test->{errors}//[])->@* ? 'the correct error was returned' : 'no errors occurred'),
       );
-
-      is_equal(
-        $parameter_content,
-        $test->{content},
-        'header '.$test->{name}.': '.(defined $test->{content} ? 'the correct content was extracted' : 'no content was extracted'),
-      );
-    });
+    };
   }
 };
 
