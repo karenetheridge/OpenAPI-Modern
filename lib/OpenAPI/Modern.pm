@@ -913,7 +913,7 @@ sub _validate_querystring_parameter ($self, $state, $param_obj, $uri) {
 sub _validate_parameter_content ($self, $state, $param_obj, $content_ref) {
   my ($media_type) = keys $param_obj->{content}->%*;  # there can only be one key
 
-  # FIXME: handle media-type parameters better when selecting for a decoder, see RFC9110 8.3.1
+  # FIXME: handle media-type parameters better when selecting for a decoder, see RFC9110 §8.3.1
 
   if ($media_type =~ m{^text/}
       and my $charset = ($media_type =~ /\bcharset\s*=\s*"?([^"\s;]+)"?/i ? $1 : undef)) {
@@ -940,7 +940,7 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
       'missing header: Content-Type')
     if not length $content_type;
 
-  # FIXME: needs to handle media-type parameters when selecting for a decoder, see RFC9110 8.3.1
+  # FIXME: needs to handle media-type parameters when selecting for a decoder, see RFC9110 §8.3.1
 
   my $media_type = (first { fc($content_type) eq fc } keys $content_obj->%*)
     // (first { m{([^/]+)/\*$} && fc($content_type) =~ m{^\F\Q$1\E/[^/]+$} } keys $content_obj->%*);
