@@ -695,9 +695,7 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
 
     # extract all capture values from server variables and path template variables: ($1 .. $n)
     # perldoc perlvar, @-: $n coincides with "substr $_, $-[n], $+[n] - $-[n]" if "$-[n]" is defined
-    my @uri_capture_values = map
-      Encode::decode('UTF-8', url_unescape(substr($full_uri, $-[$_], $+[$_]-$-[$_])),
-        Encode::DIE_ON_ERR), 1 .. $#-;
+    my @uri_capture_values = map _uri_decode(substr($full_uri, $-[$_], $+[$_]-$-[$_])), 1 .. $#-;
 
     # we have a match, so preserve our new $state values created via _resolve_ref
     %$state = %$local_state;
@@ -899,6 +897,7 @@ sub _validate_querystring_parameter ($self, $state, $param_obj, $uri) {
     if $param_obj->{required} and not length $uri->query->{string};
 
   # Replace "+" with whitespace, unescape and decode as in Mojo::Parameters::pairs
+  # We do not UTF-8-decode the content: this is the responsibility of the media-type decoder.
   my $content = url_unescape($uri->query->{string} =~ s/\+/ /gr);
 
   $self->_validate_parameter_content({ %$state, depth => $state->{depth}+1 }, $param_obj, \$content)
@@ -1180,6 +1179,11 @@ sub _convert_response ($response) {
 
   $res->finish;
   return $res;
+}
+
+# url-percent-decode and UTF-8-decode a string
+sub _uri_decode ($str) {
+  Encode::decode('UTF-8', url_unescape($str), Encode::DIE_ON_ERR);
 }
 
 # callback hook for Sereal::Encoder
