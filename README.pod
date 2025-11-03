@@ -8,7 +8,7 @@ OpenAPI::Modern - Validate HTTP requests and responses against an OpenAPI v3.1 o
 
 =head1 VERSION
 
-version 0.104
+version 0.105
 
 =head1 SYNOPSIS
 
@@ -290,7 +290,7 @@ C<operation_id>: a string corresponding to the L<operationId|https://learn.opena
 
 =item *
 
-C<path_captures>: a hashref mapping placeholders in the path template to their actual values in the request URI
+C<path_captures>: a hashref mapping placeholders in the path template to their actual values in the request URI; these will be url-unescaped
 
 =back
 
@@ -306,11 +306,13 @@ a L<JSON::Schema::Modern::Error> object, and the return value is false.
 
 In addition, these values are also populated in the options hash (when available):
 
+=for stopwords punycode
+
 =over 4
 
 =item *
 
-C<uri_captures>: a hashref mapping placeholders in the entire uri template (server url plus path template) to their actual values in the request URI
+C<uri_captures>: a hashref mapping placeholders in the entire uri template (server url plus path template) to their actual values in the request URI; these will be url-unescaped (for values coming from the path) and punycode-decoded (for values coming from the host).
 
 =item *
 

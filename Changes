@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.105     2025-11-03 20:04:48Z
           - improved specification compliance when matching URIs to path
             patterns and server url patterns
 
