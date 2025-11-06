@@ -653,7 +653,7 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
   # There could be another paths entry that matches this URI that does have this method
   # implemented, so we return false and keep searching. Since we may still match to the wrong URI,
   # the correct operation can be forced to match by explicitly passing the corresponding
-  # path_template or (preferrably) operationId to be used in the search.
+  # path_template or (preferably) operationId to be used in the search.
 
   $local_state->@{qw(operation operation_path_suffix)} =
     (any { $method eq $_ } qw(GET PUT POST DELETE OPTIONS HEAD PATCH TRACE QUERY))
