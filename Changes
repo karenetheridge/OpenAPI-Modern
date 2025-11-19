@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.106     2025-11-19 20:28:01Z
           - fix invalid restriction on trailing '/' in server urls (added in
             v0.086)
