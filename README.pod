@@ -8,7 +8,7 @@ OpenAPI::Modern - Validate HTTP requests and responses against an OpenAPI v3.1 o
 
 =head1 VERSION
 
-version 0.105
+version 0.106
 
 =head1 SYNOPSIS
 
@@ -436,7 +436,8 @@ code or configurations to keep pace with internal changes.
 
 An even stricter schema and dialect are available, via the metaschema_uri
 C<https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/3.2/strict-schema.json>,
-which prevents any unknown keywords from being used in JSON Schemas. This is useful to avoid
+which treats the `format` keyword as an assertion, and also prevents any unknown keywords from being
+used in JSON Schemas. This is useful to avoid
 spelling mistakes from going unnoticed and resulting in false positive results.
 
 =head1 ON THE USE OF JSON SCHEMAS
