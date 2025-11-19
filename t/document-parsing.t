@@ -694,6 +694,14 @@ servers:
         default: foo
       bar:
         default: bar
+  - url: http://example.com/x/{foo?bar}   # valid, but weird
+    variables:
+      foo?bar:
+        default: foo
+  - url: http://example.com/y/{foo#bar}   # valid, but weird
+    variables:
+      foo#bar:
+        default: foo
 YAML
 
   my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
@@ -764,7 +772,7 @@ YAML
             instanceLocation => '',
             keywordLocation => $base.'/servers/'.$_.'/url',
             absoluteKeywordLocation => 'http://localhost:1234/api#'.$base.'/servers/'.$_.'/url',
-            error => 'server url cannot contain query or fragment components',
+            error => 'invalid server url "'.$doc->schema->{servers}[$_]{url}.'"',
           }, 6,7
         },
         {
@@ -792,8 +800,8 @@ YAML
 '/servers/2/variables': missing "variables" definition for servers template variable "foo"
 '/servers/2': duplicate servers template variable "foo"
 '/servers/3/variables/unused/default': servers default is not a member of enum
-'/servers/6/url': server url cannot contain query or fragment components
-'/servers/7/url': server url cannot contain query or fragment components
+'/servers/6/url': invalid server url "http://example.com?foo=1"
+'/servers/7/url': invalid server url "http://example.com#bar"
 '/servers/9/url': invalid server url "http://{host}.com/{pa{th}"
 '/servers/10/url': invalid server url "http://example.com/^illegal"
 '/components/pathItems/path0/servers/0/variables/version/default': servers default is not a member of enum
@@ -803,8 +811,8 @@ YAML
 '/components/pathItems/path0/servers/2/variables': missing "variables" definition for servers template variable "foo"
 '/components/pathItems/path0/servers/2': duplicate servers template variable "foo"
 '/components/pathItems/path0/servers/3/variables/unused/default': servers default is not a member of enum
-'/components/pathItems/path0/servers/6/url': server url cannot contain query or fragment components
-'/components/pathItems/path0/servers/7/url': server url cannot contain query or fragment components
+'/components/pathItems/path0/servers/6/url': invalid server url "http://example.com?foo=1"
+'/components/pathItems/path0/servers/7/url': invalid server url "http://example.com#bar"
 '/components/pathItems/path0/servers/9/url': invalid server url "http://{host}.com/{pa{th}"
 '/components/pathItems/path0/servers/10/url': invalid server url "http://example.com/^illegal"
 '/components/pathItems/path0/get/servers/0/variables/version/default': servers default is not a member of enum
@@ -814,8 +822,8 @@ YAML
 '/components/pathItems/path0/get/servers/2/variables': missing "variables" definition for servers template variable "foo"
 '/components/pathItems/path0/get/servers/2': duplicate servers template variable "foo"
 '/components/pathItems/path0/get/servers/3/variables/unused/default': servers default is not a member of enum
-'/components/pathItems/path0/get/servers/6/url': server url cannot contain query or fragment components
-'/components/pathItems/path0/get/servers/7/url': server url cannot contain query or fragment components
+'/components/pathItems/path0/get/servers/6/url': invalid server url "http://example.com?foo=1"
+'/components/pathItems/path0/get/servers/7/url': invalid server url "http://example.com#bar"
 '/components/pathItems/path0/get/servers/9/url': invalid server url "http://{host}.com/{pa{th}"
 '/components/pathItems/path0/get/servers/10/url': invalid server url "http://example.com/^illegal"
 ERRORS
