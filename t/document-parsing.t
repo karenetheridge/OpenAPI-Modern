@@ -671,7 +671,7 @@ servers:
         default: v1                       # invalid default, even if unused
         enum: [v2, v3]
   - url: http://example.com/literal2      # valid
-  - url: http://example.com/              # valid
+  - url: http://example.com/              # valid, but inadvised
   - url: http://example.com?foo=1         # invalid
   - url: http://example.com#bar           # invalid
   - url: http://{host}.com/{path1}{path2} # valid, but inadvised
@@ -764,8 +764,8 @@ YAML
             instanceLocation => '',
             keywordLocation => $base.'/servers/'.$_.'/url',
             absoluteKeywordLocation => 'http://localhost:1234/api#'.$base.'/servers/'.$_.'/url',
-            error => 'server url cannot end in / or contain query or fragment components',
-          }, 5,6,7
+            error => 'server url cannot contain query or fragment components',
+          }, 6,7
         },
         {
           instanceLocation => '',
@@ -792,9 +792,8 @@ YAML
 '/servers/2/variables': missing "variables" definition for servers template variable "foo"
 '/servers/2': duplicate servers template variable "foo"
 '/servers/3/variables/unused/default': servers default is not a member of enum
-'/servers/5/url': server url cannot end in / or contain query or fragment components
-'/servers/6/url': server url cannot end in / or contain query or fragment components
-'/servers/7/url': server url cannot end in / or contain query or fragment components
+'/servers/6/url': server url cannot contain query or fragment components
+'/servers/7/url': server url cannot contain query or fragment components
 '/servers/9/url': invalid server url "http://{host}.com/{pa{th}"
 '/servers/10/url': invalid server url "http://example.com/^illegal"
 '/components/pathItems/path0/servers/0/variables/version/default': servers default is not a member of enum
@@ -804,9 +803,8 @@ YAML
 '/components/pathItems/path0/servers/2/variables': missing "variables" definition for servers template variable "foo"
 '/components/pathItems/path0/servers/2': duplicate servers template variable "foo"
 '/components/pathItems/path0/servers/3/variables/unused/default': servers default is not a member of enum
-'/components/pathItems/path0/servers/5/url': server url cannot end in / or contain query or fragment components
-'/components/pathItems/path0/servers/6/url': server url cannot end in / or contain query or fragment components
-'/components/pathItems/path0/servers/7/url': server url cannot end in / or contain query or fragment components
+'/components/pathItems/path0/servers/6/url': server url cannot contain query or fragment components
+'/components/pathItems/path0/servers/7/url': server url cannot contain query or fragment components
 '/components/pathItems/path0/servers/9/url': invalid server url "http://{host}.com/{pa{th}"
 '/components/pathItems/path0/servers/10/url': invalid server url "http://example.com/^illegal"
 '/components/pathItems/path0/get/servers/0/variables/version/default': servers default is not a member of enum
@@ -816,9 +814,8 @@ YAML
 '/components/pathItems/path0/get/servers/2/variables': missing "variables" definition for servers template variable "foo"
 '/components/pathItems/path0/get/servers/2': duplicate servers template variable "foo"
 '/components/pathItems/path0/get/servers/3/variables/unused/default': servers default is not a member of enum
-'/components/pathItems/path0/get/servers/5/url': server url cannot end in / or contain query or fragment components
-'/components/pathItems/path0/get/servers/6/url': server url cannot end in / or contain query or fragment components
-'/components/pathItems/path0/get/servers/7/url': server url cannot end in / or contain query or fragment components
+'/components/pathItems/path0/get/servers/6/url': server url cannot contain query or fragment components
+'/components/pathItems/path0/get/servers/7/url': server url cannot contain query or fragment components
 '/components/pathItems/path0/get/servers/9/url': invalid server url "http://{host}.com/{pa{th}"
 '/components/pathItems/path0/get/servers/10/url': invalid server url "http://example.com/^illegal"
 ERRORS

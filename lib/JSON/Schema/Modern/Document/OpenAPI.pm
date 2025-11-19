@@ -362,8 +362,8 @@ sub traverse ($self, $evaluator, $config_override = {}) {
         if $servers->[$server_idx]{url} !~ /^(?:\{[^{}]+\}|%[0-9A-F]{2}|[\x21\x23\x24\x26-\x3B\x3D\x3F-\x5B\x5D\x5F\x61-\x7A\x7E\xA0-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFEF}\x{10000}-\x{1FFFD}\x{20000}-\x{2FFFD}\x{30000}-\x{3FFFD}\x{40000}-\x{4FFFD}\x{50000}-\x{5FFFD}\x{60000}-\x{6FFFD}\x{70000}-\x{7FFFD}\x{80000}-\x{8FFFD}\x{90000}-\x{9FFFD}\x{A0000}-\x{AFFFD}\x{B0000}-\x{BFFFD}\x{C0000}-\x{CFFFD}\x{D0000}-\x{DFFFD}\x{E1000}-\x{EFFFD}\x{E000}-\x{F8FF}\x{F0000}-\x{FFFFD}\x{100000}-\x{10FFFD}])+$/;
 
       ()= E({ %$state, keyword_path => jsonp($servers_location, $server_idx, 'url') },
-          'server url cannot end in / or contain query or fragment components'), next
-        if $servers->[$server_idx]{url} =~ m{(?:/$|\?|#)};
+          'server url cannot contain query or fragment components'), next
+        if $servers->[$server_idx]{url} =~ m{[?#]};
 
       my $normalized = $servers->[$server_idx]{url} =~ s/\{[^{}]+\}/\x00/gr;
       my @url_variables = $servers->[$server_idx]{url} =~ /\{([^{}]+)\}/g;
