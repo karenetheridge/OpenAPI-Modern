@@ -157,7 +157,7 @@ sub validate_request ($self, $request, $options = {}) {
           : $param_obj->{in} eq 'query' ? $self->_validate_query_parameter({ %$state, data_path => '/request/uri/query' }, $param_obj, $request->url->query->clone)
           : $param_obj->{in} eq 'header' ? $self->_validate_header_parameter({ %$state, data_path => '/request/header' }, $param_obj->{name}, $param_obj, $request->headers)
           : $param_obj->{in} eq 'cookie' ? $self->_validate_cookie_parameter({ %$state, data_path => '/request/header/Cookie' }, $param_obj)
-          : $param_obj->{in} eq 'querystring' ? $self->_validate_querystring_parameter({ %$state, data_path => '/request/uri/query' }, $param_obj, $request->url)
+          : $param_obj->{in} eq 'querystring' ? $self->_validate_querystring_parameter({ %$state, data_path => '/request/uri/query' }, $param_obj, $request->url->query->clone)
           : abort($state, 'unrecognized "in" value "%s"', $param_obj->{in});
       }
     }
@@ -945,13 +945,15 @@ sub _validate_cookie_parameter ($self, $state, $param_obj, @args) {
   return E($state, 'cookie parameters not yet supported');
 }
 
-sub _validate_querystring_parameter ($self, $state, $param_obj, $uri) {
+sub _validate_querystring_parameter ($self, $state, $param_obj, $params) {
+  die '$params must be a Mojo::Parameters object' if not $params->$_isa('Mojo::Parameters');
+
   # note: if something has caused the Mojo::Parameters object to be normalized (e.g. calling
   # 'pairs'), the raw string value is lost
   return E({ %$state, keyword => 'required' }, 'missing querystring')
-    if $param_obj->{required} and not length $uri->query->{string};
+    if $param_obj->{required} and not length $params->{string};
 
-  my $content = $uri->query->{string};
+  my $content = $params->{string};
 
   # query parameters are always percent-encoded
   return E($state, 'non-ascii character detected in parameter value: not deserializable')
@@ -959,7 +961,6 @@ sub _validate_querystring_parameter ($self, $state, $param_obj, $uri) {
 
   # Replace "+" with whitespace, unescape and decode as in Mojo::Parameters::pairs
   # We do not UTF-8-decode the content: this is the responsibility of the media-type decoder.
-
   $self->_validate_parameter_content({ %$state, depth => $state->{depth}+1 },
     $param_obj, \ url_unescape($content =~ s/\+/ /gr));
 }
