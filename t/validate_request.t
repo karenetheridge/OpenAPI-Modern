@@ -15,6 +15,7 @@ use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 
 use lib 't/lib';
 use Helper;
+use Test2::Warnings qw(:no_end_test warnings had_no_warnings);
 use JSON::Schema::Modern::Utilities qw(jsonp get_type);
 use OpenAPI::Modern::Utilities 'uri_encode';
 
@@ -845,7 +846,7 @@ paths:
 YAML
 
   is_equal(
-    $openapi->validate_request(request('GET', 'http://example.com/foo?q=1'))->TO_JSON,
+    $openapi->validate_request(request('GET', 'http://example.com/foo'))->TO_JSON,
     {
       valid => false,
       errors => [
@@ -861,7 +862,7 @@ YAML
   );
 
   is_equal(
-    $openapi->validate_request(request('GET', 'http://example.com/bar?q=1'))->TO_JSON,
+    $openapi->validate_request(request('GET', 'http://example.com/bar'))->TO_JSON,
     {
       valid => false,
       errors => [
@@ -956,6 +957,33 @@ YAML
     { valid => true },
     'empty querystring still counts as being provided',
   );
+
+  if ($::TYPE eq 'mojo') {
+    my @warnings = warnings {
+      my $request = request('GET', 'http://example.com/string?hi');
+      ()= $request->url->query->pairs;
+      is_equal(
+        $openapi->validate_request($request)->TO_JSON,
+        {
+          valid => false,
+          errors => [
+            {
+              instanceLocation => '/request/uri/query',
+              keywordLocation => jsonp(qw(/paths /string get parameters 0 required)),
+              absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /string get parameters 0 required)))->to_string,
+              error => 'missing querystring',
+            },
+          ],
+        },
+        'querystring cannot be found after something else tampered with the uri query parameters',
+      );
+    };
+    cmp_result(
+      \@warnings,
+      [ re(qr{^\Qrequest uri querystring has been lost: see L<OpenAPI::Modern/LIMITATIONS> for how to avoid\E}) ],
+      'warning issued after something else tampered with the uri query parameters',
+    );
+  }
 
   is_equal(
     $openapi->validate_request(request('GET', 'http://example.com/string?hi'))->TO_JSON,
@@ -3482,4 +3510,5 @@ if (++$type_index < @::TYPES) {
   goto START;
 }
 
+had_no_warnings() if $ENV{AUTHOR_TESTING};
 done_testing;

@@ -19,7 +19,7 @@ no if "$]" >= 5.033001, feature => 'multidimensional';
 no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 no if "$]" >= 5.041009, feature => 'smartmatch';
 no feature 'switch';
-use Carp 'croak';
+use Carp qw(carp croak);
 use Safe::Isa;
 use List::Util qw(first pairs);
 use if "$]" < 5.041010, 'List::Util' => 'any';
@@ -949,9 +949,18 @@ sub _validate_querystring_parameter ($self, $state, $param_obj, $params) {
   die '$params must be a Mojo::Parameters object' if not $params->$_isa('Mojo::Parameters');
 
   # note: if something has caused the Mojo::Parameters object to be normalized (e.g. calling
-  # 'pairs'), the raw string value is lost
-  return E({ %$state, keyword => 'required' }, 'missing querystring')
-    if $param_obj->{required} and not exists $params->{string};
+  # 'pairs'), the raw string value is lost -- we could try stringifying it again, but if the
+  # data is incompatible with application/x-www-form-urlencoded, we may not be able to recover
+  # all the intended data.
+
+  if (not exists $params->{string}) {
+    # $params->clone (done above) will create empty pairs if {string} is missing
+    carp 'request uri querystring has been lost: see L<OpenAPI::Modern/LIMITATIONS> for how to avoid'
+      if exists $params->{pairs} and $params->{pairs}->@*;
+
+    return E({ %$state, keyword => 'required' }, 'missing querystring') if $param_obj->{required};
+    return 1;
+  }
 
   my $content = $params->{string};
 
@@ -1920,6 +1929,7 @@ prints:
 =for Pod::Coverage BUILDARGS FREEZE THAW
 
 =for stopwords schema jsonSchemaDialect metaschema subschema perlish operationId openapi Mojolicious
+querystring unencoded
 
 =head1 DESCRIPTION
 
@@ -2279,6 +2289,27 @@ specific L<parameter style|https://spec.openapis.org/oas/latest#style-values> be
 encoding characters that are not canonically required to be encoded according to
 L<RFC3986 §2.1|https://www.rfc-editor.org/rfc/rfc3986#section-2.1>, may result in the message not
 being correctly deserialized nor parameter values correctly extracted.
+
+Caution is advised when using non-default settings with parameters, as certain combinations of
+characters in string data will not serialize well with certain delimiters.  The default settings
+for C<path> and C<query> parameters (C<style: simple> and C<explode: false>, and C<style: form> and
+C<explode: true>, respectively) are safe to use; for C<header> parameters, unencoded C<,> should be
+avoided in arrays and objects.
+
+=head2 Querystring parameters
+
+The use of media-type encoding in C<in: querystring> parameters (see
+L<https://spec.openapis.org/oas/latest#parameter-locations>)
+requires the raw string value of the query portion to be preserved in the request URL; directly
+accessing the URL's query parameters in your application can cause can cause request data to become
+normalized according to C<application/x-www-form-urlencoded> rules and some data may be lost,
+resulting in the data being unparsable for OpenAPI validation. To avoid this, do not
+use these constructs in your Mojolicious application in those situations (instead use the more
+specific C<< $c->req->body_params >> or C<< $c->stash >> to access non-query parameters):
+
+=for :list
+* C<param>, C<every_param>, C<params>, C<query_params> on C<< $c->req >>
+* C<param>, C<every_param>, C<params> on C<$c>
 
 =head2 Unimplemented sections of the specification
 
