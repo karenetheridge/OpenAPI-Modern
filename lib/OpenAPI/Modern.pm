@@ -746,9 +746,9 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
         if not any { $captures{$name} eq $_ } $server->{variables}{$name}{enum}->@*;
     }
 
-    @captures{@path_capture_names} = @path_capture_values;
-
     return if not $valid;
+
+    @captures{@path_capture_names} = @path_capture_values;
     return \%captures;
   }
 
