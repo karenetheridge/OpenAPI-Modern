@@ -28,7 +28,7 @@ use builtin::compat 'indexed';
 use Feature::Compat::Try;
 use Encode 2.89 ();
 use JSON::Schema::Modern;
-use JSON::Schema::Modern::Utilities qw(jsonp unjsonp canonical_uri E abort is_equal true false get_type);
+use JSON::Schema::Modern::Utilities qw(jsonp unjsonp canonical_uri E abort is_equal true false get_type jsonp_set jsonp_get);
 use OpenAPI::Modern::Utilities qw(add_vocab_and_default_schemas uri_decode intersect_types coerce_primitive uri_encode uri_encode_strict is_cookie_name is_cookie_value);
 use JSON::Schema::Modern::Document::OpenAPI;
 use MooX::TypeTiny 0.002002;
@@ -120,6 +120,10 @@ sub validate_request ($self, $request, $options = {}) {
     # Callers can decide if this should instead be reported as a [ 404, Not Found ], but that sort
     # of response is likely to leave oversights in the specification go unnoticed.
     return $self->_result($state, 1) if not $path_ok;
+
+    my $server = { $options->{uri_captures}->%* };
+    delete $server->@{keys $options->{path_captures}->%*};
+    $state->{data} = keys %$server ? { request => { uri => { server => $server } } } : {};
 
     $request = $options->{request};   # now guaranteed to be a Mojo::Message::Request
 
@@ -268,6 +272,7 @@ sub validate_response ($self, $response, $options = {}) {
 
     return $self->_result($state, 1, 1) if not $path_ok;
 
+    $state->{data} = {};
     $state->{keyword_path} .= delete $options->{_operation_path_suffix};  # jsonp-encoded
 
     # now guaranteed to be a Mojo::Message::Response
@@ -835,6 +840,8 @@ sub _validate_parameter ($self, $state, $param_obj, %args) {
   return 1 if not @result;
 
   my $data = shift @result;
+  jsonp_set($state->{data}, $state->{data_path}, $data);
+
   return 1 if not defined $schema;
 
   return $self->_evaluate_subschema(\$data, $schema,
@@ -1555,6 +1562,7 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
 
   return if not $content_ref;
 
+  jsonp_set($state->{data}, $state->{data_path}, $content_ref->$*);
   return 1 if not exists $content_obj->{$media_type}{schema};
 
   $state = { %$state, keyword_path => jsonp($state->{keyword_path}, 'content', $media_type, 'schema'), depth => $state->{depth}+1 };
@@ -1573,6 +1581,7 @@ sub _result ($self, $state, $is_exception = 0, $is_response = 0) {
       ? (annotations => $state->{annotations}//[])
       : (errors => $state->{errors}),
     $is_response ? (recommended_response => undef) : (),  # responses don't have responses
+    $state->%{data},
   );
 }
 
@@ -1904,6 +1913,8 @@ sub _evaluate_subschema ($self, $dataref, $schema, $state) {
   push $state->{errors}->@*, $result->errors;
   push $state->{annotations}->@*, $result->annotations;
 
+  jsonp_set($state->{data}, $state->{data_path}, jsonp_get($result->data, $state->{data_path}));
+
   return $result;
 }
 
@@ -2216,7 +2227,8 @@ L</recursive_get>.
 Validates an L<HTTP::Request>, L<Plack::Request>, L<Catalyst::Request>,
 L<Dancer2::Core::Request> or L<Mojo::Message::Request>
 object against the corresponding OpenAPI document, returning a
-L<JSON::Schema::Modern::Result> object.
+L<JSON::Schema::Modern::Result> object that will also include all the data that was deserialized
+from the request object (see example below for structure).
 
 Absolute URIs in the result object are constructed by resolving the openapi document path against
 the L</openapi_uri> (which is derived from the document's C<$self> keyword as well as the URI
@@ -2227,6 +2239,48 @@ corresponding to the values expected by L</find_path_item> below. The method pop
 with some information about the request:
 save it and pass it to a later L</validate_response> call (that corresponds to a response for this request)
 to improve performance.
+
+All data deserialized from the request will be recorded in the returned
+L<JSON::Schema::Modern::Result> object (some parts may be missing if there were errors);
+see L<JSON::Schema::Modern::Result/data>.
+
+They will appear in a nested hashref with this structure (which uses the same layout as the
+C<instanceLocation>s in errors in the Result object):
+
+  {
+    request => {
+      uri => {
+        server => {
+          <server variable name> => <value from the scheme, host or path portion of the URI>,
+          ...,
+        },
+        path => {
+          <path parameter name> => <deserialized data from part of the URI path>,
+          ...,
+        },
+        query => {
+          <query parameter name> => <deserialized data from part of the querystring portion of the URI>,
+          ...,
+          OR
+          <deserialized data from the entire querystring portion of the URI>,
+        },
+      },
+      header => {
+        <header name> => <deserialized data from header(s)>,
+        ...,
+        Cookie => {
+          <cookie parameter name> => <deserialized data from (a portion of) the Cookie header>,
+          ...,
+        },
+      },
+      body => {
+        content => <deserialized data from body>,
+      },
+    },
+  }
+
+Missing parameters or message body will not appear in this structure;
+you may wish to treat their value as C<undef>.
 
 =head2 validate_response
 
@@ -2253,11 +2307,36 @@ C<request> in the hashref represents the original request object that
 corresponds to this response, which can be used to find the appropriate section of the document if
 other values (such as C<operationId>) are not known.
 
-In addition, this values are populated into the hashref:
+These options are supported in addition to those supported by L</find_path_item>:
 
-=for :items
+=begin :list
+
 * C<response>: the L<Mojo::Message::Response> object that was provided or converted from the
   provided response
+
+=end :list
+
+All data deserialized from the request will be recorded in the returned
+L<JSON::Schema::Modern::Result> object (some parts may be missing if there were errors);
+see L<JSON::Schema::Modern::Result/data>.
+
+They will appear in a nested hashref with this structure (which uses the same layout as the
+C<instanceLocation>s in errors in the Result object):
+
+  {
+    response => {
+      header => {
+        <header name> => <deserialized data from header(s)>,
+        ...,
+      },
+      body => {
+        content => <deserialized data from body>,
+      },
+    },
+  }
+
+Missing parameters or message body will not appear in this structure;
+you may wish to treat their value as C<undef>.
 
 =head2 find_path_item
 
@@ -2493,7 +2572,8 @@ characters in string data will not serialize well with certain delimiters.  The 
 for C<path> and C<query> parameters (C<style: simple> and C<explode: false>, and C<style: form> and
 C<explode: true>, respectively) are safe to use; for C<header> parameters, unencoded C<,> should be
 avoided in arrays and objects, and for C<cookie> parameters, always use C<style: cookie> with
-C<explode: true>.
+C<explode: true>. Since the allowed syntax of a C<Cookie> header is quite limited, see L<EXAMPLES>
+below for an example of how to encode arbitrary characters or data structures into a cookie.
 
 =head2 Querystring parameters
 
@@ -2519,6 +2599,42 @@ specific C<< $c->req->body_params >> or C<< $c->stash >> to access non-query par
   path-item properties (C<parameters>, C<servers>, request methods)
 * The C<Authorization> header is not verified against any security schemes specified in the OpenAPI
   description. This may in future be implemented via plugins for each security scheme implementation.
+
+=head1 EXAMPLES
+
+=head2 Transporting arbitrary data in a cookie
+
+Include C<< validate_content_schemas => 1 >> in the constructor arguments for C<OpenAPI::Modern>.
+
+Use this parameter definition for the cookie:
+
+  parameters:
+    - in: cookie
+      name: token
+      content:
+        text/plain:
+          schema:
+            contentEncoding: base64
+            contentMediaType: application/json
+            contentSchema:
+              type: object
+              required: [ a, b ]
+              additionalProperties:
+                type: integer
+
+In the client, encode your data with JSON and then base64, and use that as the Cookie value:
+
+  my $encoded_token = MIME::Base64::encode_base64url(encode_json({ a => 1, b => 2 }));
+  $request->headers->append(cookie => $encoded_token);
+
+This will generate a header like: C<< Cookie: token=eyJhIjoxLCJiIjoyfQ >>
+
+To decode the cookie on the server side:
+
+  my $result = $openapi->validate_request($request);
+  my $token = $result->data->{request}{header}{Cookie}{token};
+
+Which will be the value: C<< { a => 1, b => 2 } >>
 
 =head1 SEE ALSO
 

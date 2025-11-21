@@ -25,14 +25,8 @@ my $openapi = OpenAPI::Modern->new(
 components: {}
 YAML
 
-my $parameter_content;
-my $call_count = 0; # incremented when data is passed down for further processing
 no warnings 'redefine';
-*OpenAPI::Modern::_evaluate_subschema = sub ($, $dataref, $, $) {
-  ++$call_count;
-  $parameter_content = $dataref->$*;
-  1;
-};
+*OpenAPI::Modern::_evaluate_subschema = sub {1};
 
 my $keyword_path = '/paths/~1foo/get/parameters/0';
 
@@ -46,6 +40,7 @@ sub _init_test ($data_path, $param_obj_data) {
     vocabularies => OAS_VOCABULARIES,
     errors => [],
     depth => 0,
+    data => {},
   };
 
   # hack, to allow _fetch_from_uri and cache to work: patch schema, content
@@ -66,7 +61,7 @@ subtest 'path parameters' => sub {
     # name (test name)
     # param_obj (from OAD)
     # input (value of path_captures, as provided by find_path_item, or undef if missing)
-    # content => expected data to be passed to _evaluate_subschema (omit when evaluation is skipped)
+    # content => expected data that was parsed from serialized string; omit when nothing is to be found
     # errors => compared to what is collected from $state, defaults to []
     # todo
     {
@@ -908,9 +903,6 @@ subtest 'path parameters' => sub {
       );
       fail('parameter object is valid'), note($result), return if not $result->valid;
 
-      undef $parameter_content;
-      my $previous_call_count = $call_count;
-
       my $state = _init_test('/request/uri/path', +{ $param_obj->%{qw(schema content)} });
 
       my $valid = $openapi->_validate_parameter($state, $param_obj,
@@ -928,13 +920,13 @@ subtest 'path parameters' => sub {
       );
 
       if (not exists $test->{content}) {
-        is($call_count, $previous_call_count, 'no content was extracted')
-          or note("extracted content:\n", $::encoder->encode($parameter_content));
+        ok(!keys $state->{data}->%*, 'no content was extracted')
+          or note("extracted content:\n", $::encoder->encode($state->{data}));
       }
       else {
-        is($call_count, $previous_call_count+1, 'schema would be evaluated');
+        ok(exists $state->{data}{request}{uri}{path}{$param_obj->{name}}, 'content was extracted');
         is_equal(
-          $parameter_content,
+          $state->{data}{request}{uri}{path}{$param_obj->{name}},
           $test->{content},
           defined $test->{content} ? 'the correct content was extracted' : 'no content was extracted',
         );
@@ -950,7 +942,7 @@ subtest 'query parameters' => sub {
     # name (test name)
     # param_obj (from OAD)
     # queries => raw query string, without leading '?'
-    # content => expected data to be passed to _evaluate_subschema (omit when evaluation is omitted)
+    # content => expected data that was parsed from serialized string; omit when nothing is to be found
     # errors => compared to what is collected from $state, defaults to []
     # todo
     {
@@ -1943,9 +1935,6 @@ subtest 'query parameters' => sub {
       );
       fail('parameter object is valid'), note($result), return if not $result->valid;
 
-      undef $parameter_content;
-      my $previous_call_count = $call_count;
-
       my $state = _init_test('/request/uri/query', +{ $param_obj->%{qw(schema content)} });
 
       my $valid = $openapi->_validate_parameter($state, $param_obj, params => Mojo::URL->new('https://example.com/blah?'.$test->{queries})->query);
@@ -1962,13 +1951,13 @@ subtest 'query parameters' => sub {
       );
 
       if (not exists $test->{content}) {
-        is($call_count, $previous_call_count, 'no content was extracted')
-          or note("extracted content:\n", $::encoder->encode($parameter_content));
+        ok(!keys $state->{data}->%*, 'no content was extracted')
+          or note("extracted content:\n", $::encoder->encode($state->{data}));
       }
       else {
-        is($call_count, $previous_call_count+1, 'schema would be evaluated');
+        ok(exists $state->{data}{request}{uri}{query}{$param_obj->{name}}, 'content was extracted');
         is_equal(
-          $parameter_content,
+          $state->{data}{request}{uri}{query}{$param_obj->{name}},
           $test->{content},
           defined $test->{content} ? 'the correct content was extracted' : 'no content was extracted',
         );
@@ -1983,7 +1972,7 @@ subtest 'header parameters' => sub {
     # header_name
     # header_obj (from OAD)
     # raw header values (as an arrayref; one item per header line)
-    # content => expected data to be passed to _evaluate_subschema
+    # content => expected data that was parsed from serialized string; omit when nothing is to be found
     # errors => compared to what is collected from $state, defaults to []
     # todo
     {
@@ -2205,9 +2194,6 @@ subtest 'header parameters' => sub {
       );
       fail('header object is valid'), note($result), return if not $result->valid;
 
-      undef $parameter_content;
-      my $previous_call_count = $call_count;
-
       my $state = _init_test('/response/header', +{ $param_obj->%{qw(schema content)} });
 
       my $headers = Mojo::Headers->new;
@@ -2228,13 +2214,13 @@ subtest 'header parameters' => sub {
       );
 
       if (not exists $test->{content}) {
-        is($call_count, $previous_call_count, 'no content was extracted')
-          or note("extracted content:\n", $::encoder->encode($parameter_content));
+        ok(!keys $state->{data}->%*, 'no content was extracted')
+          or note("extracted content:\n", $::encoder->encode($state->{data}));
       }
       else {
-        is($call_count, $previous_call_count+1, 'schema would be evaluated');
+        ok(exists $state->{data}{response}{header}{$param_obj->{name}}, 'content was extracted');
         is_equal(
-          $parameter_content,
+          $state->{data}{response}{header}{$param_obj->{name}},
           $test->{content},
           defined $test->{content} ? 'the correct content was extracted' : 'no content was extracted',
         );
@@ -2248,7 +2234,7 @@ subtest 'cookie parameters' => sub {
     # name (test name)
     # param_obj (from OAD)
     # cookie => raw Cookie header string
-    # content => expected data to be passed to _evaluate_subschema (omit when evaluation is omitted)
+    # content => expected data that was parsed from serialized string; omit when nothing is to be found
     # errors => compared to what is collected from $state, defaults to []
     # todo
 
@@ -2631,9 +2617,6 @@ subtest 'cookie parameters' => sub {
       );
       fail('parameter object is valid'), note($result), return if not $result->valid;
 
-      undef $parameter_content;
-      my $previous_call_count = $call_count;
-
       my $state = _init_test('/request/header/Cookie', +{ $param_obj->%{qw(schema content)} });
 
       my $headers = Mojo::Headers->new;
@@ -2653,13 +2636,13 @@ subtest 'cookie parameters' => sub {
       );
 
       if (not exists $test->{content}) {
-        is($call_count, $previous_call_count, 'no content was extracted')
-          or note("extracted content:\n", $::encoder->encode($parameter_content));
+        ok(!keys $state->{data}->%*, 'no content was extracted')
+          or note("extracted content:\n", $::encoder->encode($state->{data}));
       }
       else {
-        is($call_count, $previous_call_count+1, 'schema would be evaluated');
+        ok(exists $state->{data}{request}{header}{Cookie}{$param_obj->{name}}, 'content was extracted');
         is_equal(
-          $parameter_content,
+          $state->{data}{request}{header}{Cookie}{$param_obj->{name}},
           $test->{content},
           defined $test->{content} ? 'the correct content was extracted' : 'no content was extracted',
         );

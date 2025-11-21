@@ -1086,9 +1086,14 @@ YAML
   foreach my $username (qw(diṅnāga الخوارزميّ)) {
     $request = request('GET', 'http://example.com/foo/'.$username);
     is_equal(
-      $openapi->validate_request($request)->TO_JSON,
+      (my $result = $openapi->validate_request($request))->TO_JSON,
       { valid => true },
       'all path parameters are validated',
+    );
+    is_equal(
+      $result->data,
+      { request => { uri => { path => { username => $username } } } },
+      'data is correctly deserialized',
     );
   }
 
@@ -1152,9 +1157,23 @@ YAML
       'thing=one%20thing&thing=another%20thing',
       'coordinates=%7B%22lat%22%3A40.6%2C%22long%22%3A-73.9%7D'));
   is_equal(
-    $openapi->validate_request($request)->TO_JSON,
+    (my $result = $openapi->validate_request($request))->TO_JSON,
     { valid => true },
     'all query parameters are deserialized correctly',
+  );
+  is_equal(
+    $result->data,
+    {
+      request => {
+        uri => {
+          query => {
+            thing => [ 'one thing', 'another thing' ],
+            coordinates => { lat => 40.6, long => -73.9 },
+          },
+        },
+      },
+    },
+    'data is correctly deserialized',
   );
 
 
@@ -1188,9 +1207,14 @@ YAML
 
   $request = request('GET', 'http://example.com/foo?page=4&pageSize=50');
   is_equal(
-    $openapi->validate_request($request)->TO_JSON,
+    ($result = $openapi->validate_request($request))->TO_JSON,
     { valid => true },
     'entire querystring is deserialized correctly into an object',
+  );
+  is_equal(
+    $result->data,
+    { request => { uri => { query => { freeForm => { page => 4, pageSize => 50 } } } } },
+    'data is correctly deserialized',
   );
 
 
@@ -1217,9 +1241,14 @@ YAML
   $openapi->add_media_type('application/jsonpath', sub ($x) { $x });
   $request = request('GET', 'http://example.com/foo?%24.a.b%5B1%3A1%5D');
   is_equal(
-    $openapi->validate_request($request)->TO_JSON,
+    ($result = $openapi->validate_request($request))->TO_JSON,
     { valid => true },
     'entire querystring is deserialized correctly as a string',
+  );
+  is_equal(
+    $result->data,
+    { request => { uri => { query => '$.a.b[1:1]' } } },
+    'data is correctly deserialized',
   );
 
 
@@ -1251,9 +1280,14 @@ YAML
 
   $request = request('GET', 'http://example.com/foo', [ Cookie => 'greeting=Hello%2C%20world%21' ]);
   is_equal(
-    $openapi->validate_request($request)->TO_JSON,
+    ($result = $openapi->validate_request($request))->TO_JSON,
     { valid => true },
     'cookie parameter is validated',
+  );
+  is_equal(
+    $result->data,
+    { request => { header => { Cookie => { greeting => 'Hello, world!' } } } },
+    'cookie data was correctly deserialized',
   );
 
 
@@ -1293,9 +1327,14 @@ YAML
 
   $request = request('GET', 'http://example.com/foo', [ Cookie => 'greeting=Hello%2C%20world!; code=42' ]);
   is_equal(
-    $openapi->validate_request($request)->TO_JSON,
+    ($result = $openapi->validate_request($request))->TO_JSON,
     { valid => true },
     'cookie parameter is validated',
+  );
+  is_equal(
+    $result->data,
+    { request => { header => { Cookie => { cookie => { greeting => 'Hello%2C%20world!', code => 42 } } } } },
+    'cookie data was correctly deserialized',
   );
 
 
@@ -1343,9 +1382,19 @@ YAML
 
   $request = request('GET', 'http://example.com/foo/12345678,90099', [ 'X-Token' => '12345678,90099' ]);
   is_equal(
-    $openapi->validate_request($request)->TO_JSON,
+    ($result = $openapi->validate_request($request))->TO_JSON,
     { valid => true },
     'all path and header parameters are validated',
+  );
+  is_equal(
+    $result->data,
+    {
+      request => {
+        uri => { path => { path_token => [ 12345678, 90099 ] } },
+        header => { 'X-Token' => [ 12345678, 90099 ] },
+      },
+    },
+    'header data was correctly deserialized',
   );
 
 
@@ -1645,9 +1694,99 @@ YAML
   );
 
   is_equal(
-    $openapi->validate_request($request)->TO_JSON,
+    ($result = $openapi->validate_request($request, my $options = {}))->TO_JSON,
     { valid => true },
     'all path, header, query and cookie parameters are deserialized correctly',
+  );
+
+  cmp_result(
+    $options,
+    {
+      request => isa('Mojo::Message::Request'),
+      uri => isa('Mojo::URL'),
+      method => 'GET',
+      path_template => '/{path−simple−string}/{path−simple−array−false}/{path−simple−array−true}/{path−simple−object−false}/{path−simple−object−true}/{cølör0}/{cølör1}/{cølör2}/{cølör3}/{cølör4}/{path−label−string}/{path−label−array−false}/{path−label−array−true}/{path−label−object−false}/{path−label−object−true}',
+      do { my $path_captures = {
+        'path−simple−array−false' => 'blue%E2%88%92black,blackish%EF%B9%A0green,100%F0%9D%91%A5brown',
+        'path−simple−array−true' => 'blue%E2%88%92black,blackish%EF%B9%A0green,100%F0%9D%91%A5brown',
+        'path−simple−object−false' => 'blue%E2%88%92black,yes!,blackish%EF%B9%A0green,%C2%BFno%3F,100%F0%9D%91%A5brown,fl%C2%A1p',
+        'path−simple−object−true' => 'blue%E2%88%92black=yes!,blackish%EF%B9%A0green=%C2%BFno%3F,100%F0%9D%91%A5brown=fl%C2%A1p',
+        'path−simple−string' => 'red%EF%B9%A0green',
+        'cølör0' => ';c%C3%B8l%C3%B6r0=red%EF%B9%A0green',
+        'cølör1' => ';c%C3%B8l%C3%B6r1=blue%E2%88%92black,blackish%EF%B9%A0green,100%F0%9D%91%A5brown',
+        'cølör2' => ';c%C3%B8l%C3%B6r2=blue%E2%88%92black;c%C3%B8l%C3%B6r2=blackish%EF%B9%A0green;c%C3%B8l%C3%B6r2=100%F0%9D%91%A5brown',
+        'cølör3' => ';c%C3%B8l%C3%B6r3=blue%E2%88%92black,yes!,blackish%EF%B9%A0green,%C2%BFno%3F,100%F0%9D%91%A5brown,fl%C2%A1p',
+        'cølör4' => ';blue%E2%88%92black=yes!;blackish%EF%B9%A0green=%C2%BFno%3F;100%F0%9D%91%A5brown=fl%C2%A1p',
+        'path−label−array−false' => '.blue%E2%88%92black,blackish%EF%B9%A0green,100%F0%9D%91%A5brown',
+        'path−label−array−true' => '.blue%E2%88%92black.blackish%EF%B9%A0green.100%F0%9D%91%A5brown',
+        'path−label−object−false' => '.blue%E2%88%92black,yes!,blackish%EF%B9%A0green,%C2%BFno%3F,100%F0%9D%91%A5brown,fl%C2%A1p',
+        'path−label−object−true' => '.blue%E2%88%92black=yes!.blackish%EF%B9%A0green=%C2%BFno%3F.100%F0%9D%91%A5brown=fl%C2%A1p',
+        'path−label−string' => '.red%EF%B9%A0gr.e.en',
+      };
+      path_captures => $path_captures,
+      uri_captures => {
+        host => 'st💩g',  # not 'xn--stg-ld23b'
+        subdir => '🐙',   # not '%F0%9F%90%99'
+        %$path_captures,
+      }},
+      operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths /{path−simple−string}/{path−simple−array−false}/{path−simple−array−true}/{path−simple−object−false}/{path−simple−object−true}/{cølör0}/{cølör1}/{cølör2}/{cølör3}/{cølör4}/{path−label−string}/{path−label−array−false}/{path−label−array−true}/{path−label−object−false}/{path−label−object−true} get)))),
+    },
+    '$options are correct',
+  );
+  is_equal(
+    $result->data,
+    {
+      request => {
+        uri => {
+          server => {
+            host => 'st💩g',
+            subdir => '🐙',
+          },
+          path => {
+            'path−simple−string' => 'red﹠green',
+            'path−simple−array−false' => [ qw(blue−black blackish﹠green 100𝑥brown) ],
+            'path−simple−array−true' => [ qw(blue−black blackish﹠green 100𝑥brown) ],
+            'path−simple−object−false' => { 'blue−black' => 'yes!', 'blackish﹠green' => '¿no?', '100𝑥brown' => 'fl¡p' },
+            'path−simple−object−true' => { 'blue−black' => 'yes!', 'blackish﹠green' => '¿no?', '100𝑥brown' => 'fl¡p' },
+            'cølör0' => 'red﹠green',
+            'cølör1' => [ qw(blue−black blackish﹠green 100𝑥brown) ],
+            'cølör2' => [ qw(blue−black blackish﹠green 100𝑥brown) ],
+            'cølör3' => { 'blue−black' => 'yes!', 'blackish﹠green' => '¿no?', '100𝑥brown' => 'fl¡p' },
+            'cølör4' => { 'blue−black' => 'yes!', 'blackish﹠green' => '¿no?', '100𝑥brown' => 'fl¡p' },
+            'path−label−string' => 'red﹠gr.e.en',
+            'path−label−array−false' => [ qw(blue−black blackish﹠green 100𝑥brown) ],
+            'path−label−array−true' => [ qw(blue−black blackish﹠green 100𝑥brown) ],
+            'path−label−object−false' => { 'blue−black' => 'yes!', 'blackish﹠green' => '¿no?', '100𝑥brown' => 'fl¡p' },
+            'path−label−object−true' => { 'blue−black' => 'yes!', 'blackish﹠green' => '¿no?', '100𝑥brown' => 'fl¡p' },
+          },
+          query => {
+            'query−form−string' => 'blue/blåck',
+            'query−form−array−false' => [ qw(blue−black black/ish﹠green 100𝑥brown) ],
+            'query−form−array−true' => [ qw(blue−black black/ish﹠green 100𝑥brown) ],
+            'query−form−object−false' => { 'réd' => '100𝑥', 'grɘɇn' => '¡ja', 'bløö' => '¿neîn' },
+            'query−spaceDelimited−array' => [ qw(blue−black black/ish﹠green 100𝑥brown) ],
+            'query−spaceDelimited−object' => { 'réd' => '100𝑥', 'grɘɇn' => '¡ja', 'bløö' => '¿neîn' },
+            'query−pipeDelimited−array' => [ qw(blue−black black/ish﹠green 100𝑥brown) ],
+            'query−pipeDelimited−object' => { 'réd' => '100𝑥', 'grɘɇn' => '¡ja', 'bløö' => '¿neîn' },
+            'query−deepObject' => { 'réd' => '100𝑥', 'grɘɇn' => '¡ja', 'bløö' => '¿neîn' },
+          },
+        },
+        header => {
+          'header-simple-string' => 'red﹠green',
+          'header-simple-array-false' => [ qw(blue−black blackish﹠green 100𝑥brown) ],
+          'header-simple-array-true' => [ qw(blue−black blackish﹠green 100𝑥brown) ],
+          'header-simple-object-false' => { 'blue−black' => 'yes!', 'blackish﹠green' => '¿no?', '100𝑥brown' => 'fl¡p' },
+          'header-simple-object-true' => { 'blue−black' => 'yes!', 'blackish﹠green' => '¿no?', '100𝑥brown' => 'fl¡p' },
+          Cookie => {
+            'cookie−form−string' => 'blue/blåck',
+            'cookie−form−array−true' => [ qw(blue−black black/ish﹠green 100𝑥brown) ],
+            'cookie-cookie-string' => 'blue/black',
+            'cookie-cookie-array-true' =>  [ qw(blue-black black/ish&green 100xbrown) ],
+          },
+        },
+      },
+    },
+    'deserialized data included in result',
   );
 
 
@@ -1671,9 +1810,22 @@ YAML
     .join('&', map join('=', @$_), pairs map uri_encode($_), qw(réd 100𝑥 grɘɇn ¡ja bløö ¿neîn)));
 
   is_equal(
-    $openapi->validate_request($request)->TO_JSON,
+    ($result = $openapi->validate_request($request))->TO_JSON,
     { valid => true },
     'query parameter with style=form, explode=true is deserialized correctly into an object',
+  );
+  is_equal(
+    $result->data,
+    {
+      request => {
+        uri => {
+          query => {
+            'query-form-object-true' => { 'réd' => '100𝑥', 'grɘɇn' => '¡ja', 'bløö' => '¿neîn' },
+          },
+        },
+      },
+    },
+    'deserialized data included in result',
   );
 
 
@@ -1695,9 +1847,20 @@ YAML
 
   $request = request('GET', 'http://example.com', [ Cookie => 'r%C3%A9d=100%F0%9D%91%A5&gr%C9%98%C9%87n=%C2%A1ja&bl%C3%B8%C3%B6=%C2%BFne%C3%AEn' ]);
   is_equal(
-    $openapi->validate_request($request)->TO_JSON,
+    ($result = $openapi->validate_request($request))->TO_JSON,
     { valid => true },
     'single cookie parameter with style=form, explode=true is deserialized correctly into an object',
+  );
+  is_equal(
+    $result->data,
+    {
+      request => {
+        header => {
+          Cookie => { 'cookie-form-object-true' => { 'réd' => '100𝑥', 'grɘɇn' => '¡ja', 'bløö' => '¿neîn' } },
+        },
+      },
+    },
+    'deserialized data included in result',
   );
 
 
@@ -1721,9 +1884,22 @@ YAML
   $request = request('GET', 'http://example.com',
     [ Cookie => join('; ', map +($_->[0].'='.$_->[1]), pairs(qw(red 100x green ja bloo nein))) ]);
   is_equal(
-    $openapi->validate_request($request)->TO_JSON,
+    ($result = $openapi->validate_request($request))->TO_JSON,
     { valid => true },
     'all query parameters are deserialized correctly',
+  );
+  is_equal(
+    $result->data,
+    {
+      request => {
+        header => {
+          Cookie => {
+            'cookie-cookie-object-true' => { red => '100x', 'green' => 'ja', bloo => 'nein' },
+          },
+        },
+      },
+    },
+    'deserialized data included in result',
   );
 
 
@@ -2036,7 +2212,7 @@ YAML
 
   $request = request('POST', 'http://example.com/foo', [ 'Content-Type' => 'text/plain; charset=us-ascii' ], 'ascii plain text');
   is_equal(
-    $openapi->validate_request($request)->TO_JSON,
+    ($result = $openapi->validate_request($request))->TO_JSON,
     {
       valid => false,
       errors => [
@@ -2049,6 +2225,11 @@ YAML
       ],
     },
     'us-ascii text can be decoded and matched',
+  );
+  is_equal(
+    $result->data,
+    { request => { body => { content => 'ascii plain text' } } },
+    'body data was correctly parsed',
   );
 
   $request = request('POST', 'http://example.com/foo', [ 'Content-Type' => 'blOOp/HTML' ], 'html text (bloop style)');
@@ -2150,9 +2331,14 @@ YAML
   $request = request('POST', 'http://example.com/foo', [ 'Content-Type' => 'text/plain; charset=ISO-8859-1' ],
     chr(0xe9).'clair');
   is_equal(
-    $openapi->validate_request($request)->TO_JSON,
+    ($result = $openapi->validate_request($request))->TO_JSON,
     { valid => true },
     'latin1 content can be successfully decoded',
+  );
+  is_equal(
+    $result->data,
+    { request => { body => { content => 'éclair' } } },
+    'body data was correctly parsed',
   );
 
   $request = request('POST', 'http://example.com/foo', [ 'Content-Type' => 'text/plain; charset=UTF-8' ],
@@ -2212,9 +2398,14 @@ YAML
   $request = request('POST', 'http://example.com/foo', [ 'Content-Type' => 'application/json' ],
     '{"alpha": "123", "beta": "'."\x{c3}\x{a9}".'clair"}');
   is_equal(
-    $openapi->validate_request($request)->TO_JSON,
+    ($result = $openapi->validate_request($request))->TO_JSON,
     { valid => true },
     'application/json is utf-8 encoded',
+  );
+  is_equal(
+    $result->data,
+    { request => { body => { content => { alpha => '123', beta => 'éclair' } } } },
+    'body data was correctly parsed',
   );
 
   $request = request('POST', 'http://example.com/foo', [ 'Content-Type' => 'application/json; charset=UTF-8' ],
@@ -3661,6 +3852,57 @@ YAML
       ],
     },
   'correct dialect is used (via json schema\'s $schema keyword) in a secondary document',
+  );
+};
+
+subtest $::TYPE.': example of cookie decomposition with encoding and media-type' => sub {
+  my ($openapi, $result);
+  my $schema = $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML');
+paths:
+  /foo:
+    get:
+      parameters:
+        - in: cookie
+          name: token
+          content:
+            text/plain:
+              schema:
+                contentEncoding: base64
+                contentMediaType: application/json
+                contentSchema:
+                  type: object
+                  required: [ a, b ]
+                  additionalProperties:
+                    type: integer
+YAML
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri_rel,
+    openapi_schema => $schema,
+    validate_content_schemas => 1,
+  );
+
+  # perl -wlE'require MIME::Base64; say MIME::Base64::encode_base64url(q!{"a":1,"b":2}!)'
+  $result = $openapi->validate_request(request(GET => 'http://example.com/foo',
+    [ Cookie => 'token=eyJhIjoxLCJiIjoyfQ' ]));
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      { valid => true },
+      {
+        request => {
+          header => {
+            Cookie => {
+              token => { a => 1, b => 2 },
+            },
+          },
+        },
+      },
+    ],
+    'json- and base64-encoded object is properly decoded and returned in the validation result',
   );
 };
 

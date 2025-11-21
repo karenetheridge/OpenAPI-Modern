@@ -417,7 +417,8 @@ YAML
     MultipleValuesAsArray => ' three ',
   ]);
   is_equal(
-    $openapi->validate_response($response, { path_template => '/foo', method => 'GET' })->TO_JSON,
+    (my $result = $openapi->validate_response($response,
+      { path_template => '/foo', method => 'GET' }))->TO_JSON,
     {
       valid => false,
       errors => [
@@ -430,6 +431,11 @@ YAML
       ],
     },
     'headers that appear more than once are parsed into an array',
+  );
+  is_equal(
+    $result->data,
+    { response => { header => { MultipleValuesAsArray => [ qw(one one three) ] } } },
+    'header data was correctly parsed',
   );
 
 
@@ -637,11 +643,17 @@ YAML
   );
 
   is_equal(
-    $openapi->validate_response(response(200, [ 'Content-Type' => 'text/plain; charset=ISO-8859-1' ],
+    ($result = $openapi->validate_response(response(200,
+        [ 'Content-Type' => 'text/plain; charset=ISO-8859-1' ],
         chr(0xe9).'clair'),
-      { path_template => '/foo', method => 'POST' })->TO_JSON,
+      { path_template => '/foo', method => 'POST' }))->TO_JSON,
     { valid => true },
     'latin1 content can be successfully decoded',
+  );
+  is_equal(
+    $result->data,
+    { response => { body => { content => 'éclair' } } },
+    'body data was correctly parsed',
   );
 
   is_equal(
@@ -677,11 +689,16 @@ YAML
 
   my $disapprove = v224.178.160.95.224.178.160; # utf-8-encoded "ಠ_ಠ"
   is_equal(
-    $openapi->validate_response(response(200, [ 'Content-Type' => 'application/json' ],
+    ($result = $openapi->validate_response(response(200, [ 'Content-Type' => 'application/json' ],
         '{"alpha": "123", "gamma": "'.$disapprove.'"}'),
-      { path_template => '/foo', method => 'POST' })->TO_JSON,
+      { path_template => '/foo', method => 'POST' }))->TO_JSON,
     { valid => true },
     'decoded content matches the schema',
+  );
+  is_equal(
+    $result->data,
+    { response => { body => { content => { alpha => '123', gamma => 'ಠ_ಠ' } } } },
+    'body data was correctly parsed',
   );
 
 
