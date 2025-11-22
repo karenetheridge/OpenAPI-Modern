@@ -150,12 +150,14 @@ sub validate_request ($self, $request, $options = {}) {
           $request_parameters_processed->{$param_obj->{in}}{$fc_name} = $section;
         }
 
+        $state->{depth} += 1;
+
         my $valid =
-            $param_obj->{in} eq 'path' ? $self->_validate_path_parameter({ %$state, depth => $state->{depth}+1 }, $param_obj, $options->{path_captures})
-          : $param_obj->{in} eq 'query' ? $self->_validate_query_parameter({ %$state, depth => $state->{depth}+1 }, $param_obj, $request->url)
-          : $param_obj->{in} eq 'header' ? $self->_validate_header_parameter({ %$state, depth => $state->{depth}+1 }, $param_obj->{name}, $param_obj, $request->headers)
-          : $param_obj->{in} eq 'cookie' ? $self->_validate_cookie_parameter({ %$state, depth => $state->{depth}+1 }, $param_obj)
-          : $param_obj->{in} eq 'querystring' ? $self->_validate_querystring_parameter({ %$state, depth => $state->{depth}+1 }, $param_obj, $request->url)
+            $param_obj->{in} eq 'path' ? $self->_validate_path_parameter({ %$state, data_path => '/request/uri/path' }, $param_obj, $options->{path_captures})
+          : $param_obj->{in} eq 'query' ? $self->_validate_query_parameter({ %$state, data_path => '/request/uri/query' }, $param_obj, $request->url)
+          : $param_obj->{in} eq 'header' ? $self->_validate_header_parameter({ %$state, data_path => '/request/header' }, $param_obj->{name}, $param_obj, $request->headers)
+          : $param_obj->{in} eq 'cookie' ? $self->_validate_cookie_parameter({ %$state, data_path => '/request/header/Cookie' }, $param_obj)
+          : $param_obj->{in} eq 'querystring' ? $self->_validate_querystring_parameter({ %$state, data_path => '/request/uri/query' }, $param_obj, $request->url)
           : abort($state, 'unrecognized "in" value "%s"', $param_obj->{in});
       }
     }
@@ -312,7 +314,7 @@ sub validate_response ($self, $response, $options = {}) {
         $header_obj = $self->_resolve_ref('header', $ref, $state);
       }
 
-      ()= $self->_validate_header_parameter({ %$state, depth => $state->{depth}+1 },
+      ()= $self->_validate_header_parameter({ %$state, data_path => '/response/header', depth => $state->{depth}+1 },
         $header_name, $header_obj, $response->headers);
     }
 
@@ -768,8 +770,6 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
 }
 
 sub _validate_path_parameter ($self, $state, $param_obj, $path_captures) {
-  $state->{data_path} .= '/uri/path';
-
   # 'required' is always true for path parameters
   return E({ %$state, keyword => 'required' }, 'missing path parameter: %s', $param_obj->{name})
     if not exists $path_captures->{$param_obj->{name}};
@@ -803,8 +803,6 @@ sub _validate_path_parameter ($self, $state, $param_obj, $path_captures) {
 }
 
 sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
-  $state->{data_path} .= '/uri/query';
-
   # parse the query parameters out of uri
   my $query_params = +{ $uri->query->pairs->@* };
 
@@ -857,8 +855,6 @@ sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
 # validates a header, from either the request or the response
 sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $headers) {
   return 1 if grep fc $header_name eq fc $_, qw(Accept Content-Type Authorization);
-
-  $state->{data_path} .= '/header';
 
   if (not $headers->every_header($header_name)->@*) {
     return E({ %$state, keyword => 'required' }, 'missing header: %s', $header_name)
@@ -921,14 +917,10 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
 }
 
 sub _validate_cookie_parameter ($self, $state, $param_obj, @args) {
-  $state->{data_path} = jsonp($state->{data_path}, qw(headers Cookie), $param_obj->{name});
-
   return E($state, 'cookie parameters not yet supported');
 }
 
 sub _validate_querystring_parameter ($self, $state, $param_obj, $uri) {
-  $state->{data_path} = '/request/uri/query';
-
   # note: if something has caused the Mojo::Parameters object to be normalized (e.g. calling
   # 'pairs'), the raw string value is lost
   return E({ %$state, keyword => 'required' }, 'missing querystring')
