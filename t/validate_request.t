@@ -904,6 +904,17 @@ paths:
               type: string
               maxLength: 1
               const: ಠ
+  /emptystring:
+    get:
+      parameters:
+      - name: qs      # the name is not used in the querystring
+        in: querystring
+        required: true
+        content:
+          text/plain;charset=utf-8:
+            schema:
+              type: string
+              maxLength: 0
   /application/json:
     get:
       parameters:
@@ -938,6 +949,12 @@ YAML
       ],
     },
     'when querystring is required, the URI must have a query',
+  );
+
+  is_equal(
+    $openapi->validate_request(request('GET', 'http://example.com/emptystring?'))->TO_JSON,
+    { valid => true },
+    'empty querystring still counts as being provided',
   );
 
   is_equal(

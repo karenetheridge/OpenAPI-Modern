@@ -951,7 +951,7 @@ sub _validate_querystring_parameter ($self, $state, $param_obj, $params) {
   # note: if something has caused the Mojo::Parameters object to be normalized (e.g. calling
   # 'pairs'), the raw string value is lost
   return E({ %$state, keyword => 'required' }, 'missing querystring')
-    if $param_obj->{required} and not length $params->{string};
+    if $param_obj->{required} and not exists $params->{string};
 
   my $content = $params->{string};
 
