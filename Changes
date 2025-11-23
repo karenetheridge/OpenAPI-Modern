@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.107     2025-11-23 18:56:54Z
           - efficiency improvements in validate_response() when provided with
             an operationId for lookup
           - prereq bump on Test2::Warnings for an import fix
