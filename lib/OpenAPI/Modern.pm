@@ -244,15 +244,14 @@ sub validate_response ($self, $response, $options = {}) {
     # FIXME: if the operation is shared by multiple paths, path_template may not be inferrable, and
     # we also don't need path_captures
     my $path_ok = $self->find_path_item($options, $state);
-    delete $options->{errors};
-    return $self->_result($state, 1, 1) if not $path_ok;
-
-    my $path_item = delete $options->{_path_item};
+    delete $options->@{qw(errors _path_item)};
     my $operation = delete $options->{_operation};
 
-    return $self->_result($state, 0, 1) if not exists $operation->{responses};
+    return $self->_result($state, 1, 1) if not $path_ok;
 
     $state->{keyword_path} .= delete $options->{_operation_path_suffix};  # jsonp-encoded
+    return $self->_result($state, 0, 1) if not exists $operation->{responses};
+
     $response = _convert_response($response);   # now guaranteed to be a Mojo::Message::Response
 
     if ($response->headers->header('Transfer-Encoding')) {
