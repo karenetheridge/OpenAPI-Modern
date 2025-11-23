@@ -1,6 +1,8 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - efficiency improvements in validate_response() when provided with
+            an operationId for lookup
 
 0.106     2025-11-19 20:28:01Z
           - fix invalid restriction on trailing '/' in server urls (added in

@@ -241,9 +241,14 @@ sub validate_response ($self, $response, $options = {}) {
   my $state = { data_path => '/response' };
 
   try {
-    # FIXME: if the operation is shared by multiple paths, path_template may not be inferrable, and
-    # we also don't need path_captures
-    my $path_ok = $self->find_path_item($options, $state);
+    # we only need the operation location, and do not need to verify the request uri, path template
+    # and path_captures, so do not pass unnecessary information to find_path_item
+    my $fp_options = +{ %$options };
+    delete $fp_options->@{qw(request uri method path_template path_captures)} if exists $options->{operation_id};
+    delete $fp_options->@{qw(request uri path_captures)} if exists $options->{path_template} and exists $options->{method};
+    my $path_ok = $self->find_path_item($fp_options, $state);
+    $options->@{keys $fp_options->%*} = values $fp_options->%*;
+
     delete $options->@{qw(errors _path_item)};
     my $operation = delete $options->{_operation};
 
