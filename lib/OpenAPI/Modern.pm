@@ -1071,7 +1071,7 @@ sub _type_in_schema ($self, $schema, $state) {
 
   my @types;
 
-  push @types, is_plain_arrayref($schema->{type}) ? ($schema->{types}->@*) : ($schema->{type})
+  push @types, is_plain_arrayref($schema->{type}) ? ($schema->{type}->@*) : ($schema->{type})
     if exists $schema->{type};
 
   push @types, map $self->_type_in_schema($schema->{allOf}[$_],
