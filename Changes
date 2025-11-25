@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.108     2025-11-25 18:03:38Z
           - fixed error in type detection in parameter schemas (thanks, Robin
             Murray!)
 
