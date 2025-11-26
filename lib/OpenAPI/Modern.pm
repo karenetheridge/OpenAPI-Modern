@@ -1593,8 +1593,8 @@ documents at startup, and impact can be further reduced by saving objects to cac
 reloading them (perhaps by using a timestamp or checksum to determine if a fresh reload is needed).
 
   sub get_openapi (...) {
-    my $serialized_file = Path::Tiny::path($serialized_filename);
-    my $openapi_file = Path::Tiny::path($openapi_filename);
+    my $serialized_file = Mojo::File->new($serialized_filename);
+    my $openapi_file = Mojo::File->new($openapi_filename);
     my $openapi;
     if ($serialized_file->stat->mtime < $openapi_file->stat->mtime)) {
       $openapi = OpenAPI::Modern->new(

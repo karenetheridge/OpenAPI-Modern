@@ -17,7 +17,7 @@ no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 no if "$]" >= 5.041009, feature => 'smartmatch';
 no feature 'switch';
 use File::ShareDir 'dist_dir';
-use Path::Tiny;
+use Mojo::File 'path';
 use namespace::clean;
 
 use Exporter 'import';
@@ -159,7 +159,7 @@ sub load_bundled_document ($evaluator, $uri) {
 
   my ($version) = $uri =~ m{/(\d+\.\d+)/};
   my $file = path(dist_dir('OpenAPI-Modern'), BUNDLED_SCHEMAS->{$version}{$uri});
-  my $schema = $evaluator->_json_decoder->decode($file->slurp_raw);
+  my $schema = $evaluator->_json_decoder->decode($file->slurp);
   return $metaschema_cache->{$uri} = $evaluator->add_schema($schema);
 }
 
