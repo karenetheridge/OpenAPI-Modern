@@ -92,7 +92,7 @@ use constant STRICT_DIALECT => {
   3.2 => 'https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/3.2/strict-dialect.json',
 };
 
-# identifier => local filename (under share/)
+# <uri> => <local filename> (under share/)
 use constant BUNDLED_SCHEMAS => {
   map +($_ => +{
     DEFAULT_METASCHEMA->{$_}      => 'oas/'.$_.'/schema.json',
@@ -104,7 +104,9 @@ use constant BUNDLED_SCHEMAS => {
   }), OAS_VERSIONS->@*
 };
 
-# these are all pre-loaded, and also made available as s/<date>/latest/
+# these are all loadable on demand, via load_bundled_document,
+# and also made available as s/<date>/latest/
+# { <oas version> => [ <uri>, <uri>, .. ]
 use constant OAS_SCHEMAS => {
   map {
     my $version = $_;
@@ -144,6 +146,8 @@ sub add_vocab_and_default_schemas ($evaluator, $version = OAS_VERSIONS->[-1]) {
 
   foreach my $uri (OAS_SCHEMAS->{$version}->@*) {
     my $document = load_bundled_document($evaluator, $uri);
+
+    # add "latest" alias for each of these documents, mapping to the same document object
     $evaluator->add_document(($document->canonical_uri =~ s{/\d{4}-\d{2}-\d{2}$}{}r).'/latest', $document);
   }
 }
