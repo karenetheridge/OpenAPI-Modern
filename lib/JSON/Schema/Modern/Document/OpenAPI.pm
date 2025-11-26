@@ -19,8 +19,8 @@ no if "$]" >= 5.033001, feature => 'multidimensional';
 no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 no if "$]" >= 5.041009, feature => 'smartmatch';
 no feature 'switch';
-use JSON::Schema::Modern::Utilities qw(E canonical_uri jsonp is_equal json_pointer_type assert_keyword_type assert_uri_reference);
-use OpenAPI::Modern::Utilities qw(:constants add_vocab_and_default_schemas load_bundled_document);
+use JSON::Schema::Modern::Utilities 0.625 qw(E canonical_uri jsonp is_equal json_pointer_type assert_keyword_type assert_uri_reference load_cached_document);
+use OpenAPI::Modern::Utilities qw(:constants add_vocab_and_default_schemas);
 use Carp qw(croak carp);
 use Digest::MD5 'md5_hex';
 use Storable 'dclone';
@@ -192,7 +192,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
       if $self->_has_metaschema_uri and $self->metaschema_uri eq (STRICT_METASCHEMA->{3.1} =~ s{/3.1/}{/}r);
 
     # we used to always preload these, so we need to do it as needed for users who are using them
-    load_bundled_document($evaluator, STRICT_DIALECT->{$self->oas_version})
+    load_cached_document($evaluator, STRICT_DIALECT->{$self->oas_version})
       if $self->_has_metaschema_uri and $self->metaschema_uri eq STRICT_METASCHEMA->{$self->oas_version}
         or $json_schema_dialect eq STRICT_DIALECT->{$self->oas_version};
 
@@ -218,7 +218,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
         : $self->_dynamic_metaschema_uri($json_schema_dialect, $evaluator))
       if not $self->_has_metaschema_uri;
 
-    load_bundled_document($evaluator, STRICT_METASCHEMA->{$self->oas_version})
+    load_cached_document($evaluator, STRICT_METASCHEMA->{$self->oas_version})
       if $self->_has_metaschema_uri and $self->metaschema_uri eq STRICT_METASCHEMA->{$self->oas_version};
   }
 

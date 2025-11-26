@@ -14,6 +14,7 @@ use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 use lib 't/lib';
 use Helper;
 use JSON::Schema::Modern::Document::OpenAPI;
+use JSON::Schema::Modern::Utilities 0.625 'load_cached_document';
 
 my $oad_schema = {
   openapi => OAD_VERSION,
@@ -82,7 +83,7 @@ subtest 'customized 3.1 strict schema and dialect when version is omitted' => su
 subtest '3.0.x schema is also available' => sub {
   my $evaluator = JSON::Schema::Modern->new(validate_formats => 1);
   my $id = DEFAULT_METASCHEMA->{'3.0'};
-  my $doc = OpenAPI::Modern::Utilities::load_bundled_document($evaluator, $id);
+  my $doc = load_cached_document($evaluator, $id);
 
   cmp_result(
     $evaluator->evaluate(

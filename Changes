@@ -2,7 +2,8 @@ Revision history for OpenAPI-Modern
 
 {{$NEXT}}
           - the OpenAPI 3.0 schema is now available to be used via
-          load_bundled_document() in OpenAPI::Modern::Utilities
+          load_cached_document() in JSON::Schema::Modern::Utilities,
+          when OpenAPI::Modern::Utilities is loaded
 
 0.108     2025-11-25 18:03:38Z
           - fixed error in type detection in parameter schemas (thanks, Robin

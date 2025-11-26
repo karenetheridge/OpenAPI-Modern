@@ -18,6 +18,7 @@ no if "$]" >= 5.041009, feature => 'smartmatch';
 no feature 'switch';
 use File::ShareDir 'dist_dir';
 use Mojo::File 'path';
+use JSON::Schema::Modern::Utilities 0.625 qw(register_schema load_cached_document);
 use namespace::clean;
 
 use Exporter 'import';
@@ -36,7 +37,6 @@ our @EXPORT = qw(
 our @EXPORT_OK = qw(
   OAS_SCHEMAS
   add_vocab_and_default_schemas
-  load_bundled_document
 );
 
 our %EXPORT_TAGS = (
@@ -108,7 +108,7 @@ use constant _BUNDLED_SCHEMAS => {
   ), OAS_VERSIONS->@*
 };
 
-# these are all loadable on demand, via load_bundled_document,
+# these are all loadable on demand, via JSON::Schema::Modern::load_cached_document,
 # and also made available as s/<date>/latest/
 # { <oas version> => [ <uri>, <uri>, .. ]
 use constant OAS_SCHEMAS => {
@@ -149,25 +149,19 @@ sub add_vocab_and_default_schemas ($evaluator, $version = OAS_VERSIONS->[-1]) {
   $evaluator->add_format_validation(password => +{ type => 'string', sub => sub ($) { 1 } });
 
   foreach my $uri (OAS_SCHEMAS->{$version}->@*) {
-    my $document = load_bundled_document($evaluator, $uri);
+    my $document = load_cached_document($evaluator, $uri);
 
     # add "latest" alias for each of these documents, mapping to the same document object
     $evaluator->add_document(($document->canonical_uri =~ s{/\d{4}-\d{2}-\d{2}$}{}r).'/latest', $document);
   }
 }
 
-# simple runtime-wide cache of $ids to metaschema document objects that are sourced from disk
-my $metaschema_cache = {};
-
-# load a schema that comes bundled with the distribution, and add it to the evaluator.
-sub load_bundled_document ($evaluator, $uri) {
-  if (my $document = $metaschema_cache->{$uri}) {
-    return $evaluator->add_document($document);
+{
+  # make all bundled schemas available via JSON::Schema::Modern::load_cached_document
+  my $share_dir = dist_dir('OpenAPI-Modern');
+  foreach my $uri (keys _BUNDLED_SCHEMAS->%*) {
+    register_schema($uri, $share_dir.'/'._BUNDLED_SCHEMAS->{$uri});
   }
-
-  my $file = path(dist_dir('OpenAPI-Modern'), _BUNDLED_SCHEMAS->{$uri});
-  my $schema = $evaluator->_json_decoder->decode($file->slurp);
-  return $metaschema_cache->{$uri} = $evaluator->add_schema($schema);
 }
 
 1;
@@ -184,7 +178,6 @@ __END__
 This class contains common definitions and internal utilities to be used by L<OpenAPI::Modern>.
 
 =for Pod::Coverage
-BUNDLED_SCHEMAS
 DEFAULT_BASE_METASCHEMA
 DEFAULT_DIALECT
 DEFAULT_METASCHEMA
@@ -195,6 +188,5 @@ STRICT_DIALECT
 STRICT_METASCHEMA
 SUPPORTED_OAD_VERSIONS
 add_vocab_and_default_schemas
-load_bundled_document
 
 =cut

@@ -1642,7 +1642,7 @@ spelling mistakes from going unnoticed and resulting in false positive results.
 The OpenAPI v3.0 schema document is also available, for use in validating v3.0.x OpenAPI
 descriptions, but parsing of the description (e.g. for use in request and response validation) is
 not supported. It can be used directly as a schema (e.g. by using its URI in a C<$schema> or C<$ref>
-keyword) after calling L<OpenAPI::Modern::Utilities/load_bundled_document>.
+keyword) after calling L<JSON::Schema::Modern::Utilities/load_cached_document>.
 
 =head1 ON THE USE OF JSON SCHEMAS
 
