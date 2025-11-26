@@ -14,7 +14,7 @@ use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 use Mojo::File 'path';
 use Mojo::UserAgent;
 use Digest::MD5 'md5_hex';
-use JSON::Schema::Modern;
+use JSON::Schema::Modern 0.624;
 use lib 'lib';  # make sure we load the newly-patched version of our modules
 use OpenAPI::Modern::Utilities qw(OAS_SCHEMAS OAS_VERSIONS);
 

@@ -31,6 +31,7 @@ share/3.1/strict-dialect.json d13df15c1f7475a477cdff7c3dfa0bca
 share/3.1/strict-schema.json 94554b65920faa88f89d0e65d2e099c1
 share/3.2/strict-dialect.json 11c94716eb238cd21d84a4eea7c3e1ce
 share/3.2/strict-schema.json 3b89643225eced6ce7d3f1a923e91624
+share/oas/3.0/schema.json bd82d5fc176d386ce85d0e8d5836aa32
 share/oas/3.1/dialect.json 06cea984f8807c13e2916914251e22c3
 share/oas/3.1/schema-base.json c7384a02a8fa98ba83488c09d76a1df1
 share/oas/3.1/schema.json 724962b927e62a5a578604093e5ecc78

@@ -49,15 +49,18 @@ our %EXPORT_TAGS = (
 use constant SUPPORTED_OAD_VERSIONS => [ '3.1.2', '3.2.0' ];
 
 # in most things, e.g. schemas, we only use major.minor as the version number
-use constant OAS_VERSIONS => [ map s/^\d+\.\d+\K\.\d+$//r, SUPPORTED_OAD_VERSIONS->@* ];
+# we don't actually support OAS 3.0.x, but we will bundle its schema so it can be more easily used
+# for validating v3.0 OADs
+use constant OAS_VERSIONS => [ '3.0', map s/^\d+\.\d+\K\.\d+$//r, SUPPORTED_OAD_VERSIONS->@* ];
 
 # see https://spec.openapis.org/#openapi-specification-schemas for the latest links
 # these are updated automatically at build time via 'update-schemas'
 
 # the main OpenAPI document schema, with permissive (unvalidated) JSON Schemas
 use constant DEFAULT_METASCHEMA => {
-  3.1 => 'https://spec.openapis.org/oas/3.1/schema/2025-09-15',
-  3.2 => 'https://spec.openapis.org/oas/3.2/schema/2025-09-17',
+  '3.0' => 'https://spec.openapis.org/oas/3.0/schema/2024-10-18',
+  '3.1' => 'https://spec.openapis.org/oas/3.1/schema/2025-09-15',
+  '3.2' => 'https://spec.openapis.org/oas/3.2/schema/2025-09-17',
 };
 
 # metaschema for JSON Schemas contained within OpenAPI documents:
@@ -94,12 +97,14 @@ use constant STRICT_DIALECT => {
 # <uri> => <local filename> (under share/) - for internal use only!
 use constant _BUNDLED_SCHEMAS => {
   map +(
-    DEFAULT_METASCHEMA->{$_}      => 'oas/'.$_.'/schema.json',
-    DEFAULT_DIALECT->{$_}         => 'oas/'.$_.'/dialect.json',
-    DEFAULT_BASE_METASCHEMA->{$_} => 'oas/'.$_.'/schema-base.json',
-    OAS_VOCABULARY->{$_}          => 'oas/'.$_.'/vocabulary.json',
-    STRICT_METASCHEMA->{$_}       => $_.'/strict-schema.json',
-    STRICT_DIALECT->{$_}          => $_.'/strict-dialect.json',
+    DEFAULT_METASCHEMA->{$_}        => 'oas/'.$_.'/schema.json',
+    $_ eq '3.0' ? () : (
+      DEFAULT_DIALECT->{$_}         => 'oas/'.$_.'/dialect.json',
+      DEFAULT_BASE_METASCHEMA->{$_} => 'oas/'.$_.'/schema-base.json',
+      OAS_VOCABULARY->{$_}          => 'oas/'.$_.'/vocabulary.json',
+      STRICT_METASCHEMA->{$_}       => $_.'/strict-schema.json',
+      STRICT_DIALECT->{$_}          => $_.'/strict-dialect.json',
+    )
   ), OAS_VERSIONS->@*
 };
 
