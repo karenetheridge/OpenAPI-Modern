@@ -11,12 +11,11 @@ no if "$]" >= 5.041009, feature => 'smartmatch';
 no feature 'switch';
 use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 
+use lib 't/lib';
+use Helper;
 use Test::JSON::Schema::Acceptance 1.014;
 use Mojo::File 'path';
 use Config;
-
-use lib 't/lib';
-use Helper;
 
 foreach my $oas_version (map $_->basename, path('t/oas-vocabulary')->list({dir=>1})->each) {
   my $accepter = Test::JSON::Schema::Acceptance->new(

@@ -23,11 +23,11 @@ use Test::Needs;
 use if $ENV{AUTHOR_TESTING}, 'Test2::Warnings';
 use if $ENV{AUTHOR_TESTING}, 'Test2::Plugin::BailOnFail';
 use Test::Deep qw(!array !hash); # import symbols: ignore, re etc
+use Test::File::ShareDir -share => { -dist => { 'OpenAPI-Modern' => 'share' } };
 use JSON::Schema::Modern::Document::OpenAPI;
 use JSON::Schema::Modern::Utilities qw(true false);
 use OpenAPI::Modern;
 use OpenAPI::Modern::Utilities;
-use Test::File::ShareDir -share => { -dist => { 'OpenAPI-Modern' => 'share' } };
 use YAML::PP 0.005;
 
 use constant OAS_VOCABULARIES => [ map 'JSON::Schema::Modern::Vocabulary::'.$_,

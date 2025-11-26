@@ -10,10 +10,10 @@ no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 no if "$]" >= 5.041009, feature => 'smartmatch';
 no feature 'switch';
 use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
-use JSON::Schema::Modern::Document::OpenAPI;
 
 use lib 't/lib';
 use Helper;
+use JSON::Schema::Modern::Document::OpenAPI;
 
 my $oad_schema = {
   openapi => OAD_VERSION,
