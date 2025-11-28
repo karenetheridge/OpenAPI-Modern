@@ -34,7 +34,6 @@ our @EXPORT = qw(
 );
 
 our @EXPORT_OK = qw(
-  BUNDLED_SCHEMAS
   OAS_SCHEMAS
   add_vocab_and_default_schemas
   load_bundled_document
@@ -92,16 +91,16 @@ use constant STRICT_DIALECT => {
   3.2 => 'https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/3.2/strict-dialect.json',
 };
 
-# <uri> => <local filename> (under share/)
-use constant BUNDLED_SCHEMAS => {
-  map +($_ => +{
+# <uri> => <local filename> (under share/) - for internal use only!
+use constant _BUNDLED_SCHEMAS => {
+  map +(
     DEFAULT_METASCHEMA->{$_}      => 'oas/'.$_.'/schema.json',
     DEFAULT_DIALECT->{$_}         => 'oas/'.$_.'/dialect.json',
     DEFAULT_BASE_METASCHEMA->{$_} => 'oas/'.$_.'/schema-base.json',
     OAS_VOCABULARY->{$_}          => 'oas/'.$_.'/vocabulary.json',
     STRICT_METASCHEMA->{$_}       => $_.'/strict-schema.json',
     STRICT_DIALECT->{$_}          => $_.'/strict-dialect.json',
-  }), OAS_VERSIONS->@*
+  ), OAS_VERSIONS->@*
 };
 
 # these are all loadable on demand, via load_bundled_document,
@@ -110,7 +109,7 @@ use constant BUNDLED_SCHEMAS => {
 use constant OAS_SCHEMAS => {
   map {
     my $version = $_;
-    $version => [ grep m{/oas/$version/}, keys BUNDLED_SCHEMAS->{$version}->%* ]
+    $version => [ grep m{/oas/$version/}, keys _BUNDLED_SCHEMAS->%* ]
   } OAS_VERSIONS->@*
 };
 
@@ -161,8 +160,7 @@ sub load_bundled_document ($evaluator, $uri) {
     return $evaluator->add_document($document);
   }
 
-  my ($version) = $uri =~ m{/(\d+\.\d+)/};
-  my $file = path(dist_dir('OpenAPI-Modern'), BUNDLED_SCHEMAS->{$version}{$uri});
+  my $file = path(dist_dir('OpenAPI-Modern'), _BUNDLED_SCHEMAS->{$uri});
   my $schema = $evaluator->_json_decoder->decode($file->slurp);
   return $metaschema_cache->{$uri} = $evaluator->add_schema($schema);
 }

@@ -16,11 +16,11 @@ use Mojo::UserAgent;
 use Digest::MD5 'md5_hex';
 use JSON::Schema::Modern;
 use lib 'lib';  # make sure we load the newly-patched version of our modules
-use OpenAPI::Modern::Utilities qw(BUNDLED_SCHEMAS OAS_SCHEMAS OAS_VERSIONS);
+use OpenAPI::Modern::Utilities qw(OAS_SCHEMAS OAS_VERSIONS);
 
 # { download URL -> filename (in share) }
 my %files = (
-  (map +(BUNDLED_SCHEMAS->{$_}->%{OAS_SCHEMAS->{$_}->@*}), OAS_VERSIONS->@*),
+  (OpenAPI::Modern::Utilities::_BUNDLED_SCHEMAS->%{ map @$_, values OAS_SCHEMAS->%* }),
   'https://raw.githubusercontent.com/OAI/OpenAPI-Specification/main/LICENSE' => 'oas/LICENSE',
 );
 
