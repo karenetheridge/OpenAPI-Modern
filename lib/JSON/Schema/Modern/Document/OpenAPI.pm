@@ -24,7 +24,6 @@ use OpenAPI::Modern::Utilities qw(:constants add_vocab_and_default_schemas load_
 use Carp qw(croak carp);
 use Digest::MD5 'md5_hex';
 use Storable 'dclone';
-use Ref::Util 'is_plain_hashref';
 use builtin::compat qw(blessed indexed);
 use MooX::TypeTiny 0.002002;
 use Types::Standard qw(HashRef ArrayRef Str);
@@ -474,7 +473,7 @@ sub validate ($class, @args) {
 # identifiers
 sub _traverse_schema ($self, $state) {
   my $schema = $self->get($state->{keyword_path});
-  return if not is_plain_hashref($schema) or not keys %$schema;
+  return if ref $schema ne 'HASH' or not keys %$schema;
 
   my $subschema_state = $state->{evaluator}->traverse($schema, {
     initial_schema_uri => canonical_uri($state),

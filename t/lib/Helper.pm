@@ -14,7 +14,6 @@ use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 
 use Safe::Isa;
 use List::Util 'pairs';
-use Ref::Util 'is_hashref';
 use Mojo::Message::Request;
 use Mojo::Message::Response;
 use Test2::V0 qw(!bag !bool !warnings), -no_pragmas => 1;  # prefer Test::Deep and Test2::Warnings versions of these exports
@@ -305,7 +304,7 @@ sub cmp_result ($got, $expected, $test_name) {
 
     # dirty hack to check we always set operation_uri on success
     $ctx->fail('missing operation_uri on successful call')
-      if is_hashref($expected) and $expected->{errors} and $expected->{method} and not $expected->{errors}->@*
+      if ref $expected eq 'HASH' and $expected->{errors} and $expected->{method} and not $expected->{errors}->@*
       and not exists $expected->{operation_uri};
 
     my ($equal, $stack) = Test::Deep::cmp_details($got, $expected);

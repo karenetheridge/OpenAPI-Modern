@@ -21,7 +21,6 @@ no if "$]" >= 5.041009, feature => 'smartmatch';
 no feature 'switch';
 use Carp 'croak';
 use Safe::Isa;
-use Ref::Util qw(is_plain_hashref is_plain_arrayref is_ref);
 use List::Util qw(first pairs);
 use if "$]" < 5.041010, 'List::Util' => 'any';
 use if "$]" >= 5.041010, experimental => 'keyword_any';
@@ -1008,7 +1007,7 @@ sub _validate_media_type ($self, $state, $content_obj, $media_type, $media_type_
   if (not $media_type_decoder) {
     # don't fail if the schema would pass on any input
     my $schema = $content_obj->{$media_type}{schema};
-    return if not defined $schema or is_plain_hashref($schema) ? !keys %$schema : $schema;
+    return if not defined $schema or ref $schema eq 'HASH' ? !keys %$schema : $schema;
 
     abort({ %$state, keyword => 'content', _keyword_path_suffix => $media_type},
       'EXCEPTION: unsupported media type "%s": add support with $openapi->add_media_type(...)', $media_type);
@@ -1067,11 +1066,11 @@ sub _resolve_ref ($self, $entity_type, $ref, $state) {
 # 0, 1, false, true will be interpreted as boolean when type = boolean
 # (number and integer are implicit via evaluation with "stringy_numbers" enabled)
 sub _type_in_schema ($self, $schema, $state) {
-  return [] if not is_plain_hashref($schema);
+  return [] if ref $schema ne 'HASH';
 
   my @types;
 
-  push @types, is_plain_arrayref($schema->{type}) ? ($schema->{type}->@*) : ($schema->{type})
+  push @types, ref $schema->{type} eq 'ARRAY' ? ($schema->{type}->@*) : ($schema->{type})
     if exists $schema->{type};
 
   push @types, map $self->_type_in_schema($schema->{allOf}[$_],
@@ -1089,7 +1088,7 @@ sub _type_in_schema ($self, $schema, $state) {
 # evaluates data against the subschema at the current state location
 sub _evaluate_subschema ($self, $dataref, $schema, $state) {
   # boolean schema
-  if (not is_plain_hashref($schema)) {
+  if (ref $schema ne 'HASH') {
     return 1 if $schema;
 
     my @location = unjsonp($state->{data_path});
