@@ -235,7 +235,6 @@ sub traverse ($self, $evaluator, $config_override = {}) {
   my $result = $evaluator->evaluate(
     $schema, $self->metaschema_uri,
     {
-      short_circuit => 1,
       collect_annotations => 0,
       validate_formats => 1,
       callbacks => {
