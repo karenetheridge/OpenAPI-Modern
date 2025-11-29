@@ -8,7 +8,7 @@ OpenAPI::Modern - Validate HTTP requests and responses against an OpenAPI v3.1 o
 
 =head1 VERSION
 
-version 0.108
+version 0.109
 
 =head1 SYNOPSIS
 
@@ -393,8 +393,8 @@ documents at startup, and impact can be further reduced by saving objects to cac
 reloading them (perhaps by using a timestamp or checksum to determine if a fresh reload is needed).
 
   sub get_openapi (...) {
-    my $serialized_file = Path::Tiny::path($serialized_filename);
-    my $openapi_file = Path::Tiny::path($openapi_filename);
+    my $serialized_file = Mojo::File->new($serialized_filename);
+    my $openapi_file = Mojo::File->new($openapi_filename);
     my $openapi;
     if ($serialized_file->stat->mtime < $openapi_file->stat->mtime)) {
       $openapi = OpenAPI::Modern->new(
@@ -439,6 +439,11 @@ C<https://raw.githubusercontent.com/karenetheridge/OpenAPI-Modern/master/share/3
 which treats the `format` keyword as an assertion, and also prevents any unknown keywords from being
 used in JSON Schemas. This is useful to avoid
 spelling mistakes from going unnoticed and resulting in false positive results.
+
+The OpenAPI v3.0 schema document is also available, for use in validating v3.0.x OpenAPI
+descriptions, but parsing of the description (e.g. for use in request and response validation) is
+not supported. It can be used directly as a schema (e.g. by using its URI in a C<$schema> or C<$ref>
+keyword) after calling L<JSON::Schema::Modern::Utilities/load_cached_document>.
 
 =head1 ON THE USE OF JSON SCHEMAS
 
