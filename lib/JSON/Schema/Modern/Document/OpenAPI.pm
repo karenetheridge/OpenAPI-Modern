@@ -578,6 +578,7 @@ __END__
     schema => decode_json(<<JSON),
   {
     "openapi": "3.2.0",
+    "$self": "openapi.json",
     "info": {
       "title": "my title",
       "version": "1.2.3"
