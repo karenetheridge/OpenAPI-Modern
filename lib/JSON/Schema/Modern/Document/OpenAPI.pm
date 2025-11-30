@@ -582,8 +582,6 @@ __END__
       "title": "my title",
       "version": "1.2.3"
     },
-    "components": {
-    },
     "paths": {
       "/foo": {
         "get": {}
