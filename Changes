@@ -1,6 +1,8 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - new command line script "openapi-validate", to validate OpenAPI
+            descriptions (one or more files)
 
 0.109     2025-11-29 00:46:37Z
           - the OpenAPI 3.0 schema is now available to be used via
