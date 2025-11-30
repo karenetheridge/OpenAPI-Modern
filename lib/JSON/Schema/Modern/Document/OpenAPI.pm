@@ -196,12 +196,15 @@ sub traverse ($self, $evaluator, $config_override = {}) {
       if $self->_has_metaschema_uri and $self->metaschema_uri eq (STRICT_METASCHEMA->{$self->oas_version}//'')
         or $json_schema_dialect eq (STRICT_DIALECT->{$self->oas_version}//'');
 
-    if ($self->oas_version eq '3.0') {
-      # this is not going to actually work in this state, but we're never going to try to
-      # execute it anyway (potential TODO: define an OAS 3.0 dialect and vocabulary so we can)
-      $state->{specification_version} = 'draft4';
-      $state->{vocabularies} = [];
-      $state->{json_schema_dialect} = DEFAULT_METASCHEMA->{'3.0'}.'#/definitions/Schema';
+    if ($json_schema_dialect eq DEFAULT_DIALECT->{'3.0'}
+        or $json_schema_dialect eq (DEFAULT_DIALECT->{'3.0'} =~ s/\b\d{4}-\d{2}-\d{2}\b/latest/r)) {
+      croak '3.0 dialect with a non-3.0 OAD is not currently supported' if $self->oas_version ne '3.0';
+
+      $evaluator->add_vocabulary('JSON::Schema::Modern::Vocabulary::OpenAPI_3_0');
+      $evaluator->_set_metaschema_vocabulary_classes($json_schema_dialect => [
+        $state->@{qw(specification_version vocabularies)} =
+          ('draft4', ['JSON::Schema::Modern::Vocabulary::OpenAPI_3_0'])
+      ]);
     }
     else {
       # traverse an empty schema with this dialect uri to confirm it is valid, and add an entry in
@@ -219,8 +222,10 @@ sub traverse ($self, $evaluator, $config_override = {}) {
       }
 
       $state->@{qw(specification_version vocabularies)} = $check_metaschema_state->@{qw(specification_version vocabularies)};
-      $state->{json_schema_dialect} = $json_schema_dialect; # subsequent '$schema' keywords can still override this
     }
+
+    # subsequent '$schema' keywords can still override this
+    $state->{json_schema_dialect} = $json_schema_dialect;
 
     $self->_set_metaschema_uri(DEFAULT_METASCHEMA->{$self->oas_version})
       if not $self->_has_metaschema_uri;
@@ -238,7 +243,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
 
   # evaluate the document against its metaschema to find any errors, to identify all schema
   # resources within to add to the global resource index, and to extract all operationIds
-  my (@json_schema_paths, @operation_paths, %bad_path_item_refs, @servers_paths, %tag_operation_paths);
+  my (@json_schema_paths, @operation_paths, %bad_path_item_refs, @servers_paths, %tag_operation_paths, @bad_items_paths);
   my $result = $evaluator->evaluate(
     $schema, $self->metaschema_uri,
     {
@@ -256,13 +261,28 @@ sub traverse ($self, $evaluator, $config_override = {}) {
           return 1;
         },
         '$ref' => sub ($data, $schema, $state) {
-          # we only need to special-case path-item, because this is the only entity that is
-          # referenced in the schema without an -or-reference
-          my ($entity) = (($schema->{'$ref'} =~ m{#/\$defs/([^/]+?)(?:-or-reference)$}),
-            ($schema->{'$ref'} =~ m{#/\$defs/(path-item)$}));
+          my $entity;
+
+          if ($self->oas_version eq '3.0') {
+            # strip '#/definitions/'; convert CamelCase to kebab-case
+            if ($entity = lc join('-', split /(?=[A-Z])/, substr($schema->{'$ref'}, 14))) {
+              push @bad_items_paths, $state->{data_path}
+                if $entity eq 'schema' and ($data->{type}//'') eq 'array' and not exists $data->{items};
+
+              undef $entity if not grep $entity eq $_, __entities;
+              # no need to push to @json_schema_paths, as all schema entities are already found
+            }
+          }
+          else {
+            # we only need to special-case path-item, because this is the only entity that is
+            # referenced in the schema without an -or-reference
+            ($entity) = (($schema->{'$ref'} =~ m{#/\$defs/([^/]+?)(?:-or-reference)$}),
+                         ($schema->{'$ref'} =~ m{#/\$defs/(path-item)$}));
+          }
+
           $self->_add_entity_location($state->{data_path}, $entity) if $entity;
 
-          if ($schema->{'$ref'} eq '#/$defs/operation') {
+          if ($schema->{'$ref'} eq '#/$defs/operation' or $schema->{'$ref'} eq '#/definitions/Operation') {
             push @operation_paths, [ $data->{operationId} => $state->{data_path} ]
               if defined $data->{operationId};
 
@@ -308,6 +328,9 @@ sub traverse ($self, $evaluator, $config_override = {}) {
 
     return $state;
   }
+
+  ()= E({ %$state, keyword_path => $_ }, '"items" must be present if type is "array"')
+    foreach @bad_items_paths;
 
   # v3.2.0 §4.8.1, "Patterned Fields": "When matching URLs, concrete (non-templated) paths would be
   # matched before their templated counterparts."
