@@ -576,24 +576,24 @@ __END__
   my $openapi_document = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'https://example.com/v1/api',
     schema => decode_json(<<JSON),
-{
-  "openapi": "3.2.0",
-  "info": {
-    "title": "my title",
-    "version": "1.2.3"
-  },
-  "components": {
-  },
-  "paths": {
-    "/foo": {
-      "get": {}
+  {
+    "openapi": "3.2.0",
+    "info": {
+      "title": "my title",
+      "version": "1.2.3"
     },
-    "/foo/{foo_id}": {
-      "post": {}
+    "components": {
+    },
+    "paths": {
+      "/foo": {
+        "get": {}
+      },
+      "/foo/{foo_id}": {
+        "post": {}
+      }
     }
   }
-}
-JSON
+  JSON
     metaschema_uri => 'https://example.com/my_custom_metaschema',
   );
 
