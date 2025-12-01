@@ -286,7 +286,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
 
   if (not $result->valid) {
     foreach my $e ($result->errors) {
-      if ($e->keyword eq 'not'
+      if (($e->keyword//'') eq 'not'
           and $e->absolute_keyword_location->fragment eq '/$defs/parameters/not'
           and $e->absolute_keyword_location->clone->fragment(undef) eq DEFAULT_METASCHEMA->{$self->oas_version}
       ) {
