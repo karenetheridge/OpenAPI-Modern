@@ -72,7 +72,7 @@ foreach my $document_filename (($opt->document//[''])->@*) {
       exit 2;
     }
 
-    my $result = JSON::Schema::Modern::Result->new(errors => [ $document->errors ]);
+    $result = JSON::Schema::Modern::Result->new(errors => [ $document->errors ]);
   }
 
   $exit_val = max($exit_val, $result->valid ? 0 : $result->exception ? 2 : 1);
