@@ -1619,9 +1619,11 @@ See also L<JSON::Schema::Modern/CACHING>.
 
 =head1 BUNDLED SCHEMA DOCUMENTS
 
-This distribution comes bundled with all the metaschema documents you need to build your application,
-or build custom schemas on top of. It aims to always use the latest versions of the documents; if
-you need earlier versions, you can find them at
+This distribution comes bundled with all the metaschema documents you need to build your
+application, or build custom schemas on top of. These can be referenced via constants in
+L<OpenAPI::Modern::Utilities> if you are building complex cross-referencing documents.
+We always use the latest versions of the documents that are published for each minor specification
+version; if you need earlier versions (but you should ask yourself why), you can find them at
 L<https://spec.openapis.org/#openapi-specification-schemas>.
 
 The default metaschema used by this tool does not permit the use of C<$schema> keywords
