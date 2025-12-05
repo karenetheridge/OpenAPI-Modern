@@ -490,8 +490,8 @@ YAML
 
 
   $js = JSON::Schema::Modern->new;
-  my $mymetaschema_doc = $js->add_schema({
-    '$id' => 'https://mymetaschema',
+  my $my_custom_dialect_doc = $js->add_schema({
+    '$id' => 'https://my_custom_dialect',
     '$vocabulary' => {
       'https://json-schema.org/draft/2020-12/vocab/core' => true,
       'https://json-schema.org/draft/2020-12/vocab/applicator' => true,
@@ -503,7 +503,7 @@ YAML
     evaluator => $js,
     metaschema_uri => DEFAULT_METASCHEMA->{+OAS_VERSION}, # '#meta' is now just {"type": ["object","boolean"]}
     schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
-jsonSchemaDialect: https://mymetaschema
+jsonSchemaDialect: https://my_custom_dialect
 components:
   schemas:
     Foo:
@@ -525,11 +525,11 @@ YAML
         document => shallow($doc),
         vocabularies => [ map 'JSON::Schema::Modern::Vocabulary::'.$_, qw(Core Applicator) ],
       },
-      'https://mymetaschema' => {
-        canonical_uri => str('https://mymetaschema'),
+      'https://my_custom_dialect' => {
+        canonical_uri => str('https://my_custom_dialect'),
         path => '',
         specification_version => 'draft2020-12',
-        document => shallow($mymetaschema_doc),
+        document => shallow($my_custom_dialect_doc),
         vocabularies => bag(map 'JSON::Schema::Modern::Vocabulary::'.$_,
           qw(Core Applicator Validation FormatAnnotation Content MetaData Unevaluated)),
       },
@@ -540,8 +540,8 @@ YAML
 
   # relative jsonSchemaDialect - resolve it against canonical_uri
   $js = JSON::Schema::Modern->new;
-  $mymetaschema_doc = $js->add_schema({
-    '$id' => 'https://example.com/mymetaschema',
+  $my_custom_dialect_doc = $js->add_schema({
+    '$id' => 'https://example.com/my_custom_dialect',
     '$vocabulary' => {
       'https://json-schema.org/draft/2020-12/vocab/core' => true,
       'https://json-schema.org/draft/2020-12/vocab/applicator' => true,
@@ -554,7 +554,7 @@ YAML
     metaschema_uri => DEFAULT_METASCHEMA->{+OAS_VERSION},
     schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
 $self: api
-jsonSchemaDialect: mymetaschema   # this is a relative uri
+jsonSchemaDialect: my_custom_dialect   # this is a relative uri
 components:
   schemas:
     Foo:
@@ -574,11 +574,11 @@ YAML
         document => shallow($doc),
         vocabularies => [ map 'JSON::Schema::Modern::Vocabulary::'.$_, qw(Core Applicator) ],
       },
-      'https://example.com/mymetaschema' => {
-        canonical_uri => str('https://example.com/mymetaschema'),
+      'https://example.com/my_custom_dialect' => {
+        canonical_uri => str('https://example.com/my_custom_dialect'),
         path => '',
         specification_version => 'draft2020-12',
-        document => shallow($mymetaschema_doc),
+        document => shallow($my_custom_dialect_doc),
         vocabularies => bag(map 'JSON::Schema::Modern::Vocabulary::'.$_,
           qw(Core Applicator Validation FormatAnnotation Content MetaData Unevaluated)),
       },
