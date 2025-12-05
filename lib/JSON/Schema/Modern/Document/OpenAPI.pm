@@ -222,9 +222,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
       $state->{json_schema_dialect} = $json_schema_dialect; # subsequent '$schema' keywords can still override this
     }
 
-    $self->_set_metaschema_uri(
-          $json_schema_dialect eq DEFAULT_DIALECT->{$self->oas_version} ? DEFAULT_BASE_METASCHEMA->{$self->oas_version}
-        : $self->_dynamic_metaschema_uri($json_schema_dialect, $evaluator))
+    $self->_set_metaschema_uri(DEFAULT_METASCHEMA->{$self->oas_version})
       if not $self->_has_metaschema_uri;
 
     load_cached_document($evaluator, STRICT_METASCHEMA->{$self->oas_version})
@@ -441,6 +439,8 @@ sub traverse ($self, $evaluator, $config_override = {}) {
   # for each nested schema group. the schema paths appear longest first, with the parent schema
   # appearing last. Therefore we can whittle down to the parent schema for each group by iterating
   # through the full list in reverse, and checking if it is a child of the last path we chose to save.
+  # When the default metaschema is being used, there is no pruning to be done, as only the root of
+  # each embedded schema will be found via callbacks.
   my @real_json_schema_paths;
   for (my $idx = $#json_schema_paths; $idx >= 0; --$idx) {
     next if $idx != $#json_schema_paths
@@ -665,13 +665,15 @@ See also L</retrieval_uri>.
 =head2 metaschema_uri
 
 The URI of the schema that describes the OpenAPI document itself. Defaults to
-L<https://spec.openapis.org/oas/3.2/schema-base/2025-09-17> when the
-C<L<jsonSchemaDialect/https://spec.openapis.org/oas/latest#openapi-object>>
-is not changed from its default; otherwise defaults to a dynamically generated metaschema that uses
-the correct value of C<jsonSchemaDialect>, so you don't need to write one yourself.
+C<https://spec.openapis.org/oas/3.2/schema/2025-09-17> (or the equivalent for the
+L<OpenAPI version|https://spec.openapis.org/oas/latest#fixed-fields> you specify in the document),
+which permits the customization of
+C<L<jsonSchemaDialect|https://spec.openapis.org/oas/latest#openapi-object>>, which defines the
+JSON Schema dialect to use for embedded JSON Schemas (which itself defaults to
+C<https://spec.openapis.org/oas/3.2/dialect/2025-09-17> (or equivalent).
 
-Note that both the schemas described by C<metaschema_uri> and by the C<jsonSchemaDialect> keyword
-(if you are using custom schemas) should be loaded into the evaluator in advance with
+Note that if you are using custom schemas, both of these schemas described by C<metaschema_uri> and
+by the C<jsonSchemaDialect> keyword should be loaded into the evaluator in advance with
 L<JSON::Schema::Modern/add_schema>, and then this evaluator should be provided to the
 L<OpenAPI::Modern> constructor.
 

@@ -38,13 +38,13 @@ subtest 'basic document validation' => sub {
     [
       (map +{
         instanceLocation => '',
-        keywordLocation => '/$ref/anyOf/'.$iter.'/required',
+        keywordLocation => '/anyOf/'.$iter.'/required',
         absoluteKeywordLocation => DEFAULT_METASCHEMA->{+OAS_VERSION}.'#/anyOf/'.$iter++.'/required',
         error => 'object is missing property: '.$_,
       }, qw(paths components webhooks)),
       {
         instanceLocation => '',
-        keywordLocation => '/$ref/anyOf',
+        keywordLocation => '/anyOf',
         absoluteKeywordLocation => DEFAULT_METASCHEMA->{+OAS_VERSION}.'#/anyOf',
         error => 'no subschemas are valid',
       },
@@ -78,7 +78,7 @@ subtest 'basic document validation' => sub {
       },
       {
         instanceLocation => '',
-        keywordLocation => "/\$ref/properties",
+        keywordLocation => '/properties',
         absoluteKeywordLocation => DEFAULT_METASCHEMA->{+OAS_VERSION}.'#/properties',
         error => 'not all properties are valid',
       },
@@ -125,7 +125,7 @@ ERRORS
       }, qw(components paths webhooks)),
       {
         instanceLocation => '',
-        keywordLocation => '/$ref/properties',
+        keywordLocation => '/properties',
         absoluteKeywordLocation => DEFAULT_METASCHEMA->{+OAS_VERSION}.'#/properties',
         error => 'not all properties are valid',
       },
@@ -337,28 +337,21 @@ components:
 YAML
 
   cmp_result(
-    ($doc->errors)[0],
-    methods(
-      instance_location => '/components/schemas/alpha_schema/not/minimum',
-      keyword_location => re(qr{/\$ref/properties/minimum/type$}),
-      absolute_keyword_location => str('https://json-schema.org/draft/2020-12/meta/validation#/properties/minimum/type'),
-      error => 'got string, not number',
-      mode => 'evaluate',
-    ),
-    'subschemas identified, and error found',
+    [ $doc->errors ],
+    [
+      methods(
+        instance_location => '',
+        keyword_location => '/components/schemas/alpha_schema/not/minimum',
+        absolute_keyword_location => str('http://localhost:1234/alpha#/not/minimum'),
+        error => 'minimum value is not a number',
+        mode => 'traverse',
+      ),
+    ],
+    'subschemas identified during traverse pass, and error found',
   );
 
   is(document_result($doc), substr(<<'ERRORS', 0, -1), 'stringified errors use the instance locations');
-'/components/schemas/alpha_schema/not/minimum': got string, not number
-'/components/schemas/alpha_schema/not': not all properties are valid
-'/components/schemas/alpha_schema/not': subschema 3 is not valid
-'/components/schemas/alpha_schema/not': subschema 0 is not valid
-'/components/schemas/alpha_schema': not all properties are valid
-'/components/schemas/alpha_schema': subschema 1 is not valid
-'/components/schemas/alpha_schema': subschema 0 is not valid
-'/components/schemas': not all additional properties are valid
-'/components': not all properties are valid
-'': not all properties are valid
+'/components/schemas/alpha_schema/not/minimum': minimum value is not a number
 ERRORS
 
   memory_cycle_ok($doc, 'no leaks in the document object');
