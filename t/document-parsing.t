@@ -327,21 +327,14 @@ ERRORS
 subtest 'bad subschemas' => sub {
   my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
-    schema => {
-      $yamlpp->load_string(OPENAPI_PREAMBLE)->%*,
-      jsonSchemaDialect => DEFAULT_DIALECT->{+OAS_VERSION},
-      components => {
-        schemas => {
-          alpha_schema => {
-            '$id' => 'alpha',
-            not => {
-              minimum => 'not a number',
-            },
-          },
-        },
-      },
-    },
-  );
+    schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
+components:
+  schemas:
+    alpha_schema:
+      $id: alpha
+      not:
+        minimum: not a number
+YAML
 
   cmp_result(
     ($doc->errors)[0],
