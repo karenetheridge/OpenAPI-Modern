@@ -193,7 +193,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
 
     # we used to always preload these, so we need to do it as needed for users who are using them
     load_cached_document($evaluator, STRICT_DIALECT->{$self->oas_version})
-      if $self->_has_metaschema_uri and $self->metaschema_uri eq STRICT_METASCHEMA->{$self->oas_version}
+      if $self->_has_metaschema_uri and $self->metaschema_uri eq (STRICT_METASCHEMA->{$self->oas_version}//'')
         or $json_schema_dialect eq (STRICT_DIALECT->{$self->oas_version}//'');
 
     if ($self->oas_version eq '3.0') {
@@ -226,7 +226,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
       if not $self->_has_metaschema_uri;
 
     load_cached_document($evaluator, STRICT_METASCHEMA->{$self->oas_version})
-      if $self->_has_metaschema_uri and $self->metaschema_uri eq STRICT_METASCHEMA->{$self->oas_version};
+      if $self->_has_metaschema_uri and $self->metaschema_uri eq (STRICT_METASCHEMA->{$self->oas_version}//'');
   }
 
   $state->{identifiers}{$state->{initial_schema_uri}} = {
