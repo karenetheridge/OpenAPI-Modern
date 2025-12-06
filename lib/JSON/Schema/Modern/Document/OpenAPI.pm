@@ -19,7 +19,7 @@ no if "$]" >= 5.033001, feature => 'multidimensional';
 no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 no if "$]" >= 5.041009, feature => 'smartmatch';
 no feature 'switch';
-use JSON::Schema::Modern::Utilities 0.625 qw(E canonical_uri jsonp is_equal json_pointer_type assert_keyword_type assert_uri_reference load_cached_document);
+use JSON::Schema::Modern::Utilities 0.625 qw(E canonical_uri jsonp is_equal json_pointer_type assert_keyword_type assert_uri_reference load_cached_document get_type);
 use OpenAPI::Modern::Utilities qw(:constants add_vocab_and_default_schemas);
 use Carp qw(croak carp);
 use Digest::MD5 'md5_hex';
@@ -481,7 +481,11 @@ sub validate ($class, @args) {
 # identifiers
 sub _traverse_schema ($self, $state) {
   my $schema = $self->get($state->{keyword_path});
-  return if ref $schema ne 'HASH' or not keys %$schema;
+
+  if (get_type($schema) eq 'boolean' or not keys %$schema) {
+    push $state->{subschemas}->@*, $state->{keyword_path};
+    return;
+  }
 
   my $subschema_state = $state->{evaluator}->traverse($schema, {
     initial_schema_uri => canonical_uri($state),

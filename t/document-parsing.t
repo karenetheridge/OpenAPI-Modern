@@ -357,7 +357,7 @@ ERRORS
   memory_cycle_ok($doc, 'no leaks in the document object');
 };
 
-subtest 'identify subschemas and other entities' => sub {
+subtest 'find identifiers, subschemas and other entities' => sub {
   my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
     schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
@@ -465,6 +465,7 @@ components:
         properties:
           foo:
             $anchor: anchor3
+        additionalProperties: false
     my_param2:
       name: param2
       in: query
@@ -472,6 +473,10 @@ components:
         media_type_0:
           schema:
             $id: parameter2_id
+    my_param3:
+      name: param3
+      in: query
+      schema: false
   responses:
     my_response4:
       content:
@@ -605,9 +610,12 @@ YAML
       '/components/parameters/my_param1' => 2,
       '/components/parameters/my_param1/schema' => 0,
       '/components/parameters/my_param1/schema/properties/foo' => 0,
+      '/components/parameters/my_param1/schema/additionalProperties' => 0,
       '/components/parameters/my_param2' => 2,
       '/components/parameters/my_param2/content/media_type_0' => 10,
       '/components/parameters/my_param2/content/media_type_0/schema' => 0,
+      '/components/parameters/my_param3' => 2,
+      '/components/parameters/my_param3/schema' => 0,
       '/components/pathItems/path0' => 9,
       '/components/pathItems/path0/get/callbacks/my_callback' => 8,
       '/components/pathItems/path0/get/callbacks/my_callback/{$request.query.queryUrl}' => 9,
