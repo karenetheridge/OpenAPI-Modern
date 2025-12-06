@@ -1525,7 +1525,7 @@ In addition, these values are also populated in the options hash (when available
 
     $openapi->document_get(Mojo::URL->new($openapi->openapi_uri)->fragment($path_to_operation);
 
-(See the L<documentation for an operation/https://learn.openapis.org/specification/paths.html#the-endpoints-list>
+(See the L<documentation for an operation|https://learn.openapis.org/specification/paths.html#the-endpoints-list>
 or in
 L<§4.10 of the specification|https://spec.openapis.org/oas/latest#operation-object>.)
 * C<debug>: when C<$OpenAPI::Modern::DEBUG> or L</debug> is set on the OpenAPI::Modern object,
@@ -1629,7 +1629,7 @@ L<https://spec.openapis.org/#openapi-specification-schemas>.
 The default metaschema used by this tool does not permit the use of C<$schema> keywords
 in subschemas (unless the value is equal to the default OAS dialect), but a more permissive
 dialect is also available (or you can define your own), which you declare by providing the
-C<L<jsonSchemaDialect/https://spec.openapis.org/oas/latest#openapi-object>> property in your OpenAPI
+L<C<jsonSchemaDialect|https://spec.openapis.org/oas/latest#openapi-object>> property in your OpenAPI
 Document.
 
 The schemas are also available under the URIs C<< s/<date>/latest/ >> so you don't have to change your
@@ -1653,7 +1653,7 @@ as per the spec, and implemented with L<JSON::Schema::Modern>. Unless overridden
 L<jsonSchemaDialect|https://spec.openapis.org/oas/latest#specifying-schema-dialects> keyword, their
 metaschema is the "dialect" schema listed at L<https://spec.openapis.org/oas/#schema-iterations>, which allows for use of the
 OpenAPI-specific keywords (C<discriminator>, C<xml>, C<externalDocs>, and C<example>), as defined in
-L<the specification/https://spec.openapis.org/oas/latest#schema-object>. Format validation is turned
+L<the specification|https://spec.openapis.org/oas/latest#schema-object>. Format validation is turned
 B<on>, and the use of content* keywords is off (see
 L<JSON::Schema::Modern/validate_content_schemas>).
 

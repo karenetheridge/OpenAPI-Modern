@@ -658,7 +658,7 @@ may be other L<JSON::Schema::Modern::Document::OpenAPI> objects).
 
 This is the identifier that the document is known by, which is used to resolve any relative C<$ref>
 keywords in the document (unless overridden by a subsequent C<$id> in a schema).
-See L<Specification Reference: Relative References in API Description URIs/https://spec.openapis.org/oas/latest#relative-references-in-api-description-uris>.
+See L<Specification Reference: Relative References in API Description URIs|https://spec.openapis.org/oas/latest#relative-references-in-api-description-uris>.
 It is strongly recommended that this URI is absolute.
 
 In v3.2+ documents, it is used to resolve the C<$self> value in the document itself, which then
@@ -672,7 +672,7 @@ The URI of the schema that describes the OpenAPI document itself. Defaults to
 C<https://spec.openapis.org/oas/3.2/schema/2025-09-17> (or the equivalent for the
 L<OpenAPI version|https://spec.openapis.org/oas/latest#fixed-fields> you specify in the document),
 which permits the customization of
-C<L<jsonSchemaDialect|https://spec.openapis.org/oas/latest#openapi-object>>, which defines the
+L<C<jsonSchemaDialect|https://spec.openapis.org/oas/latest#openapi-object>>, which defines the
 JSON Schema dialect to use for embedded JSON Schemas (which itself defaults to
 C<https://spec.openapis.org/oas/3.2/dialect/2025-09-17> (or equivalent).
 
