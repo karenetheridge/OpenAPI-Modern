@@ -1629,7 +1629,7 @@ L<https://spec.openapis.org/#openapi-specification-schemas>.
 The default metaschema used by this tool does not permit the use of C<$schema> keywords
 in subschemas (unless the value is equal to the default OAS dialect), but a more permissive
 dialect is also available (or you can define your own), which you declare by providing the
-L<C<jsonSchemaDialect|https://spec.openapis.org/oas/latest#openapi-object>> property in your OpenAPI
+L<C<jsonSchemaDialect>|https://spec.openapis.org/oas/latest#openapi-object> property in your OpenAPI
 Document.
 
 The schemas are also available under the URIs C<< s/<date>/latest/ >> so you don't have to change your
