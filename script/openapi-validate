@@ -88,7 +88,7 @@ if ($opt->dump_identifiers) {
       document_path => $_->[1]{path},
     }
   ),
-  grep $_->[0] !~ m{^(?:https://json-schema.org/|https://spec.openapis.org/oas/)},
+  grep $_->[0] !~ m{^(?:https?://json-schema.org/|https://spec.openapis.org/oas/)},
   $js->_resource_pairs;
 
   say encode({identifiers => \%identifiers });
