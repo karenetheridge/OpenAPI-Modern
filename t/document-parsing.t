@@ -178,37 +178,31 @@ subtest '/paths correctness' => sub {
     [ map $_->TO_JSON, $doc->errors ],
     [
       {
-        instanceLocation => '',
         keywordLocation => '/paths/~1a~1{b}',
         absoluteKeywordLocation => str(Mojo::URL->new('http://localhost:1234/api#/paths/~1a~1{b}')),
         error => 'duplicate of templated path "/a/{a}"',
       },
       {
-        instanceLocation => '',
         keywordLocation => '/paths/~1b~1{b}~1hi~1{yes}',
         absoluteKeywordLocation => str(Mojo::URL->new('http://localhost:1234/api#/paths/~1b~1{b}~1hi~1{yes}')),
         error => 'duplicate of templated path "/b/{a}/hi/{yes}"',
       },
       {
-        instanceLocation => '',
         keywordLocation => '/paths/~1b~1{x}~1hi~1{no}',
         absoluteKeywordLocation => str(Mojo::URL->new('http://localhost:1234/api#/paths/~1b~1{x}~1hi~1{no}')),
         error => 'duplicate of templated path "/b/{a}/hi/{yes}"',
       },
       {
-        instanceLocation => '',
         keywordLocation => '/paths/~1c~1{c}~1d~1{c}~1e~1{e}~1f~1{e}',
         absoluteKeywordLocation => str(Mojo::URL->new('http://localhost:1234/api#/paths/~1c~1{c}~1d~1{c}~1e~1{e}~1f~1{e}')),
         error => 'duplicate path template variable "c"',
       },
       {
-        instanceLocation => '',
         keywordLocation => '/paths/~1c~1{c}~1d~1{c}~1e~1{e}~1f~1{e}',
         absoluteKeywordLocation => str(Mojo::URL->new('http://localhost:1234/api#/paths/~1c~1{c}~1d~1{c}~1e~1{e}~1f~1{e}')),
         error => 'duplicate path template variable "e"',
       },
       (map +{
-        instanceLocation => '',
         keywordLocation => jsonp('/paths', $_),
         absoluteKeywordLocation => str(Mojo::URL->new('http://localhost:1234/api#'.jsonp('/paths', $_))),
         error => 'invalid path template "'.$_.'"',
@@ -295,7 +289,6 @@ YAML
   cmp_result(
     [ map $_->TO_JSON, $doc->errors ],
     [ map +{
-        instanceLocation => '',
         keywordLocation => $_.'/operationId',
         absoluteKeywordLocation => str(Mojo::URL->new('http://localhost:1234/api#'.$_.'/operationId')),
         error => 'duplicate of operationId at /components/callbacks/callback_a/$url_a/patch/callbacks/callback_z/$url_z/delete',
@@ -340,7 +333,6 @@ YAML
     [ $doc->errors ],
     [
       methods(
-        instance_location => '',
         keyword_location => '/components/schemas/alpha_schema/not/minimum',
         absolute_keyword_location => str('http://localhost:1234/alpha#/not/minimum'),
         error => 'minimum value is not a number',
@@ -399,37 +391,31 @@ YAML
     [ $doc->errors ],
     [
       methods(
-        instance_location => '',
         keyword_location => '/components/schemas/alpha/properties/alpha2/$id',
         error => 'duplicate canonical uri "http://localhost:1234/alpha_id" found (original at path "/components/schemas/alpha/properties/alpha1")',
         mode => 'traverse',
       ),
       methods(
-        instance_location => '',
         keyword_location => '/components/schemas/alpha/properties/alpha4/$anchor',
         error => 'duplicate anchor uri "http://localhost:1234/api#alpha_anchor" found (original at path "/components/schemas/alpha/properties/alpha3")',
         mode => 'traverse',
       ),
       methods(
-        instance_location => '',
         keyword_location => '/components/schemas/beta/properties/beta1',
         error => 'duplicate canonical uri "http://localhost:1234/alpha_id" found (original at path "/components/schemas/alpha/properties/alpha1")',
         mode => 'traverse',
       ),
       methods(
-        instance_location => '',
         keyword_location => '/components/schemas/beta/properties/beta2',
         error => 'duplicate anchor uri "http://localhost:1234/api#alpha_anchor" found (original at path "/components/schemas/alpha/properties/alpha3")',
         mode => 'traverse',
       ),
       methods(
-        instance_location => '',
         keyword_location => '/components/schemas/gamma/properties/gamma2',
         error => 'duplicate anchor uri "http://localhost:1234/api#alpha_anchor" found (original at path "/components/schemas/alpha/properties/alpha3")',
         mode => 'traverse',
       ),
       methods(
-        instance_location => '',
         keyword_location => '/components/schemas/gamma/properties/gamma1',
         error => 'duplicate canonical uri "http://localhost:1234/beta_id" found (original at path "/components/schemas/beta/properties/beta3")',
         mode => 'traverse',
@@ -725,43 +711,36 @@ YAML
     [
       map +(
         {
-          instanceLocation => '',
           keywordLocation => $_.'/servers/0/variables/version/default',
           absoluteKeywordLocation => 'http://localhost:1234/api#'.$_.'/servers/0/variables/version/default',
           error => 'servers default is not a member of enum',
         },
         {
-          instanceLocation => '',
           keywordLocation => $_.'/servers/1/url',
           absoluteKeywordLocation => 'http://localhost:1234/api#'.$_.'/servers/1/url',
           error => 'duplicate of templated server url "https://example.com/{version}/{greeting}"',
         },
         {
-          instanceLocation => '',
           keywordLocation => $_.'/servers/1',
           absoluteKeywordLocation => 'http://localhost:1234/api#'.$_.'/servers/1',
           error => '"variables" property is required for templated server urls',
         },
         {
-          instanceLocation => '',
           keywordLocation => $_.'/servers/2/url',
           absoluteKeywordLocation => 'http://localhost:1234/api#'.$_.'/servers/2/url',
           error => 'duplicate of templated server url "https://example.com/{v}/{g}"',
         },
         {
-          instanceLocation => '',
           keywordLocation => $_.'/servers/2/variables',
           absoluteKeywordLocation => 'http://localhost:1234/api#'.$_.'/servers/2/variables',
           error => 'missing "variables" definition for servers template variable "foo"',
         },
         {
-          instanceLocation => '',
           keywordLocation => $_.'/servers/2',
           absoluteKeywordLocation => 'http://localhost:1234/api#'.$_.'/servers/2',
           error => 'duplicate servers template variable "foo"',
         },
         {
-          instanceLocation => '',
           keywordLocation => $_.'/servers/3/variables/unused/default',
           absoluteKeywordLocation => 'http://localhost:1234/api#'.$_.'/servers/3/variables/unused/default',
           error => 'servers default is not a member of enum',
@@ -769,20 +748,17 @@ YAML
         do {
           my $base = $_;
           map +{
-            instanceLocation => '',
             keywordLocation => $base.'/servers/'.$_.'/url',
             absoluteKeywordLocation => 'http://localhost:1234/api#'.$base.'/servers/'.$_.'/url',
             error => 'invalid server url "'.$doc->schema->{servers}[$_]{url}.'"',
           }, 6,7
         },
         {
-          instanceLocation => '',
           keywordLocation => $_.'/servers/9/url',
           absoluteKeywordLocation => 'http://localhost:1234/api#'.$_.'/servers/9/url',
           error => 'invalid server url "http://{host}.com/{pa{th}"',
         },
         {
-          instanceLocation => '',
           keywordLocation => $_.'/servers/10/url',
           absoluteKeywordLocation => 'http://localhost:1234/api#'.$_.'/servers/10/url',
           error => 'invalid server url "http://example.com/^illegal"',
@@ -953,43 +929,36 @@ YAML
     [ map $_->TO_JSON, $doc->errors ],
     [
       {
-        instanceLocation => '',
         keywordLocation => '/tags/1/parent',
         absoluteKeywordLocation => str(Mojo::URL->new('http://localhost:1234/api#/tags/1/parent')),
         error => 'parent of tag "bar" does not exist: "blech"',
       },
       {
-        instanceLocation => '',
         keywordLocation => '/tags/3/name',
         absoluteKeywordLocation => str(Mojo::URL->new('http://localhost:1234/api#/tags/3/name')),
         error => 'duplicate of tag at /tags/0: "foo"',
       },
       {
-        instanceLocation => '',
         keywordLocation => '/tags/4/name',
         absoluteKeywordLocation => str(Mojo::URL->new('http://localhost:1234/api#/tags/4/name')),
         error => 'duplicate of tag at /tags/1: "bar"',
       },
       {
-        instanceLocation => '',
         keywordLocation => '/tags/5/parent',
         absoluteKeywordLocation => str(Mojo::URL->new('http://localhost:1234/api#/tags/5/parent')),
         error => 'circular reference between tags: "alpha" -> "beta" -> "alpha"',
       },
       {
-        instanceLocation => '',
         keywordLocation => '/tags/6/parent',
         absoluteKeywordLocation => str(Mojo::URL->new('http://localhost:1234/api#/tags/6/parent')),
         error => 'circular reference between tags: "beta" -> "alpha" -> "beta"',
       },
       {
-        instanceLocation => '',
         keywordLocation => '/tags/7/name',
         absoluteKeywordLocation => str(Mojo::URL->new('http://localhost:1234/api#/tags/7/name')),
         error => 'duplicate of tag at /tags/0: "foo"',
       },
       {
-        instanceLocation => '',
         keywordLocation => '/tags/7/parent',
         absoluteKeywordLocation => str(Mojo::URL->new('http://localhost:1234/api#/tags/7/parent')),
         error => 'circular reference between tags: "foo" -> "foo"',

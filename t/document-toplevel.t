@@ -164,7 +164,6 @@ ERRORS
     [ map $_->TO_JSON, $doc->errors ],
     [
       {
-        instanceLocation => '',
         keywordLocation => '/jsonSchemaDialect',
         absoluteKeywordLocation => 'http://localhost:1234/api#/jsonSchemaDialect',
         error => 'jsonSchemaDialect value is not a string',
@@ -189,7 +188,6 @@ ERRORS
     [ map $_->TO_JSON, $doc->errors ],
     [
       {
-        instanceLocation => '',
         keywordLocation => '/$self',
         error => 'additional property not permitted',
       },
@@ -210,7 +208,6 @@ YAML
     [ map $_->TO_JSON, $doc->errors ],
     [
       {
-        instanceLocation => '',
         keywordLocation => '/$self',
         error => re(qr/^\$self value is not a valid URI-reference$/i),
       },
@@ -227,7 +224,6 @@ YAML
     [ map $_->TO_JSON, $doc->errors ],
     [
       {
-        instanceLocation => '',
         keywordLocation => '/$self',
         error => '$self cannot contain a fragment',
       },
@@ -246,7 +242,6 @@ YAML
     [ map $_->TO_JSON, $doc->errors ],
     [
       {
-        instanceLocation => '',
         keywordLocation => '/jsonSchemaDialect',
         absoluteKeywordLocation => 'http://localhost:1234/api#/jsonSchemaDialect',
         error => re(qr/^jsonSchemaDialect value is not a valid URI-reference$/i),
@@ -276,13 +271,11 @@ YAML
     [ map $_->TO_JSON, $doc->errors ],
     [
       {
-        instanceLocation => '',
         keywordLocation => '/jsonSchemaDialect/$vocabulary/https:~1~1unknown',
         absoluteKeywordLocation => 'https://metaschema/with/wrong/spec#/$vocabulary/https:~1~1unknown',
         error => '"https://unknown" is not a known vocabulary',
       },
       {
-        instanceLocation => '',
         keywordLocation => '/jsonSchemaDialect',
         absoluteKeywordLocation => 'http://localhost:1234/api#/jsonSchemaDialect',
         error => '"https://metaschema/with/wrong/spec" is not a valid metaschema',
