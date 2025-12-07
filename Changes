@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.112     2025-12-07 07:05:36Z
           - fix tests that changed their output with JSON::Schema::Modern
             0.628
 
