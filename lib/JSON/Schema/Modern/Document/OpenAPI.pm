@@ -566,7 +566,7 @@ sub THAW ($class, $serializer, $data) {
   }
 
   my $self = bless($data, $class);
-  $self->{oas_version} = '3.1' if not exists $self->{oas_version};
+  $self->{oas_version} = OAS_VERSIONS->[-1] if not exists $self->{oas_version};
 
   foreach my $attr (qw(schema _entities)) {
     croak "serialization missing attribute '$attr': perhaps your serialized data was produced for an older version of $class?"
