@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.113     2025-12-08 19:38:14Z
           - now fully supporting the use of v3.0.x documents in request and
             response validation, as well as document validation
 
