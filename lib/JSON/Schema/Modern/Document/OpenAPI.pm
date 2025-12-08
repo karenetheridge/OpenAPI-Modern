@@ -186,7 +186,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     # continue to support the old strict dialect and metaschema which didn't have "3.1" in the $id
     if ($json_schema_dialect eq (STRICT_DIALECT->{3.1} =~ s{/3.1/}{/}r)) {
       $json_schema_dialect =~ s{share/\K}{3.1/};
-      $schema->{jsonSchemaDialect} = $json_schema_dialect;
+      $schema->{jsonSchemaDialect} = $json_schema_dialect;  # allow the 'const' check to pass
     }
     $self->_set_metaschema_uri($self->metaschema_uri =~ s{share/\K}{3.1/}r)
       if $self->_has_metaschema_uri and $self->metaschema_uri eq (STRICT_METASCHEMA->{3.1} =~ s{/3.1/}{/}r);
