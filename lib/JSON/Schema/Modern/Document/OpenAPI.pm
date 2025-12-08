@@ -1,7 +1,7 @@
 use strictures 2;
 package JSON::Schema::Modern::Document::OpenAPI;
 # vim: set ts=8 sts=2 sw=2 tw=100 et :
-# ABSTRACT: One OpenAPI v3.1 or v3.2 document
+# ABSTRACT: One OpenAPI v3.0, v3.1 or v3.2 document
 # KEYWORDS: JSON Schema data validation request response OpenAPI
 
 our $VERSION = '0.113';
@@ -691,7 +691,7 @@ Also available as L<JSON::Schema::Modern::Document/original_uri>, this is known 
 URI" in the OAS specification: the URL the document was originally sourced from, or the URI that
 was used to add the document to the L<OpenAPI::Modern> instance.
 
-In OpenAPI version 3.1.x (but not in 3.2+), this is the same as L</canonical_uri>.
+In OpenAPI versions before 3.2.0, this is the same as L</canonical_uri>.
 
 =head2 oas_version
 
@@ -736,7 +736,9 @@ All path templates under C</paths/>, sorted in canonical search order.
 * L<https://json-schema.org>
 * L<https://www.openapis.org/>
 * L<https://learn.openapis.org/>
-* L<https://spec.openapis.org/oas/latest>
+* L<https://spec.openapis.org/oas/v3.0>
+* L<https://spec.openapis.org/oas/v3.1>
+* L<https://spec.openapis.org/oas/v3.2>
 * L<https://spec.openapis.org/oas/#schema-iterations>
 
 =cut

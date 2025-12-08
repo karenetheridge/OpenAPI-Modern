@@ -1,8 +1,8 @@
 use strictures 2;
 package OpenAPI::Modern;
 # vim: set ts=8 sts=2 sw=2 tw=100 et :
-# ABSTRACT: Validate HTTP requests and responses against an OpenAPI v3.1 or v3.2 document
-# KEYWORDS: validation evaluation JSON Schema OpenAPI v3.1 v3.2 Swagger HTTP request response
+# ABSTRACT: Validate HTTP requests and responses against an OpenAPI v3.0, v3.1 or v3.2 document
+# KEYWORDS: validation evaluation JSON Schema OpenAPI v3.0 v3.1 v3.2 Swagger HTTP request response
 
 our $VERSION = '0.113';
 
@@ -1706,6 +1706,7 @@ Only certain permutations of OpenAPI documents are supported at this time:
 * L<https://json-schema.org>
 * L<https://www.openapis.org/>
 * L<https://learn.openapis.org/>
+* L<https://spec.openapis.org/oas/v3.0>
 * L<https://spec.openapis.org/oas/v3.1>
 * L<https://spec.openapis.org/oas/v3.2>
 * L<https://spec.openapis.org/oas/>
