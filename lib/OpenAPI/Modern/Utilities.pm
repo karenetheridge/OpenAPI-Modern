@@ -191,4 +191,6 @@ STRICT_METASCHEMA
 SUPPORTED_OAD_VERSIONS
 add_vocab_and_default_schemas
 
+The constant values are updated automatically by C<update-schemas>, in the root of this distribution.
+
 =cut
