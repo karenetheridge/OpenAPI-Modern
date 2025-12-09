@@ -1140,6 +1140,7 @@ sub _convert_request ($request) {
     my $body = $request->content;
     $req->body($body) if length $body;
   }
+  # note: Dancer2::Core::Request inherits from Plack::Request
   elsif ($request->isa('Plack::Request') or $request->isa('Catalyst::Request')) {
     $req->parse($request->env);
 
@@ -1177,7 +1178,7 @@ sub _convert_response ($response) {
     my $body = $response->content;
     $res->body($body) if length $body;
   }
-  elsif ($response->isa('Plack::Response')) {
+  elsif ($response->isa('Plack::Response') or $response->isa('Dancer2::Core::Response')) {
     $res->code($response->status);
     $res->headers->add(@$_) foreach pairs $response->headers->psgi_flatten_without_sort->@*;
     my $body = $response->content;
@@ -1431,7 +1432,8 @@ L</recursive_get>.
     },
   );
 
-Validates an L<HTTP::Request>, L<Plack::Request>, L<Catalyst::Request> or L<Mojo::Message::Request>
+Validates an L<HTTP::Request>, L<Plack::Request>, L<Catalyst::Request>,
+L<Dancer2::Core::Request> or L<Mojo::Message::Request>
 object against the corresponding OpenAPI document, returning a
 L<JSON::Schema::Modern::Result> object.
 
@@ -1454,7 +1456,8 @@ to improve performance.
     },
   );
 
-Validates an L<HTTP::Response>, L<Plack::Response>, L<Catalyst::Response> or L<Mojo::Message::Response>
+Validates an L<HTTP::Response>, L<Plack::Response>, L<Catalyst::Response>,
+L<Dancer2::Core::Response> or L<Mojo::Message::Response>
 object against the corresponding OpenAPI document, returning a
 L<JSON::Schema::Modern::Result> object.
 
@@ -1484,7 +1487,13 @@ of values can be provided; possible values are:
 
 =for :list
 * C<request>: the object representing the HTTP request.
-  Supported types are: L<HTTP::Request>, L<Plack::Request>, L<Catalyst::Request>, L<Mojo::Message::Request>. Converted to a L<Mojo::Message::Request>.
+  Supported types are:
+  L<HTTP::Request>,
+  L<Plack::Request>,
+  L<Catalyst::Request>,
+  L<Dancer2::Core::Request>,
+  L<Mojo::Message::Request>.
+  Converted to a L<Mojo::Message::Request>.
 * C<uri>: the URI of the HTTP request. Converted from any string-compatible type to a L<Mojo::URL>.
 * C<method>: the HTTP method used by the request (case-sensitive)
 * C<path_template>: a string representing the (possibly partial) path portion of the request URI,
