@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.114     2025-12-09 22:34:18Z
           - support added for parsing and validation of Dancer2 request and
             response objects
 

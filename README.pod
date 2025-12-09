@@ -8,7 +8,7 @@ OpenAPI::Modern - Validate HTTP requests and responses against an OpenAPI v3.0, 
 
 =head1 VERSION
 
-version 0.113
+version 0.114
 
 =head1 SYNOPSIS
 
@@ -215,7 +215,8 @@ L</recursive_get>.
     },
   );
 
-Validates an L<HTTP::Request>, L<Plack::Request>, L<Catalyst::Request> or L<Mojo::Message::Request>
+Validates an L<HTTP::Request>, L<Plack::Request>, L<Catalyst::Request>,
+L<Dancer2::Core::Request> or L<Mojo::Message::Request>
 object against the corresponding OpenAPI document, returning a
 L<JSON::Schema::Modern::Result> object.
 
@@ -238,7 +239,8 @@ to improve performance.
     },
   );
 
-Validates an L<HTTP::Response>, L<Plack::Response>, L<Catalyst::Response> or L<Mojo::Message::Response>
+Validates an L<HTTP::Response>, L<Plack::Response>, L<Catalyst::Response>,
+L<Dancer2::Core::Response> or L<Mojo::Message::Response>
 object against the corresponding OpenAPI document, returning a
 L<JSON::Schema::Modern::Result> object.
 
@@ -270,7 +272,7 @@ of values can be provided; possible values are:
 
 =item *
 
-C<request>: the object representing the HTTP request. Supported types are: L<HTTP::Request>, L<Plack::Request>, L<Catalyst::Request>, L<Mojo::Message::Request>. Converted to a L<Mojo::Message::Request>.
+C<request>: the object representing the HTTP request. Supported types are: L<HTTP::Request>, L<Plack::Request>, L<Catalyst::Request>, L<Dancer2::Core::Request>, L<Mojo::Message::Request>. Converted to a L<Mojo::Message::Request>.
 
 =item *
 
