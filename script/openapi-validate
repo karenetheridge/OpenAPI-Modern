@@ -171,11 +171,11 @@ produces output:
     "valid" : false
   }
 
-Or run:
+JSON documents are also supported, e.g.:
 
   openapi-validate --document openapi.json
 
-produces output:
+produces output for a valid document:
 
   {
     "valid": true
@@ -191,7 +191,6 @@ The following options from L<JSON::Schema::Modern> are available:
 =for stopwords schema metaschema
 
 =for :list
-
 * L<JSON::Schema::Modern/strict>: disallow unknown keywords in embedded JSON Schemas
 * L<JSON::Schema::Modern/dump_identifiers>: print a list of all identifiers found in the schema
 
