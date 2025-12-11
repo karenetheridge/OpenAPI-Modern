@@ -661,7 +661,7 @@ The actual raw data representing the OpenAPI document. Required.
 
 =head2 evaluator
 
-=for stopwords metaschema schemas
+=for stopwords metaschema schema
 
 A L<JSON::Schema::Modern> object which is used for parsing the schema of this document. This is the
 object that holds all other schemas that may be used for parsing: that is, metaschemas that define

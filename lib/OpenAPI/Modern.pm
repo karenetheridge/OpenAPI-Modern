@@ -1346,7 +1346,7 @@ prints:
 
 =for Pod::Coverage BUILDARGS FREEZE THAW
 
-=for stopwords schemas jsonSchemaDialect metaschema subschema perlish operationId openapi Mojolicious
+=for stopwords schema jsonSchemaDialect metaschema subschema perlish operationId openapi Mojolicious
 
 =head1 DESCRIPTION
 
