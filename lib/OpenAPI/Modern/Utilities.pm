@@ -17,7 +17,6 @@ no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 no if "$]" >= 5.041009, feature => 'smartmatch';
 no feature 'switch';
 use File::ShareDir 'dist_dir';
-use Mojo::File 'path';
 use JSON::Schema::Modern::Utilities 0.625 qw(register_schema load_cached_document);
 use namespace::clean;
 
