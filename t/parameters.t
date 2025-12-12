@@ -477,6 +477,7 @@ subtest 'header parameters' => sub {
     [ false, { qw(R 100 G 200 B 150) }, [' R, 100 ', ' G, 200,  B , 150 '] ],
     [ true,  { qw(R 100 G 200 B 150) }, [' R=100  , G=200 ', '  B=150 '] ],
     [ false, { foo => 'bar', baz => '' }, [ 'foo, bar, baz' ] ],
+    [ true,  { foo => 'bar', baz => '' }, [ 'foo=bar, baz=' ] ],
 
     {
       name => 'Missing',
@@ -496,21 +497,18 @@ subtest 'header parameters' => sub {
       header_obj => { schema => { type => 'array', items => { type => 'number' } } },
       values => [ 'R,100,G,200,B,150' ],
       content => [ R => 100, G => 200, B => 150 ],
-      todo => 'no coercion of array items yet',
     },
     {
       name => 'Object-with-numeric-values-explode-false',
       header_obj => { schema => { type => 'object', additionalProperties => { type => 'number' } } },
       values => [ 'R,100,G,200,B,150' ],
       content => { R => 100, G => 200, B => 150 },
-      todo => 'no coercion of object properties yet',
     },
     {
       name => 'Object-with-numeric-values-explode-true',
       header_obj => { explode => true, schema => { type => 'object', additionalProperties => { type => 'number' } } },
       values => [ 'R=100,G=200,B=150' ],
       content => { R => 100, G => 200, B => 150 },
-      todo => 'no coercion of object properties yet',
     },
   );
 
@@ -831,6 +829,87 @@ YAML
         .': got expected type'.(@$expected_types != 1 ? 's' : ''),
       )
       or note('with schema: ', $::encoder->encode($schema));
+    }
+  };
+
+  subtest 'type coercion object properties and array items' => sub {
+    my $idx = -1;
+    foreach my $test (
+      [ 'foo', {}, 'foo' ],
+      [ 'foo', false, 'foo' ],
+      [ 'foo', true, 'foo' ],
+      [ { a => { b => 1 }, c => 2 }, { '$ref' => '#/components/schemas/object_of_mixed' }, { a => { b => 1 }, c => 2 } ],
+      [ { a => '1', b => '2', c => '1', d => '', e => '5' }, { '$ref' => '#/components/schemas/object_of_mixed' },
+        { a => '1', b => 2, c => true, d => undef, e => 5 } ],
+      [ { a => '1', b => '2', c => '1', d => '', e => '5' }, { '$ref' => '#/components/schemas/object_with_overlap' },
+        { a => '1', b => 2, c => true, d => '', e => 5 } ], # a has a conflict; left as string
+      [ { qw(a 1 b 2 c 3 d 4 e 1) }, { '$ref' => '#/components/schemas/object_with_unevaluatedProperties' },
+        { a => 1, b => 2, c => '3', d => 4, e => true } ],
+      [ { qw(a 1 b 2 c 1 d 4 e 5) }, { '$ref' => '#/components/schemas/object_with_allOf_and_unevaluatedProperties' },
+        { a => 1, b => 2, c => true, d => 4, e => 5 } ],
+      [ { a => '1', b => '2', c => '1', d => '', e => 'a' }, { '$ref' => '#/components/schemas/object_of_numbers' },
+        { a => 1, b => 2, c => 1, d => '', e => 'a' } ],
+      [ { a => '', b => '1', c => '2' }, { '$ref' => '#/components/schemas/allOf_objects' },
+        { a => undef, b => true, c => 2 } ],
+      [ { a => '1', b => '2' }, { '$ref' => '#/components/schemas/object_dynamicRef' },
+        { a => true, b => 2 } ],
+    ) {
+      my ($data, $schema, $expected_data, $errors) = @$test;
+      $idx++;
+
+      subtest $::dumper->encode($data) => sub {
+        $openapi->_coerce_object_elements($data, $schema, { %$state, data_path => $state->{data_path}.'/'.$idx });
+
+        is_equal(
+          $data,
+          $expected_data,
+          'got expected mutated data',
+        ) if not (($errors//[])->@*);
+
+        is_equal(
+          [ map $_->TO_JSON, $state->{errors}->@* ],
+          $errors//[],
+          ($errors//[])->@* ? 'the correct error was returned' : 'no errors occurred',
+        );
+      };
+    }
+
+    foreach my $test (
+      [ 'foo', {}, 'foo' ],
+      [ 'foo', false, 'foo' ],
+      [ 'foo', true, 'foo' ],
+      [ [ [ 1 ], 2 ], { '$ref' => '#/components/schemas/array_of_mixed' }, [ [ 1 ], 2 ] ],
+      [ [ '1', '2', '1', '', '5' ], { '$ref' => '#/components/schemas/array_of_mixed' },
+        [ '1', 2, true, undef, 5 ] ],
+      [ [ '1', '2', '1', '', '5' ], { '$ref' => '#/components/schemas/array_with_overlap' },
+        [ '1', 2, true, '', 5 ] ], # element 0 has conflict; left as string
+      [ [ qw(1 2 3 4 1) ], { '$ref' => '#/components/schemas/array_with_unevaluatedItems' },
+        [ 1, 2, 3, '4', true ] ],
+      [ [ qw(1 2 1 4 5) ], { '$ref' => '#/components/schemas/array_with_allOf_and_unevaluatedItems' },
+        [ 1, 2, true, 4, 5 ] ],
+      [ [ '1', '2', '1', '', 'a' ], { '$ref' => '#/components/schemas/array_of_numbers' },
+        [ 1, 2, 1, '', 'a' ] ],
+      [ [ '', '1', '2' ], { '$ref' => '#/components/schemas/allOf_arrays' }, [ undef, true, 2 ] ],
+      [ ['1', '2' ], { '$ref' => '#/components/schemas/array_dynamicRef' }, [ true, 2 ] ],
+    ) {
+      my ($data, $schema, $expected_data, $errors) = @$test;
+      $idx++;
+
+      subtest $::dumper->encode($data) => sub {
+        $openapi->_coerce_array_elements($data, $schema, { %$state, data_path => $state->{data_path}.'/'.$idx });
+
+        is_equal(
+          $data,
+          $expected_data,
+          'got expected mutated data',
+        ) if not (($errors//[])->@*);
+
+        is_equal(
+          [ map $_->TO_JSON, $state->{errors}->@* ],
+          $errors//[],
+          ($errors//[])->@* ? 'the correct error was returned' : 'no errors occurred',
+        );
+      };
     }
   };
 };

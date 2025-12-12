@@ -899,10 +899,12 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
         # style=simple, explode=false: "R,100,G,200,B,150" -> { "R": 100, "G": 200, "B": 150 }
         $data = +{ @values, (@values % 2 ? '' : ()) };
       }
+      $self->_coerce_object_elements($data, $header_obj->{schema}, { %$state, keyword_path => $state->{keyword_path}.'/schema' });
     }
     else {
       # array, style=simple, explode=false or true: "blue,black,brown" -> ["blue","black","brown"]
       $data = \@values;
+      $self->_coerce_array_elements($data, $header_obj->{schema}, { %$state, keyword_path => $state->{keyword_path}.'/schema' });
     }
   }
   elsif (any { $_ eq 'string' || $_ eq 'number' || $_ eq 'boolean' || $_ eq 'null' } @types) {
@@ -915,8 +917,7 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
   }
 
   $self->_evaluate_subschema(\$data, $header_obj->{schema},
-    { %$state, keyword_path => $state->{keyword_path}.'/schema', depth => $state->{depth}+1,
-      ref $data eq 'HASH' || ref $data eq 'ARRAY' ? (stringy_numbers => 1) : () });
+    { %$state, keyword_path => $state->{keyword_path}.'/schema', depth => $state->{depth}+1 });
 }
 
 sub _validate_cookie_parameter ($self, $state, $param_obj, @args) {
@@ -1149,6 +1150,173 @@ sub _type_in_schema ($self, $schema, $state) {
     if exists $schema->{oneOf};
 
   return intersect_types(@types);
+}
+
+# given an object, use the subschema for each value to determine the correct value for that value
+sub _coerce_object_elements ($self, $data, $schema, $state) {
+  return if ref $data ne 'HASH';
+  return if ref $schema ne 'HASH';
+  return if not keys %$data;
+
+  $state->{_level} //= 0;
+  my @object_coercions;
+
+  if (defined(my $ref = $schema->{'$ref'})) {
+    {
+      my $schema = $self->_resolve_ref('schema', $ref, my $state = { %$state });
+      push @object_coercions, $self->_coerce_object_elements($data, $schema, { %$state, _level => $state->{_level}+1 });
+    }
+
+    # no other keywords are valid adjacent to '$ref' in drafts 4-7
+    return $object_coercions[0] if $state->{specification_version} =~ /^draft[467]\z/;
+  }
+
+  if (defined(my $ref = $schema->{'$dynamicRef'}) and $state->{specification_version} !~ /^draft(?:[467]|2019-09)$/) {
+    my $schema = $self->_resolve_dynamicRef($ref, my $state = { %$state });
+    push @object_coercions, $self->_coerce_object_elements($data, $schema, { %$state, _level => $state->{_level}+1 });
+  }
+
+  if (exists $schema->{allOf}) {
+    foreach my $idx (0..$schema->{allOf}->$#*) {
+      push @object_coercions, $self->_coerce_object_elements($data, $schema->{allOf}[$idx],
+        { %$state, _level => $state->{_level}+1, keyword_path => $state->{keyword_path}.'/allOf/'.$idx });
+    }
+  }
+
+  # we do not support anyOf, oneOf here, as the work involved in resolving ambiguities for each
+  # subschema as its own dataset is too great.
+
+  my $property_coercions = {};
+  foreach my $property (sort keys $data->%*) {
+    next if ref $data->{$property};
+    my @types;
+    my $state = { %$state, data_path => jsonp($state->{data_path}, $property) };
+
+    push @types, [ $self->_type_in_schema($schema->{properties}{$property},
+        { %$state, keyword_path => jsonp($state->{keyword_path}, 'properties', $property) }) ]
+      if exists(($schema->{properties}//{})->{$property});
+
+    push @types, [ $self->_type_in_schema($schema->{patternProperties},
+        { %$state, keyword_path => $state->{keyword_path}.'/patternProperties' }) ]
+      if exists $schema->{patternProperties} and $property =~ m/$schema->{patternProperties}/;
+
+    push @types, [ $self->_type_in_schema($schema->{additionalProperties},
+        { %$state, keyword_path => $state->{keyword_path}.'/additionalProperties' }) ]
+      if exists $schema->{additionalProperties} and @types == 0;
+
+    if (@types) {
+      $property_coercions->{$property} = [ intersect_types(@types) ];
+    }
+  }
+
+  push @object_coercions, $property_coercions;
+
+  # combine hashes together by performing an intersection of types for each individual property
+  # consider unevaluatedProperties now  for each property - that doesn't have representation
+  # already.
+  my %final_object_coercions;
+  foreach my $property (sort keys $data->%*) {
+    next if ref $data->{$property};
+    if (my @property_coercions = map $_->{$property} // (), @object_coercions) {
+      $final_object_coercions{$property} = [ intersect_types(map $_->{$property} // (), @object_coercions) ];
+    }
+    elsif (exists $schema->{unevaluatedProperties}) {
+      $final_object_coercions{$property} = [ $self->_type_in_schema($schema->{unevaluatedProperties},
+        { %$state, keyword_path => $state->{keyword_path}.'/unevaluatedProperties' }) ];
+    }
+  }
+
+  return \%final_object_coercions if delete $state->{_level}; # unwind the recursion by one level
+
+  # we are at the top of the recursion stack.
+  foreach my $property (keys %final_object_coercions) {
+    # incoercible elements will be left as-is
+    coerce_primitive(\$data->{$property}, $final_object_coercions{$property});
+  }
+}
+
+# given an array, use the subschema for each item to determine the correct value for that item
+sub _coerce_array_elements ($self, $data, $schema, $state) {
+  return if ref $data ne 'ARRAY';
+  return if ref $schema ne 'HASH';
+  return if not @$data;
+
+  $state->{_level} //= 0;
+  my @array_coercions;
+
+  if (defined(my $ref = $schema->{'$ref'})) {
+    {
+      my $schema = $self->_resolve_ref('schema', $ref, my $state = { %$state });
+      push @array_coercions, $self->_coerce_array_elements($data, $schema, { %$state, _level => $state->{_level}+1 });
+    }
+
+    # no other keywords are valid adjacent to '$ref' in drafts 4-7
+    return $array_coercions[0] if $state->{specification_version} =~ /^draft[467]\z/;
+  }
+
+  if (defined(my $ref = $schema->{'$dynamicRef'}) and $state->{specification_version} !~ /^draft(?:[467]|2019-09)$/) {
+    my $schema = $self->_resolve_dynamicRef($ref, my $state = { %$state });
+    push @array_coercions, $self->_coerce_array_elements($data, $schema, { %$state, _level => $state->{_level}+1 });
+  }
+
+  if (exists $schema->{allOf}) {
+    foreach my $idx (0..$schema->{allOf}->$#*) {
+      push @array_coercions, $self->_coerce_array_elements($data, $schema->{allOf}[$idx],
+        { %$state, _level => $state->{_level}+1, keyword_path => $state->{keyword_path}.'/allOf/'.$idx });
+    }
+  }
+
+  # we do not support anyOf, oneOf here, as the work involved in resolving ambiguities for each
+  # subschema as its own dataset is too great.
+
+  my $item_coercions = [];
+  foreach my $idx (0..$data->$#*) {
+    next if ref $data->[$idx];
+    my @types;
+    my $state = { %$state, data_path => $state->{data_path}.'/'.$idx };
+
+    my ($array_items, $schema_items) = $state->{specification_version} !~ /^draft(?:[467]|2019-09)\z/
+      ? qw(prefixItems items)
+      : qw(items additionalItems);
+
+    push @types, [ $self->_type_in_schema($schema->{$array_items}[$idx],
+        { %$state, keyword_path => $state->{keyword_path}.'/'.$array_items.'/'.$idx }) ]
+      if exists $schema->{$array_items} and $idx <= $schema->{$array_items}->$#*;
+
+    push @types, [ $self->_type_in_schema($schema->{$schema_items},
+        { %$state, keyword_path => $state->{keyword_path}.'/'.$schema_items }) ]
+      if exists $schema->{$schema_items} and @types == 0;
+
+    if (@types) {
+      $item_coercions->[$idx] = [ intersect_types(@types) ];
+    }
+  }
+
+  push @array_coercions, $item_coercions;
+
+  # combine arrayrefs together by performing an intersection of types for each individual item
+  # consider unevaluatedItems now for each property - that doesn't have representation
+  # already.
+  my @final_array_coercions;
+  foreach my $idx (0..$data->$#*) {
+    next if ref $data->[$idx];
+    if (my @item_coercions = map $_->[$idx] // (), @array_coercions) {
+      $final_array_coercions[$idx] = [ intersect_types(map $_->[$idx] // (), @array_coercions) ];
+    }
+    elsif (exists $schema->{unevaluatedItems}) {
+      $final_array_coercions[$idx] = [ $self->_type_in_schema($schema->{unevaluatedItems},
+        { %$state, keyword_path => $state->{keyword_path}.'/unevaluatedItems' }) ];
+    }
+  }
+
+  return \@final_array_coercions if delete $state->{_level}; # unwind the recursion by one level
+
+  # we are at the top of the recursion stack.
+  foreach my $idx (0..$data->$#*) {
+    # incoercible elements will be left as-is
+    coerce_primitive(\$data->[$idx], $final_array_coercions[$idx])
+      if defined $final_array_coercions[$idx];
+  }
 }
 
 # evaluates data against the subschema at the current state location
@@ -1745,13 +1913,15 @@ into the evaluator in advance (see L<JSON::Schema::Modern/add_schema>).
 
 When deserializing parameter values (whose decoding is not strictly defined with a media-type),
 values are treated as strings by default. However, if the schema contains a C<type>, C<const> or
-C<enum> keyword indicating a primitive type(s) other than C<array> or C<object>, the value will
+C<enum> keyword, the value will
 (attempted to be) coerced into that type before being passed to the JSON Schema evaluator. C<allOf>,
 C<anyOf>, C<oneOf>, C<$ref> and C<$dynamicRef> keywords are also followed in an attempt to infer the
 correct desired type.
+This process includes inspection of subschemas for object values or array items, for parameter
+values that are deserialized into those types.
 When no type constraint is present, the value will remain as a string; otherwise when multiple types
-are permitted, deserialization is attempted in this order: C<null>, C<boolean>, C<number>,
-C<string>.
+are permitted, deserialization is attempted in this order: C<object>, C<array>, C<null>, C<boolean>,
+C<number>, C<string>.
 
 =head1 LIMITATIONS
 
