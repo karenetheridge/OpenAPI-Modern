@@ -106,7 +106,7 @@ START:
 $::TYPE = $::TYPES[$type_index];
 note 'REQUEST/RESPONSE TYPE: '.$::TYPE;
 
-subtest $::TYPE.': validation errors in responses' => sub {
+subtest $::TYPE.': match failure' => sub {
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => $doc_uri,
     openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
