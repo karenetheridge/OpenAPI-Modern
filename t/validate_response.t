@@ -160,7 +160,7 @@ YAML
       { valid => true },
       'operation is successfully found using the request on the response',
     );
-    cmp_deeply(
+    cmp_result(
       $options,
       {
         request => isa('Mojo::Message::Request'),
@@ -200,7 +200,7 @@ YAML
     { valid => true },
     'no responses object - nothing to validate against',
   );
-  cmp_deeply(
+  cmp_result(
     $options,
     {
       method => 'POST',
@@ -225,7 +225,7 @@ YAML
     },
     'response code not found - nothing to validate against',
   );
-  cmp_deeply(
+  cmp_result(
     $options,
     {
       path_template => '/foo',
