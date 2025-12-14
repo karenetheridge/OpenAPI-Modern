@@ -399,7 +399,7 @@ sub find_path_item ($self, $options, $state = {}) {
     # reachable from a /paths entry, but as this can possibly match more than once, in order to
     # provide an unambiguous result, provide the operation_id as well.
 
-    # the operation path always ends with the method
+    # the operation path always ends with the method, but casing may vary depending on the parent
     my @parts = unjsonp($operation_path);
     my ($path_item_path, $method) = $parts[-2] ne 'additionalOperations'
           # differentiate between these operation paths:
