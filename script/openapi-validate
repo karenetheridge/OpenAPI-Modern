@@ -22,13 +22,12 @@ use JSON::Schema::Modern;
 use JSON::Schema::Modern::Document::OpenAPI;
 
 my ($opt, $usage) = Getopt::Long::Descriptive::describe_options(
-  "$0 %o",
+  "$0 %o [filename] [filename] ...",
   ['help|usage|?|h', 'print usage information and exit', { shortcircuit => 1 } ],
   [],
   ['strict', 'disallow unknown keywords in embedded JSON Schemas'],
   ['dump-identifiers', 'print a list of all identifiers found in the schema'],
   [],
-  ['document=s@', 'document filename (if not provided, STDIN is used); can be used more than once'],
 );
 
 print($usage->text), exit if $opt->help;
@@ -36,19 +35,19 @@ print($usage->text), exit if $opt->help;
 my $js = JSON::Schema::Modern->new(%$opt);
 my $exit_val = 0;
 
-foreach my $document_filename (($opt->document//[''])->@*) {
-  my $encoded_document;
+foreach my $document_filename (@ARGV) {
+  process(path($document_filename)->slurp('UTF-8'), $document_filename);
+}
 
-  if (length $document_filename) {
-    $encoded_document = path($document_filename)->slurp('UTF-8');
-  }
-  else {
-    say 'enter document data, followed by ^D:';
-    local $/;
-    $encoded_document = <STDIN>;
-    STDIN->clearerr;
-  }
+if (not @ARGV) {
+  say 'enter document data, followed by ^D:' if -t STDIN;
+  local $/;
+  my $encoded_document = <STDIN>;
+  STDIN->clearerr;
+  process($encoded_document);
+}
 
+sub process ($encoded_document, $document_filename = undef) {
   my $schema = parse_input($encoded_document);
   my $result;
 
@@ -77,7 +76,7 @@ foreach my $document_filename (($opt->document//[''])->@*) {
 
   $exit_val = max($exit_val, $result->valid ? 0 : $result->exception ? 2 : 1);
 
-  say encode(($opt->document//[])->@* > 1 ? { $document_filename => $result } : $result);
+  say encode(@ARGV > 1 ? { $document_filename => $result } : $result);
 }
 
 if ($opt->dump_identifiers) {
@@ -133,7 +132,7 @@ __END__
   openapi-validate \
     [ --strict ] \
     [ --dump-identifiers ] \
-    [ --document [ <filename> ] ... ]
+    [ <filename> ] [ ... ]
 
 =head1 DESCRIPTION
 
@@ -156,7 +155,7 @@ F<openapi.yaml> contains:
 
 Run:
 
-  openapi-validate --document openapi.yaml
+  openapi-validate openapi.yaml
 
 produces output:
 
@@ -173,7 +172,7 @@ produces output:
 
 JSON documents are also supported, e.g.:
 
-  openapi-validate --document openapi.json
+  openapi-validate openapi.json
 
 produces output for a valid document:
 
@@ -194,13 +193,14 @@ The following options from L<JSON::Schema::Modern> are available:
 * L<JSON::Schema::Modern/strict>: disallow unknown keywords in embedded JSON Schemas
 * L<JSON::Schema::Modern/dump_identifiers>: print a list of all identifiers found in the schema
 
-Additionally, C<--document> is used to provide the filename containing a JSON- or YAML-encoded
-OpenAPI document. You can use the C<--document> option more than once to validate multiple documents
-at the same time, which is faster than using separate processes.
+The remainder of the command line arguments are used to provide the filename containing a JSON- or
+YAML-encoded OpenAPI document. You can use more than one filename to validate multiple documents at
+the same time, which is faster than using separate processes.
 
 If the file looks like a JSON Schema rather than an OpenAPI document, it will be validated as such,
 and loaded into the evaluator so it can be used as a metaschema by your main document.
 
-If C<--document> is not provided, STDIN is used as input.
+If you provide no filenames, STDIN is used as input, so you can pipe your content directly from
+another process.
 
 =cut
