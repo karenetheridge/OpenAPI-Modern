@@ -35,8 +35,9 @@ print($usage->text), exit if $opt->help;
 my $js = JSON::Schema::Modern->new(%$opt);
 my $exit_val = 0;
 
-foreach my $document_filename (@ARGV) {
-  process(path($document_filename)->slurp('UTF-8'), $document_filename);
+foreach (my $idx = 0; $idx < @ARGV; ++$idx) {
+  my $document_filename = $ARGV[$idx];
+  process(path($document_filename)->slurp('UTF-8'), 0+!$idx, $document_filename);
 }
 
 if (not @ARGV) {
@@ -44,19 +45,15 @@ if (not @ARGV) {
   local $/;
   my $encoded_document = <STDIN>;
   STDIN->clearerr;
-  process($encoded_document);
+  process($encoded_document, 1);
 }
 
-sub process ($encoded_document, $document_filename = undef) {
+# document content, must be OpenAPI document?, filename identifier
+sub process ($encoded_document, $openapi = 0, $document_filename = undef) {
   my $schema = parse_input($encoded_document);
   my $result;
 
-  if (ref $schema ne 'HASH' or not exists $schema->{openapi}) {
-    # not an OpenAPI document? assume it's a vanilla JSON Schema
-    $result = $js->validate_schema($schema);
-    $js->add_schema($schema);
-  }
-  else {
+  if ($openapi or (ref $schema eq 'HASH' and exists $schema->{openapi})) {
     my $document;
     try {
       $document = JSON::Schema::Modern::Document::OpenAPI->new(
@@ -67,11 +64,16 @@ sub process ($encoded_document, $document_filename = undef) {
       $js->add_document($document) if $opt->dump_identifiers;
     }
     catch ($e) {
-      say $e->$_isa('JSON::Schema::Modern::Result') ? $e->dump: '"'.$e.'"';
+      say $e->$_isa('JSON::Schema::Modern::Result') ? $e->dump : $e;
       exit 2;
     }
 
     $result = JSON::Schema::Modern::Result->new(errors => [ $document->errors ]);
+  }
+  else {
+    # not an OpenAPI document? assume it's a vanilla JSON Schema
+    $result = $js->validate_schema($schema);
+    $js->add_schema($schema);
   }
 
   $exit_val = max($exit_val, $result->valid ? 0 : $result->exception ? 2 : 1);
@@ -195,7 +197,8 @@ The following options from L<JSON::Schema::Modern> are available:
 
 The remainder of the command line arguments are used to provide the filename containing a JSON- or
 YAML-encoded OpenAPI document. You can use more than one filename to validate multiple documents at
-the same time, which is faster than using separate processes.
+the same time, which is faster than using separate processes, but the first file must be a valid
+OpenAPI document.
 
 If the file looks like a JSON Schema rather than an OpenAPI document, it will be validated as such,
 and loaded into the evaluator so it can be used as a metaschema by your main document.
