@@ -37,9 +37,10 @@ JSON::Schema::Modern->VERSION('0.630') if $opt->with_defaults;
 my $js = JSON::Schema::Modern->new(%$opt);
 my $exit_val = 0;
 
-foreach (my $idx = 0; $idx < @ARGV; ++$idx) {
-  my $document_filename = $ARGV[$idx];
-  process(path($document_filename)->slurp('UTF-8'), 0+!$idx, $document_filename);
+foreach my $document_filename (@ARGV) {
+  my $document_filename = $document_filename;
+  process(path($document_filename)->slurp('UTF-8'),
+    0+!!($ARGV[-1] eq $document_filename), $document_filename);
 }
 
 if (not @ARGV) {
@@ -201,8 +202,8 @@ The following options from L<JSON::Schema::Modern> are available:
 
 The remainder of the command line arguments are used to provide the filename containing a JSON- or
 YAML-encoded OpenAPI document. You can use more than one filename to validate multiple documents at
-the same time, which is faster than using separate processes, but the first file must be a valid
-OpenAPI document.
+the same time, which is faster than using separate processes; each file is processed in order and
+made available to later documents, and the last file must be a valid OpenAPI document.
 
 If the file looks like a JSON Schema rather than an OpenAPI document, it will be validated as such,
 and loaded into the evaluator so it can be used as a metaschema by your main document.
