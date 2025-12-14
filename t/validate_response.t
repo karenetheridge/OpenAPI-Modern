@@ -61,6 +61,7 @@ YAML
   cmp_result(
     $options,
     {
+      response => isa('Mojo::Message::Response'),
       method => 'GET',
       operation_id => 'my_op',
       operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths / get)))),
@@ -181,6 +182,7 @@ YAML
       $options,
       {
         request => isa('Mojo::Message::Request'),
+        response => isa('Mojo::Message::Response'),
         uri => isa('Mojo::URL'),
         path_template => '/foo',
         method => 'POST',
@@ -220,6 +222,7 @@ YAML
   cmp_result(
     $options,
     {
+      response => isa('Mojo::Message::Response'),
       method => 'POST',
       operation_id => 'bar_operation',
       operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/components pathItems bar post)))),
@@ -245,6 +248,7 @@ YAML
   cmp_result(
     $options,
     {
+      response => isa('Mojo::Message::Response'),
       path_template => '/foo',
       method => 'POST',
       operation_id => 'foo_operation',

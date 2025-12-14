@@ -235,6 +235,9 @@ sub validate_response ($self, $response, $options = {}) {
     $options->{request} //= $request;
   }
 
+  croak '$response and $options->{response} are inconsistent'
+    if $options->{response} and $response != $options->{response};
+
   # mostly populated by find_path_item
   my $state = { data_path => '/response' };
 
@@ -253,9 +256,11 @@ sub validate_response ($self, $response, $options = {}) {
     return $self->_result($state, 1, 1) if not $path_ok;
 
     $state->{keyword_path} .= delete $options->{_operation_path_suffix};  # jsonp-encoded
-    return $self->_result($state, 0, 1) if not exists $operation->{responses};
 
-    $response = _convert_response($response);   # now guaranteed to be a Mojo::Message::Response
+    # now guaranteed to be a Mojo::Message::Response
+    $options->{response} = $response = _convert_response($response);
+
+    return $self->_result($state, 0, 1) if not exists $operation->{responses};
 
     if ($response->headers->header('Transfer-Encoding')) {
       ()= E({ %$state, data_path => '/response/header/Transfer-Encoding' },
@@ -1471,6 +1476,12 @@ C<request> in the hashref represents the original request object that
 corresponds to this response, which can be used to find the appropriate section of the document if
 other values (such as C<operationId>) are not known.
 
+In addition, this values are populated into the hashref:
+
+=for :items
+* C<response>: the L<Mojo::Message::Response> object that was provided or converted from the
+  provided response
+
 =head2 find_path_item
 
 =for Pod::Coverage find_path
@@ -1492,7 +1503,7 @@ of values can be provided; possible values are:
   L<Catalyst::Request>,
   L<Dancer2::Core::Request>,
   L<Mojo::Message::Request>.
-  Converted to a L<Mojo::Message::Request>.
+  Converted to a L<Mojo::Message::Request> (the value in this hashref will be overwritten).
 * C<uri>: the URI of the HTTP request. Converted from any string-compatible type to a L<Mojo::URL>.
 * C<method>: the HTTP method used by the request (case-sensitive)
 * C<path_template>: a string representing the (possibly partial) path portion of the request URI,
