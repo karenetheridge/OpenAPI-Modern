@@ -8,7 +8,7 @@ OpenAPI::Modern - Validate HTTP requests and responses against an OpenAPI v3.0, 
 
 =head1 VERSION
 
-version 0.114
+version 0.115
 
 =head1 SYNOPSIS
 
@@ -136,7 +136,7 @@ aims to be but some features are not yet available.
 
 =for Pod::Coverage BUILDARGS FREEZE THAW
 
-=for stopwords schemas jsonSchemaDialect metaschema subschema perlish operationId openapi Mojolicious
+=for stopwords schema jsonSchemaDialect metaschema subschema perlish operationId openapi Mojolicious
 
 =head1 CONSTRUCTOR ARGUMENTS
 
