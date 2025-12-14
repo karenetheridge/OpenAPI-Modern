@@ -111,29 +111,8 @@ sub traverse ($self, $evaluator, $config_override = {}) {
   croak join(', ', sort keys %$config_override), ' not supported as a config override in traverse'
     if keys %$config_override;
 
-  my $schema = $self->schema;
-
-  croak 'missing openapi version' if not exists $schema->{openapi};
-  croak 'bad openapi version: "', $schema->{openapi}//'', '"'
-    if ($schema->{openapi}//'') !~ /^[0-9]+\.[0-9]+\.[0-9]+(-.+)?$/;
-
-  my @oad_version = split /[.-]/, $schema->{openapi};
-  $self->_set_oas_version(join('.', @oad_version[0..1]));
-
-  my ($max_supported) = grep {
-    my @supported = split /\./;
-    $supported[0] == $oad_version[0] && $supported[1] == $oad_version[1]
-  } reverse SUPPORTED_OAD_VERSIONS->@*;
-
-  croak 'unrecognized/unsupported openapi version ', $schema->{openapi} if not defined $max_supported;
-  carp 'WARNING: your document was written for version ', $schema->{openapi},
-      ' but this implementation has only been tested up to ', $max_supported,
-      ': this may be okay but you should upgrade your OpenAPI::Modern installation soon'
-    if defined $oad_version[2] and (split(/\./, $max_supported))[2] < $oad_version[2];
-
-  add_vocab_and_default_schemas($evaluator, $self->oas_version);
-
   my $state = {
+    initial_schema_uri => $self->canonical_uri,
     traversed_keyword_path => '',
     keyword_path => '',
     data_path => '',
@@ -147,6 +126,29 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     depth => 0,
     traverse => 1,
   };
+
+  my $schema = $self->schema;
+
+  ()= E($state, 'missing openapi version'), return $state if not exists $schema->{openapi};
+  ()= E($state, 'bad openapi version: "%s"', $schema->{openapi}//''), return $state
+    if ($schema->{openapi}//'') !~ /^[0-9]+\.[0-9]+\.[0-9]+(-.+)?$/;
+
+  my @oad_version = split /[.-]/, $schema->{openapi};
+  $self->_set_oas_version(join('.', @oad_version[0..1]));
+
+  my ($max_supported) = grep {
+    my @supported = split /\./;
+    $supported[0] == $oad_version[0] && $supported[1] == $oad_version[1]
+  } reverse SUPPORTED_OAD_VERSIONS->@*;
+
+  ()= E($state, 'unrecognized/unsupported openapi version: "%s"', $schema->{openapi}), return $state
+    if not defined $max_supported;
+  carp 'WARNING: your document was written for version ', $schema->{openapi},
+      ' but this implementation has only been tested up to ', $max_supported,
+      ': this may be okay but you should upgrade your OpenAPI::Modern installation soon',"\n"
+    if defined $oad_version[2] and (split(/\./, $max_supported))[2] < $oad_version[2];
+
+  add_vocab_and_default_schemas($evaluator, $self->oas_version);
 
   if (exists $schema->{'$self'}) {
     my $state = { %$state, keyword => '$self', initial_schema_uri => Mojo::URL->new };
