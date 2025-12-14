@@ -103,6 +103,10 @@ sub validate_request ($self, $request, $options = {}) {
     my $path_ok = $self->find_path_item($options, $state);
     delete $options->{errors};
 
+    my $path_item = delete $options->{_path_item};  # after following path-item $refs
+    my $operation = delete $options->{_operation};
+    my $ops = delete $options->{_operation_path_suffix};   # jsonp-encoded
+
     # Reporting a failed find_path_item as an exception will result in a recommended response of
     # [ 500, Internal Server Error ], which is warranted if we consider the lack of a specification
     # entry for this incoming request as an unexpected, server-side error.
@@ -111,10 +115,6 @@ sub validate_request ($self, $request, $options = {}) {
     return $self->_result($state, 1) if not $path_ok;
 
     $request = $options->{request};   # now guaranteed to be a Mojo::Message::Request
-
-    my $path_item = delete $options->{_path_item};  # after following path-item $refs
-    my $operation = delete $options->{_operation};
-    my $ops = delete $options->{_operation_path_suffix};   # jsonp-encoded
 
     # PARAMETERS
     # { $in => { $name => path-item|operation } }  as we process each one.

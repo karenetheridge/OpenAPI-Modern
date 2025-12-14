@@ -44,7 +44,7 @@ YAML
   }
 
   cmp_result(
-    $openapi->validate_response(bless({}, 'Bespoke::Response'), { operation_id => 'my_op' })->TO_JSON,
+    $openapi->validate_response(bless({}, 'Bespoke::Response'), my $options = { operation_id => 'my_op' })->TO_JSON,
     {
       valid => false,
       errors => [
@@ -57,6 +57,15 @@ YAML
       ],
     },
     'response must be a recognized type',
+  );
+  cmp_result(
+    $options,
+    {
+      method => 'GET',
+      operation_id => 'my_op',
+      operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths / get)))),
+    },
+    'options hash is populated',
   );
 
   cmp_result(
@@ -116,7 +125,7 @@ paths:
       operationId: foo_operation
 YAML
 
-  my $result = $openapi->validate_response(response(200), { operation_id => 'foo' });
+  my $result = $openapi->validate_response(response(200), my $options = { operation_id => 'foo' });
   isa_ok($result, ['JSON::Schema::Modern::Result'], 'got a result object back');
   cmp_result(
     $result->TO_JSON,
@@ -131,8 +140,16 @@ YAML
         },
       ],
     },
-    'match failure from find_path_item()',
+    'match failure from find_path_item with operation_id',
   );
+  cmp_result(
+    $options,
+    {
+      operation_id => 'foo',
+    },
+    'options is populated with all inferred data so far',
+  );
+
 
   if ($::TYPE eq 'lwp') {
     my $response = response(404);
