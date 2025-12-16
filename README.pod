@@ -8,7 +8,7 @@ OpenAPI::Modern - Validate HTTP requests and responses against an OpenAPI v3.0, 
 
 =head1 VERSION
 
-version 0.115
+version 0.116
 
 =head1 SYNOPSIS
 
@@ -255,6 +255,11 @@ C<request> in the hashref represents the original request object that
 corresponds to this response, which can be used to find the appropriate section of the document if
 other values (such as C<operationId>) are not known.
 
+In addition, this values are populated into the hashref:
+
+=for :items * C<response>: the L<Mojo::Message::Response> object that was provided or converted from the
+  provided response
+
 =head2 find_path_item
 
 =for Pod::Coverage find_path
@@ -272,7 +277,7 @@ of values can be provided; possible values are:
 
 =item *
 
-C<request>: the object representing the HTTP request. Supported types are: L<HTTP::Request>, L<Plack::Request>, L<Catalyst::Request>, L<Dancer2::Core::Request>, L<Mojo::Message::Request>. Converted to a L<Mojo::Message::Request>.
+C<request>: the object representing the HTTP request. Supported types are: L<HTTP::Request>, L<Plack::Request>, L<Catalyst::Request>, L<Dancer2::Core::Request>, L<Mojo::Message::Request>. Converted to a L<Mojo::Message::Request> (the value in this hashref will be overwritten).
 
 =item *
 

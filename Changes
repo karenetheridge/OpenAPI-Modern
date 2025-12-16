@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.116     2025-12-16 23:36:39Z
           - the converted response object is now added to the optional hashref
             used in validate_response()
           - fix usage of --with-defaults in "openapi-validate'
