@@ -71,7 +71,7 @@ sub process ($encoded_document, $openapi = 0, $document_filename = undef) {
       exit 2;
     }
 
-    $result = JSON::Schema::Modern::Result->new(errors => [ $document->errors ]);
+    $result = $document->validate;
   }
   else {
     # not an OpenAPI document? assume it's a vanilla JSON Schema

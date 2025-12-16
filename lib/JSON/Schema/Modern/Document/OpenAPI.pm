@@ -26,7 +26,7 @@ use Digest::MD5 'md5_hex';
 use Storable 'dclone';
 use builtin::compat qw(blessed indexed);
 use MooX::TypeTiny 0.002002;
-use Types::Standard qw(HashRef ArrayRef Str);
+use Types::Standard qw(HashRef ArrayRef Str Map Any);
 use namespace::clean;
 
 extends 'JSON::Schema::Modern::Document';
@@ -85,6 +85,11 @@ has oas_version => (
 has path_templates => (
   is => 'rwp',
   isa => ArrayRef[Str],
+);
+
+has defaults => (
+  is => 'rwp',
+  isa => Map[json_pointer_type, Any],
 );
 
 # we define the sub directly, rather than using an 'around', since our root base class is not
@@ -331,6 +336,8 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     return $state;
   }
 
+  $self->_set_defaults($result->defaults) if $result->defaults;
+
   ()= E({ %$state, keyword_path => $_ }, '"items" must be present if type is "array"')
     foreach @bad_items_paths;
 
@@ -496,7 +503,10 @@ sub traverse ($self, $evaluator, $config_override = {}) {
 # that as part of traverse.
 sub validate ($class, @args) {
   my $document = blessed($class) ? $class : $class->new(@args);
-  return JSON::Schema::Modern::Result->new(valid => !$document->has_errors, errors => [ $document->errors ]);
+  return JSON::Schema::Modern::Result->new(
+    errors => [ $document->errors ],
+    $document->defaults ? (defaults => $document->defaults) : (),
+  );
 }
 
 ######## NO PUBLIC INTERFACES FOLLOW THIS POINT ########
@@ -750,6 +760,12 @@ Returns the list of json pointer location(s) of operations that use the provided
 =head2 path_templates
 
 All path templates under C</paths/>, sorted in canonical search order.
+
+=head2 defaults
+
+A hashref, mapping json pointer locations in the instance data to the default value assigned
+to the property at this location, taken from C<default> keywords in the metaschema under
+C<properties> and C<patternProperties> keywords.
 
 =head1 SEE ALSO
 
