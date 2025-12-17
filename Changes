@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.117     2025-12-17 19:03:12Z
           - more improvements to "with_defaults" handling
 
 0.116     2025-12-16 23:36:39Z
