@@ -90,7 +90,11 @@ has path_templates => (
 has defaults => (
   is => 'rwp',
   isa => Map[json_pointer_type, Any],
+  lazy => 1,
+  default => sub { {} },
 );
+
+sub default { $_[0]->defaults->{$_[1]} }
 
 # we define the sub directly, rather than using an 'around', since our root base class is not
 # Moo::Object, so we never got a BUILDARGS to modify
@@ -256,6 +260,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     {
       collect_annotations => 0,
       validate_formats => 1,
+      with_defaults => 1,
       callbacks => {
         # we avoid producing errors here so we don't create extra errors for "not all additional
         # properties are valid" etc
@@ -501,11 +506,13 @@ sub traverse ($self, $evaluator, $config_override = {}) {
 
 # just like the base class's version, except we skip the evaluate step because we already did
 # that as part of traverse.
-sub validate ($class, @args) {
-  my $document = blessed($class) ? $class : $class->new(@args);
+sub validate ($class, %args) {
+  my $with_defaults = delete $args{with_defaults};
+
+  my $document = blessed($class) ? $class : $class->new(%args);
   return JSON::Schema::Modern::Result->new(
     errors => [ $document->errors ],
-    $document->defaults ? (defaults => $document->defaults) : (),
+    $with_defaults ? (defaults => $document->defaults) : (),
   );
 }
 
@@ -766,6 +773,14 @@ All path templates under C</paths/>, sorted in canonical search order.
 A hashref, mapping json pointer locations in the instance data to the default value assigned
 to the property at this location, taken from C<default> keywords in the metaschema under
 C<properties> and C<patternProperties> keywords.
+
+=head2 default
+
+  my $path = '/components/parameters/MyParameter';
+  my $style = $self->get($path.'/style') || $self->default($path.'/style');
+  my $explode = $self->get($path.'/explode') || $self->default($path.'/explode');
+
+Accesses an individual entry of L</defaults>.
 
 =head1 SEE ALSO
 
