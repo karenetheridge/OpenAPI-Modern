@@ -206,7 +206,7 @@ The following options from L<JSON::Schema::Modern> are available:
 The remainder of the command line arguments are used to provide the filename containing a JSON- or
 YAML-encoded OpenAPI document. You can use more than one filename to validate multiple documents at
 the same time, which is faster than using separate processes; each file is processed in order and
-made available to later documents, and the last file must be a valid OpenAPI document.
+made available to later documents, and the last file must be an OpenAPI document.
 
 If the file looks like a JSON Schema rather than an OpenAPI document, it will be validated as such,
 and loaded into the evaluator so it can be used as a metaschema by your main document.
