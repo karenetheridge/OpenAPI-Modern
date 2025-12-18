@@ -1266,7 +1266,6 @@ YAML
   cmp_result(
     $doc->defaults,
     {
-      '/components/parameters/MyParameter/deprecated' => false,
       '/components/parameters/MyParameter/allowReserved' => false,
       '/components/parameters/MyParameter/deprecated' => false,
       '/components/parameters/MyParameter/explode' => false,
