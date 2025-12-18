@@ -79,7 +79,7 @@ sub operations_with_tag { ($_[0]->{_operation_tags}{$_[1]}//[])->@* }
 # the minor.major version of the OpenAPI specification used for this document
 has oas_version => (
   is => 'rwp',
-  isa => Str->where(q{/^[1-9]\.(?:0|[1-9][0-9]*)$/}),
+  isa => Str->where(q{/^[1-9]\.(?:0|[1-9][0-9]*)\z/}),
 );
 
 # list of /paths/* path templates, in canonical search order
@@ -141,7 +141,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
 
   ()= E($state, 'missing openapi version'), return $state if not exists $schema->{openapi};
   ()= E($state, 'bad openapi version: "%s"', $schema->{openapi}//''), return $state
-    if ($schema->{openapi}//'') !~ /^[0-9]+\.[0-9]+\.[0-9]+(-.+)?$/;
+    if ($schema->{openapi}//'') !~ /^[0-9]+\.[0-9]+\.[0-9]+(-.+)?\z/;
 
   my @oad_version = split /[.-]/, $schema->{openapi};
   $self->_set_oas_version(join('.', @oad_version[0..1]));
@@ -289,8 +289,8 @@ sub traverse ($self, $evaluator, $config_override = {}) {
           else {
             # we only need to special-case path-item, because this is the only entity that is
             # referenced in the schema without an -or-reference
-            ($entity) = (($schema->{'$ref'} =~ m{#/\$defs/([^/]+?)(?:-or-reference)$}),
-                         ($schema->{'$ref'} =~ m{#/\$defs/(path-item)$}));
+            ($entity) = (($schema->{'$ref'} =~ m{#/\$defs/([^/]+?)(?:-or-reference)\z}),
+                         ($schema->{'$ref'} =~ m{#/\$defs/(path-item)\z}));
           }
 
           $self->_add_entity_location($state->{data_path}, $entity) if $entity;
@@ -314,7 +314,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
           }
 
           # will contain duplicates; filter out later
-          push @servers_paths, ($state->{data_path} =~ s{/[0-9]+$}{}r)
+          push @servers_paths, ($state->{data_path} =~ s{/[0-9]+\z}{}r)
             if $schema->{'$ref'} eq '#/$defs/server';
 
           return 1;
@@ -364,7 +364,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     # see ABNF at v3.2.0 §4.8.2
     die "invalid path: $path" if substr($path, 0, 1) ne '/'; # schema validation catches this
     ()= E({ %$state, keyword_path => jsonp('/paths', $path) }, 'invalid path template "%s"', $path)
-      if grep !/^(?:\{[^{}]+\}|%[0-9A-F]{2}|[:@!\$&'()*+,;=A-Za-z0-9._~-]+)+$/,
+      if grep !/^(?:\{[^{}]+\}|%[0-9A-F]{2}|[:@!\$&'()*+,;=A-Za-z0-9._~-]+)+\z/,
         split('/', substr($path, 1)); # split by segment, omitting leading /
 
     my %seen_names;
@@ -402,7 +402,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
       # see ABNF at v3.2.0 §4.6
       ()= E({ %$state, keyword_path => jsonp($servers_location, $server_idx, 'url') },
           'invalid server url "%s"', $servers->[$server_idx]{url}), next
-        if $servers->[$server_idx]{url} !~ /^(?:\{[^{}]+\}|%[0-9A-F]{2}|[\x21\x24\x26-\x3B\x3D\x40-\x5B\x5D\x5F\x61-\x7A\x7E\xA0-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFEF}\x{10000}-\x{1FFFD}\x{20000}-\x{2FFFD}\x{30000}-\x{3FFFD}\x{40000}-\x{4FFFD}\x{50000}-\x{5FFFD}\x{60000}-\x{6FFFD}\x{70000}-\x{7FFFD}\x{80000}-\x{8FFFD}\x{90000}-\x{9FFFD}\x{A0000}-\x{AFFFD}\x{B0000}-\x{BFFFD}\x{C0000}-\x{CFFFD}\x{D0000}-\x{DFFFD}\x{E1000}-\x{EFFFD}\x{E000}-\x{F8FF}\x{F0000}-\x{FFFFD}\x{100000}-\x{10FFFD}])+$/;
+        if $servers->[$server_idx]{url} !~ /^(?:\{[^{}]+\}|%[0-9A-F]{2}|[\x21\x24\x26-\x3B\x3D\x40-\x5B\x5D\x5F\x61-\x7A\x7E\xA0-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFEF}\x{10000}-\x{1FFFD}\x{20000}-\x{2FFFD}\x{30000}-\x{3FFFD}\x{40000}-\x{4FFFD}\x{50000}-\x{5FFFD}\x{60000}-\x{6FFFD}\x{70000}-\x{7FFFD}\x{80000}-\x{8FFFD}\x{90000}-\x{9FFFD}\x{A0000}-\x{AFFFD}\x{B0000}-\x{BFFFD}\x{C0000}-\x{CFFFD}\x{D0000}-\x{DFFFD}\x{E1000}-\x{EFFFD}\x{E000}-\x{F8FF}\x{F0000}-\x{FFFFD}\x{100000}-\x{10FFFD}])+\z/;
 
       my $normalized = $servers->[$server_idx]{url} =~ s/\{[^{}]+\}/\x00/gr;
       my @url_variables = $servers->[$server_idx]{url} =~ /\{([^{}]+)\}/g;

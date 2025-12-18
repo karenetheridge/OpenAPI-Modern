@@ -53,7 +53,7 @@ subtest 'basic document validation' => sub {
           instanceLocation => '/'.$_,
           keywordLocation => ignore,  # a $defs somewhere
           absoluteKeywordLocation => ignore,
-          error => re(qr/^got string, not (object|array)$/),
+          error => re(qr/^got string, not (object|array)\z/),
         }, qw(externalDocs security servers tags));
         splice @e, 1, 0,
           {
@@ -1056,7 +1056,7 @@ subtest '3.0 document' => sub {
         instanceLocation => '/'.$_,
         keywordLocation => '/properties/'.$_.'/type',
         absoluteKeywordLocation => DEFAULT_METASCHEMA->{'3.0'}.'#/properties/'.$_.'/type',
-        error => re(qr/^got string, not (object|array)$/),
+        error => re(qr/^got string, not (object|array)\z/),
       }, qw(security servers tags)),
       {
         instanceLocation => '',
@@ -1128,13 +1128,13 @@ YAML
     superbagof(   # given the gratuitous use of oneOfs, the full error structure is hard to read
       {
         instanceLocation => '/components/schemas/OAS_3.0_schema/items/nullable',
-        keywordLocation => re(qr{/\$ref/properties/nullable/type$}),
+        keywordLocation => re(qr{/\$ref/properties/nullable/type\z}),
         absoluteKeywordLocation => DEFAULT_DIALECT->{'3.0'}.'/properties/nullable/type',
         error => 'got integer, not boolean',
       },
       {
         instanceLocation => '/components/schemas/OAS_3.0_schema/items',
-        keywordLocation => re(qr{/\$ref/properties$}),
+        keywordLocation => re(qr{/\$ref/properties\z}),
         absoluteKeywordLocation => DEFAULT_DIALECT->{'3.0'}.'/properties',
         error => 'not all properties are valid',
       },
