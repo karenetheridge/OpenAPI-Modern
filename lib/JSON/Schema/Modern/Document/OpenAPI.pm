@@ -525,6 +525,69 @@ sub validate ($class, %args) {
   );
 }
 
+sub upgrade ($self, $to_version = SUPPORTED_OAD_VERSIONS->[-1]) {
+  croak 'cannot upgrade an invalid document' if $self->errors;
+
+  croak 'new openapi version must be a dotted tuple or triple'
+    if $to_version !~ /^(3\.[0-9]+)(?:\.[0-9]+)?\z/;
+  my $to_oas_version = $1;
+  croak 'requested upgrade to an unsupported version: ', $to_version
+    if not grep $to_oas_version eq $_, OAS_VERSIONS->@*;
+
+  ($to_version) = grep /^$to_version\./, SUPPORTED_OAD_VERSIONS->@* if $to_version =~  /^(3\.\d+)\z/a;
+
+  my $schema = $self->schema;
+
+  my $from_version = $schema->{openapi};
+  return $schema if $from_version eq $to_version;
+
+  my ($from_oas_version) = $schema->{openapi} =~ /^(3\.[0-9]+)\.[0-9]+\b/;
+  croak 'downgrading is not supported' if $from_oas_version > $to_oas_version;
+
+  $schema->{openapi} = $to_version;
+
+  return $schema if $from_oas_version eq $to_oas_version;
+
+  if ($from_oas_version eq '3.0') {
+    delete $schema->{paths} if not keys $schema->{paths}->%*;
+
+    foreach my $schema_path ($self->get_entity_locations('schema')) {
+      my $subschema = $self->get($schema_path);
+
+      if (exists $subschema->{nullable}) {
+        $subschema->{type} = [ $subschema->{type}, 'null' ]
+          if delete $subschema->{nullable} and exists $subschema->{type};
+      }
+
+      $subschema->{exclusiveMinimum} = delete $subschema->{minimum} if delete $subschema->{exclusiveMinimum};
+      $subschema->{exclusiveMaximum} = delete $subschema->{maximum} if delete $subschema->{exclusiveMaximum};
+
+      $subschema->{examples} = [ delete $subschema->{example} ] if exists $subschema->{example};
+
+      if (exists $subschema->{format}) {
+        if ($subschema->{format} eq 'binary') {
+          $subschema->{contentMediaType} = 'application/octet-stream';
+          delete $subschema->{format};
+        }
+        elsif ($subschema->{format} eq 'base64') {
+          $subschema->{contentEncoding} = 'base64';
+          delete $subschema->{format};
+        }
+      }
+    }
+  }
+
+  if ($to_oas_version eq '3.2') {
+    foreach my $schema_path ($self->get_entity_locations('response')) {
+      my $subschema = $self->get($schema_path);
+      delete $subschema->{description}
+        if exists $subschema->{description} and $subschema->{description} eq '';
+    }
+  }
+
+  return $schema;
+}
+
 ######## NO PUBLIC INTERFACES FOLLOW THIS POINT ########
 
 # https://spec.openapis.org/oas/latest#schema-object
@@ -735,6 +798,13 @@ L<OpenAPI::Modern> constructor.
 =head1 METHODS
 
 This class inherits all methods from L<JSON::Schema::Modern::Document>. In addition:
+
+=head2 upgrade
+
+  Mojo::File->new('new_openapi.yaml')->spew(YAML::PP->new->dump_string($doc->upgrade('3.2')));
+
+Generates the equivalent schema for your document, with syntax altered for the new OpenAPI version.
+Defaults to targeting the latest supported version, if not provided.
 
 =head2 retrieval_uri
 
