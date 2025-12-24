@@ -255,7 +255,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
 
   # evaluate the document against its metaschema to find any errors, to identify all schema
   # resources within to add to the global resource index, and to extract all operationIds
-  my (@json_schema_paths, @operation_paths, %bad_path_item_refs, @servers_paths, %tag_operation_paths, @bad_items_paths);
+  my (@json_schema_paths, @operation_paths, %bad_path_item_refs, @servers_paths, %tag_operation_paths, @bad_3_0_paths);
   my $result = $evaluator->evaluate(
     $schema, $self->metaschema_uri,
     {
@@ -279,8 +279,12 @@ sub traverse ($self, $evaluator, $config_override = {}) {
           if ($self->oas_version eq '3.0') {
             # strip '#/definitions/'; convert CamelCase to kebab-case
             if ($entity = lc join('-', split /(?=[A-Z])/, substr($schema->{'$ref'}, 14))) {
-              push @bad_items_paths, $state->{data_path}
+              push @bad_3_0_paths, [ items => $state->{data_path} ]
                 if $entity eq 'schema' and ($data->{type}//'') eq 'array' and not exists $data->{items};
+              push @bad_3_0_paths, [ minimum => $state->{data_path} ]
+                if $entity eq 'schema' and exists $data->{exclusiveMinimum} and not exists $data->{minimum};
+              push @bad_3_0_paths, [ maximum => $state->{data_path} ]
+                if $entity eq 'schema' and exists $data->{exclusiveMaximum} and not exists $data->{maximum};
 
               undef $entity if not grep $entity eq $_, __entities;
               # no need to push to @json_schema_paths, as all schema entities are already found
@@ -344,8 +348,12 @@ sub traverse ($self, $evaluator, $config_override = {}) {
 
   $self->_set_defaults($result->defaults) if $result->defaults;
 
-  ()= E({ %$state, keyword_path => $_ }, '"items" must be present if type is "array"')
-    foreach @bad_items_paths;
+  ()= E({ %$state, keyword_path => $_->[1] },
+      $_->[0] eq 'items' ? '"items" must be present if type is "array"'
+    : $_->[0] eq 'minimum' ? '"minimum" must be present when "exclusiveMinimum" is used'
+    : $_->[0] eq 'maximum' ? '"maximum" must be present when "exclusiveMaximum" is used'
+    : die
+  ) foreach @bad_3_0_paths;
 
   # v3.2.0 §4.8.1, "Patterned Fields": "When matching URLs, concrete (non-templated) paths would be
   # matched before their templated counterparts."

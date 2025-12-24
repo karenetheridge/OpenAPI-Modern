@@ -1080,11 +1080,17 @@ paths: {}
 components:
   schemas:
     OAS_3.0_schema:
+      exclusiveMinimum: true
+      exclusiveMaximum: true
+      # missing "minimum" and "maximum"
       type: array
       # missing "items" here
       anyOf:
         - type: array
           # no "items" here either
+          exclusiveMinimum: true
+          exclusiveMaximum: true
+          # no "minimum" or "maximum" here either
 YAML
 
   cmp_result(
@@ -1095,13 +1101,23 @@ YAML
         absoluteKeywordLocation => 'http://localhost:1234/api#/components/schemas/OAS_3.0_schema/anyOf/0',
         error => '"items" must be present if type is "array"',
       },
+      (map +{
+        keywordLocation => '/components/schemas/OAS_3.0_schema/anyOf/0',
+        absoluteKeywordLocation => 'http://localhost:1234/api#/components/schemas/OAS_3.0_schema/anyOf/0',
+        error => '"m'.$_.'imum" must be present when "exclusiveM'.$_.'imum" is used',
+      }, qw(in ax)),
       {
         keywordLocation => '/components/schemas/OAS_3.0_schema',
         absoluteKeywordLocation => 'http://localhost:1234/api#/components/schemas/OAS_3.0_schema',
         error => '"items" must be present if type is "array"',
       },
+      (map +{
+        keywordLocation => '/components/schemas/OAS_3.0_schema',
+        absoluteKeywordLocation => 'http://localhost:1234/api#/components/schemas/OAS_3.0_schema',
+        error => '"m'.$_.'imum" must be present when "exclusiveM'.$_.'imum" is used',
+      }, qw(in ax)),
     ],
-    'missing "items" keywords are identified',
+    'missing "items", "minimum", "maximum" keywords are identified',
   );
 
 
