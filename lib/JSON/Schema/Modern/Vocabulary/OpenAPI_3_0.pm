@@ -147,8 +147,8 @@ noted by the specification, as not every keyword is implemented identically).
 * L<JSON::Schema::Modern::Document::OpenAPI>
 * L<JSON::Schema::Modern>
 * L<https://json-schema.org>
-* L<https://www.openapis.org/>
-* L<https://learn.openapis.org/>
-* L<https://spec.openapis.org/oas/3.0>
+* L<https://www.openapis.org>
+* L<https://learn.openapis.org>
+* L<https://spec.openapis.org/oas/v3.0>
 
 =cut

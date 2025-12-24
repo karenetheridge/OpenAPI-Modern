@@ -137,8 +137,8 @@ L<https://spec.openapis.org/oas/3.2/schema/2025-09-17>).
 * L<JSON::Schema::Modern::Document::OpenAPI>
 * L<JSON::Schema::Modern>
 * L<https://json-schema.org>
-* L<https://www.openapis.org/>
-* L<https://learn.openapis.org/>
+* L<https://www.openapis.org>
+* L<https://learn.openapis.org>
 * L<https://spec.openapis.org/oas/latest>
 
 =cut

@@ -1723,11 +1723,11 @@ Only certain permutations of OpenAPI documents are supported at this time:
 * L<JSON::Schema::Modern::Document::OpenAPI>
 * L<JSON::Schema::Modern>
 * L<https://json-schema.org>
-* L<https://www.openapis.org/>
-* L<https://learn.openapis.org/>
+* L<https://www.openapis.org>
+* L<https://learn.openapis.org>
 * L<https://spec.openapis.org/oas/v3.0>
 * L<https://spec.openapis.org/oas/v3.1>
 * L<https://spec.openapis.org/oas/v3.2>
-* L<https://spec.openapis.org/oas/>
+* L<https://spec.openapis.org/oas>
 
 =cut

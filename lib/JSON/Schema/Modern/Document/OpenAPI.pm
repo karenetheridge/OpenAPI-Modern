@@ -791,8 +791,8 @@ Accesses an individual entry of L</defaults>.
 * L<JSON::Schema::Modern>
 * L<JSON::Schema::Modern::Document>
 * L<https://json-schema.org>
-* L<https://www.openapis.org/>
-* L<https://learn.openapis.org/>
+* L<https://www.openapis.org>
+* L<https://learn.openapis.org>
 * L<https://spec.openapis.org/oas/v3.0>
 * L<https://spec.openapis.org/oas/v3.1>
 * L<https://spec.openapis.org/oas/v3.2>
