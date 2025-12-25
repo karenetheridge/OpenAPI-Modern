@@ -141,7 +141,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
 
   ()= E($state, 'missing openapi version'), return $state if not exists $schema->{openapi};
   ()= E($state, 'bad openapi version: "%s"', $schema->{openapi}//''), return $state
-    if ($schema->{openapi}//'') !~ /^[0-9]+\.[0-9]+\.[0-9]+(-.+)?\z/;
+    if ($schema->{openapi}//'') !~ /^\d+\.\d+\.\d+(-.+)?\z/a;
 
   my @oad_version = split /[.-]/, $schema->{openapi};
   $self->_set_oas_version(join('.', @oad_version[0..1]));
@@ -529,7 +529,7 @@ sub upgrade ($self, $to_version = SUPPORTED_OAD_VERSIONS->[-1]) {
   croak 'cannot upgrade an invalid document' if $self->errors;
 
   croak 'new openapi version must be a dotted tuple or triple'
-    if $to_version !~ /^(3\.[0-9]+)(?:\.[0-9]+)?\z/;
+    if $to_version !~ /^(3\.\d+)(?:\.\d+)?\z/a;
   my $to_oas_version = $1;
   croak 'requested upgrade to an unsupported version: ', $to_version
     if not grep $to_oas_version eq $_, OAS_VERSIONS->@*;
@@ -541,7 +541,7 @@ sub upgrade ($self, $to_version = SUPPORTED_OAD_VERSIONS->[-1]) {
   my $from_version = $schema->{openapi};
   return $schema if $from_version eq $to_version;
 
-  my ($from_oas_version) = $schema->{openapi} =~ /^(3\.[0-9]+)\.[0-9]+\b/;
+  my ($from_oas_version) = $schema->{openapi} =~ /^(3\.\d+)\.\d+\b/a;
   croak 'downgrading is not supported' if $from_oas_version > $to_oas_version;
 
   $schema->{openapi} = $to_version;
