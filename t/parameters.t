@@ -17,25 +17,8 @@ use Helper;
 my $openapi = OpenAPI::Modern->new(
   openapi_uri => 'http://localhost:1234/api',
   openapi_schema => YAML::PP->new(boolean => 'JSON::PP')->load_string(OPENAPI_PREAMBLE.<<'YAML'));
-components:
-  schemas:
-    nothing: {}
-    string: { type: string }
-    array: { type: array }
-    object: { type: object }
-    deep_string: { $defs: { foo: { type: string } } }
-    ref_to_deep_string: { $ref: '#/components/schemas/string' }
+components: {}
 YAML
-
-$openapi->evaluator->add_schema({
-  '$id' => 'http://localhost:1234/extras',
-  '$defs' => {
-    array => { type => 'array' },
-    object => { type => 'object' },
-    deep_string => { '$defs' => { foo => { type => 'string' } } },
-    ref_to_deep_string => { '$ref' => 'api#/components/schemas/ref_to_deep_string' },
-  },
-});
 
 my $parameter_content;
 no warnings 'redefine';
@@ -53,7 +36,7 @@ subtest 'path parameters' => sub {
     # errors => collected from state (expected), defaults to []
     # todo
     {
-      param_obj => { name => 'missing', required => true, schema => false },
+      param_obj => { name => 'missing', required => true },
       path_captures => {},
       content => undef,
       errors => [
@@ -86,23 +69,23 @@ subtest 'path parameters' => sub {
     },
     # style=simple
     {
-      param_obj => { name => 'spaces', in => 'path', schema => false },
+      param_obj => { name => 'spaces', in => 'path' },
       path_captures => { spaces => " i have spaces  \t " },
       content => " i have spaces  \t ",
     },
     {
-      param_obj => { name => 'single_value_false', in => 'path', schema => {} },
+      param_obj => { name => 'single_value_false', in => 'path' },
       path_captures => { single_value_false => 'foo' },
       content => 'foo',
     },
     {
-      param_obj => { name => 'single_value_string', in => 'path', schema => { type => 'string' } },
+      param_obj => { name => 'single_value_string', in => 'path' },
       path_captures => { single_value_string => 'foo' },
       content => 'foo',
     },
     {
       # we do not normalize whitespace in path parameters
-      param_obj => { name => 'comma_separated_string', in => 'path', schema => false },
+      param_obj => { name => 'comma_separated_string', in => 'path' },
       path_captures => { comma_separated_string => ' foo,  bar ' },
       content => ' foo,  bar ',
     },
@@ -146,13 +129,13 @@ subtest 'path parameters' => sub {
     },
     # style=matrix
     {
-      param_obj => { name => 'matrix_string_empty', style => 'matrix', schema => { type => 'string' } },
+      param_obj => { name => 'matrix_string_empty', style => 'matrix' },
       path_captures => { matrix_string_empty => ';color' },
       content => '',
       todo => 'style=matrix',
     },
     {
-      param_obj => { name => 'matrix_string', style => 'matrix', schema => { type => 'string' } },
+      param_obj => { name => 'matrix_string', style => 'matrix' },
       path_captures => { matrix_string => ';color=blue' },
       content => 'blue',
       todo => 'style=matrix',
@@ -183,13 +166,13 @@ subtest 'path parameters' => sub {
     },
     # style=label
     {
-      param_obj => { name => 'label_string_empty', style => 'label', schema => { type => 'string' } },
+      param_obj => { name => 'label_string_empty', style => 'label' },
       path_captures => { label_string_empty => '.' },
       content => '',
       todo => 'style=label',
     },
     {
-      param_obj => { name => 'label_string', style => 'label', schema => { type => 'string' } },
+      param_obj => { name => 'label_string', style => 'label' },
       path_captures => { label_string => '.blue' },
       content => 'blue',
       todo => 'style=label',
@@ -221,18 +204,27 @@ subtest 'path parameters' => sub {
   );
 
   foreach my $test (@tests) {
+    my $param_obj = +{
+      # default to type=string in the absence of an override
+      exists $test->{param_obj}{content} ? () : (schema => { type => 'string' }),
+      $test->{param_obj}->%*,
+      in => 'path',
+      required => true,
+    };
+
     undef $parameter_content;
     my $state = {
       initial_schema_uri => $openapi->openapi_uri,
       traversed_keyword_path => '',
       keyword_path => $keyword_path,
       data_path => '/request',
+      specification_version => 'draft2020-12',
       errors => [],
       depth => 0,
     };
 
-    my $name = $test->{param_obj}{name};
-    ()= $openapi->_validate_path_parameter($state, $test->{param_obj}, $test->{path_captures});
+    my $name = $param_obj->{name};
+    ()= $openapi->_validate_path_parameter($state, $param_obj, $test->{path_captures});
 
     todo_maybe($test->{todo}, sub {
       is_equal(
@@ -258,13 +250,13 @@ subtest 'query parameters' => sub {
     # errors => collected from state (expected), defaults to []
     # todo
     {
-      param_obj => { name => 'reserved', in => 'query', allowEmptyValue => true, schema => false },
+      param_obj => { name => 'reserved', in => 'query', allowEmptyValue => true },
       queries => 'reserved=bloop',
       content => 'bloop', # parameter is validated as normal
       errors => [],
     },
     {
-      param_obj => { name => 'reserved', in => 'query', allowEmptyValue => true, schema => false },
+      param_obj => { name => 'reserved', in => 'query', allowEmptyValue => true },
       queries => 'reserved=',
       content => undef, # empty parameter is not validated
       errors => [],
@@ -293,7 +285,7 @@ subtest 'query parameters' => sub {
       content => 1, # number, not string!
     },
     {
-      param_obj => { name => 'reserved', in => 'query', allowReserved => true, schema => false },
+      param_obj => { name => 'reserved', in => 'query', allowReserved => true },
       queries => 'reserved=!@$',
       content => undef,
       errors => [
@@ -317,17 +309,17 @@ subtest 'query parameters' => sub {
       content => '100',
     },
     { # form, string, empty
-      param_obj => { name => 'color', schema => { type => 'string' } },
+      param_obj => { name => 'color' },
       queries => 'color=&R=100&G=200&B=150',
       content => '',
     },
     { # form, string
-      param_obj => { name => 'color', schema => { type => 'string' } },
+      param_obj => { name => 'color' },
       queries => 'color=blue&R=100&G=200&B=150',
       content => 'blue',
     },
     { # form, array, false
-      param_obj => { name => 'color', explode => false, schema => { type => 'string' } },
+      param_obj => { name => 'color', explode => false },
       queries => 'color=blue,black,brown&R=100&G=200&B=150',
       content => [ qw(blue black brown) ],
       todo => 'style=form, explode=false, parse as array',
@@ -367,18 +359,26 @@ subtest 'query parameters' => sub {
   );
 
   foreach my $test (@tests) {
+    my $param_obj = +{
+      # default to type=string in the absence of an override
+      exists $test->{param_obj}{content} ? () : (schema => { type => 'string' }),
+      $test->{param_obj}->%*,
+      in => 'query',
+    };
+
     undef $parameter_content;
     my $state = {
       initial_schema_uri => $openapi->openapi_uri,
       traversed_keyword_path => '',
       keyword_path => $keyword_path,
       data_path => '/request',
+      specification_version => 'draft2020-12',
       errors => [],
       depth => 0,
     };
 
-    my $name = $test->{param_obj}{name};
-    ()= $openapi->_validate_query_parameter($state, $test->{param_obj}, Mojo::URL->new('https://example.com/blah?'.$test->{queries}));
+    my $name = $param_obj->{name};
+    ()= $openapi->_validate_query_parameter($state, $param_obj, Mojo::URL->new('https://example.com/blah?'.$test->{queries}));
 
     todo_maybe($test->{todo}, sub {
       is_equal(
@@ -406,25 +406,25 @@ subtest 'header parameters' => sub {
     # todo
     {
       name => 'Accept',
-      header_obj => { schema => false },
+      header_obj => {},
       values => [ 'application/json' ],
       content => undef,
     },
     {
       name => 'Content-Type',
-      header_obj => { schema => false },
+      header_obj => {},
       values => [ 'application/json' ],
       content => undef,
     },
     {
       name => 'Authorization',
-      header_obj => { schema => false },
+      header_obj => {},
       values => [ 'Basic whargarbl' ],
       content => undef,
     },
     {
       name => 'Missing',
-      header_obj => { required => true, schema => false },
+      header_obj => { required => true },
       values => undef,
       content => undef,
       errors => [
@@ -444,31 +444,13 @@ subtest 'header parameters' => sub {
     },
     {
       name => 'Spaces',
-      header_obj => { schema => false },
+      header_obj => {},
       values => [ " i have spaces  \t " ],
       content => 'i have spaces',
     },
     {
-      name => 'Single-Header-False',
-      header_obj => { schema => false },
-      values => [ 'foo' ],
-      content => 'foo',
-    },
-    {
       name => 'Single-Header-String',
-      header_obj => { schema => { type => 'string' } },
-      values => [ 'foo' ],
-      content => 'foo',
-    },
-    {
-      name => 'Single-Header-Deep-Ref-String',
-      header_obj => { schema => { '$ref' => '#/components/schemas/ref_to_deep_string' } },
-      values => [ 'foo' ],
-      content => 'foo',
-    },
-    {
-      name => 'Single-Header-Deep-Ref-Elsewhere-String',
-      header_obj => { schema => { '$ref' => 'http://localhost:1234/extras#/$defs/ref_to_deep_string' } },
+      header_obj => {},
       values => [ 'foo' ],
       content => 'foo',
     },
@@ -480,14 +462,8 @@ subtest 'header parameters' => sub {
       content => [ 'foo' ],
     },
     {
-      name => 'Multiple-Headers-False',
-      header_obj => { schema => false },
-      values => [ ' foo ', '  bar  ' ],
-      content => 'foo, bar',
-    },
-    {
       name => 'Multiple-Headers-String',
-      header_obj => { schema => { type => 'string' } },
+      header_obj => {},
       values => [ ' foo ', ' bar ' ],
       content => 'foo, bar',
     },
@@ -501,7 +477,7 @@ subtest 'header parameters' => sub {
     {
       # internal comma-separated values are not altered
       name => 'Comma-Headers-String',
-      header_obj => { schema => { type => 'string' } },
+      header_obj => {},
       values => [ ' foo,  bar ' ],
       content => 'foo,  bar',
     },
@@ -538,23 +514,32 @@ subtest 'header parameters' => sub {
     },
   );
 
+
   foreach my $test (@tests) {
+    my $header_obj = +{
+      # default to type=string in the absence of an override
+      exists $test->{header_obj}{content} ? () : (schema => { type => 'string' }),
+      $test->{header_obj}->%*,
+      name => $test->{name},
+      in => 'header',
+    };
+
     undef $parameter_content;
     my $state = {
       initial_schema_uri => $openapi->openapi_uri,
       traversed_keyword_path => '',
       keyword_path => $keyword_path,
       data_path => '/response',
+      specification_version => 'draft2020-12',
       errors => [],
       depth => 0,
     };
 
-    my $name = $test->{name};
     my $headers = Mojo::Headers->new;
-    $headers->add($name, $test->{values}->@*) if defined $test->{values};
+    $headers->add($test->{name}, $test->{values}->@*) if defined $test->{values};
 
     my $exception = exception {
-      ()= $openapi->_validate_header_parameter($state, $name, $test->{header_obj}, $headers);
+      ()= $openapi->_validate_header_parameter($state, $test->{name}, $header_obj, $headers);
     };
 
     todo_maybe($test->{todo}, sub {
@@ -563,13 +548,13 @@ subtest 'header parameters' => sub {
       is_equal(
         [ map $_->TO_JSON, $state->{errors}->@* ],
         $test->{errors}//[],
-        'header '.$name.': '.(($test->{errors}//[])->@* ? 'the correct error was returned' : 'no errors occurred'),
+        'header '.$test->{name}.': '.(($test->{errors}//[])->@* ? 'the correct error was returned' : 'no errors occurred'),
       );
 
       is_equal(
         $parameter_content,
         $test->{content},
-        'header '.$name.': '.(defined $test->{content} ? 'the correct content was extracted' : 'no content was extracted'),
+        'header '.$test->{name}.': '.(defined $test->{content} ? 'the correct content was extracted' : 'no content was extracted'),
       );
     });
   }
