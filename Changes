@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.118     2025-12-25 00:35:04Z
           - also identify missing "minimum" and "maximum" keywords when
             validating schemas in v3.0 OADs
           - add ability to upgrade OpenAPI documents to a newer version

@@ -8,7 +8,7 @@ OpenAPI::Modern - Validate HTTP requests and responses against an OpenAPI v3.0, 
 
 =head1 VERSION
 
-version 0.117
+version 0.118
 
 =head1 SYNOPSIS
 
@@ -548,11 +548,11 @@ L<https://json-schema.org>
 
 =item *
 
-L<https://www.openapis.org/>
+L<https://www.openapis.org>
 
 =item *
 
-L<https://learn.openapis.org/>
+L<https://learn.openapis.org>
 
 =item *
 
@@ -568,7 +568,7 @@ L<https://spec.openapis.org/oas/v3.2>
 
 =item *
 
-L<https://spec.openapis.org/oas/>
+L<https://spec.openapis.org/oas>
 
 =back
 
