@@ -1204,14 +1204,60 @@ info:
   title: Test API
   version: 1.2.3
 components:
-  schemas:
+  schemas:                  # entity 0
     OAS_3.0_schema:
       type: array
       items:
         type: string
         nullable: true
+    schema1:
+      $ref: '#/components/schemas/OAS_3.0_schema'
+  responses:                # entity 1
+    response0:
+      description: foo
+    response1:
+      $ref: '#/components/responses/response0'
+  parameters:               # entity 2
+    parameter0:
+      name: q
+      in: query
+      schema: {}
+    parameter1:
+      $ref: '#/components/parameters/parameter0'
+  examples:                  # entity 3
+    example0: {}
+    example1:
+      $ref: '#/components/examples/example0'
+  requestBodies:            # entity 4
+    request0:
+      content:
+        text/plain:
+          schema: {}
+    request1:
+      $ref: '#/components/requestBodies/request0'
+  headers:                  # entity 5
+    header0:
+      schema: {}
+    header1:
+      $ref: '#/components/headers/header0'
+  securitySchemes:          # entity 6
+    scheme0:
+      type: http
+      scheme: bearer
+    scheme1:
+      $ref: '#/components/securitySchemes/scheme0'
+  links:                    # entity 7
+    link0: {}
+    link1:
+      $ref: '#/components/links/link0'
+  callbacks:                # entity 8
+    callback0:
+      '{$request.query.queryUrl}':
+        $ref: '#/paths/~1foo~1bar'
+    callback1:
+      $ref: '#/components/callbacks/callback0'
 paths:
-  /foo/bar:
+  /foo/bar:                 # entity 9
     get:
       operationId: foobar
       parameters:
@@ -1225,6 +1271,8 @@ paths:
           content:
             application/json:
               schema: {}
+  /ref:
+    $ref: '#/paths/~1foo~1bar'
 YAML
 
   cmp_result([ $doc->errors ], [], 'no errors in a 3.0 OAD');
@@ -1232,13 +1280,37 @@ YAML
   cmp_result(
     $doc->_entities,
     {
+      '/components/headers/header0/schema' => 0,
+      '/components/headers/header0/schema' => 0,
+      '/components/parameters/parameter0/schema' => 0,
+      '/components/requestBodies/request0/content/text~1plain/schema' => 0,
       '/components/schemas/OAS_3.0_schema' => 0,
       '/components/schemas/OAS_3.0_schema/items' => 0,
+      '/components/schemas/schema1' => 0,
       '/paths/~1foo~1bar/get/parameters/0/schema' => 0,
       '/paths/~1foo~1bar/get/responses/2XX/content/application~1json/schema' => 0,
+      '/components/responses/response0' => 1,
+      '/components/responses/response1' => 1,
       '/paths/~1foo~1bar/get/responses/2XX' => 1,
+      '/components/parameters/parameter0' => 2,
+      '/components/parameters/parameter1' => 2,
       '/paths/~1foo~1bar/get/parameters/0' => 2,
+      '/components/examples/example0' => 3,
+      '/components/examples/example1' => 3,
+      '/components/requestBodies/request0' => 4,
+      '/components/requestBodies/request1' => 4,
+      '/components/headers/header0' => 5,
+      '/components/headers/header1' => 5,
+      '/components/securitySchemes/scheme0' => 6,
+      '/components/securitySchemes/scheme1' => 6,
+      '/components/links/link0' => 7,
+      '/components/links/link1' => 7,
+      '/components/callbacks/callback0' => 8,
+      '/components/callbacks/callback1' => 8,
+      '/components/callbacks/callback0/{$request.query.queryUrl}' => 9,
       '/paths/~1foo~1bar' => 9,
+      '/paths/~1ref' => 9,
+      '/components/requestBodies/request0/content/text~1plain' => 10,
       '/paths/~1foo~1bar/get/responses/2XX/content/application~1json' => 10,
     },
     'all entities are identified in the document',

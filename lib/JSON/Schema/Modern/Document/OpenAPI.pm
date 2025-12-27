@@ -253,6 +253,8 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     vocabularies => $state->{vocabularies}, # reference, not copy
   };
 
+  my $metaschema_doc;
+
   # evaluate the document against its metaschema to find any errors, to identify all schema
   # resources within to add to the global resource index, and to extract all operationIds
   my (@json_schema_paths, @operation_paths, %bad_path_item_refs, @servers_paths, %tag_operation_paths, @bad_3_0_paths);
@@ -279,15 +281,33 @@ sub traverse ($self, $evaluator, $config_override = {}) {
           if ($self->oas_version eq '3.0') {
             # strip '#/definitions/'; convert CamelCase to kebab-case
             if ($entity = lc join('-', split /(?=[A-Z])/, substr($schema->{'$ref'}, 14))) {
-              push @bad_3_0_paths, [ items => $state->{data_path} ]
-                if $entity eq 'schema' and ($data->{type}//'') eq 'array' and not exists $data->{items};
-              push @bad_3_0_paths, [ minimum => $state->{data_path} ]
-                if $entity eq 'schema' and exists $data->{exclusiveMinimum} and not exists $data->{minimum};
-              push @bad_3_0_paths, [ maximum => $state->{data_path} ]
-                if $entity eq 'schema' and exists $data->{exclusiveMaximum} and not exists $data->{maximum};
+              if ($entity eq 'schema') {
+                push @bad_3_0_paths, [ items => $state->{data_path} ]
+                  if ($data->{type}//'') eq 'array' and not exists $data->{items};
 
+                push @bad_3_0_paths, [ minimum => $state->{data_path} ]
+                  if exists $data->{exclusiveMinimum} and not exists $data->{minimum};
+
+                push @bad_3_0_paths, [ maximum => $state->{data_path} ]
+                  if exists $data->{exclusiveMaximum} and not exists $data->{maximum};
+              }
+
+              if ($entity eq 'reference') {
+                $metaschema_doc //= $evaluator->_get_resource($self->metaschema_uri)->{document};
+
+                # in the 3.0 metaschema, entities are identified via:
+                # "oneOf": [ { "$ref": "#/definitions/Foo" }, { "$ref": "#/definitions/Reference" } ]
+                my $schema_path = ($state->{initial_schema_uri}->fragment//'').$state->{keyword_path};
+                if ($schema_path =~ s{/oneOf/\K([01])\z}{$1 ^ 1}e) {
+                  $entity = lc join('-', split /(?=[A-Z])/, substr($metaschema_doc->get($schema_path)->{'$ref'}, 14));
+                }
+              }
+
+              $entity .= 's' if $entity eq 'callback';
               undef $entity if not grep $entity eq $_, __entities;
+
               # no need to push to @json_schema_paths, as all schema entities are already found
+              # via $refs above, and there are no embedded identifiers to be identified
             }
           }
           else {
