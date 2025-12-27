@@ -432,7 +432,7 @@ YAML
     metaschema_uri => DEFAULT_METASCHEMA->{+OAS_VERSION},  # needed to override $schema
     schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
 components:
-  schemas:
+  schemas:                  # entity 0
     beta_schema:
       $id: beta
       not:
@@ -442,7 +442,13 @@ components:
       $anchor: anchor1
     anchor2:
       $anchor: anchor2
-  parameters:
+  responses:                # entity 1
+    my_response4:
+      content:
+        text/plain:
+          schema:
+            $comment: nothing to see here
+  parameters:               # entity 2
     my_param1:
       name: param1
       in: query
@@ -452,24 +458,44 @@ components:
           foo:
             $anchor: anchor3
         additionalProperties: false
+      examples:
+        my_example:
+          $ref: '#/components/examples/my_example'
     my_param2:
       name: param2
       in: query
       content:
-        media_type_0:
-          schema:
-            $id: parameter2_id
+        text/plain:
+          $ref: '#/components/mediaTypes/media_type_0'
     my_param3:
       name: param3
       in: query
       schema: false
-  responses:
-    my_response4:
+  examples:                 # entity 3
+    my_example:
+      summary: an example
+      value: foo
+  requestBodies:            # entity 4
+    my_body:
       content:
-        media_type_4:
+        text/plain:
           schema:
-            $comment: nothing to see here
-  pathItems:
+            $id: pathItem0_get_requestBody_id
+  headers:                  # entity 5
+    my_header:
+      schema: {}
+  securitySchemes:          # entity 6
+    my_security:
+      type: http
+      scheme: bearer
+  links:                    # entity 7
+    my_link:
+      operationId: my_operation
+  callbacks:                # entity 8
+    my_callback:
+      '{$request.query.queryUrl}':
+        $ref: '#/components/pathItems/path0'
+  pathItems:                # entity 9
     path0:
       parameters:
         - name: param0
@@ -484,25 +510,25 @@ components:
             schema:
               $id: pathItem0_get_param_id
         requestBody:
-          content:
-            media_type_1:
-              schema:
-                $id: pathItem0_get_requestBody_id
+          $ref: '#/components/requestBodies/my_body'
         responses:
           200:
             content:
-              media_type_2:
+              text/plain:
                 schema:
                   $id: pathItem0_get_responses2_id
-              media_type_3:
-                schema:
-                  $id: pathItem0_get_responses3_id
+              application/json:
+                schema: {}
           default:
             $ref: '#/components/responses/my_response4'
         callbacks:
           my_callback:
             '{$request.query.queryUrl}':
               post: {}
+  mediaTypes:               # entity 10
+    media_type_0:
+      schema:
+        $id: parameter2_id
 paths:
   /foo/alpha: {}
   /foo/beta: {}
@@ -557,7 +583,7 @@ YAML
         },
       },
       'http://localhost:1234/parameter2_id' => {
-        path => '/components/parameters/my_param2/content/media_type_0/schema',
+        path => '/components/mediaTypes/media_type_0/schema',
         canonical_uri => str('http://localhost:1234/parameter2_id'),
         specification_version => 'draft2020-12',
         vocabularies => bag(OAS_VOCABULARIES->@*),
@@ -575,17 +601,17 @@ YAML
         vocabularies => bag(OAS_VOCABULARIES->@*),
       },
       'http://localhost:1234/pathItem0_get_requestBody_id' => {
-        path => '/components/pathItems/path0/get/requestBody/content/media_type_1/schema',
+        path => '/components/requestBodies/my_body/content/text~1plain/schema',
         canonical_uri => str('http://localhost:1234/pathItem0_get_requestBody_id'),
         specification_version => 'draft2020-12',
         vocabularies => bag(OAS_VOCABULARIES->@*),
       },
-      map +('http://localhost:1234/pathItem0_get_responses'.$_.'_id' => {
-        path => '/components/pathItems/path0/get/responses/200/content/media_type_'.$_.'/schema',
-        canonical_uri => str('http://localhost:1234/pathItem0_get_responses'.$_.'_id'),
+      'http://localhost:1234/pathItem0_get_responses2_id' => {
+        path => '/components/pathItems/path0/get/responses/200/content/text~1plain/schema',
+        canonical_uri => str('http://localhost:1234/pathItem0_get_responses2_id'),
         specification_version => 'draft2020-12',
         vocabularies => bag(OAS_VOCABULARIES->@*),
-      }), 2..3,
+      },
     },
     'subschema resources are correctly identified in the document',
   );
@@ -593,17 +619,18 @@ YAML
   cmp_result(
     $doc->_entities,
     {
+      '/components/headers/my_header/schema' => 0,
+      '/components/mediaTypes/media_type_0/schema' => 0,
       '/components/parameters/my_param1/schema' => 0,
       '/components/parameters/my_param1/schema/additionalProperties' => 0,
       '/components/parameters/my_param1/schema/properties/foo' => 0,
-      '/components/parameters/my_param2/content/media_type_0/schema' => 0,
       '/components/parameters/my_param3/schema' => 0,
       '/components/pathItems/path0/get/parameters/0/schema' => 0,
-      '/components/pathItems/path0/get/requestBody/content/media_type_1/schema' => 0,
-      '/components/pathItems/path0/get/responses/200/content/media_type_2/schema' => 0,
-      '/components/pathItems/path0/get/responses/200/content/media_type_3/schema' => 0,
+      '/components/pathItems/path0/get/responses/200/content/text~1plain/schema' => 0,
+      '/components/pathItems/path0/get/responses/200/content/application~1json/schema' => 0,
       '/components/pathItems/path0/parameters/0/schema' => 0,
-      '/components/responses/my_response4/content/media_type_4/schema' => 0,
+      '/components/requestBodies/my_body/content/text~1plain/schema' => 0,
+      '/components/responses/my_response4/content/text~1plain/schema' => 0,
       '/components/schemas/anchor1' => 0,
       '/components/schemas/anchor2' => 0,
       '/components/schemas/beta_schema' => 0,
@@ -616,19 +643,28 @@ YAML
       '/components/parameters/my_param3' => 2,
       '/components/pathItems/path0/get/parameters/0' => 2,
       '/components/pathItems/path0/parameters/0' => 2,
+      '/components/examples/my_example' => 3,
+      '/components/parameters/my_param1/examples/my_example' => 3,
       '/components/pathItems/path0/get/requestBody' => 4,
+      '/components/requestBodies/my_body' => 4,
+      '/components/headers/my_header' => 5,
+      '/components/securitySchemes/my_security' => 6,
+      '/components/links/my_link' => 7,
+      '/components/callbacks/my_callback' => 8,
       '/components/pathItems/path0/get/callbacks/my_callback' => 8,
+      '/components/callbacks/my_callback/{$request.query.queryUrl}' => 9,
       '/components/pathItems/path0' => 9,
       '/components/pathItems/path0/get/callbacks/my_callback/{$request.query.queryUrl}' => 9,
       '/paths/~1foo~1alpha' => 9,
       '/paths/~1foo~1beta' => 9,
       '/webhooks/bar' => 9,
       '/webhooks/foo' => 9,
-      '/components/parameters/my_param2/content/media_type_0' => 10,
-      '/components/pathItems/path0/get/requestBody/content/media_type_1' => 10,
-      '/components/pathItems/path0/get/responses/200/content/media_type_2' => 10,
-      '/components/pathItems/path0/get/responses/200/content/media_type_3' => 10,
-      '/components/responses/my_response4/content/media_type_4' => 10,
+      '/components/mediaTypes/media_type_0' => 10,
+      '/components/parameters/my_param2/content/text~1plain' => 10,
+      '/components/pathItems/path0/get/responses/200/content/text~1plain' => 10,
+      '/components/pathItems/path0/get/responses/200/content/application~1json' => 10,
+      '/components/requestBodies/my_body/content/text~1plain' => 10,
+      '/components/responses/my_response4/content/text~1plain' => 10,
     },
     'all entity locations are identified',
   );
