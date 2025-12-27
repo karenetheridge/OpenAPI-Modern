@@ -1,6 +1,8 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - now checking for references that target an unknown or incorrect
+            location when OpenAPI documents are parsed
 
 0.119     2025-12-29 04:53:44Z
           - fix bad implementation of "$ref" in v3.0 OADs
