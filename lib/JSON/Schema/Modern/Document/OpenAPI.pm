@@ -368,6 +368,17 @@ sub traverse ($self, $evaluator, $config_override = {}) {
 
   $self->_set_defaults($result->defaults) if $result->defaults;
 
+  foreach my $pair (@operation_paths) {
+    my ($operation_id, $path) = @$pair;
+    if (my $existing = $self->operationId_path($operation_id)) {
+      ()= E({ %$state, keyword_path => $path .'/operationId' },
+        'duplicate of operationId at %s', $existing);
+    }
+    else {
+      $self->_add_operationId($operation_id => $path);
+    }
+  }
+
   ()= E({ %$state, keyword_path => $_->[1] },
       $_->[0] eq 'items' ? '"items" must be present if type is "array"'
     : $_->[0] eq 'minimum' ? '"minimum" must be present when "exclusiveMinimum" is used'
@@ -517,18 +528,9 @@ sub traverse ($self, $evaluator, $config_override = {}) {
   }
 
   $self->_traverse_schema({ %$state, keyword_path => $_ }) foreach reverse @real_json_schema_paths;
-  $self->_add_entity_location($_, 'schema') foreach $state->{subschemas}->@*;
+  return $state if $state->{errors}->@*;
 
-  foreach my $pair (@operation_paths) {
-    my ($operation_id, $path) = @$pair;
-    if (my $existing = $self->operationId_path($operation_id)) {
-      ()= E({ %$state, keyword_path => $path .'/operationId' },
-        'duplicate of operationId at %s', $existing);
-    }
-    else {
-      $self->_add_operationId($operation_id => $path);
-    }
-  }
+  $self->_add_entity_location($_, 'schema') foreach $state->{subschemas}->@*;
 
   return $state;
 }
