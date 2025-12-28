@@ -393,7 +393,7 @@ paths:
   /foo:
     post:
       parameters:
-      - $ref: '#/i_do_not_exist'
+      - $ref: 'http://example.com/otherapi#/i_do_not_exist'
 YAML
 
   cmp_result(
@@ -405,7 +405,7 @@ YAML
           instanceLocation => '/request',
           keywordLocation => jsonp(qw(/paths /foo post parameters 0 $ref)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post parameters 0 $ref)))->to_string,
-          error => 'EXCEPTION: unable to find resource "'.$doc_uri.'#/i_do_not_exist"',
+          error => 'EXCEPTION: unable to find resource "http://example.com/otherapi#/i_do_not_exist"',
         },
       ],
     },
@@ -419,7 +419,7 @@ YAML
 paths:
   /foo:
     parameters:
-    - $ref: '#/i_do_not_exist'
+    - $ref: 'http://example.com/otherapi#/i_do_not_exist'
     post: {}
 YAML
 
@@ -432,7 +432,7 @@ YAML
           instanceLocation => '/request',
           keywordLocation => jsonp(qw(/paths /foo parameters 0 $ref)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo parameters 0 $ref)))->to_string,
-          error => 'EXCEPTION: unable to find resource "'.$doc_uri.'#/i_do_not_exist"',
+          error => 'EXCEPTION: unable to find resource "http://example.com/otherapi#/i_do_not_exist"',
         },
       ],
     },
@@ -446,7 +446,7 @@ YAML
 components:
   parameters:
     foo:
-      $ref: '#/i_do_not_exist'
+      $ref: 'http://example.com/otherapi#/i_do_not_exist'
 paths:
   /foo:
     post:
@@ -463,7 +463,7 @@ YAML
           instanceLocation => '/request',
           keywordLocation => jsonp(qw(/paths /foo post parameters 0 $ref $ref)),
           absoluteKeywordLocation => $doc_uri.'#/components/parameters/foo/$ref',
-          error => 'EXCEPTION: unable to find resource "'.$doc_uri.'#/i_do_not_exist"',
+          error => 'EXCEPTION: unable to find resource "http://example.com/otherapi#/i_do_not_exist"',
         },
       ],
     },
@@ -1167,7 +1167,7 @@ paths:
   /foo:
     get:
       requestBody:
-        $ref: '#/i_do_not_exist'
+        $ref: 'http://example.com/otherapi#/i_do_not_exist'
 YAML
 
   cmp_result(
@@ -1179,7 +1179,7 @@ YAML
           instanceLocation => '/request',
           keywordLocation => jsonp(qw(/paths /foo get requestBody $ref)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo get requestBody $ref)))->to_string,
-          error => 'EXCEPTION: unable to find resource "'.$doc_uri.'#/i_do_not_exist"',
+          error => 'EXCEPTION: unable to find resource "http://example.com/otherapi#/i_do_not_exist"',
         },
       ],
     },
@@ -2197,7 +2197,7 @@ paths:
       - name: ArrayWithBrokenRef
         in: header
         schema:
-          $ref: '#/components/schemas/i_do_not_exist'
+          $ref: 'http://example.com/otherapi#/components/schemas/i_do_not_exist'
 YAML
 
   my $request = request('GET', 'http://example.com/foo', [ SingleValue => '  mystring  ' ]);
@@ -2334,7 +2334,7 @@ YAML
           instanceLocation => '/request/header/ArrayWithBrokenRef',
           keywordLocation => jsonp(qw(/paths /foo get parameters 10 schema $ref)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo get parameters 10 schema $ref)))->to_string,
-          error => 'EXCEPTION: unable to find resource "'.$doc_uri.'#/components/schemas/i_do_not_exist"',
+          error => 'EXCEPTION: unable to find resource "http://example.com/otherapi#/components/schemas/i_do_not_exist"',
         },
       ],
     },
