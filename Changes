@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.119     2025-12-29 04:53:44Z
           - fix bad implementation of "$ref" in v3.0 OADs
 
 0.118     2025-12-25 00:35:04Z
