@@ -278,7 +278,7 @@ sub document_result ($document) {
   );
 }
 
-my $encoder = JSON::Schema::Modern::_JSON_BACKEND()->new
+our $encoder = JSON::Schema::Modern::_JSON_BACKEND()->new
   ->allow_nonref(1)
   ->utf8(0)
   ->allow_bignum(1)

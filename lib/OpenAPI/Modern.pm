@@ -28,8 +28,8 @@ use builtin::compat 'indexed';
 use Feature::Compat::Try;
 use Encode 2.89 ();
 use JSON::Schema::Modern;
-use JSON::Schema::Modern::Utilities qw(jsonp unjsonp canonical_uri E abort is_equal true false);
-use OpenAPI::Modern::Utilities qw(add_vocab_and_default_schemas);
+use JSON::Schema::Modern::Utilities qw(jsonp unjsonp canonical_uri E abort is_equal true false get_type);
+use OpenAPI::Modern::Utilities qw(add_vocab_and_default_schemas intersect_types coerce_primitive);
 use JSON::Schema::Modern::Document::OpenAPI;
 use MooX::TypeTiny 0.002002;
 use Types::Standard qw(InstanceOf Bool);
@@ -349,6 +349,10 @@ sub find_path_item ($self, $options, $state = {}) {
   $state->{initial_schema_uri} = $self->openapi_uri;   # the canonical URI as of the start or last $id, or the last traversed $ref
   $state->{traversed_keyword_path} = '';   # the accumulated traversal path as of the start, or last $id, or up to the last traversed $ref
   $state->{keyword_path} = '';             # the rest of the path, since the last $id or the last traversed $ref
+  $state->{document} = $self->openapi_document;
+  $state->@{qw(specification_version vocabularies)} =
+    $self->openapi_document->_get_resource($self->openapi_document->canonical_uri)->@{qw(specification_version vocabularies)};
+  $state->{dynamic_scope} = [ $self->openapi_uri ];
   $state->{errors} = $options->{errors} //= [];
   $state->{annotations} //= [];
   $state->{depth} = 0;
@@ -782,16 +786,20 @@ sub _validate_path_parameter ($self, $state, $param_obj, $path_captures) {
     if ($param_obj->{style}//'simple') ne 'simple';
 
   my @types = $self->_type_in_schema($param_obj->{schema}, { %$state, keyword_path => $state->{keyword_path}.'/schema' });
-  if (grep $_ eq 'array', @types or grep $_ eq 'object', @types) {
-    return E($state, 'deserializing to non-primitive types is not yet supported in path parameters');
-  }
-  if (grep $_ eq 'boolean', @types) {
-    $data = false if $data eq '0' or $data eq 'false' or $data eq '';
-    $data = true if $data eq '1' or $data eq 'true';
-  }
-  $data = undef if $data eq '' and grep $_ eq 'null', @types;
 
-  $self->_evaluate_subschema(\$data, $param_obj->{schema}, { %$state, keyword_path => $state->{keyword_path}.'/schema', stringy_numbers => 1, depth => $state->{depth}+1 });
+  if (any { $_ eq 'string' || $_ eq 'number' || $_ eq 'boolean' || $_ eq 'null' } @types) {
+    return E($state, 'cannot deserialize to %s type%s', 'requested', @types > 1 ? 's' : '')
+      if not coerce_primitive(\$data, \@types);
+  }
+  elsif (any { $_ eq 'array' || $_ eq 'object'} @types) {
+    return E($state, 'deserializing path parameters to arrays or objects is not currently supported');
+  }
+  else {
+    return E($state, 'cannot deserialize to %s type%s', !@types ? 'any' : 'requested', @types > 1 ? 's' : '');
+  }
+
+  $self->_evaluate_subschema(\$data, $param_obj->{schema},
+    { %$state, keyword_path => $state->{keyword_path}.'/schema', depth => $state->{depth}+1 });
 }
 
 sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
@@ -830,18 +838,20 @@ sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
     if ($param_obj->{style}//'form') ne 'form';
 
   my @types = $self->_type_in_schema($param_obj->{schema}, { %$state, keyword_path => $state->{keyword_path}.'/schema' });
-  if (grep $_ eq 'array', @types or grep $_ eq 'object', @types) {
-    return E($state, 'deserializing to non-primitive types is not yet supported in query parameters');
+
+  if (any { $_ eq 'string' || $_ eq 'number' || $_ eq 'boolean' || $_ eq 'null' } @types) {
+    return E($state, 'cannot deserialize to %s type%s', 'requested', @types > 1 ? 's' : '')
+      if not coerce_primitive(\$data, \@types);
+  }
+  elsif (any { $_ eq 'array' || $_ eq 'object' } @types) {
+    return E($state, 'deserializing query parameters to arrays or objects is not currently supported');
+  }
+  else {
+    return E($state, 'cannot deserialize to %s type%s', !@types ? 'any' : 'requested', @types > 1 ? 's' : '');
   }
 
-  if (grep $_ eq 'boolean', @types) {
-    $data = false if $data eq '0' or $data eq 'false' or $data eq '';
-    $data = true if $data eq '1' or $data eq 'true';
-  }
-  $data = undef if $data eq '' and grep $_ eq 'null', @types;
-
-  $state = { %$state, keyword_path => $state->{keyword_path}.'/schema', stringy_numbers => 1, depth => $state->{depth}+1 };
-  $self->_evaluate_subschema(\$data, $param_obj->{schema}, $state);
+  $self->_evaluate_subschema(\$data, $param_obj->{schema},
+    { %$state, keyword_path => $state->{keyword_path}.'/schema', depth => $state->{depth}+1 });
 }
 
 # validates a header, from either the request or the response
@@ -862,48 +872,51 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
   return $self->_validate_parameter_content({ %$state, depth => $state->{depth}+1 }, $header_obj, \ $headers->header($header_name))
     if exists $header_obj->{content};
 
+  my @types = $self->_type_in_schema($header_obj->{schema}, { %$state, keyword_path => $state->{keyword_path}.'/schema' });
+
   # RFC9112 §5.1-3: "The field line value does not include that leading or trailing whitespace: OWS
   # occurring before the first non-whitespace octet of the field line value, or after the last
   # non-whitespace octet of the field line value, is excluded by parsers when extracting the field
   # line value from a field line."
-  my @values = map s/^\s*//r =~ s/\s*\z//r, map split(/,/, $_), $headers->every_header($header_name)->@*;
-
-  my @types = $self->_type_in_schema($header_obj->{schema}, { %$state, keyword_path => $state->{keyword_path}.'/schema' });
 
   # RFC9110 §5.3-1: "A recipient MAY combine multiple field lines within a field section that have
   # the same field name into one field line, without changing the semantics of the message, by
   # appending each subsequent field line value to the initial field line value in order, separated
   # by a comma (",") and optional whitespace (OWS, defined in Section 5.6.3). For consistency, use
   # comma SP."
+
+  my @values = map s/^\s*//r =~ s/\s*\z//r, $headers->every_header($header_name)->@*;
   my $data;
-  if (grep $_ eq 'array', @types) {
-    # style=simple, explode=false or true: "blue,black,brown" -> ["blue","black","brown"]
-    $data = \@values;
-  }
-  elsif (grep $_ eq 'object', @types) {
-    if ($header_obj->{explode}//false) {
-      # style=simple, explode=true: "R=100,G=200,B=150" -> { "R": 100, "G": 200, "B": 150 }
-      $data = +{ map m/^([^=]*)=?(.*)\z/g, @values };
+
+  if (@types != 6 and any { $_ eq 'array' || $_ eq 'object' } @types) {
+    @values = map +(s/^\s*//r =~ s/\s*\z//r), map +(split /,/), @values;
+    if (any { $_ eq 'object' } @types) {
+      if ($header_obj->{explode}//false) {
+        # style=simple, explode=true: "R=100,G=200,B=150" -> { "R": 100, "G": 200, "B": 150 }
+        $data = +{ map split(/=/, $_, -1), @values };
+      }
+      else {
+        # style=simple, explode=false: "R,100,G,200,B,150" -> { "R": 100, "G": 200, "B": 150 }
+        $data = +{ @values, (@values % 2 ? '' : ()) };
+      }
     }
     else {
-      # style=simple, explode=false: "R,100,G,200,B,150" -> { "R": 100, "G": 200, "B": 150 }
-      $data = +{ @values, (@values % 2 ? '' : ()) };
+      # array, style=simple, explode=false or true: "blue,black,brown" -> ["blue","black","brown"]
+      $data = \@values;
     }
   }
+  elsif (any { $_ eq 'string' || $_ eq 'number' || $_ eq 'boolean' || $_ eq 'null' } @types) {
+    return E($state, 'cannot deserialize to %s type%s', 'requested', @types > 1 ? 's' : '')
+      if not coerce_primitive(\($data = join(',', @values)), \@types);
+  }
+
   else {
-    # when validating as a single string, preserve internal whitespace in each individual header
-    # but strip leading/trailing whitespace
-    $data = join ', ', map s/^\s*//r =~ s/\s*\z//r, $headers->every_header($header_name)->@*;
-
-    if (grep $_ eq 'boolean', @types) {
-      $data = false if $data eq '0' or $data eq 'false' or $data eq '';
-      $data = true if $data eq '1' or $data eq 'true';
-    }
-    $data = undef if $data eq '' and grep $_ eq 'null', @types;
+    return E($state, 'cannot deserialize to %s type%s', !@types ? 'any' : 'requested', @types > 1 ? 's' : '');
   }
 
-  $state = { %$state, keyword_path => $state->{keyword_path}.'/schema', stringy_numbers => 1, depth => $state->{depth}+1 };
-  $self->_evaluate_subschema(\$data, $header_obj->{schema}, $state);
+  $self->_evaluate_subschema(\$data, $header_obj->{schema},
+    { %$state, keyword_path => $state->{keyword_path}.'/schema', depth => $state->{depth}+1,
+      ref $data eq 'HASH' || ref $data eq 'ARRAY' ? (stringy_numbers => 1) : () });
 }
 
 sub _validate_cookie_parameter ($self, $state, $param_obj, @args) {
@@ -1046,47 +1059,96 @@ sub _result ($self, $state, $is_exception = 0, $is_response = 0) {
   );
 }
 
-sub _resolve_ref ($self, $entity_type, $ref, $state) {
+sub _resolve_ref ($self, $entity_type, $ref, $state, $keyword = '$ref') {
   my $uri = Mojo::URL->new($ref)->to_abs($state->{initial_schema_uri});
+
   my $schema_info = $self->evaluator->_fetch_from_uri($uri);
-  abort({ %$state, keyword => '$ref' }, 'EXCEPTION: unable to find resource "%s"', $uri)
+  abort({ %$state, keyword => $keyword }, 'EXCEPTION: unable to find resource "%s"', $uri)
     if not $schema_info;
 
-  abort({ %$state, keyword => '$ref' }, 'EXCEPTION: maximum evaluation depth exceeded')
+  abort({ %$state, keyword => $keyword }, 'EXCEPTION: maximum evaluation depth exceeded')
     if $state->{depth}++ > $self->evaluator->max_traversal_depth;
 
-  abort({ %$state, keyword => '$ref' }, 'EXCEPTION: bad $ref to %s: not a "%s"', $schema_info->{canonical_uri}, $entity_type)
+  abort({ %$state, keyword => $keyword }, 'EXCEPTION: bad %s to %s: not a "%s"', $keyword, $schema_info->{canonical_uri}, $entity_type)
     if $schema_info->{document}->get_entity_at_location($schema_info->{document_path}) ne $entity_type;
 
+  my $scope_uri = $schema_info->{canonical_uri}->clone->fragment(undef);
+  push $state->{dynamic_scope}->@*, $scope_uri if $state->{dynamic_scope}->[-1] ne $scope_uri;
+
+  $state->@{qw(document specification_version vocabularies)} = $schema_info->@{qw(document specification_version vocabularies)};
   $state->{initial_schema_uri} = $schema_info->{canonical_uri};
-  $state->{traversed_keyword_path} = $state->{traversed_keyword_path}.$state->{keyword_path}.'/$ref';
+  $state->{traversed_keyword_path} = $state->{traversed_keyword_path}.$state->{keyword_path}.'/'.$keyword;
   $state->{keyword_path} = '';
 
   return $schema_info->{schema};
 }
 
-# determines the type(s) expected in a schema: array, object, null, boolean, string.
-# "" will be interpreted as null when type = null
-# 0, 1, false, true will be interpreted as boolean when type = boolean
-# (number and integer are implicit via evaluation with "stringy_numbers" enabled)
+# as _resolve_ref, but uses dynamic scope resolution, and only handles schema entities
+sub _resolve_dynamicRef ($self, $ref, $state) {
+  JSON::Schema::Modern::Vocabulary::Core->VERSION('0.630');
+  my $uri = JSON::Schema::Modern::Vocabulary::Core->__resolve_dynamicRef($ref, $state);
+  return $self->_resolve_ref('schema', $uri, $state, '$dynamicRef');
+}
+
+# determines the type(s) expected in a schema: array, object, null, boolean, string, number
+# (integers will be treated as numbers as they are not a distinct core type)
 sub _type_in_schema ($self, $schema, $state) {
-  return [] if ref $schema ne 'HASH';
+  return (qw(array object boolean string number), $state->{vocabularies}[0] =~ /::OpenAPI_3_0\z/ ? () : 'null')
+    if ref $schema ne 'HASH';
 
   my @types;
 
-  push @types, ref $schema->{type} eq 'ARRAY' ? ($schema->{type}->@*) : ($schema->{type})
-    if exists $schema->{type};
-
-  push @types, map $self->_type_in_schema($schema->{allOf}[$_],
-      { %$state, keyword_path => $state->{keyword_path}.'/allOf/'.$_ }), 0..$schema->{allOf}->$#*
-    if exists $schema->{allOf};
-
   if (defined(my $ref = $schema->{'$ref'})) {
-    $schema = $self->_resolve_ref('schema', $ref, $state);
-    push @types, $self->_type_in_schema($schema, $state);
+    {
+      my $schema = $self->_resolve_ref('schema', $ref, my $state = { %$state });
+      push @types, [ $self->_type_in_schema($schema, $state) ];
+    }
+
+    # no other keywords are valid adjacent to '$ref' in drafts 4-7
+    return $types[0]->@* if $state->{specification_version} =~ /^draft[467]\z/;
   }
 
-  return @types;
+  # TODO: recognize '$id' and '$schema' keywords to change dialects and location scope
+
+  if (defined(my $ref = $schema->{'$dynamicRef'}) and $state->{specification_version} !~ /^draft(?:[467]|2019-09)$/) {
+    my $schema = $self->_resolve_dynamicRef($ref, my $state = { %$state });
+    push @types, [ $self->_type_in_schema($schema, $state) ];
+  }
+
+  # v3.2.0 §4.24.4.2: "When inspecting schemas, given a starting point schema, implementations MUST
+  # examine that schema and all schemas that can be reached from it by following only $ref and allOf
+  # keywords... When searching schemas for type, if the type keyword’s value is a list of types and
+  # the serialized value can be successfully parsed as more than one of the types in the list, and
+  # no other findable type keyword disambiguates the actual required type, the behavior is
+  # implementation-defined."
+  # "Schema Objects that do not contain type MUST be considered to allow all types.."
+
+  if (exists $schema->{type}) {
+    push @types, [ ref $schema->{type} eq 'ARRAY' ? ($schema->{type}->@*) : ($schema->{type}),
+      $state->{vocabularies}[0] =~ /::OpenAPI_3_0\z/ && $schema->{nullable} ? 'null' : () ]
+  }
+  else {
+    push @types, [ qw(array object boolean string number),
+      $state->{vocabularies}[0] =~ /::OpenAPI_3_0\z/ ? () : 'null' ];
+  }
+
+  push @types, [ get_type($schema->{const}) ] if exists $schema->{const};
+
+  push @types, [ map get_type($_), $schema->{enum}->@* ] if exists $schema->{enum};
+
+  push @types, map [ $self->_type_in_schema($schema->{allOf}[$_],
+      { %$state, keyword_path => $state->{keyword_path}.'/allOf/'.$_ }) ], 0..$schema->{allOf}->$#*
+    if exists $schema->{allOf};
+
+  push @types, [ map $self->_type_in_schema($schema->{anyOf}[$_],
+      { %$state, keyword_path => $state->{keyword_path}.'/anyOf/'.$_ }), 0..$schema->{anyOf}->$#* ]
+    if exists $schema->{anyOf};
+
+  push @types, [ map $self->_type_in_schema($schema->{oneOf}[$_],
+      { %$state, keyword_path => $state->{keyword_path}.'/oneOf/'.$_ }), 0..$schema->{oneOf}->$#* ]
+    if exists $schema->{oneOf};
+
+  return intersect_types(@types);
 }
 
 # evaluates data against the subschema at the current state location
@@ -1681,14 +1743,15 @@ document, json pointers are relative to the B<root> of the document, not the roo
 itself. References to other documents are also permitted, provided those documents have been loaded
 into the evaluator in advance (see L<JSON::Schema::Modern/add_schema>).
 
-Values are generally treated as strings for the purpose of schema evaluation. However, if the top
-level of the schema contains C<"type": "number"> or C<"type": "integer">, then the value will be
-(attempted to be) coerced into a number before being passed to the JSON Schema evaluator.
-Type coercion will B<not> be done if the C<type> keyword is omitted.
-This lets you use numeric keywords such as C<maximum> and C<multipleOf> in your schemas.
-It also resolves inconsistencies that can arise when request and response objects are created
-manually in a test environment (as opposed to being parsed from incoming network traffic) and can
-therefore inadvertently contain perlish numbers rather than strings.
+When deserializing parameter values (whose decoding is not strictly defined with a media-type),
+values are treated as strings by default. However, if the schema contains a C<type>, C<const> or
+C<enum> keyword indicating a primitive type(s) other than C<array> or C<object>, the value will
+(attempted to be) coerced into that type before being passed to the JSON Schema evaluator. C<allOf>,
+C<anyOf>, C<oneOf>, C<$ref> and C<$dynamicRef> keywords are also followed in an attempt to infer the
+correct desired type.
+When no type constraint is present, the value will remain as a string; otherwise when multiple types
+are permitted, deserialization is attempted in this order: C<null>, C<boolean>, C<number>,
+C<string>.
 
 =head1 LIMITATIONS
 

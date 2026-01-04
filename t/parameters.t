@@ -13,10 +13,13 @@ use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 
 use lib 't/lib';
 use Helper;
+use JSON::Schema::Modern::Utilities 'is_bool';
+
+my $yamlpp = YAML::PP->new(boolean => 'JSON::PP');
 
 my $openapi = OpenAPI::Modern->new(
   openapi_uri => 'http://localhost:1234/api',
-  openapi_schema => YAML::PP->new(boolean => 'JSON::PP')->load_string(OPENAPI_PREAMBLE.<<'YAML'));
+  openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
 components: {}
 YAML
 
@@ -69,6 +72,11 @@ subtest 'path parameters' => sub {
     },
     # style=simple
     {
+      param_obj => { name => 'no_type', in => 'path', schema => { maxLength => 3 } },
+      path_captures => { no_type => 'R,100,G,200,B,150' },
+      content => 'R,100,G,200,B,150',
+    },
+    {
       param_obj => { name => 'spaces', in => 'path' },
       path_captures => { spaces => " i have spaces  \t " },
       content => " i have spaces  \t ",
@@ -77,6 +85,16 @@ subtest 'path parameters' => sub {
       param_obj => { name => 'single_value_false', in => 'path' },
       path_captures => { single_value_false => 'foo' },
       content => 'foo',
+    },
+    {
+      param_obj => { name => 'single_value_number', in => 'path', schema => { type => 'number' } },
+      path_captures => { single_value_number => '3' },
+      content => 3,
+    },
+    {
+      param_obj => { name => 'single_value_number_over_string', in => 'path', schema => { type => [ qw(string number) ] } },
+      path_captures => { single_value_number_over_string => '3' },
+      content => 3,
     },
     {
       param_obj => { name => 'single_value_string', in => 'path' },
@@ -219,6 +237,7 @@ subtest 'path parameters' => sub {
       keyword_path => $keyword_path,
       data_path => '/request',
       specification_version => 'draft2020-12',
+      vocabularies => OAS_VOCABULARIES,
       errors => [],
       depth => 0,
     };
@@ -306,7 +325,7 @@ subtest 'query parameters' => sub {
     {
       param_obj => { name => 'R', in => 'query', schema => { type => 'integer' } },
       queries => 'color=blue&R=100&G=200&B=150',
-      content => '100',
+      content => 100,
     },
     { # form, string, empty
       param_obj => { name => 'color' },
@@ -315,8 +334,18 @@ subtest 'query parameters' => sub {
     },
     { # form, string
       param_obj => { name => 'color' },
-      queries => 'color=blue&R=100&G=200&B=150',
-      content => 'blue',
+      queries => 'color=20',
+      content => '20',
+    },
+    { # form, number
+      param_obj => { name => 'color', schema => { type => 'number' } },
+      queries => 'color=20',
+      content => 20,
+    },
+    { # form, number chosen over string
+      param_obj => { name => 'color', schema => { type => [ qw(string number) ] } },
+      queries => 'color=20',
+      content => 20,
     },
     { # form, array, false
       param_obj => { name => 'color', explode => false },
@@ -373,6 +402,7 @@ subtest 'query parameters' => sub {
       keyword_path => $keyword_path,
       data_path => '/request',
       specification_version => 'draft2020-12',
+      vocabularies => OAS_VOCABULARIES,
       errors => [],
       depth => 0,
     };
@@ -442,6 +472,7 @@ subtest 'header parameters' => sub {
       values => [ '3' ],
       content => 3, # number, not string!
     },
+    # style=simple
     {
       name => 'Spaces',
       header_obj => {},
@@ -465,7 +496,7 @@ subtest 'header parameters' => sub {
       name => 'Multiple-Headers-String',
       header_obj => {},
       values => [ ' foo ', ' bar ' ],
-      content => 'foo, bar',
+      content => 'foo,bar',
     },
     {
       # multiple headers are passed as an array iff when array is requested
@@ -495,15 +526,33 @@ subtest 'header parameters' => sub {
       content => [ 'foo', 'bar', 'baz' ],
     },
     {
+      name => 'Array-with-numeric-values',
+      header_obj => { schema => { type => 'array', items => { type => 'number' } } },
+      values => [ 'R,100,G,200,B,150' ],
+      content => [ R => '100', G => '200', B => '150' ],
+    },
+    {
       name => 'Object-Explode-False',
       header_obj => { explode => false, schema => { type => 'object' } },
       values => [ ' R, 100 ', ' B, 150,  G , 200 ' ],
       content => { R => '100', G => '200', B => '150' },
     },
     {
+      name => 'Object-with-numeric-values-explode-false',
+      header_obj => { schema => { type => 'object', additionalProperties => { type => 'number' } } },
+      values => [ 'R,100,G,200,B,150' ],
+      content => { R => '100', G => '200', B => '150' },
+    },
+    {
       name => 'Object-Explode-True',
       header_obj => { explode => true, schema => { type => 'object' } },
       values => [ ' R=100  , B=150 ', '  G=200 ' ],
+      content => { R => '100', G => '200', B => '150' },
+    },
+    {
+      name => 'Object-with-numeric-values-explode-true',
+      header_obj => { explode => true, schema => { type => 'object', additionalProperties => { type => 'number' } } },
+      values => [ 'R=100,G=200,B=150' ],
       content => { R => '100', G => '200', B => '150' },
     },
     {
@@ -531,6 +580,7 @@ subtest 'header parameters' => sub {
       keyword_path => $keyword_path,
       data_path => '/response',
       specification_version => 'draft2020-12',
+      vocabularies => OAS_VOCABULARIES,
       errors => [],
       depth => 0,
     };
@@ -558,6 +608,247 @@ subtest 'header parameters' => sub {
       );
     });
   }
+};
+
+subtest 'type inference and coercion' => sub {
+  my $openapi = OpenAPI::Modern->new(
+    openapi_uri => 'http://localhost:1234/api',
+    openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
+components:
+  schemas:
+    my_type1:
+      type: [ object, array ]
+    my_type2:
+      $ref: '#/components/schemas/my_type3'
+    my_type3:
+      allOf:
+        - $ref: '#/components/schemas/my_type4'
+        - $ref: '#/components/schemas/my_type5'
+    my_type4:
+      type: [ 'null', string ]
+    my_type5:
+      type: [ 'null', integer ]
+    object_dynamicRef:
+      $id: https://test.json-schema.org/typical-dynamic-resolution/object_root
+      $ref: object_thing
+      $defs:
+        foo:
+          $dynamicAnchor: more_object_thing      # final destination of the $dynamicRef
+          type: object
+          properties:
+            b: { type: number }
+        bar:
+          $id: object_thing
+          $dynamicRef: '#more_object_thing'
+          unevaluatedProperties: { type: boolean }
+          $defs:
+            something:
+              $comment: satisfy the bookending requirement
+              $dynamicAnchor: more_object_thing
+      properties:
+        a: { type: boolean }
+    object_of_mixed:
+      type: object
+      properties:
+        a: { type: string }
+        b: { type: [ number, string ] }
+        c: { type: [ boolean, string ] }
+        d: { type: [ 'null', string ] }
+      patternProperties: { e: { type: boolean } }
+      additionalProperties: { type: [ number, string ] }
+    object_with_overlap:
+      $ref: '#/components/schemas/object_of_mixed'
+      properties:
+        b: { type: number }
+        c: { type: boolean }
+        d: { type: string }
+      additionalProperties: { type: number }
+    object_with_unevaluatedProperties:
+      type: object
+      properties:
+        a: { type: number }
+        b: { type: number }
+        d: { type: number }
+      unevaluatedProperties:
+        type: boolean
+    object_with_allOf_and_unevaluatedProperties:
+      type: object
+      allOf:
+        - properties:
+            a: { type: [ number, string ] }
+            b: { type: number }
+            c: { type: boolean }
+        - properties:
+            a: { type: number }
+            b: { type: number }
+            d: { type: number }
+      unevaluatedProperties:
+        type: number
+    object_of_numbers:
+      type: object
+      additionalProperties: { type: number }
+    allOf_objects:
+      type: object
+      allOf:
+        - properties: { a: { type: 'null' } }
+        - properties: { b: { type: boolean } }
+        - properties: { c: { type: integer } }
+    array_dynamicRef:
+      $id: https://test.json-schema.org/typical-dynamic-resolution/array_root
+      $ref: array_thing
+      $defs:
+        foo:
+          $dynamicAnchor: more_array_thing      # final destination of the $dynamicRef
+          type: array
+          prefixItems:
+            - {}
+            - { type: number }
+        bar:
+          $id: array_thing
+          $dynamicRef: '#more_array_thing'
+          unevaluatedProperties: { type: boolean }
+          $defs:
+            something:
+              $comment: satisfy the bookending requirement
+              $dynamicAnchor: more_array_thing
+      prefixItems:
+        - type: boolean
+    array_of_mixed:
+      type: array
+      prefixItems:
+        - { type: string }
+        - { type: number }
+        - { type: boolean }
+        - { type: 'null' }
+      items: { type: number }
+    array_with_overlap:
+      $ref: '#/components/schemas/array_of_mixed'
+      prefixItems:
+        - {}
+        - { type: number }
+        - { type: boolean }
+        - { type: string }
+      items: { type: number }
+    array_with_unevaluatedItems:
+      type: array
+      prefixItems:
+        - { type: number }
+        - { type: number }
+        - { type: number }
+      unevaluatedItems:
+        type: boolean
+    array_with_allOf_and_unevaluatedItems:
+      type: array
+      allOf:
+        - prefixItems:
+            - { type: [ number, string ] }
+            - { type: number }
+            - { type: boolean }
+        - prefixItems:
+            - { type: number }
+            - { type: number }
+            - {}
+            - { type: number }
+      unevaluatedItems:
+        type: number
+    array_of_numbers:
+      type: array
+      items: { type: number }
+    allOf_arrays:
+      type: array
+      allOf:
+        - prefixItems:
+          - { type: 'null' }
+        - prefixItems:
+          - true
+          - { type: boolean }
+        - prefixItems:
+          - true
+          - true
+          - { type: integer }
+YAML
+
+  $openapi->evaluator->add_document(JSON::Schema::Modern::Document::OpenAPI->new(
+    canonical_uri => 'https://example.com/my_3.0_oad',
+    schema => my $schema_3_0 = $yamlpp->load_string(<<'YAML')));
+openapi: 3.0.4
+info:
+  title: Test API
+  version: 1.2.3
+paths: {}
+components:
+  schemas:
+    'true': {}
+    ref_to_nullable_integer:
+      $ref: '#/components/schemas/nullable_integer'
+    integer:
+      type: integer
+    nullable_integer:
+      type: integer
+      nullable: true
+    not_nullable_integer:
+      type: integer
+      nullable: false
+    all_types: {}               # implies all types, null included
+    nullable_without_type:
+      nullable: true            # ""; "nullable" is ignored without "type"
+YAML
+
+  # the minimum necessary for _resolve_ref to work
+  my $state = {
+    initial_schema_uri => $openapi->openapi_uri,
+    traversed_keyword_path => '',
+    keyword_path => '/components/parameters/MyParameter/schema',
+    data_path => '/request/uri/path',
+    document => $openapi->openapi_document,
+    ($openapi->openapi_document->_get_resource($openapi->openapi_document->canonical_uri)->%{qw(specification_version vocabularies)}),
+    dynamic_scope => [ $openapi->openapi_uri ],
+    evaluator => $openapi->evaluator,
+    errors => [],
+    depth => 0,
+  };
+
+  subtest 'type inference of an extracted parameter' => sub {
+    foreach my $test (
+      [ [ qw(array object null boolean string number) ], false ],
+      [ [ qw(array object null boolean string number) ], true ],
+      [ [ qw(array object boolean string number) ], { '$ref' => 'https://example.com/my_3.0_oad#/components/schemas/true' } ],
+      [ [ qw(array object null boolean string number) ], {} ],
+      (map [ [ $_ ], { type => $_ } ], qw(array object null boolean string number)),
+      (map [ [ 'number' ], { type => $_ } ], qw(number integer)),
+      [ [ qw(string null) ], { type => [qw(string null)] } ],
+      [ [ 'object' ], { const => { R => 100, G => 200, B => 150 } } ],
+      [ [ qw(number object) ], { enum => [ 10, { R => 100, G => 200, B => 150 } ] } ],
+      [ [ 'string' ], { allOf => [ { type => 'string' }, { type => 'string' } ] } ],
+      [ [ 'number' ], { allOf => [ { type => 'number' }, { type => 'integer' } ] } ],
+      [ [], { allOf => [ { type => 'array' }, { type => 'string' } ] } ],
+      [ [ qw(array string) ], { anyOf => [ { type => 'array' }, { type => 'string' } ] } ],
+      [ [ qw(array string) ], { oneOf => [ { type => 'array' }, { type => 'string' } ] } ],
+      [ [ 'object' ], { allOf => [ { type => 'object' }, { '$ref' => '#/components/schemas/my_type1' } ] } ],
+      [ [ 'null' ], { '$ref' => '#/components/schemas/my_type2' } ],
+      [ [ 'object' ], { '$ref' => '#/components/schemas/object_dynamicRef' } ],
+
+      # 3.0 schemas ($ref comes from a 3.2 schema, which permits null)
+      [ [ 'number' ], { '$ref' => 'https://example.com/my_3.0_oad#/components/schemas/integer' } ],
+      [ [ qw(null number) ], { '$ref' => 'https://example.com/my_3.0_oad#/components/schemas/nullable_integer' } ],
+      [ [ 'number' ], { '$ref' => 'https://example.com/my_3.0_oad#/components/schemas/not_nullable_integer' } ],
+      [ [ qw(null number) ], { '$ref' => 'https://example.com/my_3.0_oad#/components/schemas/ref_to_nullable_integer' } ],
+      [ [ qw(array object boolean string number) ], { '$ref' => 'https://example.com/my_3.0_oad#/components/schemas/all_types' } ],
+      [ [ qw(array object boolean string number) ], { '$ref' => 'https://example.com/my_3.0_oad#/components/schemas/nullable_without_type' } ],
+    ) {
+      my ($expected_types, $schema) = @$test;
+
+      my @types = $openapi->_type_in_schema($schema, { %$state });
+      cmp_result(
+        [ sort @types], [ sort @$expected_types ],
+            (is_bool($schema) ? 'schema is boolean'
+          : 'schema has '.(!keys %$schema ? 'no keywords'
+          : 'the keyword'.(keys %$schema > 1 ? 's' : '').' '.join(', ', keys %$schema)))
+        .': got expected type'.(@$expected_types != 1 ? 's' : ''),
+      )
+      or note('with schema: ', $::encoder->encode($schema));
+    }
+  };
 };
 
 done_testing;
