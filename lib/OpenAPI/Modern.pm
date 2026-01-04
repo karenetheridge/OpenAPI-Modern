@@ -1676,8 +1676,8 @@ L<the specification|https://spec.openapis.org/oas/latest#schema-object>. Format 
 B<on>, and the use of content* keywords is off (see
 L<JSON::Schema::Modern/validate_content_schemas>).
 
-References (with the C<$ref>) keyword may reference any position within the entire OpenAPI document;
-as such, json pointers are relative to the B<root> of the document, not the root of the subschema
+As references (with the C<$ref> keyword) may reference any position within the entire OpenAPI
+document, json pointers are relative to the B<root> of the document, not the root of the subschema
 itself. References to other documents are also permitted, provided those documents have been loaded
 into the evaluator in advance (see L<JSON::Schema::Modern/add_schema>).
 
