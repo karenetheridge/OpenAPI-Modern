@@ -836,6 +836,13 @@ YAML
       [ [ qw(array object boolean number) ], { '$ref' => 'https://example.com/my_3.0_oad#/components/schemas/not_string_or_null' } ],
       [ [ qw(array object boolean string null) ], { '$ref' => '#/components/schemas/not_integer_3.0' } ],
       [ [ qw(array object boolean string) ], { '$ref' => '#/components/schemas/not_integer_or_null_3.0' } ],
+
+      # $ref comes from a draft7 schema, which defers wholly to the $ref, ignoring all other keywords
+      [ [ 'number' ], { '$schema' => 'http://json-schema.org/draft-07/schema#', allOf => [ { '$ref' => 'https://example.com/my_3.0_oad#/components/schemas/integer', type => 'object' } ] } ],
+      [ [ qw(null number) ], { '$schema' => 'http://json-schema.org/draft-07/schema#', allOf => [ { '$ref' => 'https://example.com/my_3.0_oad#/components/schemas/nullable_integer', type => 'object' } ] } ],
+      [ [ 'number' ], { '$schema' => 'http://json-schema.org/draft-07/schema#', allOf => [ { '$ref' => 'https://example.com/my_3.0_oad#/components/schemas/not_nullable_integer' }, type => 'object' ] } ],
+      [ [ qw(null number) ], { '$schema' => 'http://json-schema.org/draft-07/schema#', allOf => [ { '$ref' => 'https://example.com/my_3.0_oad#/components/schemas/ref_to_nullable_integer', type => 'object' } ] } ],
+
     ) {
       my ($expected_types, $schema) = @$test;
 

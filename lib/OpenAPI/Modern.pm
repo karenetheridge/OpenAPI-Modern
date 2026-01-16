@@ -1097,6 +1097,25 @@ sub _type_in_schema ($self, $schema, $state) {
   return (qw(array object boolean string number), $state->{vocabularies}[0] =~ /::OpenAPI_3_0\z/ ? () : 'null')
     if ref $schema ne 'HASH';
 
+  # as in __eval_keyword_id...
+  my $id_keyword = $state->{specification_version} eq 'draft4' ? 'id' : '$id';
+  if (exists $schema->{$id_keyword} and $schema->{$id_keyword} !~ /^#/) {
+    my $schema_info = $self->evaluator->_fetch_from_uri(my $uri = canonical_uri($state));
+    abort({ %$state, keyword => $id_keyword }, 'EXCEPTION: unable to find resource "%s"', $uri)
+      if not $schema_info;
+    # these will all be correct when we are at the schema root, or if we are here via a $ref,
+    # but not if we are organically passing through this subschema and pass an '$id'.
+    $state->{initial_schema_uri} = $schema_info->{canonical_uri};
+    $state->{traversed_keyword_path} = $state->{traversed_keyword_path}.$state->{keyword_path};
+    $state->{keyword_path} = '';
+    $state->@{qw(specification_version vocabularies)} = $schema_info->@{qw(specification_version vocabularies)};
+    push $state->{dynamic_scope}->@*, $state->{initial_schema_uri}
+      if $state->{dynamic_scope}->[-1] ne $schema_info->{canonical_uri};
+  }
+  elsif (exists $schema->{'$schema'}) {
+    $state->@{qw(specification_version vocabularies)} = $self->evaluator->_get_metaschema_vocabulary_classes($schema->{'$schema'})->@*;
+  }
+
   my @types;
 
   if (defined(my $ref = $schema->{'$ref'})) {
@@ -1108,8 +1127,6 @@ sub _type_in_schema ($self, $schema, $state) {
     # no other keywords are valid adjacent to '$ref' in drafts 4-7
     return $types[0]->@* if $state->{specification_version} =~ /^draft[467]\z/;
   }
-
-  # TODO: recognize '$id' and '$schema' keywords to change dialects and location scope
 
   if (defined(my $ref = $schema->{'$dynamicRef'}) and $state->{specification_version} !~ /^draft(?:[467]|2019-09)$/) {
     my $schema = $self->_resolve_dynamicRef($ref, my $state = { %$state });
@@ -1926,7 +1943,7 @@ values are treated as strings by default. However, if the schema contains a C<ty
 C<enum> keyword, the value will
 (attempted to be) coerced into that type before being passed to the JSON Schema evaluator. C<allOf>,
 C<anyOf>, C<oneOf>, C<not>, C<$ref> and C<$dynamicRef> keywords are also followed in an attempt to
-infer the correct desired type.
+infer the correct desired type, and C<$id> and C<$schema> are respected.
 This process includes inspection of subschemas for object values or array items, for parameter
 values that are deserialized into those types.
 When no type constraint is present, the value will remain as a string; otherwise when multiple types
