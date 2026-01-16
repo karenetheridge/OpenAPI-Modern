@@ -674,7 +674,13 @@ YAML
 };
 
 subtest 'invalid servers entries' => sub {
-  my $servers = $yamlpp->load_string(<<'YAML');
+  my $schema = $yamlpp->load_string(<<'YAML');
+components:
+  links:
+    my_link:
+      operationId: link_operation
+      server:
+        url: https://example.com/my_link
 servers:
   - url: https://example.com/{version}/{greeting}
     variables:
@@ -685,7 +691,7 @@ servers:
         default: hi
       unused:                             # valid, but inadvised
         default: nope
-  - url: https://example.com/{v}/{g}      # invalid: missing 'variables'
+  - url: https://example.com/{v}/{g}      # invalid: missing 'variables'; duplicate of url 0
   - url: https://example.com/{foo}/{foo}  # invalid: duplicate variable
     variables: {}
   - url: http://example.com/literal
@@ -731,12 +737,13 @@ YAML
     canonical_uri => 'http://localhost:1234/api',
     schema => {
       $yamlpp->load_string(OPENAPI_PREAMBLE)->%*,
-      %$servers,
+      $schema->%{servers},
       components => {
+        $schema->{components}->%*,
         pathItems => {
           path0 => {
-            %$servers,
-            get => $servers,
+            $schema->%{servers},
+            get => { $schema->%{servers} },
           },
         },
       },
@@ -750,7 +757,7 @@ YAML
         {
           keywordLocation => $_.'/servers/0/variables/version/default',
           absoluteKeywordLocation => 'http://localhost:1234/api#'.$_.'/servers/0/variables/version/default',
-          error => 'servers default is not a member of enum',
+          error => 'server default is not a member of enum',
         },
         {
           keywordLocation => $_.'/servers/1/url',
@@ -770,17 +777,17 @@ YAML
         {
           keywordLocation => $_.'/servers/2/variables',
           absoluteKeywordLocation => 'http://localhost:1234/api#'.$_.'/servers/2/variables',
-          error => 'missing "variables" definition for servers template variable "foo"',
+          error => 'missing "variables" definition for server template variable "foo"',
         },
         {
           keywordLocation => $_.'/servers/2',
           absoluteKeywordLocation => 'http://localhost:1234/api#'.$_.'/servers/2',
-          error => 'duplicate servers template variable "foo"',
+          error => 'duplicate server template variable "foo"',
         },
         {
           keywordLocation => $_.'/servers/3/variables/unused/default',
           absoluteKeywordLocation => 'http://localhost:1234/api#'.$_.'/servers/3/variables/unused/default',
-          error => 'servers default is not a member of enum',
+          error => 'server default is not a member of enum',
         },
         do {
           my $base = $_;
@@ -800,45 +807,45 @@ YAML
           absoluteKeywordLocation => 'http://localhost:1234/api#'.$_.'/servers/10/url',
           error => 'invalid server url "http://example.com/^illegal"',
         },
-      ), '', '/components/pathItems/path0', '/components/pathItems/path0/get',
+      ), '/components/pathItems/path0/get', '/components/pathItems/path0', '',
     ],
     'all issues with server entries found',
   );
 
   is(document_result($doc), substr(<<'ERRORS', 0, -1), 'stringified errors use the instance locations');
-'/servers/0/variables/version/default': servers default is not a member of enum
-'/servers/1/url': duplicate of templated server url "https://example.com/{version}/{greeting}"
-'/servers/1': "variables" property is required for templated server urls
-'/servers/2/url': duplicate of templated server url "https://example.com/{v}/{g}"
-'/servers/2/variables': missing "variables" definition for servers template variable "foo"
-'/servers/2': duplicate servers template variable "foo"
-'/servers/3/variables/unused/default': servers default is not a member of enum
-'/servers/6/url': invalid server url "http://example.com?foo=1"
-'/servers/7/url': invalid server url "http://example.com#bar"
-'/servers/9/url': invalid server url "http://{host}.com/{pa{th}"
-'/servers/10/url': invalid server url "http://example.com/^illegal"
-'/components/pathItems/path0/servers/0/variables/version/default': servers default is not a member of enum
-'/components/pathItems/path0/servers/1/url': duplicate of templated server url "https://example.com/{version}/{greeting}"
-'/components/pathItems/path0/servers/1': "variables" property is required for templated server urls
-'/components/pathItems/path0/servers/2/url': duplicate of templated server url "https://example.com/{v}/{g}"
-'/components/pathItems/path0/servers/2/variables': missing "variables" definition for servers template variable "foo"
-'/components/pathItems/path0/servers/2': duplicate servers template variable "foo"
-'/components/pathItems/path0/servers/3/variables/unused/default': servers default is not a member of enum
-'/components/pathItems/path0/servers/6/url': invalid server url "http://example.com?foo=1"
-'/components/pathItems/path0/servers/7/url': invalid server url "http://example.com#bar"
-'/components/pathItems/path0/servers/9/url': invalid server url "http://{host}.com/{pa{th}"
-'/components/pathItems/path0/servers/10/url': invalid server url "http://example.com/^illegal"
-'/components/pathItems/path0/get/servers/0/variables/version/default': servers default is not a member of enum
+'/components/pathItems/path0/get/servers/0/variables/version/default': server default is not a member of enum
 '/components/pathItems/path0/get/servers/1/url': duplicate of templated server url "https://example.com/{version}/{greeting}"
 '/components/pathItems/path0/get/servers/1': "variables" property is required for templated server urls
 '/components/pathItems/path0/get/servers/2/url': duplicate of templated server url "https://example.com/{v}/{g}"
-'/components/pathItems/path0/get/servers/2/variables': missing "variables" definition for servers template variable "foo"
-'/components/pathItems/path0/get/servers/2': duplicate servers template variable "foo"
-'/components/pathItems/path0/get/servers/3/variables/unused/default': servers default is not a member of enum
+'/components/pathItems/path0/get/servers/2/variables': missing "variables" definition for server template variable "foo"
+'/components/pathItems/path0/get/servers/2': duplicate server template variable "foo"
+'/components/pathItems/path0/get/servers/3/variables/unused/default': server default is not a member of enum
 '/components/pathItems/path0/get/servers/6/url': invalid server url "http://example.com?foo=1"
 '/components/pathItems/path0/get/servers/7/url': invalid server url "http://example.com#bar"
 '/components/pathItems/path0/get/servers/9/url': invalid server url "http://{host}.com/{pa{th}"
 '/components/pathItems/path0/get/servers/10/url': invalid server url "http://example.com/^illegal"
+'/components/pathItems/path0/servers/0/variables/version/default': server default is not a member of enum
+'/components/pathItems/path0/servers/1/url': duplicate of templated server url "https://example.com/{version}/{greeting}"
+'/components/pathItems/path0/servers/1': "variables" property is required for templated server urls
+'/components/pathItems/path0/servers/2/url': duplicate of templated server url "https://example.com/{v}/{g}"
+'/components/pathItems/path0/servers/2/variables': missing "variables" definition for server template variable "foo"
+'/components/pathItems/path0/servers/2': duplicate server template variable "foo"
+'/components/pathItems/path0/servers/3/variables/unused/default': server default is not a member of enum
+'/components/pathItems/path0/servers/6/url': invalid server url "http://example.com?foo=1"
+'/components/pathItems/path0/servers/7/url': invalid server url "http://example.com#bar"
+'/components/pathItems/path0/servers/9/url': invalid server url "http://{host}.com/{pa{th}"
+'/components/pathItems/path0/servers/10/url': invalid server url "http://example.com/^illegal"
+'/servers/0/variables/version/default': server default is not a member of enum
+'/servers/1/url': duplicate of templated server url "https://example.com/{version}/{greeting}"
+'/servers/1': "variables" property is required for templated server urls
+'/servers/2/url': duplicate of templated server url "https://example.com/{v}/{g}"
+'/servers/2/variables': missing "variables" definition for server template variable "foo"
+'/servers/2': duplicate server template variable "foo"
+'/servers/3/variables/unused/default': server default is not a member of enum
+'/servers/6/url': invalid server url "http://example.com?foo=1"
+'/servers/7/url': invalid server url "http://example.com#bar"
+'/servers/9/url': invalid server url "http://{host}.com/{pa{th}"
+'/servers/10/url': invalid server url "http://example.com/^illegal"
 ERRORS
 
   memory_cycle_ok($doc, 'no leaks in the document object');

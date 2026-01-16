@@ -258,7 +258,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
 
   # evaluate the document against its metaschema to find any errors, to identify all schema
   # resources within to add to the global resource index, and to extract all operationIds
-  my (@json_schema_paths, @operation_paths, %bad_path_item_refs, @servers_paths, %tag_operation_paths, @bad_3_0_paths, @references);
+  my (@json_schema_paths, @operation_paths, %bad_path_item_refs, @server_paths, %tag_operation_paths, @bad_3_0_paths, @references);
   my $result = $evaluator->evaluate(
     $schema, $self->metaschema_uri,
     {
@@ -352,9 +352,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
             $bad_path_item_refs{$state->{data_path}} = join(', ', sort keys %path_item) if keys %path_item;
           }
 
-          # will contain duplicates; filter out later
-          push @servers_paths, ($state->{data_path} =~ s{/[0-9]+\z}{}r)
-            if $schema->{'$ref'} eq '#/$defs/server';
+          push @server_paths, $state->{data_path} if $schema->{'$ref'} eq '#/$defs/server';
 
           return 1;
         },
@@ -445,53 +443,50 @@ sub traverse ($self, $evaluator, $config_override = {}) {
       'invalid keywords used adjacent to $ref in a path-item: %s', $bad_path_item_refs{$path_item});
   }
 
-  my %seen_servers;
-  foreach my $servers_location (reverse @servers_paths) {
-    next if $seen_servers{$servers_location}++;
+  my %seen_url; # indexed by servers object
+  foreach my $server_location (@server_paths) {
+    my $server = $self->get($server_location);
 
-    my $servers = $self->get($servers_location);
-    my %seen_url;
+    # see ABNF at v3.2.0 §4.6
+    ()= E({ %$state, keyword_path => $server_location.'/url' },
+        'invalid server url "%s"', $server->{url}), next
+      if $server->{url} !~ /^(?:\{[^{}]+\}|%[0-9A-F]{2}|[\x21\x24\x26-\x3B\x3D\x40-\x5B\x5D\x5F\x61-\x7A\x7E\xA0-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFEF}\x{10000}-\x{1FFFD}\x{20000}-\x{2FFFD}\x{30000}-\x{3FFFD}\x{40000}-\x{4FFFD}\x{50000}-\x{5FFFD}\x{60000}-\x{6FFFD}\x{70000}-\x{7FFFD}\x{80000}-\x{8FFFD}\x{90000}-\x{9FFFD}\x{A0000}-\x{AFFFD}\x{B0000}-\x{BFFFD}\x{C0000}-\x{CFFFD}\x{D0000}-\x{DFFFD}\x{E1000}-\x{EFFFD}\x{E000}-\x{F8FF}\x{F0000}-\x{FFFFD}\x{100000}-\x{10FFFD}])+\z/;
 
-    foreach my $server_idx (0 .. $servers->$#*) {
-      # see ABNF at v3.2.0 §4.6
-      ()= E({ %$state, keyword_path => jsonp($servers_location, $server_idx, 'url') },
-          'invalid server url "%s"', $servers->[$server_idx]{url}), next
-        if $servers->[$server_idx]{url} !~ /^(?:\{[^{}]+\}|%[0-9A-F]{2}|[\x21\x24\x26-\x3B\x3D\x40-\x5B\x5D\x5F\x61-\x7A\x7E\xA0-\x{D7FF}\x{F900}-\x{FDCF}\x{FDF0}-\x{FFEF}\x{10000}-\x{1FFFD}\x{20000}-\x{2FFFD}\x{30000}-\x{3FFFD}\x{40000}-\x{4FFFD}\x{50000}-\x{5FFFD}\x{60000}-\x{6FFFD}\x{70000}-\x{7FFFD}\x{80000}-\x{8FFFD}\x{90000}-\x{9FFFD}\x{A0000}-\x{AFFFD}\x{B0000}-\x{BFFFD}\x{C0000}-\x{CFFFD}\x{D0000}-\x{DFFFD}\x{E1000}-\x{EFFFD}\x{E000}-\x{F8FF}\x{F0000}-\x{FFFFD}\x{100000}-\x{10FFFD}])+\z/;
+    my $normalized = $server->{url} =~ s/\{[^{}]+\}/\x00/gr;
+    my @url_variables = $server->{url} =~ /\{([^{}]+)\}/g;
 
-      my $normalized = $servers->[$server_idx]{url} =~ s/\{[^{}]+\}/\x00/gr;
-      my @url_variables = $servers->[$server_idx]{url} =~ /\{([^{}]+)\}/g;
+    my $servers_location = $server_location =~ s{/[0-9]+\z}{}r;
 
-      if (my $first_url = $seen_url{$normalized}) {
-        ()= E({ %$state, keyword_path => jsonp($servers_location, $server_idx, 'url') },
-          'duplicate of templated server url "%s"', $first_url);
-      }
-      $seen_url{$normalized} = $servers->[$server_idx]{url};
+    if (my $first_url = ($seen_url{$servers_location}//{})->{$normalized}) {
+      ()= E({ %$state, keyword_path => $server_location.'/url' },
+        'duplicate of templated server url "%s"', $first_url);
+    }
+    { use autovivification 'store'; $seen_url{$servers_location}->{$normalized} = $server->{url}; }
 
-      my $variables_obj = $servers->[$server_idx]{variables};
-      if (not $variables_obj) {
-        # missing 'variables': needs variables/$varname/default
-        ()= E({ %$state, keyword_path => jsonp($servers_location, $server_idx) },
-          '"variables" property is required for templated server urls') if @url_variables;
-        next;
-      }
+    my $variables_obj = $server->{variables};
+    if (not $variables_obj) {
+      # missing 'variables': needs variables/$varname/default
+      ()= E({ %$state, keyword_path => $server_location },
+        '"variables" property is required for templated server urls') if @url_variables;
+      next;
+    }
 
-      my %seen_names;
-      foreach my $name (@url_variables) {
-        ()= E({ %$state, keyword_path => jsonp($servers_location, $server_idx) },
-            'duplicate servers template variable "%s"', $name)
-          if ++$seen_names{$name} == 2;
+    my %seen_names;
+    foreach my $name (@url_variables) {
+      ()= E({ %$state, keyword_path => $server_location },
+          'duplicate server template variable "%s"', $name)
+        if ++$seen_names{$name} == 2;
 
-        ()= E({ %$state, keyword_path => jsonp($servers_location, $server_idx, 'variables') },
-            'missing "variables" definition for servers template variable "%s"', $name)
-          if $seen_names{$name} == 1 and not exists $variables_obj->{$name};
-      }
+      ()= E({ %$state, keyword_path => $server_location.'/variables' },
+          'missing "variables" definition for server template variable "%s"', $name)
+        if $seen_names{$name} == 1 and not exists $variables_obj->{$name};
+    }
 
-      foreach my $varname (keys $variables_obj->%*) {
-        ()= E({ %$state, keyword_path => jsonp($servers_location, $server_idx, 'variables', $varname, 'default') },
-            'servers default is not a member of enum')
-          if exists $variables_obj->{$varname}{enum}
-            and not grep $variables_obj->{$varname}{default} eq $_, $variables_obj->{$varname}{enum}->@*;
-      }
+    foreach my $varname (keys $variables_obj->%*) {
+      ()= E({ %$state, keyword_path => jsonp($server_location, 'variables', $varname, 'default') },
+          'server default is not a member of enum')
+        if exists $variables_obj->{$varname}{enum}
+          and not grep $variables_obj->{$varname}{default} eq $_, $variables_obj->{$varname}{enum}->@*;
     }
   }
 
