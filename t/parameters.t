@@ -610,6 +610,12 @@ components:
       type: [ 'null', string ]
     my_type5:
       type: [ 'null', integer ]
+    not_integer_3.0:
+      not:
+        $ref: https://example.com/my_3.0_oad#/components/schemas/integer
+    not_integer_or_null_3.0:
+      not:
+        $ref: https://example.com/my_3.0_oad#/components/schemas/nullable_integer
     object_dynamicRef:
       $id: https://test.json-schema.org/typical-dynamic-resolution/object_root
       $ref: object_thing
@@ -774,6 +780,14 @@ components:
     all_types: {}               # implies all types, null included
     nullable_without_type:
       nullable: true            # ""; "nullable" is ignored without "type"
+    not_string:
+      # note: implicit nullable=false at the root level
+      not:
+        type: string
+    not_string_or_null:
+      not:
+        type: string
+        nullable: true
 YAML
 
   # the minimum necessary for _resolve_ref to work
@@ -806,6 +820,7 @@ YAML
       [ [], { allOf => [ { type => 'array' }, { type => 'string' } ] } ],
       [ [ qw(array string) ], { anyOf => [ { type => 'array' }, { type => 'string' } ] } ],
       [ [ qw(array string) ], { oneOf => [ { type => 'array' }, { type => 'string' } ] } ],
+      [ [ qw(null boolean array) ], { not => { type => [ qw(string number object) ] } } ],
       [ [ 'object' ], { allOf => [ { type => 'object' }, { '$ref' => '#/components/schemas/my_type1' } ] } ],
       [ [ 'null' ], { '$ref' => '#/components/schemas/my_type2' } ],
       [ [ 'object' ], { '$ref' => '#/components/schemas/object_dynamicRef' } ],
@@ -817,6 +832,10 @@ YAML
       [ [ qw(null number) ], { '$ref' => 'https://example.com/my_3.0_oad#/components/schemas/ref_to_nullable_integer' } ],
       [ [ qw(array object boolean string number) ], { '$ref' => 'https://example.com/my_3.0_oad#/components/schemas/all_types' } ],
       [ [ qw(array object boolean string number) ], { '$ref' => 'https://example.com/my_3.0_oad#/components/schemas/nullable_without_type' } ],
+      [ [ qw(array object boolean number) ], { '$ref' => 'https://example.com/my_3.0_oad#/components/schemas/not_string' } ],
+      [ [ qw(array object boolean number) ], { '$ref' => 'https://example.com/my_3.0_oad#/components/schemas/not_string_or_null' } ],
+      [ [ qw(array object boolean string null) ], { '$ref' => '#/components/schemas/not_integer_3.0' } ],
+      [ [ qw(array object boolean string) ], { '$ref' => '#/components/schemas/not_integer_or_null_3.0' } ],
     ) {
       my ($expected_types, $schema) = @$test;
 

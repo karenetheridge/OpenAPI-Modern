@@ -1149,6 +1149,16 @@ sub _type_in_schema ($self, $schema, $state) {
       { %$state, keyword_path => $state->{keyword_path}.'/oneOf/'.$_ }), 0..$schema->{oneOf}->$#* ]
     if exists $schema->{oneOf};
 
+  if (exists $schema->{not}) {
+    my %not_types; @not_types{qw(array object boolean string number null)} = ()x6;
+
+    # now splice out all those that are members of @not_types.
+    delete $not_types{$_} foreach $self->_type_in_schema($schema->{not},
+      { %$state, keyword_path => $state->{keyword_path}.'/not' });
+
+    push @types, [ keys %not_types ];
+  }
+
   return intersect_types(@types);
 }
 
@@ -1915,8 +1925,8 @@ When deserializing parameter values (whose decoding is not strictly defined with
 values are treated as strings by default. However, if the schema contains a C<type>, C<const> or
 C<enum> keyword, the value will
 (attempted to be) coerced into that type before being passed to the JSON Schema evaluator. C<allOf>,
-C<anyOf>, C<oneOf>, C<$ref> and C<$dynamicRef> keywords are also followed in an attempt to infer the
-correct desired type.
+C<anyOf>, C<oneOf>, C<not>, C<$ref> and C<$dynamicRef> keywords are also followed in an attempt to
+infer the correct desired type.
 This process includes inspection of subschemas for object values or array items, for parameter
 values that are deserialized into those types.
 When no type constraint is present, the value will remain as a string; otherwise when multiple types

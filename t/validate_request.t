@@ -542,7 +542,7 @@ paths:
         in: query
         required: false
         schema:
-          not: true
+          const: 123
       - name: gamma
         in: query
         required: false
@@ -695,9 +695,9 @@ YAML
         },
         {
           instanceLocation => '/request/uri/query/beta',
-          keywordLocation => jsonp(qw(/paths /foo post parameters 2 schema not)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post parameters 2 schema not)))->to_string,
-          error => 'subschema is true',
+          keywordLocation => jsonp(qw(/paths /foo post parameters 2 schema const)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post parameters 2 schema const)))->to_string,
+          error => 'value does not match',
         },
       ],
     },
@@ -2181,7 +2181,7 @@ paths:
         in: header
         schema:
           $ref: '#/paths/~1foo/get/parameters/2/schema' # MultipleValuesAsArray
-          not: true
+          type: [ array, string ]
       - name: MultipleValuesAsRawString
         in: header
         schema:
@@ -2196,7 +2196,7 @@ paths:
         schema:
           allOf:
             - $ref: '#/paths/~1foo/get/parameters/2/schema' # MultipleValuesAsArray
-            - not: true
+            - true
       # must be evaluated last, as broken $refs abort all validation
       - name: ArrayWithBrokenRef
         in: header
@@ -2327,12 +2327,6 @@ YAML
           error => 'items at indices 0 and 1 are not unique',
         },
         {
-          instanceLocation => '/request/header/ArrayWithRefAndOtherKeywords',
-          keywordLocation => jsonp(qw(/paths /foo get parameters 6 schema not)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo get parameters 6 schema not)))->to_string,
-          error => 'subschema is true',
-        },
-        {
           instanceLocation => '/request/header/ArrayWithLocalTypeAndRef',
           keywordLocation => jsonp(qw(/paths /foo get parameters 8)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo get parameters 8)))->to_string,
@@ -2346,15 +2340,9 @@ YAML
         },
         {
           instanceLocation => '/request/header/ArrayWithAllOfAndRef',
-          keywordLocation => jsonp(qw(/paths /foo get parameters 9 schema allOf 1 not)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo get parameters 9 schema allOf 1 not)))->to_string,
-          error => 'subschema is true',
-        },
-        {
-          instanceLocation => '/request/header/ArrayWithAllOfAndRef',
           keywordLocation => jsonp(qw(/paths /foo get parameters 9 schema allOf)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo get parameters 9 schema allOf)))->to_string,
-          error => 'subschemas 0, 1 are not valid',
+          error => 'subschema 0 is not valid',
         },
         {
           instanceLocation => '/request/header/ArrayWithBrokenRef',
