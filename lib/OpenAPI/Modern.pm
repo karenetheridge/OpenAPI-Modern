@@ -1279,12 +1279,16 @@ sub _type_in_schema ($self, $schema, $state) {
   return (qw(array object boolean string number), $state->{vocabularies}[0] =~ /::OpenAPI_3_0\z/ ? () : 'null')
     if ref $schema ne 'HASH';
 
+  my $schema_info = $self->evaluator->_fetch_from_uri(my $uri = canonical_uri($state));
+  abort($state, 'EXCEPTION: unable to find resource "%s"', $uri) if not $schema_info;
+
+  if (my $types = ($schema_info->{document}{_type_in_schema}//={})->{$schema_info->{document_path}}) {
+    return @$types;
+  }
+
   # as in __eval_keyword_id...
   my $id_keyword = $state->{specification_version} eq 'draft4' ? 'id' : '$id';
   if (exists $schema->{$id_keyword} and $schema->{$id_keyword} !~ /^#/) {
-    my $schema_info = $self->evaluator->_fetch_from_uri(my $uri = canonical_uri($state));
-    abort({ %$state, keyword => $id_keyword }, 'EXCEPTION: unable to find resource "%s"', $uri)
-      if not $schema_info;
     # these will all be correct when we are at the schema root, or if we are here via a $ref,
     # but not if we are organically passing through this subschema and pass an '$id'.
     $state->{initial_schema_uri} = $schema_info->{canonical_uri};
@@ -1357,7 +1361,10 @@ sub _type_in_schema ($self, $schema, $state) {
     push @types, [ keys %not_types ];
   }
 
-  return intersect_types(@types);
+  my @final_types = intersect_types(@types);
+  $schema_info->{document}{_type_in_schema}{$schema_info->{document_path}} = \@final_types;
+
+  return @final_types;
 }
 
 # given an object, use the subschema for each value to determine the correct value for that value

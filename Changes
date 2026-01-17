@@ -1,6 +1,8 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - type inference calculations are now cached on the document object,
+            for faster runtime performance
 
 0.129     2026-03-01 18:52:33Z
           - support "defaultMapping" in the 3.2.0 discriminator object

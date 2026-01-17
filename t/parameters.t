@@ -14,7 +14,7 @@ use utf8;
 
 use lib 't/lib';
 use Helper;
-use JSON::Schema::Modern::Utilities qw(is_bool get_type is_type);
+use JSON::Schema::Modern::Utilities qw(is_bool get_type is_type jsonp_set);
 use OpenAPI::Modern::Utilities qw(coerce_primitive uri_encode);
 
 my $yamlpp = YAML::PP->new(boolean => 'JSON::PP');
@@ -35,6 +35,31 @@ no warnings 'redefine';
 };
 
 my $keyword_path = '/paths/~1foo/get/parameters/0';
+
+sub _init_test ($data_path, $param_obj_data) {
+  my $state = {
+    initial_schema_uri => $openapi->openapi_uri,
+    traversed_keyword_path => '',
+    keyword_path => $keyword_path,
+    data_path => $data_path,
+    specification_version => 'draft2020-12',
+    vocabularies => OAS_VOCABULARIES,
+    errors => [],
+    depth => 0,
+  };
+
+  # hack, to allow _fetch_from_uri and cache to work: patch schema, content
+  jsonp_set($openapi->openapi_document->schema, $state->{keyword_path}.'/'.$_, $param_obj_data->{$_})
+    foreach keys %$param_obj_data;
+
+  $openapi->openapi_document->{_type_in_schema} //= {};
+  my $path = $state->{keyword_path};
+  my $len = length $path;
+  delete $openapi->openapi_document->{_type_in_schema}{$_}
+    foreach grep substr($_, 0, $len) eq $path, keys $openapi->openapi_document->{_type_in_schema}->%*;
+
+  return $state;
+}
 
 subtest 'path parameters' => sub {
   my @tests = (
@@ -852,16 +877,8 @@ subtest 'path parameters' => sub {
 
       undef $parameter_content;
       my $previous_call_count = $call_count;
-      my $state = {
-        initial_schema_uri => $openapi->openapi_uri,
-        traversed_keyword_path => '',
-        keyword_path => $keyword_path,
-        data_path => '/request/uri/path',
-        specification_version => 'draft2020-12',
-        vocabularies => OAS_VOCABULARIES,
-        errors => [],
-        depth => 0,
-      };
+
+      my $state = _init_test('/request/uri/path', +{ $param_obj->%{qw(schema content)} });
 
       my $valid = $openapi->_validate_path_parameter($state, $param_obj,
         { defined $test->{input} ? ($param_obj->{name} => $test->{input}) : () });
@@ -1027,16 +1044,8 @@ subtest 'query parameters' => sub {
     };
 
     undef $parameter_content;
-    my $state = {
-      initial_schema_uri => $openapi->openapi_uri,
-      traversed_keyword_path => '',
-      keyword_path => $keyword_path,
-      data_path => '/request/uri/query',
-      specification_version => 'draft2020-12',
-      vocabularies => OAS_VOCABULARIES,
-      errors => [],
-      depth => 0,
-    };
+
+    my $state = _init_test('/request/uri/query', +{ $param_obj->%{qw(schema content)} });
 
     my $name = $param_obj->{name};
     ()= $openapi->_validate_query_parameter($state, $param_obj, Mojo::URL->new('https://example.com/blah?'.$test->{queries}));
@@ -1287,16 +1296,8 @@ subtest 'header parameters' => sub {
 
       undef $parameter_content;
       my $previous_call_count = $call_count;
-      my $state = {
-        initial_schema_uri => $openapi->openapi_uri,
-        traversed_keyword_path => '',
-        keyword_path => $keyword_path,
-        data_path => '/response/header',
-        specification_version => 'draft2020-12',
-        vocabularies => OAS_VOCABULARIES,
-        errors => [],
-        depth => 0,
-      };
+
+      my $state = _init_test('/response/header', +{ $param_obj->%{qw(schema content)} });
 
       my $headers = Mojo::Headers->new;
       $headers->add(Encode::encode('UTF-8', $param_obj->{name}, Encode::DIE_ON_ERR | Encode::LEAVE_SRC), $test->{values}->@*)
@@ -1335,6 +1336,11 @@ subtest 'type inference and coercion' => sub {
     openapi_uri => 'http://localhost:1234/api',
     openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
 components:
+  parameters:
+    MyParameter:
+      name: my_parameter
+      in: query
+      schema: {}    # placeholder so fetching schema info will work
   schemas:
     my_type1:
       type: [ object, array ]
@@ -1583,6 +1589,14 @@ YAML
 
     ) {
       my ($expected_types, $schema) = @$test;
+
+      # hack, to allow _fetch_from_uri and cache to work
+      jsonp_set($openapi->openapi_document->schema, $state->{keyword_path}, $schema);
+      $openapi->openapi_document->{_type_in_schema} //= {};
+      my $path = $state->{keyword_path};
+      my $len = length $path;
+      delete $openapi->openapi_document->{_type_in_schema}{$_}
+        foreach grep substr($_, 0, $len) eq $path, keys $openapi->openapi_document->{_type_in_schema}->%*;
 
       my @types = $openapi->_type_in_schema($schema, { %$state });
       cmp_result(
