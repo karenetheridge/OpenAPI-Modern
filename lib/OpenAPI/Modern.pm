@@ -1169,7 +1169,6 @@ sub _type_in_schema ($self, $schema, $state) {
   if (exists $schema->{not}) {
     my %not_types; @not_types{qw(array object boolean string number null)} = ()x6;
 
-    # now splice out all those that are members of @not_types.
     delete $not_types{$_} foreach $self->_type_in_schema($schema->{not},
       { %$state, keyword_path => $state->{keyword_path}.'/not' });
 
@@ -1210,8 +1209,8 @@ sub _coerce_object_elements ($self, $data, $schema, $state) {
     }
   }
 
-  # we do not support anyOf, oneOf here, as the work involved in resolving ambiguities for each
-  # subschema as its own dataset is too great.
+  # we do not support anyOf, oneOf etc here to combine the sets of property constraints, as the work
+  # involved in resolving ambiguities for each subschema as its own dataset is too great.
 
   my $property_coercions = {};
   foreach my $property (sort keys $data->%*) {
@@ -1239,8 +1238,7 @@ sub _coerce_object_elements ($self, $data, $schema, $state) {
   push @object_coercions, $property_coercions;
 
   # combine hashes together by performing an intersection of types for each individual property
-  # consider unevaluatedProperties now  for each property - that doesn't have representation
-  # already.
+  # consider unevaluatedProperties now for each property that doesn't have representation already.
   my %final_object_coercions;
   foreach my $property (sort keys $data->%*) {
     next if ref $data->{$property};
@@ -1293,8 +1291,8 @@ sub _coerce_array_elements ($self, $data, $schema, $state) {
     }
   }
 
-  # we do not support anyOf, oneOf here, as the work involved in resolving ambiguities for each
-  # subschema as its own dataset is too great.
+  # we do not support anyOf, oneOf etc here to combine the sets of property constraints, as the work
+  # involved in resolving ambiguities for each subschema as its own dataset is too great.
 
   my $item_coercions = [];
   foreach my $idx (0..$data->$#*) {
@@ -1322,8 +1320,7 @@ sub _coerce_array_elements ($self, $data, $schema, $state) {
   push @array_coercions, $item_coercions;
 
   # combine arrayrefs together by performing an intersection of types for each individual item
-  # consider unevaluatedItems now for each property - that doesn't have representation
-  # already.
+  # consider unevaluatedItems now for each property that doesn't have representation already.
   my @final_array_coercions;
   foreach my $idx (0..$data->$#*) {
     next if ref $data->[$idx];
