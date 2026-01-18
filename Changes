@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.121     2026-01-18 01:00:15Z
           - type coercion for parameter data is now more
             specification-compliant, using the schema to infer the intended
