@@ -524,7 +524,10 @@ subtest 'header parameters' => sub {
       content => $test->[1],
     } if ref $test eq 'ARRAY';
 
-    subtest 'header '.$test->{name} => sub {
+    subtest 'header '
+        .($test->{header_obj}{content} ? 'encoded with media-type' : 'style=simple')
+        .', '.$test->{name}.': '
+        .(defined $test->{values} ? $::dumper->encode($test->{values}) : '<missing>') => sub {
       my $param_obj = +{
         exists $test->{header_obj}{content} ? () : (schema => { type => 'string' }),
         $test->{header_obj}->%*,
