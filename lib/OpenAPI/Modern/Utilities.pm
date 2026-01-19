@@ -183,16 +183,18 @@ sub coerce_primitive ($dataref, $types = []) {
   return if not defined $$dataref;  # null is an error
   return if ref $$dataref;          # booleans, arrays, objects are errors
 
-  $$dataref = undef, return 1 if $$dataref eq '' and any { $_ eq 'null' } @$types;
+  my $data = $$dataref; # make copy to avoid unwanted mutation of the original
+
+  $$dataref = undef, return 1 if $data eq '' and any { $_ eq 'null' } @$types;
 
   if (any { $_ eq 'boolean' } @$types) {
-    $$dataref = false, return 1 if $$dataref eq '0' or $$dataref eq 'false' or $$dataref eq '';
-    $$dataref = true, return 1 if $$dataref eq '1' or $$dataref eq 'true';
+    $$dataref = false, return 1 if $data eq '0' or $data eq 'false' or $data eq '';
+    $$dataref = true, return 1 if $data eq '1' or $data eq 'true';
   }
 
   $$dataref = 0+$$dataref, return 1 if any { $_ eq 'number' } @$types and looks_like_number($$dataref);
 
-  return 1 if any { $_ eq 'string' } @$types;
+  $$dataref = ''.$$dataref, return 1 if any { $_ eq 'string' } @$types;
 }
 
 {
