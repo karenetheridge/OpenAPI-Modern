@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.122     2026-01-19 01:30:30Z
           - fix bug with number <-> string coercion on older perls
 
