@@ -134,6 +134,8 @@ components:
         - type: string
           format: base64
           example: foo
+        - enum: [ foo ]
+        - enum: [ foo, bar ]
   responses:
     responseA:
       description: ''    # only required up to 3.1
@@ -181,6 +183,8 @@ components:
         - type: string
           contentEncoding: base64
           examples: [ foo ]
+        - const: foo
+        - enum: [ foo, bar ]
   responses:
     responseA:
       description: ''    # only required up to 3.1

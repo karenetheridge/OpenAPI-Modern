@@ -598,6 +598,9 @@ sub upgrade ($self, $to_version = SUPPORTED_OAD_VERSIONS->[-1]) {
           if delete $subschema->{nullable} and exists $subschema->{type};
       }
 
+      $subschema->{const} = (delete $subschema->{enum})->[0]
+        if exists $subschema->{enum} and $subschema->{enum}->@* == 1;
+
       $subschema->{exclusiveMinimum} = delete $subschema->{minimum} if delete $subschema->{exclusiveMinimum};
       $subschema->{exclusiveMaximum} = delete $subschema->{maximum} if delete $subschema->{exclusiveMaximum};
 
