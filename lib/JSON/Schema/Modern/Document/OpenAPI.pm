@@ -588,7 +588,7 @@ sub upgrade ($self, $to_version = SUPPORTED_OAD_VERSIONS->[-1]) {
   return $schema if $from_oas_version eq $to_oas_version;
 
   if ($from_oas_version eq '3.0') {
-    delete $schema->{paths} if not keys $schema->{paths}->%*;
+    delete $schema->{paths} if not keys $schema->{paths}->%* and exists $schema->{components};
 
     foreach my $media_type_path ($self->get_entity_locations('media-type')) {
       my $media_type = (unjsonp($media_type_path))[-1];
