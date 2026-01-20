@@ -19,7 +19,7 @@ no if "$]" >= 5.033001, feature => 'multidimensional';
 no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 no if "$]" >= 5.041009, feature => 'smartmatch';
 no feature 'switch';
-use JSON::Schema::Modern::Utilities 0.625 qw(E canonical_uri jsonp is_equal json_pointer_type assert_keyword_type assert_uri_reference load_cached_document get_type);
+use JSON::Schema::Modern::Utilities 0.625 qw(E canonical_uri jsonp unjsonp is_equal json_pointer_type assert_keyword_type assert_uri_reference load_cached_document get_type);
 use JSON::Schema::Modern::Result 0.630;
 use OpenAPI::Modern::Utilities qw(:constants add_vocab_and_default_schemas);
 use Carp qw(croak carp);
@@ -589,6 +589,21 @@ sub upgrade ($self, $to_version = SUPPORTED_OAD_VERSIONS->[-1]) {
 
   if ($from_oas_version eq '3.0') {
     delete $schema->{paths} if not keys $schema->{paths}->%*;
+
+    foreach my $media_type_path ($self->get_entity_locations('media-type')) {
+      my $media_type = (unjsonp($media_type_path))[-1];
+
+      # convert {"schema": {"type": "string", "format": "binary"}} to {}
+      if ($media_type eq 'application/octet-stream') {
+        my $media_type_obj = $self->get($media_type_path);
+        my $schema = $media_type_obj->{schema};
+        if ($schema and keys %$schema == 2
+            and ($schema->{type}//'') eq 'string' and ($schema->{format}//'') eq 'binary') {
+          delete $media_type_obj->{schema};
+          delete $self->_entities->{$media_type_path.'/schema'};
+        }
+      }
+    }
 
     foreach my $schema_path ($self->get_entity_locations('schema')) {
       my $subschema = $self->get($schema_path);

@@ -141,6 +141,13 @@ components:
       description: ''    # only required up to 3.1
     responseB:
       description: a non-empty description
+  requestBodies:
+    file_upload:
+      content:
+        application/octet-stream:
+          schema:
+            type: string
+            format: binary
 YAML
 
   like(
@@ -190,6 +197,10 @@ components:
       description: ''    # only required up to 3.1
     responseB:
       description: a non-empty description
+  requestBodies:
+    file_upload:
+      content:
+        application/octet-stream: {}
 YAML
     'upgrade to 3.1',
   );
