@@ -16,6 +16,7 @@ use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 use lib 't/lib';
 use Helper;
 use JSON::Schema::Modern::Utilities qw(jsonp get_type);
+use OpenAPI::Modern::Utilities 'uri_encode';
 
 # the absolute uri we will see in errors
 my $doc_uri_rel = Mojo::URL->new('/api.json');
@@ -1078,8 +1079,9 @@ YAML
   $OpenAPI::Modern::DEBUG = 0;
 
   my $uri = uri('http://example.com', 'foo', 'hello // there ಠ_ಠ!');
+  # note: Mojo::Path::parse does not encode "!", but url_escape does
   ok($openapi->find_path_item($options = { @request = (method => 'GET', uri => $uri),
-      path_template => '/foo/{foo_id}', path_captures => { foo_id => 'hello // there ಠ_ಠ!' } }),
+      path_template => '/foo/{foo_id}', path_captures => { foo_id => uri_encode('hello // there ಠ_ಠ!') } }),
     to_str(@request).': lookup succeeded');
   cmp_result(
     $options,
@@ -1087,8 +1089,8 @@ YAML
       uri => isa('Mojo::URL'),
       method => 'GET',
       path_template => '/foo/{foo_id}',
-      path_captures => { foo_id => 'hello // there ಠ_ಠ!' },
-      uri_captures => { foo_id => 'hello // there ಠ_ಠ!' },
+      path_captures => { foo_id => uri_encode('hello // there ಠ_ಠ!') },
+      uri_captures => { foo_id => uri_encode('hello // there ಠ_ಠ!') },
       _path_item => { get => ignore },
       _operation => ignore,
       _operation_path_suffix => '/get',
@@ -2345,8 +2347,8 @@ YAML
       uri => str('http://xn--ti8hlv.example.com/%F0%9F%A6%91%F0%9F%A6%80/xn--n3h/foo/%E0%B2%A0_%E0%B2%A0'),  # post-normalization
       method => 'GET',
       path_template => '/foo/{foo_id}',
-      path_captures => { foo_id => 'ಠ_ಠ' },
-      uri_captures => { host => '💩🍓', subdir => '🦑🦀', subdir2 => 'xn--n3h', foo_id => 'ಠ_ಠ' },
+      path_captures => { foo_id => uri_encode('ಠ_ಠ') },
+      uri_captures => { host => '💩🍓', subdir => '🦑🦀', subdir2 => 'xn--n3h', foo_id => uri_encode('ಠ_ಠ') },
       _path_item => { get => ignore },
       _operation => ignore,
       _operation_path_suffix => '/get',

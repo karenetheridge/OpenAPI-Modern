@@ -651,7 +651,8 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
 
   # extract all capture values from path template variables: ($1 .. $n)
   # perldoc perlvar, @-: $n coincides with "substr $_, $-[n], $+[n] - $-[n]" if "$-[n]" is defined
-  my @path_capture_values = map uri_decode(substr($uri, $-[$_], $+[$_]-$-[$_])), 1 .. $#-;
+  # We do not url-decode here, because we may need to parse the string for style delimiters first
+  my @path_capture_values = map substr($uri, $-[$_], $+[$_]-$-[$_]), 1 .. $#-;
 
   # we set aside $state for potential restoration because we might still encounter issues later on
   # that require us to keep iterating for another URI match
@@ -776,11 +777,9 @@ sub _validate_path_parameter ($self, $state, $param_obj, $path_captures) {
 
   $state->{data_path} = jsonp($state->{data_path}, $param_obj->{name});
 
-  my $data = $path_captures->{$param_obj->{name}};
-  $data .= '';
+  my $data = uri_decode($path_captures->{$param_obj->{name}});
 
-  return $self->_validate_parameter_content({ %$state, depth => $state->{depth}+1 }, $param_obj, \$data)
-    if exists $param_obj->{content};
+  return $self->_validate_parameter_content({ %$state, depth => $state->{depth}+1 }, $param_obj, \$data) if exists $param_obj->{content};
 
   return E({ %$state, keyword => 'style' }, 'only style: simple is supported in path parameters')
     if ($param_obj->{style}//'simple') ne 'simple';
@@ -1756,8 +1755,9 @@ of values can be provided; possible values are:
   (such as the possibility of more than one C<path_template> matching the request URI), providing
   this value will serve to unambiguously state which path-item and operation are intended, and is
   also more efficient as not all path-item entries need to be searched to find a match.
-* C<path_captures>: a hashref mapping placeholders in the path template to their actual values in
-  the request URI; these will be url-unescaped
+* C<path_captures>: a hashref mapping placeholders in the path template to their literal values in
+  the request URI (not percent-decoded; not recommended to be provided for use in path matching due
+  to inconsistencies with url-escaping, and this capability may be removed in the future)
 
 All values are optional, and will be derived from each other as needed (albeit less
 efficiently than if they were provided). All passed-in values MUST be consistent with each other and
@@ -1776,8 +1776,9 @@ In addition, these values are also populated in the options hash (when available
 =begin :list
 
 * C<uri_captures>: a hashref mapping placeholders in the entire uri template (server url plus path
-  template) to their actual values in the request URI; these will be url-unescaped (for values
-  coming from the path) and punycode-decoded (for values coming from the host).
+  template) to their actual values in the request URI; for values coming from the host, these will
+  be puny-decoded; for values coming from the path via a server url these will be url-unescaped, but
+  path values coming from the path template are B<NOT> url-unescaped.
 * C<operation_uri>: a URI indicating the document location of the operation object for the
   request, after following any references (usually something under C</paths/>, but may be in another
   document). Use C<< $openapi->evaluator->get($uri) >> to fetch this content (see
