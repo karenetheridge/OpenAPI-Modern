@@ -29,7 +29,7 @@ use Feature::Compat::Try;
 use Encode 2.89 ();
 use JSON::Schema::Modern;
 use JSON::Schema::Modern::Utilities qw(jsonp unjsonp canonical_uri E abort is_equal true false get_type);
-use OpenAPI::Modern::Utilities qw(add_vocab_and_default_schemas intersect_types coerce_primitive);
+use OpenAPI::Modern::Utilities qw(add_vocab_and_default_schemas uri_decode intersect_types coerce_primitive);
 use JSON::Schema::Modern::Document::OpenAPI;
 use MooX::TypeTiny 0.002002;
 use Types::Standard qw(InstanceOf Bool);
@@ -651,7 +651,7 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
 
   # extract all capture values from path template variables: ($1 .. $n)
   # perldoc perlvar, @-: $n coincides with "substr $_, $-[n], $+[n] - $-[n]" if "$-[n]" is defined
-  my @path_capture_values = map _uri_decode(substr($uri, $-[$_], $+[$_]-$-[$_])), 1 .. $#-;
+  my @path_capture_values = map uri_decode(substr($uri, $-[$_], $+[$_]-$-[$_])), 1 .. $#-;
 
   # we set aside $state for potential restoration because we might still encounter issues later on
   # that require us to keep iterating for another URI match
@@ -724,7 +724,7 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
     my $host_variable_count = ()= ($normalized_server_url->host//'') =~ /\x00/g;
     @server_capture_values = (
       (map +(/^xn--(.+)\z/ ? punycode_decode($1) : $_), @server_capture_values[0 .. $host_variable_count-1]),
-      (map _uri_decode($_), @server_capture_values[$host_variable_count .. $#server_capture_values]));
+      (map uri_decode($_), @server_capture_values[$host_variable_count .. $#server_capture_values]));
 
     # we have a match, so preserve our new $state values created via _resolve_ref
     %$state = %$local_state;
@@ -1450,11 +1450,6 @@ sub _convert_response ($response) {
 
   $res->finish;
   return $res;
-}
-
-# url-percent-decode and UTF-8-decode a string
-sub _uri_decode ($str) {
-  Encode::decode('UTF-8', url_unescape($str), Encode::DIE_ON_ERR);
 }
 
 # callback hook for Sereal::Encoder

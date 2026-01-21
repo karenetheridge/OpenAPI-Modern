@@ -19,6 +19,7 @@ no feature 'switch';
 use File::ShareDir 'dist_dir';
 use List::Util 1.45 'uniqstr';
 use Scalar::Util 'looks_like_number';
+use Mojo::Util qw(url_unescape url_escape);
 use if "$]" < 5.041010, 'List::Util' => 'any';
 use if "$]" >= 5.041010, experimental => 'keyword_any';
 use JSON::Schema::Modern::Utilities 0.625 qw(register_schema load_cached_document true false);
@@ -40,6 +41,9 @@ our @EXPORT = qw(
 our @EXPORT_OK = qw(
   OAS_SCHEMAS
   add_vocab_and_default_schemas
+  uri_decode
+  uri_encode
+  uri_encode_strict
   intersect_types
   coerce_primitive
 );
@@ -163,6 +167,21 @@ sub add_vocab_and_default_schemas ($evaluator, $version = OAS_VERSIONS->[-1]) {
   }
 }
 
+# url-percent-decode and UTF-8-decode a string
+sub uri_decode ($str) {
+  Encode::decode('UTF-8', url_unescape($str), Encode::DIE_ON_ERR);
+}
+
+# UTF-8-encode and url-percent-encode a string (only encoding characters that MUST be encoded)
+sub uri_encode ($str) {
+  url_escape(Encode::encode('UTF-8', $str, Encode::DIE_ON_ERR), '^A-Za-z0-9\-._~!$&\'()*+,;=:@');
+}
+
+# UTF-8-encode and url-percent-encode a string (encoding all of reserved, gen-delims and sub-delims)
+sub uri_encode_strict ($str) {
+  url_escape(Encode::encode('UTF-8', $str, Encode::DIE_ON_ERR));
+}
+
 # find the intersection of all the lists, number and integer as equivalent
 sub intersect_types (@lol) {
   my $count = @lol;
@@ -229,6 +248,9 @@ STRICT_DIALECT
 STRICT_METASCHEMA
 SUPPORTED_OAD_VERSIONS
 add_vocab_and_default_schemas
+uri_decode
+uri_encode
+uri_encode_strict
 intersect_types
 coerce_primitive
 
