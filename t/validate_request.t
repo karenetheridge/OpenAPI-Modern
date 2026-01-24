@@ -482,37 +482,6 @@ YAML
   $openapi = OpenAPI::Modern->new(
     openapi_uri => $doc_uri,
     openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
-paths:
-  /foo:
-    post:
-      parameters:
-      - name: yum
-        in: cookie
-        required: false
-        schema:
-          type: string
-YAML
-
-  is_equal(
-    $openapi->validate_request($request)->TO_JSON,
-    {
-      valid => false,
-      errors => [
-        {
-          instanceLocation => '/request/header/Cookie',
-          keywordLocation => jsonp(qw(/paths /foo post parameters 0)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post parameters 0)))->to_string,
-          error => 'cookie parameters not yet supported',
-        },
-      ],
-    },
-    'cookie parameters are not yet supported',
-  );
-
-
-  $openapi = OpenAPI::Modern->new(
-    openapi_uri => $doc_uri,
-    openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
 components:
   parameters:
     foo-header:
@@ -1254,6 +1223,82 @@ YAML
   );
 
 
+  # see examples in 3.2.0 §4.12.8
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri,
+    openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
+paths:
+  /foo:
+    get: {}
+    parameters:
+      - description: 'A cookie parameter relying on the percent-encoding behavior of the default `style: "form"`'
+        name: greeting
+        in: cookie
+        schema:
+          $comment: this parameter will fetch just the named parameter, as a string, using style=form
+          type: string
+        examples:
+          Greeting:
+            description: |
+              Note that in this approach, RFC6570's percent-encoding
+              process applies, so unsafe characters are not
+              pre-percent-encoded.  This results in all non-URL-safe
+              characters, rather than just the one non-cookie-safe
+              character, getting percent-encoded.
+            dataValue: Hello, world!
+            serializedValue: "greeting=Hello%2C%20world%21"
+YAML
+
+  $request = request('GET', 'http://example.com/foo', [ Cookie => 'greeting=Hello%2C%20world%21' ]);
+  is_equal(
+    $openapi->validate_request($request)->TO_JSON,
+    { valid => true },
+    'cookie parameter is validated',
+  );
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri,
+    openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
+paths:
+  /foo:
+    get: {}
+    parameters:
+      - description: 'A cookie parameter with an exploded object (the default for `style: "cookie"`)'
+        name: cookie
+        in: cookie
+        style: cookie
+        schema:
+          $comment: this parameter will fetch all cookie parameters as an object
+          type: object
+          properties:
+            greeting:
+              type: string
+            code:
+              type: integer
+              minimum: 0
+        examples:
+          Object:
+            description: |
+                Note that the comma (,) has been pre-percent-encoded
+                to "%2C" in the data, as it is forbidden in
+                cookie values.  However, the exclamation point (!)
+                is legal in cookies, so it can be left unencoded.
+                (and fixed, to remove the un-encoded space)
+            dataValue:
+              greeting: Hello%2C%20world!
+              code: 42
+            serializedValue: "greeting=Hello%2C%20world!; code=42"
+YAML
+
+  $request = request('GET', 'http://example.com/foo', [ Cookie => 'greeting=Hello%2C%20world!; code=42' ]);
+  is_equal(
+    $openapi->validate_request($request)->TO_JSON,
+    { valid => true },
+    'cookie parameter is validated',
+  );
+
+
   $openapi = OpenAPI::Modern->new(
     openapi_uri => $doc_uri,
     openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
@@ -1516,6 +1561,33 @@ paths:
         style: deepObject
         schema:
           const: { réd: 100𝑥, grɘɇn: ¡ja, bløö: ¿neîn }
+      - name: cookie−form−string
+        in: cookie
+        required: true
+        schema:
+          type: string
+          const: blue/blåck
+      - name: cookie−form−array−true
+        in: cookie
+        required: true
+        schema:
+          type: array
+          const: [ blue−black, black/ish﹠green, 100𝑥brown ]
+      # style=form, explode=true, type=object not tested here, as it pulls in all cookie values
+      - name: cookie-cookie-string
+        in: cookie
+        style: cookie
+        required: true
+        schema:
+          type: string
+          const: blue/black
+      - name: cookie-cookie-array-true
+        in: cookie
+        style: cookie
+        required: true
+        schema:
+          type: array
+          const: [ blue-black, black/ish&green, 100xbrown ]
 YAML
 
   $request = request('GET', 'http://st💩g.example.com/'.join('/', map uri_encode($_), '🐙',
@@ -1555,13 +1627,27 @@ YAML
       "header-simple-array-true" => "blue\xe2\x88\x92black,blackish\xef\xb9\xa0green,100\xf0\x9d\x91\xa5brown",
       "header-simple-object-false" => "blue\xe2\x88\x92black,yes!,blackish\xef\xb9\xa0green,\xc2\xbfno?,100\xf0\x9d\x91\xa5brown,fl\xc2\xa1p",
       "header-simple-object-true" => "blue\xe2\x88\x92black=yes!,blackish\xef\xb9\xa0green=\xc2\xbfno?,100\xf0\x9d\x91\xa5brown=fl\xc2\xa1p",
+      Cookie => join('; ',
+        (map +(join '=', @$_), pairs(
+          'cookie%E2%88%92form%E2%88%92string', 'blue%2Fbl%C3%A5ck',
+          'cookie-cookie-string' => 'blue/black',
+          'cookie-cookie-array-true' => 'blue-black',
+          'cookie-cookie-array-true' => 'black/ish&green',
+          'cookie-cookie-array-true' => '100xbrown',
+        )),
+        join('&', map +(join '=', @$_), pairs(
+          'cookie%E2%88%92form%E2%88%92array%E2%88%92true', 'blue%E2%88%92black',
+          'cookie%E2%88%92form%E2%88%92array%E2%88%92true', 'black%2Fish%EF%B9%A0green',
+          'cookie%E2%88%92form%E2%88%92array%E2%88%92true', '100%F0%9D%91%A5brown',
+        )),
+      ),
     ],
   );
 
   is_equal(
     $openapi->validate_request($request)->TO_JSON,
     { valid => true },
-    'all path, header and query parameters are validated',
+    'all path, header, query and cookie parameters are deserialized correctly',
   );
 
 
@@ -1584,6 +1670,56 @@ YAML
   $request = request('GET', 'http://example.com?'
     .join('&', map join('=', @$_), pairs map uri_encode($_), qw(réd 100𝑥 grɘɇn ¡ja bløö ¿neîn)));
 
+  is_equal(
+    $openapi->validate_request($request)->TO_JSON,
+    { valid => true },
+    'query parameter with style=form, explode=true is deserialized correctly into an object',
+  );
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri,
+    openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
+paths:
+  /:
+    get: {}
+    parameters:
+      - name: cookie-form-object-true
+        in: cookie
+        required: true
+        explode: true
+        schema:
+          type: object
+          const: { réd: 100𝑥, grɘɇn: ¡ja, bløö: ¿neîn }
+YAML
+
+  $request = request('GET', 'http://example.com', [ Cookie => 'r%C3%A9d=100%F0%9D%91%A5&gr%C9%98%C9%87n=%C2%A1ja&bl%C3%B8%C3%B6=%C2%BFne%C3%AEn' ]);
+  is_equal(
+    $openapi->validate_request($request)->TO_JSON,
+    { valid => true },
+    'single cookie parameter with style=form, explode=true is deserialized correctly into an object',
+  );
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri,
+    openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
+paths:
+  /:
+    get: {}
+    parameters:
+      - name: cookie-cookie-object-true
+        in: cookie
+        style: cookie
+        required: true
+        explode: true
+        schema:
+          type: object
+          const: { red: 100x, green: ja, bloo: nein }
+YAML
+
+  $request = request('GET', 'http://example.com',
+    [ Cookie => join('; ', map +($_->[0].'='.$_->[1]), pairs(qw(red 100x green ja bloo nein))) ]);
   is_equal(
     $openapi->validate_request($request)->TO_JSON,
     { valid => true },
@@ -3162,6 +3298,10 @@ paths:
         in: query
         required: true
         schema: false
+      - name: foo
+        in: cookie
+        required: true
+        schema: false
       - name: bar_id
         in: path
         required: true
@@ -3178,6 +3318,13 @@ paths:
               false
       - name: bar
         in: query
+        required: true
+        content:
+          text/plain:
+            schema:
+              false
+      - name: bar
+        in: cookie
         required: true
         content:
           text/plain:
@@ -3201,7 +3348,7 @@ YAML
 
   is_equal(
     $openapi->validate_request(request('POST', 'http://example.com/foo/1/2?foo=1&bar=2',
-      [ Foo => 1, Bar => 2, 'Content-Type' => 'text/plain' ], 'hi'))->TO_JSON,
+      [ Foo => 1, Bar => 2, Cookie => 'foo=1; bar=2', 'Content-Type' => 'text/plain' ], 'hi'))->TO_JSON,
     {
       valid => false,
       errors => [
@@ -3224,22 +3371,34 @@ YAML
           error => 'query parameter not permitted',
         },
         {
+          instanceLocation => '/request/header/Cookie/foo',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id}/{bar_id} post parameters 3 schema)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id}/{bar_id} post parameters 3 schema)))->to_string,
+          error => 'cookie parameter not permitted',
+        },
+        {
           instanceLocation => '/request/uri/path/bar_id',
-          keywordLocation => jsonp(qw(/paths /foo/{foo_id}/{bar_id} post parameters 3 content text/plain schema)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id}/{bar_id} post parameters 3 content text/plain schema)))->to_string,
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id}/{bar_id} post parameters 4 content text/plain schema)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id}/{bar_id} post parameters 4 content text/plain schema)))->to_string,
           error => 'path parameter not permitted',
         },
         {
           instanceLocation => '/request/header/Bar',
-          keywordLocation => jsonp(qw(/paths /foo/{foo_id}/{bar_id} post parameters 4 content text/plain schema)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id}/{bar_id} post parameters 4 content text/plain schema)))->to_string,
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id}/{bar_id} post parameters 5 content text/plain schema)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id}/{bar_id} post parameters 5 content text/plain schema)))->to_string,
           error => 'request header not permitted',
         },
         {
           instanceLocation => '/request/uri/query/bar',
-          keywordLocation => jsonp(qw(/paths /foo/{foo_id}/{bar_id} post parameters 5 content text/plain schema)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id}/{bar_id} post parameters 5 content text/plain schema)))->to_string,
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id}/{bar_id} post parameters 6 content text/plain schema)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id}/{bar_id} post parameters 6 content text/plain schema)))->to_string,
           error => 'query parameter not permitted',
+        },
+        {
+          instanceLocation => '/request/header/Cookie/bar',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id}/{bar_id} post parameters 7 content text/plain schema)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id}/{bar_id} post parameters 7 content text/plain schema)))->to_string,
+          error => 'cookie parameter not permitted',
         },
         {
           instanceLocation => '/request/body',

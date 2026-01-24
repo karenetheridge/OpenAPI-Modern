@@ -943,6 +943,8 @@ subtest 'path parameters' => sub {
   }
 };
 
+my @query_tests;
+
 subtest 'query parameters' => sub {
   my @tests = (
     # name (test name)
@@ -1002,12 +1004,12 @@ subtest 'query parameters' => sub {
     # style=form
 
     [
-      [ qw(style content queries) ],
-      [ 'form', undef, 'q' ],                  # not reversible
+      [ qw(style content queries skip_cookie) ],
+      [ 'form', undef, 'q', 1 ],               # not reversible
       [ 'form', undef, 'q=' ],                 # not reversible
       [ 'form', 0, 'q=0' ],
       [ 'form', 1, 'q=1' ],
-      [ 'form', false, 'q' ],                  # not reversible
+      [ 'form', false, 'q', 1 ],               # not reversible
       [ 'form', false, 'q=' ],                 # not reversible
       [ 'form', false, 'q=0' ],
       [ 'form', true, 'q=1' ],
@@ -1016,7 +1018,7 @@ subtest 'query parameters' => sub {
       [ 'form', 0, 'q=0' ],
       [ 'form', 1, 'q=1' ],
       [ 'form', -42, 'q=-42' ],
-      [ 'form', '', 'q' ],                     # not reversible
+      [ 'form', '', 'q', 1 ],                  # not reversible
       [ 'form', '', 'q=' ],
       [ 'form', 'red', 'q=red' ],
       [ 'form', '3', 'q=3' ],
@@ -1032,12 +1034,13 @@ subtest 'query parameters' => sub {
     [
       [ qw(style name content queries) ],
       [ 'form', 'cølör', 'blue/blåck', 'c%C3%B8l%C3%B6r=blue%2Fbl%C3%A5ck&a=b&c=d' ],
+      [ 'form', 'cølör', 'blue/blåck', 'c%C3%B8l%C3%B6r=blue%2Fbl%C3%A5ck' ],
     ],
     [
-      [ qw(style explode content queries) ],
+      [ qw(style explode content queries skip_cookie) ],
       [ 'form', false, [], 'q' ],                     # not reversible
       [ 'form', false, [], 'q=' ],
-      [ 'form', true,  [''], 'q' ],                   # not reversible
+      [ 'form', true,  [''], 'q', 1 ],                # not reversible
       [ 'form', true,  [''], 'q=' ],
       [ 'form', false, [ '', '', '' ], 'q=,,' ],
       [ 'form', true,  [ '', '', '' ], 'q=&q=&q=' ],
@@ -1049,9 +1052,9 @@ subtest 'query parameters' => sub {
 
       [ 'form', false, {}, 'q' ],                     # not reversible
       [ 'form', false, {}, 'q=' ],
-      [ 'form', true,  { q => '' }, 'q' ],            # not reversible
+      [ 'form', true,  { q => '' }, 'q', 1 ],         # not reversible
       [ 'form', true,  { q => '' }, 'q=' ],
-      [ 'form', true,  { x => '' }, 'x' ],            # not reversible
+      [ 'form', true,  { x => '' }, 'x', 1 ],         # not reversible
       [ 'form', true,  { x => '' }, 'x=' ],
       [ 'form', false, { R => '', G => '', B => '' }, 'q=R,,G,,B,' ],
       [ 'form', true,  { R => '', G => '', B => '' }, 'R=&G&=&B=' ],
@@ -1118,12 +1121,14 @@ subtest 'query parameters' => sub {
       param_obj => { name => 'color', explode => false, schema => {} },
       queries => 'color=red,green,blue',
       content => 'red,green,blue',
+      skip_cookie => 1,
     },
     {
       name => 'explode=true, any type is permitted, default to string',
       param_obj => { name => 'color', schema => {} },
       queries => 'color=red,green,blue',
       content => 'red,green,blue',
+      skip_cookie => 1,
     },
     {
       name => 'no type is permitted',
@@ -1389,12 +1394,14 @@ subtest 'query parameters' => sub {
           error => 'cannot deserialize to requested type (object)',
         },
       ],
+      skip_cookie => 1,
     },
     {
       name => 'explode=false, bad object, fall through to string',
       param_obj => { name => 'color', explode => false, schema => { type => [ qw(object string) ] } },
       queries => 'color=R,100,G,200,B',
       content => 'R,100,G,200,B',
+      skip_cookie => 1,
     },
     {
       name => 'explode=false, bad object, requested array or object',
@@ -1887,8 +1894,8 @@ subtest 'query parameters' => sub {
     },
   );
 
-  # clone spaceDelimited tests to pipeDelimited
-  @tests = map +(
+  # clone spaceDelimited tests to pipeDelimited; save a copy for cookie testing
+  @query_tests = @tests = map +(
     (($_->{param_obj}{style}//'form') eq 'spaceDelimited' ? ($_, +{
     %$_,
     name => $_->{name} =~ s/spaceDelimited/pipeDelimited/r,
@@ -1908,9 +1915,8 @@ subtest 'query parameters' => sub {
             defined $_->{explode} ? $_->%{explode} : (),
             schema => { type => get_type($_->{content}) },
             defined $_->{allowReserved} ? $_->%{allowReserved} : (),
-
           },
-          $_->%{qw(queries content)},
+          $_->%{qw(queries content skip_cookie)},
         }, arrays_to_hashes($_)->@*
       : $_
   ), @tests;
@@ -2213,6 +2219,431 @@ subtest 'header parameters' => sub {
         if defined $test->{values};
 
       my $valid = $openapi->_validate_header_parameter($state, $param_obj->{name}, $header_obj, $headers);
+      die 'validity inconsistent with error count; got valid=', 0+!!$valid, ', errors are: ',
+        $::encoder->encode($state->{errors}) if $valid xor !$state->{errors}->@*;
+
+      my $todo;
+      $todo = todo $test->{todo} if $test->{todo};
+
+      is_equal(
+        [ map $_->TO_JSON, $state->{errors}->@* ],
+        $test->{errors}//[],
+        ($test->{errors}//[])->@* ? 'the correct error was returned' : 'no errors occurred',
+      );
+
+      if (not exists $test->{content}) {
+        is($call_count, $previous_call_count, 'no content was extracted')
+          or note("extracted content:\n", $::encoder->encode($parameter_content));
+      }
+      else {
+        is($call_count, $previous_call_count+1, 'schema would be evaluated');
+        is_equal(
+          $parameter_content,
+          $test->{content},
+          defined $test->{content} ? 'the correct content was extracted' : 'no content was extracted',
+        );
+      }
+    };
+  }
+};
+
+subtest 'cookie parameters' => sub {
+  my @tests = (
+    # name (test name)
+    # param_obj (from OAD)
+    # cookie => raw Cookie header string
+    # content => expected data to be passed to _evaluate_subschema (omit when evaluation is omitted)
+    # errors => compared to what is collected from $state, defaults to []
+    # todo
+
+    {
+      name => 'missing header but not required',
+      param_obj => { content => { 'application/json' => { schema => { type => 'object' } } } },
+    },
+    {
+      name => 'missing header, required',
+      param_obj => { required => true, content => { 'text/plain' => { schema => {} } } },
+      errors => [
+        {
+          instanceLocation => '/request/header/Cookie',
+          keywordLocation => $keyword_path.'/required',
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path.'/required',
+          error => 'missing header: Cookie',
+        },
+      ],
+    },
+    {
+      name => 'empty header but not required',
+      param_obj => { name => 'q', content => { 'application/json' => {} } },
+      cookie => 'foo=bar; baz=qux',
+    },
+    {
+      name => 'empty header, required',
+      param_obj => { name => 'q', required => true, content => { 'application/json' => {} } },
+      cookie => 'foo=bar; baz=qux',
+      errors => [
+        {
+          instanceLocation => '/request/header/Cookie',
+          keywordLocation => $keyword_path.'/required',
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path.'/required',
+          error => 'missing cookie parameter: q',
+        },
+      ],
+    },
+    {
+      param_obj => { name => 'foo', content => { 'application/json' => { schema => {} } } },
+      cookie => 'foo=1',
+      content => 1, # number, not string!
+    },
+    {
+      name => 'adjacent to styled cookie parameters',
+      param_obj => { name => 'color', content => { 'application/json' => { schema => {} } } },
+      cookie => 'foo=bar; color=1',
+      content => 1,  # numeric value, carefully avoiding comma
+    },
+    {
+      name => 'wide characters in cookie header (name)',
+      param_obj => { name => 'ಠ_ಠ', content => { 'application/json' => { schema => { type => 'string' } } } },
+      cookie => 'ಠ_ಠ=foo',
+      errors => [
+        {
+          instanceLocation => '/request/header/Cookie',
+          keywordLocation => $keyword_path,
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path,
+          error => 'invalid cookie name: "ಠ_ಠ"',
+        },
+      ],
+    },
+    {
+      name => 'wide characters in cookie header (value)',
+      param_obj => { content => { 'application/json' => { schema => { type => 'string' } } } },
+      cookie => 'q=ಠ_ಠ',
+      errors => [
+        {
+          instanceLocation => '/request/header/Cookie',
+          keywordLocation => $keyword_path,
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path,
+          error => 'invalid cookie value: "ಠ_ಠ"',
+        },
+      ],
+    },
+
+    # style=form - copied from query tests
+
+    (map +(
+      !exists $_->{param_obj}{content}
+        && !$_->{param_obj}{allowEmptyValue}
+        && (($_->{param_obj}//{})->{style}//'form') eq 'form'
+      ? do {
+        $_->{cookie} = delete $_->{queries};
+        $_->{errors} = +[ map +{
+          %$_,
+          instanceLocation => $_->{instanceLocation} =~ s{uri/query}{header/Cookie}r,
+          error => $_->{error} =~ s/query/cookie/r,
+        }, $_->{errors}->@* ] if $_->{errors};
+        $_;
+      }
+      : ()
+    ), @query_tests),
+
+    {
+      name => 'missing but not required',
+      param_obj => {},
+      cookie => 'foo=1&bar=2',
+    },
+    {
+      name => 'missing, required',
+      param_obj => { required => true },
+      cookie => 'foo=1&bar=2',
+      errors => [
+        {
+          instanceLocation => '/request/header/Cookie',
+          keywordLocation => $keyword_path.'/required',
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path.'/required',
+          error => 'missing cookie parameter: q',
+        },
+      ],
+    },
+
+    [
+      [ qw(style content cookie) ],
+      [ 'form', '', 'q=' ],
+      [ 'form', 'red', '  q=red  ' ],
+      [ 'form', '"red"', 'q="red"' ],
+      [ 'form', '1', 'q=1&r=2&s=3' ],         # nonsensical if requesting a primitive, but still works
+      [ 'form', '3', 'q=1; q=2; q=3' ],       # we take the last one when primitive is requested
+      [ 'form', '1', 'q=1; r=2&s=3' ],
+      [ 'form', '1', 'q=1; r=2; s=3' ],
+    ],
+    [
+      [ qw(style name content cookie) ],
+      [ 'form', 'cølör', 'blue/blåck', 'c%C3%B8l%C3%B6r=blue%2Fbl%C3%A5ck' ],
+      [ 'form', 'cølör', 'blue/blåck', '%63%C3%B8%6C%C3%B6%72=blue%2Fbl%C3%A5ck' ],
+    ],
+    [
+      [ qw(style explode content cookie) ],
+      [ 'form', true,  [ '1' ], 'q=1' ],
+      [ 'form', true,  [ '1' ], 'a=42; q=1; r=2; x=3' ],
+      [ 'form', true,  [ qw(1 2) ], 'a=42; q=1&q=2; r=2; x=3' ],
+      [ 'form', true,  { a => 'b', c => 'd' }, 'a=b&c=d' ],
+    ],
+
+    {
+      name => 'multiple cookie entries with object',
+      param_obj => { name => 'foo', schema => { type => 'object' } },
+      cookie => 'a=b&c=d; foo=bar; foo=baz',
+      # the content we really want is { a => 'b', c => 'd' }, not foo
+      errors => [
+        {
+          instanceLocation => '/request/header/Cookie/foo',
+          keywordLocation => $keyword_path.'/style',
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path.'/style',
+          error => 'cannot deserialize into an object with style=form, explode=true when multiple cookies are present',
+        },
+      ],
+    },
+
+    # style=cookie
+
+    {
+      name => 'with boolean schema, return empty string as string',
+      param_obj => { name => 'color', schema => true },
+      cookie => 'color=',
+      content => '',
+    },
+    {
+      name => 'with boolean schema, return data as string',
+      param_obj => { name => 'color', schema => true },
+      cookie => 'color=42',
+      content => '42',
+    },
+    [
+      [ qw(style content cookie) ],
+      [ 'cookie', undef, 'q=' ],
+      [ 'cookie', false, 'q=' ],                     # not reversible
+      [ 'cookie', false, 'q=0' ],
+      [ 'cookie', true, 'q=1' ],
+      [ 'cookie', false, 'q=false' ],                # not reversible
+      [ 'cookie', true, 'q=true' ],                  # not reversible
+      [ 'cookie', 0, 'q=0' ],
+      [ 'cookie', 1, 'q=1' ],
+      [ 'cookie', -42, 'q=-42' ],
+      [ 'cookie', '', 'q=' ],
+      [ 'cookie', 'red', 'q=red' ],
+      [ 'cookie', 'red', '  q=red  ' ],              # not reversible
+      [ 'cookie', '3', 'q=3' ],
+      [ 'cookie', '3', 'q=1; q=2; q=3; a=1; b=2' ],  # not reversible
+      [ 'cookie', '1', 'q=1; r=2&s=3' ],
+      [ 'cookie', '1', 'q=1; r=2; s=3' ],
+      [ 'cookie', 'a%2Bb', 'q=a%2Bb' ],
+      [ 'cookie', 'a%26b', 'q=a%26b' ],
+      [ 'cookie', 'a%23b', 'q=a%23b' ],
+      [ 'cookie', 'a%3Fb', 'q=a%3Fb' ],
+      [ 'cookie', '100%25', 'q=100%25' ],
+      [ 'cookie', '100%2525', 'q=100%2525' ],
+      [ 'cookie', 'x%3Dy', 'q=x%3Dy' ],
+    ],
+    [
+      [ qw(style name content cookie) ],
+      [ 'cookie', 'color', 'red-green', "color=red-green" ],
+    ],
+    [
+      [ qw(style explode content cookie) ],
+      [ 'cookie', true,  [''], 'q=' ],
+      [ 'cookie', true,  [ '', '', '' ], 'q=; q=; q=' ],
+      [ 'cookie', true,  [ qw(blue black brown) ], 'q=blue; q=black; q=brown' ],
+      [ 'cookie', true,  { q => '' }, 'q=' ],
+      [ 'cookie', true,  { R => '', G => '', B => '' }, 'R=; G=; B=' ],
+      [ 'cookie', true,  { R => '100', G => '200', B => '' }, 'R=100; G=200; B=' ],
+      [ 'cookie', true,  { qw(R 100 G 200 B 150) }, 'R=100; G=200; B=150' ],
+    ],
+
+    {
+      name => 'missing header but not required',
+      param_obj => { style => 'cookie' },
+    },
+    {
+      name => 'missing header, required',
+      param_obj => { style => 'cookie', required => true },
+      errors => [
+        {
+          instanceLocation => '/request/header/Cookie',
+          keywordLocation => $keyword_path.'/required',
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path.'/required',
+          error => 'missing header: Cookie',
+        },
+      ],
+    },
+    {
+      name => 'missing cookie parameter but not required',
+      param_obj => { style => 'cookie' },
+      cookie => 'foo=bar; baz=qux',
+    },
+    {
+      name => 'missing header, required',
+      param_obj => { style => 'cookie', required => true },
+      errors => [
+        {
+          instanceLocation => '/request/header/Cookie',
+          keywordLocation => $keyword_path.'/required',
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path.'/required',
+          error => 'missing header: Cookie',
+        },
+      ],
+    },
+    {
+      name => 'missing cookie-value',
+      param_obj => { style => 'cookie' },
+      cookie => 'q',
+      errors => [
+        {
+          instanceLocation => '/request/header/Cookie',
+          keywordLocation => $keyword_path.'/style',
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path.'/style',
+          error => 'cookie-string "q" is missing a value',
+        },
+      ],
+    },
+    {
+      name => 'missing cookie-values',
+      param_obj => { style => 'cookie' },
+      cookie => 'q; r',
+      errors => [
+        {
+          instanceLocation => '/request/header/Cookie',
+          keywordLocation => $keyword_path.'/style',
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path.'/style',
+          error => 'cookie-string "q" is missing a value',
+        },
+        {
+          instanceLocation => '/request/header/Cookie',
+          keywordLocation => $keyword_path.'/style',
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path.'/style',
+          error => 'cookie-string "r" is missing a value',
+        },
+      ],
+    },
+    {
+      name => 'with boolean schema, return empty string as string',
+      param_obj => { style => 'cookie', schema => true },
+      cookie => 'q=',
+      content => '',
+    },
+    {
+      name => 'with boolean schema, return data as string',
+      param_obj => { style => 'cookie', schema => true },
+      cookie => 'q=42',
+      content => '42',
+    },
+    (map +(
+      {
+        name => 'parameter name is valid even if not valid as a cookie name',
+        param_obj => { name => 'q=hello', style => $_, schema => { type => 'object' } },
+        cookie => 'q=hello=there',
+        content => { q => 'hello=there' },
+      },
+      {
+        name => 'invalid cookie name, but wrong name is parsed so value is not found',
+        param_obj => { name => 'q=hello', style => $_, schema => { type => 'string' } },
+        cookie => 'q=hello=there',
+        # parsed as name = 'q', value = 'hello=there'
+      },
+      {
+        name => 'invalid cookie name',
+        param_obj => { name => 'foo[bar]', style => $_, schema => { type => 'string' } },
+        cookie => 'foo[bar]=hi',
+        errors => [
+          {
+            instanceLocation => '/request/header/Cookie',
+            keywordLocation => $keyword_path,
+            absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path,
+            error => 'invalid cookie name: "foo[bar]"',
+          },
+        ],
+      },
+      {
+        name => 'invalid cookie values (bad character)',
+        param_obj => { style => $_, schema => { type => 'string' } },
+        cookie => 'foo=bad,value; bar=worse,value',
+        errors => [
+          {
+            instanceLocation => '/request/header/Cookie',
+            keywordLocation => $keyword_path,
+            absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path,
+            error => 'invalid cookie values: "bad,value", "worse,value"',
+          },
+        ],
+      },
+      {
+        name => 'invalid cookie values (mismatched quotes)',
+        param_obj => { style => $_, schema => { type => 'string' } },
+        cookie => 'foo=bad"',
+        errors => [
+          {
+            instanceLocation => '/request/header/Cookie',
+            keywordLocation => $keyword_path,
+            absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path,
+            error => 'invalid cookie value: "bad\""',
+          },
+        ],
+      },
+    ), qw(form cookie)),
+  );
+
+  @tests = map +(
+    ref eq 'ARRAY'
+      ? map +{
+          name => defined $_->{explode} ? 'explode='.($_->{explode}?'true':'false') : '',
+          param_obj => {
+            name => $_->{name}//'q',
+            style => $_->{style},
+            defined $_->{explode} ? $_->%{explode} : (),
+            schema => { type => get_type($_->{content}) },
+          },
+          $_->%{qw(cookie content)},
+        }, arrays_to_hashes($_)->@*
+      : $_
+  ), @tests;
+
+  foreach my $test (@tests) {
+    die 'missing test param "param_obj"' if not exists $test->{param_obj};
+
+    subtest 'cookie '
+        .($test->{param_obj}{content} ? 'encoded with media-type' : 'style='.($test->{param_obj}{style}//'form'))
+        .(length $test->{name} ? ', '.$test->{name} : '').': '
+        .(defined $test->{cookie} ? '"'.$test->{cookie}.'"' : '<missing>')
+        .' -> '.$::dumper->encode($test->{content}) => sub {
+
+      skip_all 'not valid in cookie' if $test->{skip_cookie};
+
+      my $param_obj = +{
+        # default to type=string in the absence of an override
+        exists $test->{param_obj}{content} ? () : (schema => { type => 'string' }),
+        name => 'q',
+        $test->{param_obj}->%*,
+        in => 'cookie',
+      };
+
+      my $type = get_type($test->{content});
+      skip_all "explode=false and $type not compatible with Cookie header"
+        if not ($param_obj->{explode}//true) and ($type eq 'array' or $type eq 'object');
+
+      my $result = $openapi->evaluator->evaluate(
+        $param_obj,
+        OpenAPI::Modern::Utilities::DEFAULT_METASCHEMA()->{'3.2'}.'#/$defs/parameter',
+        { with_defaults => 1 },
+      );
+      fail('parameter object is valid'), note($result), return if not $result->valid;
+
+      undef $parameter_content;
+      my $previous_call_count = $call_count;
+
+      my $state = _init_test('/request/header/Cookie', +{ $param_obj->%{qw(schema content)} });
+
+      my $headers = Mojo::Headers->new;
+      $headers->add('Cookie', $test->{cookie}) if defined $test->{cookie};
+
+      my $valid = $openapi->_validate_cookie_parameter($state, $param_obj, $headers);
       die 'validity inconsistent with error count; got valid=', 0+!!$valid, ', errors are: ',
         $::encoder->encode($state->{errors}) if $valid xor !$state->{errors}->@*;
 
