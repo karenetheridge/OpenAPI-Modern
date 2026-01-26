@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.124     2026-01-26 22:23:44Z
           - BREAKING CHANGE: "path_captures" in find_path_item and
             validate_request is no longer percent-decoded
           - full support for parsing of "path" parameters: simple, matrix and

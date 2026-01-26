@@ -8,7 +8,7 @@ OpenAPI::Modern - Validate HTTP requests and responses against an OpenAPI v3.0, 
 
 =head1 VERSION
 
-version 0.123
+version 0.124
 
 =head1 SYNOPSIS
 
@@ -297,7 +297,7 @@ C<operation_id>: a string corresponding to the L<operationId|https://learn.opena
 
 =item *
 
-C<path_captures>: a hashref mapping placeholders in the path template to their actual values in the request URI; these will be url-unescaped
+C<path_captures>: a hashref mapping placeholders in the path template to their literal values in the request URI (not percent-decoded; not recommended to be provided for use in path matching due to inconsistencies with url-escaping, and this capability may be removed in the future)
 
 =back
 
@@ -319,7 +319,7 @@ In addition, these values are also populated in the options hash (when available
 
 =item *
 
-C<uri_captures>: a hashref mapping placeholders in the entire uri template (server url plus path template) to their actual values in the request URI; these will be url-unescaped (for values coming from the path) and punycode-decoded (for values coming from the host).
+C<uri_captures>: a hashref mapping placeholders in the entire uri template (server url plus path template) to their actual values in the request URI; for values coming from the host, these will be puny-decoded; for values coming from the path via a server url these will be url-unescaped, but path values coming from the path template are B<NOT> url-unescaped.
 
 =item *
 
@@ -494,10 +494,6 @@ Mojolicious messages (see L<Mojo::Message/parse>).
 Only certain permutations of OpenAPI documents are supported at this time:
 
 =over 4
-
-=item *
-
-for path parameters, only C<style: simple> and C<explode: false> is supported
 
 =item *
 
