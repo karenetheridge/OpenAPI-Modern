@@ -1,6 +1,7 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - fix stringification bug on older perls from last release
 
 0.124     2026-01-26 22:23:44Z
           - BREAKING CHANGE: "path_captures" in find_path_item and

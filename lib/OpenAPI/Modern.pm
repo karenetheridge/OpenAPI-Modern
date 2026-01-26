@@ -777,7 +777,7 @@ sub _validate_path_parameter ($self, $state, $param_obj, $path_captures) {
   return E({ %$state, keyword => 'required' }, 'missing path parameter: %s', $param_obj->{name})
     if not exists $path_captures->{$param_obj->{name}};
 
-  my $data = $path_captures->{$param_obj->{name}}.'';
+  my $data = $path_captures->{$param_obj->{name}};
 
   if (exists $param_obj->{content}) {
     $data = uri_decode($data);
