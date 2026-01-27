@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.125     2026-01-27 00:00:08Z
           - fix stringification bug on older perls from last release
 
