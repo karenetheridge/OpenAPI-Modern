@@ -1021,6 +1021,13 @@ subtest 'query parameters' => sub {
       [ 'form', 'red', 'q=red' ],
       [ 'form', '3', 'q=3' ],
       [ 'form', '3', 'q=1&q=2&q=3&a=1&b=2' ],  # not reversible
+      [ 'form', 'a+b', 'q=a%2Bb' ],
+      [ 'form', 'a&b', 'q=a%26b' ],
+      [ 'form', 'a#b', 'q=a%23b' ],
+      [ 'form', 'a?b', 'q=a%3Fb' ],
+      [ 'form', '100%', 'q=100%25' ],
+      [ 'form', '100%25', 'q=100%2525' ],
+      [ 'form', 'x=y', 'q=x%3Dy' ],
     ],
     [
       [ qw(style name content queries) ],
@@ -1035,6 +1042,8 @@ subtest 'query parameters' => sub {
       [ 'form', false, [ '', '', '' ], 'q=,,' ],
       [ 'form', true,  [ '', '', '' ], 'q=&q=&q=' ],
       [ 'form', false, [ 'red' ], 'q=red' ],
+      [ 'form', false, [ '0', '1', '2' ], 'q=0,1,2' ],
+      [ 'form', false, [ '0', '0', '0' ], 'q=0,0,0' ],
       [ 'form', false, [ qw(blue black brown) ], 'q=blue,black,brown' ],
       [ 'form', true,  [ qw(blue black brown) ], 'q=blue&q=black&q=brown' ],
 
@@ -1520,6 +1529,15 @@ subtest 'query parameters' => sub {
       [ 'spaceDelimited', { R => '', G => '', B => '' }, 'q=R%20%20G%20%20B%20' ],
       [ 'spaceDelimited', { R => '100', G => '200', B => '' }, 'q=R%20100%20G%20200%20B%20' ],
       [ 'spaceDelimited', { qw(R 100 G 200 B 150) }, 'q=R%20100%20G%20200%20B%20150' ],
+      [ 'spaceDelimited', [ 'a+b' ], 'q=a%2Bb' ],
+      [ 'spaceDelimited', [ 'a&b' ], 'q=a%26b' ],
+      [ 'spaceDelimited', [ 'a#b' ], 'q=a%23b' ],
+      [ 'spaceDelimited', [ 'a?b' ], 'q=a%3Fb' ],
+      [ 'spaceDelimited', [ '100%' ], 'q=100%25' ],
+      [ 'spaceDelimited', [ '100%25' ], 'q=100%2525' ],
+      [ 'spaceDelimited', [ 'a+b', 'c' ], 'q=a%2Bb%20c' ],
+      [ 'spaceDelimited', [ 'x=y', 'z' ], 'q=x%3Dy%20z' ],
+      [ 'spaceDelimited', [ 'a&b', 'c' ], 'q=a%26b%20c' ],
     ],
     [
       [ qw(style name content queries) ],
@@ -1732,6 +1750,23 @@ subtest 'query parameters' => sub {
       [ qw(style explode content queries) ],
       [ 'deepObject', true, { qw(R 100 G 200 B 150) }, 'q[R]=100&q[G]=200&q[B]=150' ],
       [ 'deepObject', true, { qw(R 100 G 200 B 150) }, 'q%5BR%5D=100&q%5BG%5D=200&q%5BB%5D=150' ],
+      [ 'deepObject', true, { 'x+y' => 'a+b' }, 'q[x%2By]=a%2Bb' ],
+      [ 'deepObject', true, { 'x+y' => 'a+b' }, 'q%5Bx%2By%5D=a%2Bb' ],
+      [ 'deepObject', true, { 'x&y' => 'a&b' }, 'q[x%26y]=a%26b' ],
+      [ 'deepObject', true, { 'x&y' => 'a&b' }, 'q%5Bx%26y%5D=a%26b' ],
+      # '#' must always be escaped, as it marks the end of the query and start of the fragment
+      [ 'deepObject', true, { 'x#y' => 'a#b' }, 'q%5Bx%23y%5D=a%23b' ],
+      [ 'deepObject', true, { 'x?y' => 'a?b' }, 'q[x?y]=a?b' ],
+      [ 'deepObject', true, { 'x?y' => 'a?b' }, 'q%5Bx%3Fy%5D=a%3Fb' ],
+      # ']' cannot be used in a key name, but '[' can
+      [ 'deepObject', true, { 'x[y' => 'a[b]' }, 'q[x%5By]=a[b]' ],
+      [ 'deepObject', true, { 'x[y' => 'a[b]' }, 'q%5Bx%5By%5D=a%5Bb%5D' ],
+      [ 'deepObject', true, { '100%' => '100%' }, 'q[100%25]=100%25' ],
+      [ 'deepObject', true, { '100%' => '100%' }, 'q%5B100%25%5D=100%25' ],
+      [ 'deepObject', true, { '100%25' => '100%25' }, 'q[100%2525]=100%2525' ],
+      [ 'deepObject', true, { name => 'John Doe', email => 'john@example.com' },
+        'q[name]=John%20Doe&q[email]=john%40example.com' ],
+      [ 'deepObject', true, { R => '', G => '200', B => '' }, 'q[R]=&q[G]=200&q[B]=' ],
     ],
 
     {
