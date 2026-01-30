@@ -597,6 +597,7 @@ sub recursive_get ($self, $uri_reference, $entity_type = undef) {
   my $base = $self->openapi_document->canonical_uri;
   my $ref = $uri_reference;
   my ($depth, $schema);
+  my $parent_obj = {};
 
   while ($ref) {
     croak 'maximum evaluation depth exceeded' if $depth++ > $self->evaluator->max_traversal_depth;
@@ -605,17 +606,26 @@ sub recursive_get ($self, $uri_reference, $entity_type = undef) {
     my $schema_info = $self->evaluator->_fetch_from_uri($uri);
 
     croak 'unable to find resource "', $uri, '"' if not $schema_info;
+    my $this_entity = $schema_info->{document}->get_entity_at_location($schema_info->{document_path});
     croak sprintf('bad $ref to %s: not a%s "%s"', $schema_info->{canonical_uri}, ($entity_type =~ /^[aeiou]/ ? 'n' : ''), $entity_type)
-      if $entity_type
-        and $schema_info->{document}->get_entity_at_location($schema_info->{document_path}) ne $entity_type;
+      if $entity_type and $this_entity ne $entity_type;
 
-    $entity_type //= $schema_info->{document}->get_entity_at_location($schema_info->{document_path});
+    $entity_type //= $this_entity;
     $schema = $schema_info->{schema};
     $base = $schema_info->{canonical_uri};
-    $ref = $schema->{'$ref'};
+    if (defined($ref = $schema->{'$ref'}) and not any { $this_entity eq $_ } qw(schema callbacks)) {
+      # OAS reference object or path-item object: copy summary, description
+      $parent_obj->{summary} = $schema->{summary}
+        if (any { $this_entity eq $_ } qw(response example path-item))
+          and exists $schema->{summary} and not exists $parent_obj->{summary};
+      $parent_obj->{description} = $schema->{description}
+        if exists $schema->{description} and not exists $parent_obj->{description};
+    }
   }
 
   $schema = dclone($schema);
+  $schema->{$_} = $parent_obj->{$_} foreach keys %$parent_obj;
+
   return wantarray ? ($schema, $base) : $schema;
 }
 
@@ -1818,7 +1828,7 @@ described below.
 
   my $parameter_data = $openapi->document_get('/paths/~1foo~1{foo_id}~1bar~1%7Bbar_id%7D/post/parameters/0');
 
-Fetches the subschema at the provided JSON pointer from the main OpenAPI document.
+Fetches the portion of the main OpenAPI document located at the provided JSON pointer.
 Proxies to L<JSON::Schema::Modern::Document::OpenAPI/get>.
 This is not recursive (does not follow C<$ref> chains) -- for that, use
 C<< $openapi->recursive_get(Mojo::URL->new->fragment($json_pointer)) >>, see
@@ -1976,17 +1986,13 @@ for validation of the entire reference chain.
 Returns the data in scalar context, or a tuple of the data and the canonical URI of the
 referenced location in list context.
 
-If the provided location is relative, the main openapi document is used for the base URI.
+If the provided location is relative, the main OpenAPI document is used for the base URI.
 If you have a local json pointer you want to resolve, you can turn it into a uri-reference by
 prepending C<#> and url-encoding it, e.g. C<< Mojo::URL->new->fragment($jsonp) >>.
 
   my $param = $openapi->recursive_get('#/components/parameters/Content-Encoding', 'parameter');
   my $operation_schema = $openapi->recursive_get(Mojo::URL->new('https://example.com/api.json')
     ->fragment(jsonp(qw(/paths /foo/{foo_id} get requestBody content application/json schema)));
-
-  # starts with a JSON::Schema::Modern object (TODO)
-  my $schema = $js->recursive_get('https:///openapi_doc.yaml#/components/schemas/my_object')
-  my $schema = $js->recursive_get('https://localhost:1234/my_spec#/$defs/my_object')
 
 =head2 canonical_uri
 

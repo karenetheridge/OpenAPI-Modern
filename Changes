@@ -1,6 +1,8 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - recursive_get() now preserves summary, description fields from the
+            original object when following $refs
 
 0.125     2026-01-27 00:00:08Z
           - fix stringification bug on older perls from last release

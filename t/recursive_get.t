@@ -23,12 +23,12 @@ subtest recursive_get => sub {
     schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
 components:
   parameters:
-    foo: { $ref: '#/components/parameters/bar' }
-    bar: { $ref: '#/components/parameters/foo' }
-    baz: { name: baz, in: query, schema: {} }
+    foo: { $ref: '#/components/parameters/bar', description: foo description }
+    bar: { $ref: '#/components/parameters/foo', description: bar description }
+    baz: { name: baz, in: query, schema: {}, description: baz description }
     blip: { $ref: 'http://far_far_away/api2#/components/schemas/beta/properties/alpha' }
   schemas:
-    foo: { $ref: 'http://localhost:5678/api#/properties/foo' }
+    foo: { $ref: 'http://localhost:5678/api#/properties/foo', description: foo description }
     bar:
       $id: http://localhost:5678/api
       type: object
@@ -43,6 +43,9 @@ paths:
         - $ref: '#/components/parameters/foo'
         - $ref: '#/components/parameters/baz'
         - $ref: '#/components/parameters/blip' # -> parameter -> schema
+  /bar:
+    summary: /bar path summary
+    $ref: 'http://far_far_away/api2#/components/pathItems/my_path'
 YAML
 
   cmp_result([$doc->errors], [], 'no errors during traversal');
@@ -62,6 +65,11 @@ components:
   schemas:
     alpha: { type: integer }
     beta: { properties: { alpha: { type: string } } }
+  pathItems:
+    my_path:
+      summary: my_path summary
+      description: my_path description
+      get: {}
 YAML
 
   cmp_result([$doc2->errors], [], 'no errors during traversal');
@@ -87,7 +95,10 @@ YAML
 
   cmp_result(
     [ $openapi->recursive_get('#/paths/~1foo/post/parameters/2') ],
-    [ { name => 'baz', in => 'query', schema => {} }, str('http://localhost:1234/api#/components/parameters/baz') ],
+    [
+      { name => 'baz', in => 'query', schema => {}, description => 'baz description' },
+      str('http://localhost:1234/api#/components/parameters/baz'),
+    ],
     'successful get through a $ref',
   );
 
@@ -111,14 +122,25 @@ YAML
 
   cmp_result(
     [ $openapi->recursive_get('http://far_far_away/api2#/components/parameters/foo') ],
-    [ { name => 'baz', in => 'query', schema => {} }, str('http://localhost:1234/api#/components/parameters/baz') ],
+    [
+      { name => 'baz', in => 'query', schema => {}, description => 'baz description' },
+      str('http://localhost:1234/api#/components/parameters/baz'),
+    ],
     'successful get through multiple $refs, with a change in document, starting with an absolute uri',
   );
 
   cmp_result(
-    [ $openapi->recursive_get('http://far_far_away/api2#/components/schemas/beta/properties/alpha') ],
-    [ { type => 'string' }, str('http://far_far_away/api2#/components/schemas/beta/properties/alpha') ],
-    'successful get of a schema contained within a schema',
+    [ $openapi->recursive_get('http://localhost:1234/api#/paths/~1bar') ],
+    [
+      {
+        summary => '/bar path summary',
+        # my_path summary overridden by root path-item
+        description => 'my_path description',
+        get => {},
+      },
+      str('http://far_far_away/api2#/components/pathItems/my_path'),
+    ],
+    'fetching an object with overridden summary or description keeps the values from the ref object',
   );
 };
 
