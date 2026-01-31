@@ -95,6 +95,7 @@ subtest 'path parameters' => sub {
     [ 'simple', true,  -42, '-42' ],
     [ 'simple', true,  '', '' ],
     [ 'simple', true,  'red', 'red' ],
+    [ 'simple', true,  'red,green', 'red%2Cgreen' ],
     [ 'simple', true,  " i have spaces  \t ", " i have spaces  \t " ],
     [ 'simple', true,  ' red,  green ', ' red,  green ' ],
     [ 'simple', true,  'red﹠green', uri_encode('red﹠green') ],
@@ -106,6 +107,8 @@ subtest 'path parameters' => sub {
     [ 'simple', true,  [ '', '', '' ], ',,' ],
     [ 'simple', false, [ 'red' ], 'red' ],
     [ 'simple', true,  [ 'red' ], 'red' ],
+    [ 'simple', false, [ 'red,green', 'blue' ], 'red%2Cgreen,blue' ],
+    [ 'simple', true,  [ 'red,green', 'blue' ], 'red%2Cgreen,blue' ],
     [ 'simple', false, [ qw(blue black brown) ], 'blue,black,brown' ],
     [ 'simple', true,  [ qw(blue black brown) ], 'blue,black,brown' ],
     [ 'simple', false, { R => '', G => '', B => '' }, 'R,,G,,B,' ],
@@ -114,6 +117,8 @@ subtest 'path parameters' => sub {
     [ 'simple', true,  { R => '100', G => '200', B => '' }, 'R=100,G=200,B' ],
     [ 'simple', false, { qw(R 100 G 200 B 150) }, 'R,100,G,200,B,150' ],
     [ 'simple', true,  { qw(R 100 G 200 B 150) }, 'R=100,G=200,B=150' ],
+    [ 'simple', false, { 'R,X' => '100', G => '200', 'B,Y' => '150' }, 'R%2CX,100,G,200,B%2CY,150' ],
+    [ 'simple', true,  { 'R,X' => '100', G => '200', 'B=Y' => '150' }, 'R%2CX=100,G=200,B%3DY=150' ],
 
     {
       name => 'any type is permitted, default to string',
@@ -329,6 +334,7 @@ subtest 'path parameters' => sub {
     [ 'matrix', true,  3, ';color=3' ],
     [ 'matrix', true,  '', ';color' ],
     [ 'matrix', true,  'red', ';color=red' ],
+    [ 'matrix', true,  'red;green=blue', ';color=red%3Bgreen%3Dblue' ],
     [ 'matrix', false, [], '' ],
     [ 'matrix', true,  [], '' ],
     [ 'matrix', false, {}, '' ],
@@ -341,12 +347,16 @@ subtest 'path parameters' => sub {
     [ 'matrix', true,  [ '', '', '' ], ';color;color;color' ],
     [ 'matrix', false, [ qw(blue black brown) ], ';color=blue,black,brown' ],
     [ 'matrix', true,  [ qw(blue black brown) ], ';color=blue;color=black;color=brown' ],
+    [ 'matrix', false, [ 'red,green;black', 'blue' ], ';color=red%2Cgreen%3Bblack,blue' ],
+    [ 'matrix', true,  [ 'red,green;black', 'blue' ], ';color=red%2Cgreen%3Bblack;color=blue' ],
     [ 'matrix', false, { R => '', G => '', B => '' }, ';color=R,,G,,B,' ],
     [ 'matrix', true,  { R => '', G => '', B => '' }, ';R;G;B' ],
     [ 'matrix', false, { R => '100', G => '200', B => '' }, ';color=R,100,G,200,B,' ],
     [ 'matrix', true,  { R => '100', G => '200', B => '' }, ';R=100;G=200;B' ],
     [ 'matrix', false, { qw(R 100 G 200 B 150) }, ';color=R,100,G,200,B,150' ],
     [ 'matrix', true,  { qw(R 100 G 200 B 150) }, ';R=100;G=200;B=150' ],
+    [ 'matrix', false, { 'R,X' => '100', G => '200', 'B,Y' => '150' }, ';color=R%2CX,100,G,200,B%2CY,150' ],
+    [ 'matrix', true,  { 'R,X' => '100', G => '200', 'B=Y' => '150' }, ';R%2CX=100;G=200;B%3DY=150' ],
     [ 'matrix', true,  { color => 'brown' }, ';color=blue;color=black;color=brown' ],
 
     {
@@ -615,8 +625,12 @@ subtest 'path parameters' => sub {
     [ 'label', true,  { R => '100', G => '200', B => '' }, '.R=100.G=200.B' ],
     [ 'label', false, [ qw(blue black brown) ], '.blue,black,brown' ],
     [ 'label', true,  [ qw(blue black brown) ], '.blue.black.brown' ],
+    [ 'label', false, [ 'red.green', 'blue' ], '.red%2Egreen,blue' ],
+    [ 'label', true,  [ 'red.green', 'blue' ], '.red%2Egreen.blue' ],
     [ 'label', false, { qw(R 100 G 200 B 150) }, '.R,100,G,200,B,150' ],
     [ 'label', true,  { qw(R 100 G 200 B 150) }, '.R=100.G=200.B=150' ],
+    [ 'label', false, { 'R.X' => '100', G => '200', 'B,Y' => '150' }, '.R%2EX,100,G,200,B%2CY,150' ],
+    [ 'label', true,  { 'R.X' => '100', G => '200', 'B=Y' => '150' }, '.R%2EX=100.G=200.B%3DY=150' ],
 
     {
       name => 'any type is permitted, default to string',
