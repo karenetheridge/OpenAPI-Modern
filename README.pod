@@ -8,7 +8,7 @@ OpenAPI::Modern - Validate HTTP requests and responses against an OpenAPI v3.0, 
 
 =head1 VERSION
 
-version 0.125
+version 0.126
 
 =head1 SYNOPSIS
 
@@ -196,7 +196,7 @@ described below.
 
   my $parameter_data = $openapi->document_get('/paths/~1foo~1{foo_id}~1bar~1%7Bbar_id%7D/post/parameters/0');
 
-Fetches the subschema at the provided JSON pointer from the main OpenAPI document.
+Fetches the portion of the main OpenAPI document located at the provided JSON pointer.
 Proxies to L<JSON::Schema::Modern::Document::OpenAPI/get>.
 This is not recursive (does not follow C<$ref> chains) -- for that, use
 C<< $openapi->recursive_get(Mojo::URL->new->fragment($json_pointer)) >>, see
@@ -362,17 +362,13 @@ for validation of the entire reference chain.
 Returns the data in scalar context, or a tuple of the data and the canonical URI of the
 referenced location in list context.
 
-If the provided location is relative, the main openapi document is used for the base URI.
+If the provided location is relative, the main OpenAPI document is used for the base URI.
 If you have a local json pointer you want to resolve, you can turn it into a uri-reference by
 prepending C<#> and url-encoding it, e.g. C<< Mojo::URL->new->fragment($jsonp) >>.
 
   my $param = $openapi->recursive_get('#/components/parameters/Content-Encoding', 'parameter');
   my $operation_schema = $openapi->recursive_get(Mojo::URL->new('https://example.com/api.json')
     ->fragment(jsonp(qw(/paths /foo/{foo_id} get requestBody content application/json schema)));
-
-  # starts with a JSON::Schema::Modern object (TODO)
-  my $schema = $js->recursive_get('https:///openapi_doc.yaml#/components/schemas/my_object')
-  my $schema = $js->recursive_get('https://localhost:1234/my_spec#/$defs/my_object')
 
 =head2 canonical_uri
 
