@@ -97,11 +97,11 @@ subtest 'path parameters' => sub {
     [ 'simple', true,  undef, '' ],
     [ 'simple', true,  0, '0' ],
     [ 'simple', true,  1, '1' ],
-    [ 'simple', true,  false, '' ],
+    [ 'simple', true,  false, '' ],       # not reversible
     [ 'simple', true,  false, '0' ],
     [ 'simple', true,  true, '1' ],
-    [ 'simple', true,  false, 'false' ],
-    [ 'simple', true,  true, 'true' ],
+    [ 'simple', true,  false, 'false' ],  # not reversible
+    [ 'simple', true,  true, 'true' ],    # not reversible
     [ 'simple', true,  0, '0' ],
     [ 'simple', true,  1, '1' ],
     [ 'simple', true,  3, '3' ],
@@ -109,9 +109,18 @@ subtest 'path parameters' => sub {
     [ 'simple', true,  '', '' ],
     [ 'simple', true,  'red', 'red' ],
     [ 'simple', true,  'red,green', 'red%2Cgreen' ],
+    [ 'simple', true,  'red+green', 'red+green' ],
+    [ 'simple', true,  'red+green', 'red%2Bgreen' ],
+    # ? and # must be escaped as they signal the end of the path section of the URI
+    [ 'simple', true,  'red?green', 'red%3Fgreen' ],
+    [ 'simple', true,  'red#green', 'red%23green' ],
+    [ 'simple', true,  'red?green&blue', 'red%3Fgreen&blue' ],
+    [ 'simple', true,  'red?green&blue', 'red%3Fgreen%26blue' ],
+    [ 'simple', true,  'red?green&blue#black', 'red%3Fgreen&blue%23black' ],
+    [ 'simple', true,  'red%green', 'red%25green' ],
     [ 'simple', true,  " i have spaces  \t ", " i have spaces  \t " ],
     [ 'simple', true,  ' red,  green ', ' red,  green ' ],
-    [ 'simple', true,  'red﹠green', uri_encode('red﹠green') ],
+    [ 'simple', true,  'red﹠green', "red%EF%B9%A0green" ],
     [ 'simple', false, [], '' ],
     [ 'simple', true,  [], '' ],
     [ 'simple', false, {}, '' ],
@@ -120,6 +129,7 @@ subtest 'path parameters' => sub {
     [ 'simple', true,  [ '', '', '' ], ',,' ],
     [ 'simple', false, [ 'red' ], 'red' ],
     [ 'simple', true,  [ 'red' ], 'red' ],
+    # , must be escaped to not be treated as a delimiter
     [ 'simple', false, [ 'red,green', 'blue' ], 'red%2Cgreen,blue' ],
     [ 'simple', true,  [ 'red,green', 'blue' ], 'red%2Cgreen,blue' ],
     [ 'simple', false, [ qw(blue black brown) ], 'blue,black,brown' ],
@@ -179,23 +189,10 @@ subtest 'path parameters' => sub {
       ],
     },
     {
-      name => 'string with spaces',
-      param_obj => { name => 'spaces' },
-      input => " i have spaces  \t ",
-      content => " i have spaces  \t ",
-    },
-    {
       name => 'number or string prefers number',
       param_obj => { name => 'color', schema => { type => [ qw(string number) ] } },
       input => '3',
       content => 3,
-    },
-    {
-      # we do not normalize whitespace in path parameters
-      name => 'comma-separated string',
-      param_obj => { name => 'color' },
-      input => ' red,  green ',
-      content => ' red,  green ',
     },
     {
       name => 'explode=false, array with non-string items',
@@ -352,11 +349,11 @@ subtest 'path parameters' => sub {
     [ 'matrix', true,  undef, '' ],
     [ 'matrix', true,  0, ';color=0' ],
     [ 'matrix', true,  1, ';color=1' ],
-    [ 'matrix', true,  false, ';color' ],
+    [ 'matrix', true,  false, ';color' ],         # not reversible
     [ 'matrix', true,  false, ';color=0' ],
     [ 'matrix', true,  true, ';color=1' ],
-    [ 'matrix', true,  false, ';color=false' ],
-    [ 'matrix', true,  true, ';color=true' ],
+    [ 'matrix', true,  false, ';color=false' ],   # not reversible
+    [ 'matrix', true,  true, ';color=true' ],     # not reversible
     [ 'matrix', true,  3, ';color=3' ],
     [ 'matrix', true,  '', ';color' ],
     [ 'matrix', true,  'red', ';color=red' ],
@@ -365,10 +362,10 @@ subtest 'path parameters' => sub {
     [ 'matrix', true,  [], '' ],
     [ 'matrix', false, {}, '' ],
     [ 'matrix', true,  {}, '' ],
-    [ 'matrix', false, [], ';color' ],  # not reversible
+    [ 'matrix', false, [], ';color' ],    # not reversible
     [ 'matrix', true,  [''], ';color' ],
-    [ 'matrix', false, {}, ';color' ],  # not reversible
-    [ 'matrix', true,  {}, ';' ],        # ""
+    [ 'matrix', false, {}, ';color' ],    # not reversible
+    [ 'matrix', true,  {}, ';' ],         # not reversible
     [ 'matrix', false, [ '', '', '' ], ';color=,,' ],
     [ 'matrix', true,  [ '', '', '' ], ';color;color;color' ],
     [ 'matrix', false, [ qw(blue black brown) ], ';color=blue,black,brown' ],
@@ -433,7 +430,7 @@ subtest 'path parameters' => sub {
     {
       name => 'string with non-ascii name and value',
       param_obj => { name => 'cølör', style => 'matrix' },
-      input => uri_encode(';cølör=red﹠green'), # ; and = are not encoded
+      input => uri_encode(';cølör=red﹠green'),     # ; and = are in the reserved set and not encoded
       content => 'red﹠green',
     },
     {
@@ -640,9 +637,9 @@ subtest 'path parameters' => sub {
     [ 'label', false, {}, '' ],
     [ 'label', true,  {}, '' ],
     [ 'label', false, [], '.' ],    # not reversible
-    [ 'label', true,  [], '.' ],     # ""
-    [ 'label', false, {}, '.' ],    # ""
-    [ 'label', true,  {}, '.' ],     # ""
+    [ 'label', true,  [], '.' ],    # not reversible
+    [ 'label', false, {}, '.' ],    # not reversible
+    [ 'label', true,  {}, '.' ],    # not reversible
     [ 'label', false, [ '', '', '' ], '.,,' ],
     [ 'label', true,  [ '', '', '' ], '...' ],
     [ 'label', false, { R => '', G => '', B => '' }, '.R,,G,,B,' ],

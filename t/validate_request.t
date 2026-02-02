@@ -255,6 +255,12 @@ YAML
     'parameters are decoded using the indicated media type and then validated against the content schema',
   );
 
+  cmp_result(
+    $openapi->validate_request(request('GET', 'http://example.com/foo/%7B%22key%22:1%7D'))->TO_JSON,
+    { valid => true },
+    'path parameter is uri-decoded first before evaluating',
+  );
+
 
   $openapi = OpenAPI::Modern->new(
     openapi_uri => $doc_uri,
@@ -1096,13 +1102,30 @@ paths:
               - 12345678
               - 90099
             serializedValue: "12345678,90099"
+      - name: X-Token
+        in: header
+        description: token to be passed as a header
+        required: true
+        schema:
+          type: array
+          items:
+            type: integer
+            format: int64
+          const: [ 12345678, 90099 ]
+        style: simple
+        examples:
+          Tokens:
+            dataValue:
+              - 12345678
+              - 90099
+            serializedValue: "12345678,90099"
 YAML
 
-  $request = request('GET', 'http://example.com/foo/12345678,90099');
+  $request = request('GET', 'http://example.com/foo/12345678,90099', [ 'X-Token' => '12345678,90099' ]);
   cmp_result(
     $openapi->validate_request($request)->TO_JSON,
     { valid => true },
-    'all path parameters are validated',
+    'all path and header parameters are validated',
   );
 
 
@@ -2838,7 +2861,7 @@ subtest $::TYPE.': custom error messages for false schemas' => sub {
     openapi_uri => $doc_uri,
     openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
 paths:
-  /foo/{foo_id}:
+  /foo/{foo_id}/{bar_id}:
     post:
       parameters:
       - name: foo_id
@@ -2847,10 +2870,33 @@ paths:
         schema: false
       - name: Foo
         in: header
+        required: true
         schema: false
       - name: foo
         in: query
+        required: true
         schema: false
+      - name: bar_id
+        in: path
+        required: true
+        content:
+          text/plain:
+            schema:
+              false
+      - name: Bar
+        in: header
+        required: true
+        content:
+          text/plain:
+            schema:
+              false
+      - name: bar
+        in: query
+        required: true
+        content:
+          text/plain:
+            schema:
+              false
       requestBody:
         content:
           '*/*':
@@ -2858,8 +2904,9 @@ paths:
   /bar:
     post:
       parameters:
-      - name: foo
+      - name: bar
         in: querystring
+        required: true
         content:
           text/plain:
             schema:
@@ -2867,34 +2914,51 @@ paths:
 YAML
 
   cmp_result(
-    $openapi->validate_request(request('POST', 'http://example.com/foo/1?foo=1',
-          [ Foo => 1, 'Content-Type' => 'text/plain' ], 'hi'))->TO_JSON,
+    $openapi->validate_request(request('POST', 'http://example.com/foo/1/2?foo=1&bar=2',
+      [ Foo => 1, Bar => 2, 'Content-Type' => 'text/plain' ], 'hi'))->TO_JSON,
     {
       valid => false,
       errors => [
-        # this is paradoxical, but we'll test it anyway
         {
           instanceLocation => '/request/uri/path/foo_id',
-          keywordLocation => jsonp(qw(/paths /foo/{foo_id} post parameters 0 schema)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} post parameters 0 schema)))->to_string,
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id}/{bar_id} post parameters 0 schema)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id}/{bar_id} post parameters 0 schema)))->to_string,
           error => 'path parameter not permitted',
         },
         {
           instanceLocation => '/request/header/Foo',
-          keywordLocation => jsonp(qw(/paths /foo/{foo_id} post parameters 1 schema)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} post parameters 1 schema)))->to_string,
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id}/{bar_id} post parameters 1 schema)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id}/{bar_id} post parameters 1 schema)))->to_string,
           error => 'request header not permitted',
         },
         {
           instanceLocation => '/request/uri/query/foo',
-          keywordLocation => jsonp(qw(/paths /foo/{foo_id} post parameters 2 schema)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} post parameters 2 schema)))->to_string,
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id}/{bar_id} post parameters 2 schema)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id}/{bar_id} post parameters 2 schema)))->to_string,
+          error => 'query parameter not permitted',
+        },
+        {
+          instanceLocation => '/request/uri/path/bar_id',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id}/{bar_id} post parameters 3 content text/plain schema)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id}/{bar_id} post parameters 3 content text/plain schema)))->to_string,
+          error => 'path parameter not permitted',
+        },
+        {
+          instanceLocation => '/request/header/Bar',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id}/{bar_id} post parameters 4 content text/plain schema)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id}/{bar_id} post parameters 4 content text/plain schema)))->to_string,
+          error => 'request header not permitted',
+        },
+        {
+          instanceLocation => '/request/uri/query/bar',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id}/{bar_id} post parameters 5 content text/plain schema)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id}/{bar_id} post parameters 5 content text/plain schema)))->to_string,
           error => 'query parameter not permitted',
         },
         {
           instanceLocation => '/request/body',
-          keywordLocation => jsonp(qw(/paths /foo/{foo_id} post requestBody content */* schema)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} post requestBody content */* schema)))->to_string,
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id}/{bar_id} post requestBody content */* schema)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id}/{bar_id} post requestBody content */* schema)))->to_string,
           error => 'request body not permitted',
         },
       ],
@@ -2903,7 +2967,7 @@ YAML
   );
 
   cmp_result(
-    $openapi->validate_request(request('POST', 'http://example.com/bar?foo=1'))->TO_JSON,
+    $openapi->validate_request(request('POST', 'http://example.com/bar?bar=1'))->TO_JSON,
     {
       valid => false,
       errors => [
