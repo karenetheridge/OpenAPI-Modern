@@ -1075,6 +1075,23 @@ subtest 'header parameters' => sub {
       values => [ '3' ],
       content => 3, # number, not string!
     },
+    {
+      header_obj => { name => 'Cølör', content => { 'application/json' => { schema => { type => 'string' } } } },
+      values => [ "\"red\xef\xb9\xa0green\"" ],
+      content => 'red﹠green',
+    },
+    {
+      header_obj => { name => 'Cølör', content => { 'application/json' => { schema => { type => 'string' } } } },
+      values => [ 'ಠ_ಠ' ],
+      errors => [
+        {
+          instanceLocation => '/response/header/Cølör',
+          keywordLocation => $keyword_path,
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path,
+          error => 'wide character detected in header value: not deserializable',
+        },
+      ],
+    },
 
     # style=simple
 
@@ -1086,15 +1103,27 @@ subtest 'header parameters' => sub {
     [ false, '', [''] ],
     [ false, 'i have spaces', [" i have spaces  \t "] ],
     [ false, 'foo', ['foo'] ],
-    [ false, ['foo'], ['foo'] ],  # a single header is passed as an array iff when array is requested
     [ false, 'foo,bar', [' foo ', ' bar '] ],
     [ false, 'foo,  bar', [' foo,  bar '] ],      # internal comma-separated values are not altered
+    [ false, 'red﹠green', [ "red\xef\xb9\xa0green" ] ],
+    [ false, ['foo'], ['foo'] ],  # a single header is passed as an array iff when array is requested
+    [ true,  ['foo'], ['foo'] ],
     [ false, ['foo', 'bar'], [' foo,  bar '] ],   # split individual values on comma when type=array
+    [ true,  ['foo', 'bar'], [' foo,  bar '] ],
     [ false, ['foo', 'bar', 'baz'], [' foo,  bar ', ' baz '] ],
+    [ true,  ['foo', 'bar', 'baz'], [' foo,  bar ', ' baz '] ],
+    [ false, [ 'blue−black', 'blackish﹠green', '100𝑥brown' ],
+      [ "blue\xe2\x88\x92black,blackish\xef\xb9\xa0green,100\xf0\x9d\x91\xa5brown" ] ],
+    [ true,  [ 'blue−black', 'blackish﹠green', '100𝑥brown' ],
+      [ "blue\xe2\x88\x92black,blackish\xef\xb9\xa0green,100\xf0\x9d\x91\xa5brown" ] ],
     [ false, { qw(R 100 G 200 B 150) }, [' R, 100 ', ' G, 200,  B , 150 '] ],
     [ true,  { qw(R 100 G 200 B 150) }, [' R=100  , G=200 ', '  B=150 '] ],
     [ false, { foo => 'bar', baz => '' }, [ 'foo, bar, baz' ] ],
     [ true,  { foo => 'bar', baz => '' }, [ 'foo=bar, baz=' ] ],
+    [ false, { 'blue−black', 'yes!', 'blackish﹠green', '¿no?', '100𝑥brown', 'fl¡p' },
+      [ "blue\xe2\x88\x92black,yes!,blackish\xef\xb9\xa0green,\xc2\xbfno?,100\xf0\x9d\x91\xa5brown,fl\xc2\xa1p" ] ],
+    [ true,  { 'blue−black', 'yes!', 'blackish﹠green', '¿no?', '100𝑥brown', 'fl¡p' },
+      [ "blue\xe2\x88\x92black=yes!,blackish\xef\xb9\xa0green=\xc2\xbfno?,100\xf0\x9d\x91\xa5brown=fl\xc2\xa1p" ] ],
 
     {
       header_obj => { name => 'Missing', required => true },
@@ -1105,6 +1134,30 @@ subtest 'header parameters' => sub {
           keywordLocation => $keyword_path.'/required',
           absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path.'/required',
           error => 'missing header: Missing',
+        },
+      ],
+    },
+    {
+      header_obj => { name => 'Mîssiñg', required => true },
+      values => undef,
+      errors => [
+        {
+          instanceLocation => '/response/header',
+          keywordLocation => $keyword_path.'/required',
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path.'/required',
+          error => 'missing header: Mîssiñg',
+        },
+      ],
+    },
+    {
+      header_obj => { name => 'Cølör' },
+      values => [ 'ಠ_ಠ' ],
+      errors => [
+        {
+          instanceLocation => '/response/header/Cølör',
+          keywordLocation => $keyword_path,
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path,
+          error => 'wide character detected in header value: not deserializable',
         },
       ],
     },
@@ -1125,6 +1178,11 @@ subtest 'header parameters' => sub {
       header_obj => { explode => true, schema => { type => 'object', additionalProperties => { type => 'number' } } },
       values => [ 'R=100,G=200,B=150' ],
       content => { R => 100, G => 200, B => 150 },
+    },
+    {
+      header_obj => { name => 'Cølör' },
+      values => [ "red\xef\xb9\xa0green" ],
+      content => 'red﹠green',
     },
   );
 
@@ -1184,7 +1242,8 @@ subtest 'header parameters' => sub {
       };
 
       my $headers = Mojo::Headers->new;
-      $headers->add($param_obj->{name}, $test->{values}->@*) if defined $test->{values};
+      $headers->add(Encode::encode('UTF-8', $param_obj->{name}, Encode::DIE_ON_ERR | Encode::LEAVE_SRC), $test->{values}->@*)
+        if defined $test->{values};
 
       my $valid = $openapi->_validate_header_parameter($state, $param_obj->{name}, $header_obj, $headers);
       die 'validity inconsistent with error count' if $valid xor !$state->{errors}->@*;

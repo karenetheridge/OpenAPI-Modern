@@ -865,7 +865,10 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
 
   return 1 if grep fc $header_name eq fc $_, qw(Accept Content-Type Authorization);
 
-  if (not $headers->every_header($header_name)->@*) {
+  # header names and values must be utf8-encoded for transmission
+  my $encoded_header_name = Encode::encode('UTF-8', $header_name, Encode::DIE_ON_ERR | Encode::LEAVE_SRC);
+
+  if (not $headers->every_header($encoded_header_name)->@*) {
     return E({ %$state, keyword => 'required' }, 'missing header: %s', $header_name)
       if $header_obj->{required};
     return 1;
@@ -873,8 +876,12 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
 
   $state->{data_path} = jsonp($state->{data_path}, $header_name);
 
+  return E($state, 'wide character detected in header value: not deserializable')
+    if any { /[^\x00-\xFF]/ } $headers->every_header($encoded_header_name)->@*;
+
   # validate as a single comma-concatenated string, presumably to be decoded
-  return $self->_validate_parameter_content({ %$state, depth => $state->{depth}+1 }, $header_obj, \ $headers->header($header_name))
+  return $self->_validate_parameter_content({ %$state, depth => $state->{depth}+1 },
+      $header_obj, \ $headers->header($encoded_header_name))
     if exists $header_obj->{content};
 
   my @types = $self->_type_in_schema($header_obj->{schema}, { %$state, keyword_path => $state->{keyword_path}.'/schema' });
@@ -890,11 +897,18 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
   # by a comma (",") and optional whitespace (OWS, defined in Section 5.6.3). For consistency, use
   # comma SP."
 
-  my @values = map s/^\s*//r =~ s/\s*\z//r, $headers->every_header($header_name)->@*;
+  # headers must be UTF-8-encoded, so we decode here first before parsing the string
+  # (style delimiters are all ascii so are unaffected)
+
+  my @values = map s/^\s*//r =~ s/\s*\z//r,
+    map Encode::decode('UTF-8', $_, Encode::DIE_ON_ERR | Encode::LEAVE_SRC),
+    $headers->every_header($encoded_header_name)->@*;
+
   my $data;
 
   if (@types != 6 and any { $_ eq 'array' || $_ eq 'object' } @types) {
     @values = map +(s/^\s*//r =~ s/\s*\z//r), map +(split /,/), @values;
+
     if (any { $_ eq 'object' } @types) {
       if ($header_obj->{explode}//false) {
         # style=simple, explode=true: "R=100,G=200,B=150" -> { "R": 100, "G": 200, "B": 150 }

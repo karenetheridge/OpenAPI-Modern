@@ -1,6 +1,8 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - header parameters now support Unicode header names and
+            utf8-encoded values
 
 0.127     2026-02-09 19:01:59Z
           - fix bad parsing of server object in link object

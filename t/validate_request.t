@@ -1042,6 +1042,7 @@ YAML
     openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
 paths:
   /foo/{username}:
+    get: {}
     parameters:
       - name: username
         in: path
@@ -1060,7 +1061,6 @@ paths:
           Al-Khwarizmi:
             dataValue: "الخوارزميّ"
             serializedValue: "%D8%A7%D9%84%D8%AE%D9%88%D8%A7%D8%B1%D8%B2%D9%85%D9%8A%D9%91"
-    get: {}
 YAML
 
   foreach my $username (qw(diṅnāga الخوارزميّ)) {
@@ -1068,7 +1068,7 @@ YAML
     cmp_result(
       $openapi->validate_request($request)->TO_JSON,
       { valid => true },
-      'all path parameters are deserialized correctly',
+      'all path parameters are validated',
     );
   }
 
@@ -1102,7 +1102,7 @@ YAML
   cmp_result(
     $openapi->validate_request($request)->TO_JSON,
     { valid => true },
-    'all path parameters are deserialized correctly',
+    'all path parameters are validated',
   );
 
 
@@ -1225,6 +1225,37 @@ paths:
         schema:
           type: object
           const: { blue−black: yes!, blackish﹠green: ¿no?, 100𝑥brown: fl¡p }
+      - name: header−simple−string
+        in: header
+        required: true
+        schema:
+          const: red﹠green
+      - name: header−simple−array−false
+        in: header
+        required: true
+        schema:
+          type: array
+          const: [ blue−black, blackish﹠green, 100𝑥brown ]
+      - name: header−simple−array−true
+        in: header
+        required: true
+        explode: true
+        schema:
+          type: array
+          const: [ blue−black, blackish﹠green, 100𝑥brown ]
+      - name: header−simple−object−false
+        in: header
+        required: true
+        schema:
+          type: object
+          const: { blue−black: yes!, blackish﹠green: ¿no?, 100𝑥brown: fl¡p }
+      - name: header−simple−object−true
+        in: header
+        required: true
+        explode: true
+        schema:
+          type: object
+          const: { blue−black: yes!, blackish﹠green: ¿no?, 100𝑥brown: fl¡p }
 YAML
 
   $request = request('GET', 'http://st💩g.example.com/'.join('/', map uri_encode($_), '🐙',
@@ -1242,12 +1273,20 @@ YAML
     '.blue−black.blackish﹠green.100𝑥brown',
     '.blue−black,yes!,blackish﹠green,¿no?,100𝑥brown,fl¡p',
     '.blue−black=yes!.blackish﹠green=¿no?.100𝑥brown=fl¡p',
-  ));
+  ),
+    [
+      "header\xe2\x88\x92simple\xe2\x88\x92string" => "red\xef\xb9\xa0green",
+      "header\xe2\x88\x92simple\xe2\x88\x92array\xe2\x88\x92false" => "blue\xe2\x88\x92black,blackish\xef\xb9\xa0green,100\xf0\x9d\x91\xa5brown",
+      "header\xe2\x88\x92simple\xe2\x88\x92array\xe2\x88\x92true" => "blue\xe2\x88\x92black,blackish\xef\xb9\xa0green,100\xf0\x9d\x91\xa5brown",
+      "header\xe2\x88\x92simple\xe2\x88\x92object\xe2\x88\x92false" => "blue\xe2\x88\x92black,yes!,blackish\xef\xb9\xa0green,\xc2\xbfno?,100\xf0\x9d\x91\xa5brown,fl\xc2\xa1p",
+      "header\xe2\x88\x92simple\xe2\x88\x92object\xe2\x88\x92true" => "blue\xe2\x88\x92black=yes!,blackish\xef\xb9\xa0green=\xc2\xbfno?,100\xf0\x9d\x91\xa5brown=fl\xc2\xa1p",
+    ],
+  );
 
   cmp_result(
     $openapi->validate_request($request)->TO_JSON,
     { valid => true },
-    'all path parameters are deserialized correctly',
+    'all path and header parameters are validated',
   );
 
 
@@ -1803,6 +1842,7 @@ paths:
             schema:
               minLength: 10
 YAML
+
   $request = request('POST', 'http://example.com/foo', [ 'Content-Type' => 'unsupported/unsupported' ], '!!!');
   cmp_result(
     $openapi->validate_request($request)->TO_JSON,
