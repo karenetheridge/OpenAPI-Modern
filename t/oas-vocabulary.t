@@ -35,12 +35,9 @@ foreach my $oas_version (map $_->basename, path('t/oas-vocabulary')->list({dir=>
   $accepter->acceptance(
     validate_data => sub ($schema, $instance_data) {
       my $result = $js->evaluate($instance_data, $schema);
+      note 'result: ', $::encoder->encode($result);
 
-      my $encoder = JSON::Schema::Modern::_JSON_BACKEND()->new->allow_nonref(1)->utf8(0)->convert_blessed(1)->canonical(1)->pretty(1);
-      $encoder->indent_length(2) if $encoder->can('indent_length');
-      note 'result: ', $encoder->encode($result);
-
-      warn('evaluation generated an exception: '.$encoder->encode($_))
+      warn('evaluation generated an exception: '.$::encoder->encode($_))
         foreach
           grep +($_->{error} =~ /^EXCEPTION/),
             ($result->TO_JSON->{errors}//[])->@*;
