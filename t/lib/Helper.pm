@@ -286,6 +286,7 @@ our $encoder = JSON::Schema::Modern::_JSON_BACKEND()->new
   ->convert_blessed(1)
   ->canonical(1)
   ->pretty(1)
+  ->space_before(0)
   ->indent_length(2);
 
 our $dumper = JSON::Schema::Modern::_JSON_BACKEND()->new
