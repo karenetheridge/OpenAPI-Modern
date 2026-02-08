@@ -810,7 +810,7 @@ subtest 'path parameters' => sub {
 
   foreach my $test (@tests) {
     $test = +{
-      name => 'explode='.($test->[1]?'true':'false').': '.$::dumper->encode($test->[2]),
+      name => 'explode='.($test->[1]?'true':'false'),
       param_obj => {
         name => 'color',
         style => $test->[0],
@@ -824,7 +824,9 @@ subtest 'path parameters' => sub {
     subtest 'path '
         .($test->{param_obj}{content} ? 'encoded with media-type' : 'style='.($test->{param_obj}{style}//'simple'))
         .', '.$test->{name}.': '
-        .(defined $test->{input} ? '"'.$test->{input}.'"' : '<missing>') => sub {
+        .(defined $test->{input} ? '"'.$test->{input}.'"' : '<missing>')
+        .' -> '.$::dumper->encode($test->{content}) => sub {
+
       my $param_obj = +{
         # default to type=string in the absence of an override
         exists $test->{param_obj}{content} ? () : (schema => { type => 'string' }),
@@ -853,11 +855,18 @@ subtest 'path parameters' => sub {
       };
 
       my $valid = $openapi->_validate_path_parameter($state, $param_obj,
-        { defined $test->{input} ? ($param_obj->{name} => $test->{input}) : () });
+        { defined $test->{input}
+          ? ($param_obj->{name} => substr(Mojo::URL->new('http://example.com/'.$test->{input})->path, 1)) : () });
       die 'validity inconsistent with error count' if $valid xor !$state->{errors}->@*;
 
       my $todo;
       $todo = todo $test->{todo} if $test->{todo};
+
+      cmp_result(
+        [ map $_->TO_JSON, $state->{errors}->@* ],
+        $test->{errors}//[],
+        'path '.$test->{name}.': '.(($test->{errors}//[])->@* ? 'the correct error was returned' : 'no errors occurred'),
+      );
 
       if (not exists $test->{content}) {
         is($call_count, $previous_call_count, 'no content was extracted')
@@ -871,12 +880,6 @@ subtest 'path parameters' => sub {
           'path '.$test->{name}.': '.(defined $test->{content} ? 'the correct content was extracted' : 'no content was extracted'),
         );
       }
-
-      cmp_result(
-        [ map $_->TO_JSON, $state->{errors}->@* ],
-        $test->{errors}//[],
-        'path '.$test->{name}.': '.(($test->{errors}//[])->@* ? 'the correct error was returned' : 'no errors occurred'),
-      );
     };
   }
 };
@@ -1048,29 +1051,26 @@ subtest 'query parameters' => sub {
 
 subtest 'header parameters' => sub {
   my @tests = (
-    # name (header name, and test name)
+    # name (test name)
     # header_obj (from OAD)
     # raw header values (as an arrayref; one item per header line)
     # content => expected data to be passed to _evaluate_subschema
     # errors => compared to what is collected from $state, defaults to []
     # todo
     {
-      name => 'Accept',
-      header_obj => {},
+      header_obj => { name => 'Accept' },
       values => [ 'application/json' ],
     },
     {
-      name => 'Content-Type',
-      header_obj => {},
+      header_obj => { name => 'Content-Type' },
       values => [ 'application/json' ],
     },
     {
-      name => 'Authorization',
-      header_obj => {},
+      header_obj => { name => 'Authorization' },
       values => [ 'Basic whargarbl' ],
     },
     {
-      name => 'Encoded-Number',
+      name => 'encoded number',
       header_obj => { content => { 'application/json' => { schema => { type => 'integer' } } } },
       values => [ '3' ],
       content => 3, # number, not string!
@@ -1097,8 +1097,7 @@ subtest 'header parameters' => sub {
     [ true,  { foo => 'bar', baz => '' }, [ 'foo=bar, baz=' ] ],
 
     {
-      name => 'Missing',
-      header_obj => { required => true },
+      header_obj => { name => 'Missing', required => true },
       values => undef,
       errors => [
         {
@@ -1110,19 +1109,19 @@ subtest 'header parameters' => sub {
       ],
     },
     {
-      name => 'Array-with-numeric-values',
+      name => 'array with numeric values',
       header_obj => { schema => { type => 'array', items => { type => 'number' } } },
       values => [ 'R,100,G,200,B,150' ],
       content => [ R => 100, G => 200, B => 150 ],
     },
     {
-      name => 'Object-with-numeric-values-explode-false',
+      name => 'object with numeric values, explode false',
       header_obj => { schema => { type => 'object', additionalProperties => { type => 'number' } } },
       values => [ 'R,100,G,200,B,150' ],
       content => { R => 100, G => 200, B => 150 },
     },
     {
-      name => 'Object-with-numeric-values-explode-true',
+      name => 'Object with numeric values, explode true',
       header_obj => { explode => true, schema => { type => 'object', additionalProperties => { type => 'number' } } },
       values => [ 'R=100,G=200,B=150' ],
       content => { R => 100, G => 200, B => 150 },
@@ -1131,7 +1130,7 @@ subtest 'header parameters' => sub {
 
   foreach my $test (@tests) {
     $test = +{
-      name => "style=simple, explode=".($test->[0]?'true':'false').': '.$::dumper->encode($test->[1]),
+      name => "style=simple, explode=".($test->[0]?'true':'false'),
       header_obj => {
         style => 'simple',
         explode => $test->[0],
@@ -1143,12 +1142,16 @@ subtest 'header parameters' => sub {
 
     subtest 'header '
         .($test->{header_obj}{content} ? 'encoded with media-type' : 'style=simple')
-        .', '.$test->{name}.': '
-        .(defined $test->{values} ? $::dumper->encode($test->{values}) : '<missing>') => sub {
+        .(length $test->{name} ? ', '.$test->{name}.': '
+          : length $test->{header_obj}{name} ? ', '.$test->{header_obj}{name}.': '
+          : ' ')
+        .(defined $test->{values} ? $::dumper->encode($test->{values}) : '<missing>')
+        .' -> '.$::dumper->encode($test->{content}) => sub {
+
       my $param_obj = +{
+        name => 'My-Header',
         exists $test->{header_obj}{content} ? () : (schema => { type => 'string' }),
         $test->{header_obj}->%*,
-        name => 'My-Header',
         in => 'header',
       };
 
@@ -1180,15 +1183,20 @@ subtest 'header parameters' => sub {
         depth => 0,
       };
 
-      my $header_name = $test->{name} =~ /^[A-Z]/ ? $test->{name} : 'My-Header';
       my $headers = Mojo::Headers->new;
-      $headers->add($header_name, $test->{values}->@*) if defined $test->{values};
+      $headers->add($param_obj->{name}, $test->{values}->@*) if defined $test->{values};
 
-      my $valid = $openapi->_validate_header_parameter($state, $header_name, $header_obj, $headers);
+      my $valid = $openapi->_validate_header_parameter($state, $param_obj->{name}, $header_obj, $headers);
       die 'validity inconsistent with error count' if $valid xor !$state->{errors}->@*;
 
       my $todo;
       $todo = todo $test->{todo} if $test->{todo};
+
+      cmp_result(
+        [ map $_->TO_JSON, $state->{errors}->@* ],
+        $test->{errors}//[],
+        'header '.$param_obj->{name}.': '.(($test->{errors}//[])->@* ? 'the correct error was returned' : 'no errors occurred'),
+      );
 
       if (not exists $test->{content}) {
         is($call_count, $previous_call_count, 'no content was extracted')
@@ -1199,15 +1207,9 @@ subtest 'header parameters' => sub {
         is_equal(
           $parameter_content,
           $test->{content},
-          'header '.$test->{name}.': '.(defined $test->{content} ? 'the correct content was extracted' : 'no content was extracted'),
+          'header '.$param_obj->{name}.': '.(defined $test->{content} ? 'the correct content was extracted' : 'no content was extracted'),
         );
       }
-
-      cmp_result(
-        [ map $_->TO_JSON, $state->{errors}->@* ],
-        $test->{errors}//[],
-        'header '.$test->{name}.': '.(($test->{errors}//[])->@* ? 'the correct error was returned' : 'no errors occurred'),
-      );
     };
   }
 };
@@ -1563,16 +1565,16 @@ YAML
         $openapi->_coerce_object_elements($data, $schema, { %$state, data_path => $state->{data_path}.'/'.$idx });
 
         is_equal(
-          $data,
-          $expected_data,
-          'got expected mutated data',
-        ) if not (($errors//[])->@*);
-
-        is_equal(
           [ map $_->TO_JSON, $state->{errors}->@* ],
           $errors//[],
           ($errors//[])->@* ? 'the correct error was returned' : 'no errors occurred',
         );
+
+        is_equal(
+          $data,
+          $expected_data,
+          'got expected mutated data',
+        ) if not (($errors//[])->@*);
       };
     }
 
@@ -1601,16 +1603,16 @@ YAML
         $openapi->_coerce_array_elements($data, $schema, { %$state, data_path => $state->{data_path}.'/'.$idx });
 
         is_equal(
-          $data,
-          $expected_data,
-          'got expected mutated data',
-        ) if not (($errors//[])->@*);
-
-        is_equal(
           [ map $_->TO_JSON, $state->{errors}->@* ],
           $errors//[],
           ($errors//[])->@* ? 'the correct error was returned' : 'no errors occurred',
         );
+
+        is_equal(
+          $data,
+          $expected_data,
+          'got expected mutated data',
+        ) if not (($errors//[])->@*);
       };
     }
   };
