@@ -3,7 +3,7 @@ package JSON::Schema::Modern::Vocabulary::OpenAPI_3_0;
 # vim: set ts=8 sts=2 sw=2 tw=100 et :
 # ABSTRACT: Implementation of the JSON Schema OpenAPI 3.0 pseudo-vocabulary
 
-our $VERSION = '0.127';
+our $VERSION = '0.128';
 
 use 5.020;
 use utf8;
