@@ -1119,33 +1119,34 @@ servers:
       subdir:
         default: blah
 paths:
-  /{simple−string}/{simple−array−false}/{simple−array−true}/{simple−object−false}/{simple−object−true}/{cølör0}/{cølör1}/{cølör2}/{cølör3}/{cølör4}/{label−string}/{label−array−false}/{label−array−true}/{label−object−false}/{label−object−true}:
+  /{path−simple−string}/{path−simple−array−false}/{path−simple−array−true}/{path−simple−object−false}/{path−simple−object−true}/{cølör0}/{cølör1}/{cølör2}/{cølör3}/{cølör4}/{path−label−string}/{path−label−array−false}/{path−label−array−true}/{path−label−object−false}/{path−label−object−true}:
+    get: {}
     parameters:
-      - name: simple−string
+      - name: path−simple−string
         in: path
         required: true
         schema:
           const: red﹠green
-      - name: simple−array−false
+      - name: path−simple−array−false
         in: path
         required: true
         schema:
           type: array
           const: [ blue−black, blackish﹠green, 100𝑥brown ]
-      - name: simple−array−true
+      - name: path−simple−array−true
         in: path
         required: true
         explode: true
         schema:
           type: array
           const: [ blue−black, blackish﹠green, 100𝑥brown ]
-      - name: simple−object−false
+      - name: path−simple−object−false
         in: path
         required: true
         schema:
           type: object
           const: { blue−black: yes!, blackish﹠green: ¿no?, 100𝑥brown: fl¡p }
-      - name: simple−object−true
+      - name: path−simple−object−true
         in: path
         required: true
         explode: true
@@ -1188,20 +1189,20 @@ paths:
         schema:
           type: object
           const: { blue−black: yes!, blackish﹠green: ¿no?, 100𝑥brown: fl¡p }
-      - name: label−string
+      - name: path−label−string
         in: path
         required: true
         style: label
         schema:
           const: red﹠gr.e.en
-      - name: label−array−false
+      - name: path−label−array−false
         in: path
         required: true
         style: label
         schema:
           type: array
           const: [ blue−black, blackish﹠green, 100𝑥brown ]
-      - name: label−array−true
+      - name: path−label−array−true
         in: path
         required: true
         style: label
@@ -1209,14 +1210,14 @@ paths:
         schema:
           type: array
           const: [ blue−black, blackish﹠green, 100𝑥brown ]
-      - name: label−object−false
+      - name: path−label−object−false
         in: path
         required: true
         style: label
         schema:
           type: object
           const: { blue−black: yes!, blackish﹠green: ¿no?, 100𝑥brown: fl¡p }
-      - name: label−object−true
+      - name: path−label−object−true
         in: path
         required: true
         style: label
@@ -1224,7 +1225,6 @@ paths:
         schema:
           type: object
           const: { blue−black: yes!, blackish﹠green: ¿no?, 100𝑥brown: fl¡p }
-    get: {}
 YAML
 
   $request = request('GET', 'http://st💩g.example.com/'.join('/', map uri_encode($_), '🐙',
