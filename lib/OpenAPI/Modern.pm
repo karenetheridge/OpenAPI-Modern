@@ -1290,7 +1290,7 @@ sub _type_in_schema ($self, $schema, $state) {
     return $types[0]->@* if $state->{specification_version} =~ /^draft[467]\z/;
   }
 
-  if (defined(my $ref = $schema->{'$dynamicRef'}) and $state->{specification_version} !~ /^draft(?:[467]|2019-09)$/) {
+  if (defined(my $ref = $schema->{'$dynamicRef'}) and $state->{specification_version} !~ /^draft(?:[467]|2019-09)\z/) {
     my $schema = $self->_resolve_dynamicRef($ref, my $state = { %$state });
     push @types, [ $self->_type_in_schema($schema, $state) ];
   }
@@ -1359,7 +1359,7 @@ sub _coerce_object_elements ($self, $data, $schema, $state) {
     return $object_coercions[0] if $state->{specification_version} =~ /^draft[467]\z/;
   }
 
-  if (defined(my $ref = $schema->{'$dynamicRef'}) and $state->{specification_version} !~ /^draft(?:[467]|2019-09)$/) {
+  if (defined(my $ref = $schema->{'$dynamicRef'}) and $state->{specification_version} !~ /^draft(?:[467]|2019-09)\z/) {
     my $schema = $self->_resolve_dynamicRef($ref, my $state = { %$state });
     push @object_coercions, $self->_coerce_object_elements($data, $schema, { %$state, _level => $state->{_level}+1 });
   }
@@ -1441,7 +1441,7 @@ sub _coerce_array_elements ($self, $data, $schema, $state) {
     return $array_coercions[0] if $state->{specification_version} =~ /^draft[467]\z/;
   }
 
-  if (defined(my $ref = $schema->{'$dynamicRef'}) and $state->{specification_version} !~ /^draft(?:[467]|2019-09)$/) {
+  if (defined(my $ref = $schema->{'$dynamicRef'}) and $state->{specification_version} !~ /^draft(?:[467]|2019-09)\z/) {
     my $schema = $self->_resolve_dynamicRef($ref, my $state = { %$state });
     push @array_coercions, $self->_coerce_array_elements($data, $schema, { %$state, _level => $state->{_level}+1 });
   }

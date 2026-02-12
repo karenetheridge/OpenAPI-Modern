@@ -40,7 +40,7 @@ my %new_schemas;
 my $links;
 foreach my $e ($res->dom->find('a[href]')->each) {
   my $link = $e->{href};
-  next if $link !~ m{^/oas/(?:${\ join('|', map quotemeta($_), OAS_VERSIONS->@*)})/[a-z-]+/\d{4}-\d{2}-\d{2}$};
+  next if $link !~ m{^/oas/(?:${\ join('|', map quotemeta($_), OAS_VERSIONS->@*)})/[a-z-]+/\d{4}-\d{2}-\d{2}\z};
 
   ++$links;
   $link = Mojo::URL->new($web_url)->path($link)->to_string; # get full URL, normalizing slashes
