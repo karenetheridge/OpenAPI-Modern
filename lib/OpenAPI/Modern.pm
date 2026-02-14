@@ -2137,6 +2137,13 @@ specs, some validation errors may occur e.g. if a certain required header is mis
 original. For best results in validating real messages from the network, parse them directly into
 Mojolicious messages (see L<Mojo::Message/parse>).
 
+Parameter deserialization is performed with the assumption that the request URI has been correctly
+percent-encoded. Failing to encode certain characters that are also used as delimiters for the
+specific L<parameter style|https://spec.openapis.org/oas/latest#style-values> being used, or
+encoding characters that are not canonically required to be encoded according to
+L<RFC3986 §2.1|https://www.rfc-editor.org/rfc/rfc3986#section-2.1>, may result in the message not
+being correctly deserialized nor parameter values correctly extracted.
+
 Only certain permutations of OpenAPI documents are supported at this time:
 
 =for :list
