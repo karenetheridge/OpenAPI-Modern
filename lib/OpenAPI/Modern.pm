@@ -850,14 +850,16 @@ sub _validate_query_parameter ($self, $state, $param_obj, $uri) {
   my @types = $self->_type_in_schema($param_obj->{schema}, { %$state, keyword_path => $state->{keyword_path}.'/schema' });
 
   if (any { $_ eq 'string' || $_ eq 'number' || $_ eq 'boolean' || $_ eq 'null' } @types) {
-    return E($state, 'cannot deserialize to %s type%s', 'requested', @types > 1 ? 's' : '')
+    return E($state,
+        'cannot deserialize to %s type%s%s', !@types ? 'any' : 'requested', @types > 1 ? 's' : '',
+        @types ? ' ('.join(', ', @types).')' : '')
       if not coerce_primitive(\$data, \@types);
   }
   elsif (any { $_ eq 'array' || $_ eq 'object' } @types) {
     return E($state, 'deserializing query parameters to arrays or objects is not currently supported');
   }
   else {
-    return E($state, 'cannot deserialize to %s type%s', !@types ? 'any' : 'requested', @types > 1 ? 's' : '');
+    return E($state, 'cannot deserialize to any types');
   }
 
   $self->_evaluate_subschema(\$data, $param_obj->{schema},
@@ -1116,7 +1118,8 @@ sub _deserialize_style ($self, $data, $state, %opt) {
   }
 
   return E({ %$state, data_path => jsonp($state->{data_path}, $name) },
-    'cannot deserialize to %s type%s', !@types ? 'any' : 'requested', @types > 1 ? 's' : '');
+    'cannot deserialize to %s type%s%s', !@types ? 'any' : 'requested', @types > 1 ? 's' : '',
+    @types ? ' ('.join(', ', @types).')' : '');
 }
 
 sub _validate_parameter_content ($self, $state, $param_obj, $content_ref) {
