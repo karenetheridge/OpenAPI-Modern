@@ -16,11 +16,12 @@ use Safe::Isa;
 use List::Util 'pairs';
 use Mojo::Message::Request;
 use Mojo::Message::Response;
-use Test2::V0 qw(!bag !bool !warnings), -no_pragmas => 1;  # prefer Test::Deep and Test2::Warnings versions of these exports
+use Test2::V0 qw(!bag !bool !warnings !subtest), -no_pragmas => 1;  # prefer Test::Deep and Test2::Warnings versions of these exports
 use Test2::API 'context_do';
 use Test::Needs;
 use if $ENV{AUTHOR_TESTING}, 'Test2::Warnings';
-use if $ENV{AUTHOR_TESTING}, 'Test2::Plugin::BailOnFail';
+
+sub subtest { Test2::V0::subtest(@_); bail_if_not_passing() if $ENV{AUTHOR_TESTING}; }
 use if $ENV{AUTHOR_TESTING}, 'Test2::Plugin::SubtestFilter';
 use Test::Deep qw(!array !hash); # import symbols: ignore, re etc
 use Test::File::ShareDir -share => { -dist => { 'OpenAPI-Modern' => 'share' } };
