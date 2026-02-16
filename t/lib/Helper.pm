@@ -16,6 +16,7 @@ use Safe::Isa;
 use List::Util 'pairs';
 use Mojo::Message::Request;
 use Mojo::Message::Response;
+use Carp 'croak';
 use Test2::V0 qw(!bag !bool !warnings !subtest), -no_pragmas => 1;  # prefer Test::Deep and Test2::Warnings versions of these exports
 use Test2::API 'context_do';
 use Test::Needs;
@@ -400,6 +401,22 @@ sub todo_maybe ($reason_or_undef, $sub) {
   else {
     $sub->();
   }
+}
+
+# turns an arrayref of arrayrefs into an arrayref of hashes,
+# using the first element as the key names and the remaining
+# elements as the values
+sub arrays_to_hashes($arrayref) {
+  my $headers = shift @$arrayref;
+  my @result;
+  foreach my $row (@$arrayref) {
+    my $hashref = {};
+    croak 'too many values at row: ', $encoder->encode($row) if @$row > @$headers;
+    $hashref->@{@$headers} = @$row;
+    push @result, $hashref;
+  }
+
+  return \@result;
 }
 
 1;

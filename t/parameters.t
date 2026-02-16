@@ -93,55 +93,60 @@ subtest 'path parameters' => sub {
 
     # style=simple
 
-    # style, explode, deserialized data, serialized string
-    [ 'simple', true,  undef, '' ],
-    [ 'simple', true,  0, '0' ],
-    [ 'simple', true,  1, '1' ],
-    [ 'simple', true,  false, '' ],       # not reversible
-    [ 'simple', true,  false, '0' ],
-    [ 'simple', true,  true, '1' ],
-    [ 'simple', true,  false, 'false' ],  # not reversible
-    [ 'simple', true,  true, 'true' ],    # not reversible
-    [ 'simple', true,  0, '0' ],
-    [ 'simple', true,  1, '1' ],
-    [ 'simple', true,  3, '3' ],
-    [ 'simple', true,  -42, '-42' ],
-    [ 'simple', true,  '', '' ],
-    [ 'simple', true,  'red', 'red' ],
-    [ 'simple', true,  'red,green', 'red%2Cgreen' ],
-    [ 'simple', true,  'red+green', 'red+green' ],
-    [ 'simple', true,  'red+green', 'red%2Bgreen' ],
-    # ? and # must be escaped as they signal the end of the path section of the URI
-    [ 'simple', true,  'red?green', 'red%3Fgreen' ],
-    [ 'simple', true,  'red#green', 'red%23green' ],
-    [ 'simple', true,  'red?green&blue', 'red%3Fgreen&blue' ],
-    [ 'simple', true,  'red?green&blue', 'red%3Fgreen%26blue' ],
-    [ 'simple', true,  'red?green&blue#black', 'red%3Fgreen&blue%23black' ],
-    [ 'simple', true,  'red%green', 'red%25green' ],
-    [ 'simple', true,  " i have spaces  \t ", " i have spaces  \t " ],
-    [ 'simple', true,  ' red,  green ', ' red,  green ' ],
-    [ 'simple', true,  'red﹠green', "red%EF%B9%A0green" ],
-    [ 'simple', false, [], '' ],
-    [ 'simple', true,  [], '' ],
-    [ 'simple', false, {}, '' ],
-    [ 'simple', true,  {}, '' ],
-    [ 'simple', false, [ '', '', '' ], ',,' ],
-    [ 'simple', true,  [ '', '', '' ], ',,' ],
-    [ 'simple', false, [ 'red' ], 'red' ],
-    [ 'simple', true,  [ 'red' ], 'red' ],
-    # , must be escaped to not be treated as a delimiter
-    [ 'simple', false, [ 'red,green', 'blue' ], 'red%2Cgreen,blue' ],
-    [ 'simple', true,  [ 'red,green', 'blue' ], 'red%2Cgreen,blue' ],
-    [ 'simple', false, [ qw(blue black brown) ], 'blue,black,brown' ],
-    [ 'simple', true,  [ qw(blue black brown) ], 'blue,black,brown' ],
-    [ 'simple', false, { R => '', G => '', B => '' }, 'R,,G,,B,' ],
-    [ 'simple', true,  { R => '', G => '', B => '' }, 'R,G,B' ],
-    [ 'simple', false, { R => '100', G => '200', B => '' }, 'R,100,G,200,B,' ],
-    [ 'simple', true,  { R => '100', G => '200', B => '' }, 'R=100,G=200,B' ],
-    [ 'simple', false, { qw(R 100 G 200 B 150) }, 'R,100,G,200,B,150' ],
-    [ 'simple', true,  { qw(R 100 G 200 B 150) }, 'R=100,G=200,B=150' ],
-    [ 'simple', false, { 'R,X' => '100', G => '200', 'B,Y' => '150' }, 'R%2CX,100,G,200,B%2CY,150' ],
-    [ 'simple', true,  { 'R,X' => '100', G => '200', 'B=Y' => '150' }, 'R%2CX=100,G=200,B%3DY=150' ],
+    [
+      [ qw(style content input) ],
+      [ 'simple', undef, '' ],        # not reversible
+      [ 'simple', 0, '0' ],
+      [ 'simple', 1, '1' ],
+      [ 'simple', false, '' ],        # not reversible
+      [ 'simple', false, '0' ],
+      [ 'simple', true, '1' ],
+      [ 'simple', false, 'false' ],   # not reversible
+      [ 'simple', true, 'true' ],     # not reversible
+      [ 'simple', 0, '0' ],
+      [ 'simple', 1, '1' ],
+      [ 'simple', 3, '3' ],
+      [ 'simple', -42, '-42' ],
+      [ 'simple', '', '' ],
+      [ 'simple', 'red', 'red' ],
+      [ 'simple', 'red,green', 'red%2Cgreen' ],
+      [ 'simple', 'red+green', 'red+green' ],
+      [ 'simple', 'red+green', 'red%2Bgreen' ],
+      # ? and # must be escaped as they signal the end of the path section of the URI
+      [ 'simple', 'red?green', 'red%3Fgreen' ],
+      [ 'simple', 'red#green', 'red%23green' ],
+      [ 'simple', 'red?green&blue', 'red%3Fgreen&blue' ],
+      [ 'simple', 'red?green&blue', 'red%3Fgreen%26blue' ],
+      [ 'simple', 'red?green&blue#black', 'red%3Fgreen&blue%23black' ],
+      [ 'simple', 'red%green', 'red%25green' ],
+      [ 'simple', " i have spaces  \t ", " i have spaces  \t " ],
+      [ 'simple', ' red,  green ', ' red,  green ' ],
+      [ 'simple', 'red﹠green', "red%EF%B9%A0green" ],
+    ],
+    [
+      [ qw(style explode content input) ],
+      [ 'simple', false, [], '' ],
+      [ 'simple', true,  [], '' ],
+      [ 'simple', false, {}, '' ],
+      [ 'simple', true,  {}, '' ],
+      [ 'simple', false, [ '', '', '' ], ',,' ],
+      [ 'simple', true,  [ '', '', '' ], ',,' ],
+      [ 'simple', false, [ 'red' ], 'red' ],
+      [ 'simple', true,  [ 'red' ], 'red' ],
+      # , must be escaped to not be treated as a delimiter
+      [ 'simple', false, [ 'red,green', 'blue' ], 'red%2Cgreen,blue' ],
+      [ 'simple', true,  [ 'red,green', 'blue' ], 'red%2Cgreen,blue' ],
+      [ 'simple', false, [ qw(blue black brown) ], 'blue,black,brown' ],
+      [ 'simple', true,  [ qw(blue black brown) ], 'blue,black,brown' ],
+      [ 'simple', false, { R => '', G => '', B => '' }, 'R,,G,,B,' ],
+      [ 'simple', true,  { R => '', G => '', B => '' }, 'R,G,B' ],
+      [ 'simple', false, { R => '100', G => '200', B => '' }, 'R,100,G,200,B,' ],
+      [ 'simple', true,  { R => '100', G => '200', B => '' }, 'R=100,G=200,B' ],
+      [ 'simple', false, { qw(R 100 G 200 B 150) }, 'R,100,G,200,B,150' ],
+      [ 'simple', true,  { qw(R 100 G 200 B 150) }, 'R=100,G=200,B=150' ],
+      [ 'simple', false, { 'R,X' => '100', G => '200', 'B,Y' => '150' }, 'R%2CX,100,G,200,B%2CY,150' ],
+      [ 'simple', true,  { 'R,X' => '100', G => '200', 'B=Y' => '150' }, 'R%2CX=100,G=200,B%3DY=150' ],
+    ],
 
     {
       name => 'non-ascii characters in path captures must be percent-encoded',
@@ -345,42 +350,47 @@ subtest 'path parameters' => sub {
 
     # style=matrix
 
-    # style, explode, deserialized data, serialized string
-    [ 'matrix', true,  undef, '' ],
-    [ 'matrix', true,  0, ';color=0' ],
-    [ 'matrix', true,  1, ';color=1' ],
-    [ 'matrix', true,  false, ';color' ],         # not reversible
-    [ 'matrix', true,  false, ';color=0' ],
-    [ 'matrix', true,  true, ';color=1' ],
-    [ 'matrix', true,  false, ';color=false' ],   # not reversible
-    [ 'matrix', true,  true, ';color=true' ],     # not reversible
-    [ 'matrix', true,  3, ';color=3' ],
-    [ 'matrix', true,  '', ';color' ],
-    [ 'matrix', true,  'red', ';color=red' ],
-    [ 'matrix', true,  'red;green=blue', ';color=red%3Bgreen%3Dblue' ],
-    [ 'matrix', false, [], '' ],
-    [ 'matrix', true,  [], '' ],
-    [ 'matrix', false, {}, '' ],
-    [ 'matrix', true,  {}, '' ],
-    [ 'matrix', false, [], ';color' ],    # not reversible
-    [ 'matrix', true,  [''], ';color' ],
-    [ 'matrix', false, {}, ';color' ],    # not reversible
-    [ 'matrix', true,  {}, ';' ],         # not reversible
-    [ 'matrix', false, [ '', '', '' ], ';color=,,' ],
-    [ 'matrix', true,  [ '', '', '' ], ';color;color;color' ],
-    [ 'matrix', false, [ qw(blue black brown) ], ';color=blue,black,brown' ],
-    [ 'matrix', true,  [ qw(blue black brown) ], ';color=blue;color=black;color=brown' ],
-    [ 'matrix', false, [ 'red,green;black', 'blue' ], ';color=red%2Cgreen%3Bblack,blue' ],
-    [ 'matrix', true,  [ 'red,green;black', 'blue' ], ';color=red%2Cgreen%3Bblack;color=blue' ],
-    [ 'matrix', false, { R => '', G => '', B => '' }, ';color=R,,G,,B,' ],
-    [ 'matrix', true,  { R => '', G => '', B => '' }, ';R;G;B' ],
-    [ 'matrix', false, { R => '100', G => '200', B => '' }, ';color=R,100,G,200,B,' ],
-    [ 'matrix', true,  { R => '100', G => '200', B => '' }, ';R=100;G=200;B' ],
-    [ 'matrix', false, { qw(R 100 G 200 B 150) }, ';color=R,100,G,200,B,150' ],
-    [ 'matrix', true,  { qw(R 100 G 200 B 150) }, ';R=100;G=200;B=150' ],
-    [ 'matrix', false, { 'R,X' => '100', G => '200', 'B,Y' => '150' }, ';color=R%2CX,100,G,200,B%2CY,150' ],
-    [ 'matrix', true,  { 'R,X' => '100', G => '200', 'B=Y' => '150' }, ';R%2CX=100;G=200;B%3DY=150' ],
-    [ 'matrix', true,  { color => 'brown' }, ';color=blue;color=black;color=brown' ],
+    [
+      [ qw(style content input) ],
+      [ 'matrix', undef, '' ],
+      [ 'matrix', 0, ';color=0' ],
+      [ 'matrix', 1, ';color=1' ],
+      [ 'matrix', false, ';color' ],         # not reversible
+      [ 'matrix', false, ';color=0' ],
+      [ 'matrix', true, ';color=1' ],
+      [ 'matrix', false, ';color=false' ],   # not reversible
+      [ 'matrix', true, ';color=true' ],     # not reversible
+      [ 'matrix', 3, ';color=3' ],
+      [ 'matrix', '', ';color' ],
+      [ 'matrix', 'red', ';color=red' ],
+      [ 'matrix', 'red;green=blue', ';color=red%3Bgreen%3Dblue' ],
+    ],
+    [
+      [ qw(style explode content input) ],
+      [ 'matrix', false, [], '' ],
+      [ 'matrix', true,  [], '' ],
+      [ 'matrix', false, {}, '' ],
+      [ 'matrix', true,  {}, '' ],
+      [ 'matrix', false, [], ';color' ],    # not reversible
+      [ 'matrix', true,  [''], ';color' ],
+      [ 'matrix', false, {}, ';color' ],    # not reversible
+      [ 'matrix', true,  {}, ';' ],         # not reversible
+      [ 'matrix', false, [ '', '', '' ], ';color=,,' ],
+      [ 'matrix', true,  [ '', '', '' ], ';color;color;color' ],
+      [ 'matrix', false, [ qw(blue black brown) ], ';color=blue,black,brown' ],
+      [ 'matrix', true,  [ qw(blue black brown) ], ';color=blue;color=black;color=brown' ],
+      [ 'matrix', false, [ 'red,green;black', 'blue' ], ';color=red%2Cgreen%3Bblack,blue' ],
+      [ 'matrix', true,  [ 'red,green;black', 'blue' ], ';color=red%2Cgreen%3Bblack;color=blue' ],
+      [ 'matrix', false, { R => '', G => '', B => '' }, ';color=R,,G,,B,' ],
+      [ 'matrix', true,  { R => '', G => '', B => '' }, ';R;G;B' ],
+      [ 'matrix', false, { R => '100', G => '200', B => '' }, ';color=R,100,G,200,B,' ],
+      [ 'matrix', true,  { R => '100', G => '200', B => '' }, ';R=100;G=200;B' ],
+      [ 'matrix', false, { qw(R 100 G 200 B 150) }, ';color=R,100,G,200,B,150' ],
+      [ 'matrix', true,  { qw(R 100 G 200 B 150) }, ';R=100;G=200;B=150' ],
+      [ 'matrix', false, { 'R,X' => '100', G => '200', 'B,Y' => '150' }, ';color=R%2CX,100,G,200,B%2CY,150' ],
+      [ 'matrix', true,  { 'R,X' => '100', G => '200', 'B=Y' => '150' }, ';R%2CX=100;G=200;B%3DY=150' ],
+      [ 'matrix', true,  { color => 'brown' }, ';color=blue;color=black;color=brown' ],
+    ],
 
     {
       name => 'any type is permitted, default to string',
@@ -620,40 +630,46 @@ subtest 'path parameters' => sub {
     # style=label
 
     # style, explode, deserialized data, serialized string
-    [ 'label', true,  undef, '' ],
-    [ 'label', true,  0, '.0' ],
-    [ 'label', true,  1, '.1' ],
-    [ 'label', true,  false, '.' ],
-    [ 'label', true,  false, '.0' ],
-    [ 'label', true,  true, '.1' ],
-    [ 'label', true,  false, '.false' ],
-    [ 'label', true,  true, '.true' ],
-    [ 'label', true,  3, '.3' ],
-    [ 'label', true,  '', '.' ],
-    [ 'label', true,  'red', '.red' ],
-    [ 'label', true,  'red﹠gr.e.en', '.red%EF%B9%A0gr%2Ee%2Een' ], # . is in "unreserved" - must be manually encoded
-    [ 'label', false, [], '' ],
-    [ 'label', true,  [], '' ],
-    [ 'label', false, {}, '' ],
-    [ 'label', true,  {}, '' ],
-    [ 'label', false, [], '.' ],    # not reversible
-    [ 'label', true,  [], '.' ],    # not reversible
-    [ 'label', false, {}, '.' ],    # not reversible
-    [ 'label', true,  {}, '.' ],    # not reversible
-    [ 'label', false, [ '', '', '' ], '.,,' ],
-    [ 'label', true,  [ '', '', '' ], '...' ],
-    [ 'label', false, { R => '', G => '', B => '' }, '.R,,G,,B,' ],
-    [ 'label', true,  { R => '', G => '', B => '' }, '.R.G.B' ],
-    [ 'label', false, { R => '100', G => '200', B => '' }, '.R,100,G,200,B,' ],
-    [ 'label', true,  { R => '100', G => '200', B => '' }, '.R=100.G=200.B' ],
-    [ 'label', false, [ qw(blue black brown) ], '.blue,black,brown' ],
-    [ 'label', true,  [ qw(blue black brown) ], '.blue.black.brown' ],
-    [ 'label', false, [ 'red.green', 'blue' ], '.red%2Egreen,blue' ],
-    [ 'label', true,  [ 'red.green', 'blue' ], '.red%2Egreen.blue' ],
-    [ 'label', false, { qw(R 100 G 200 B 150) }, '.R,100,G,200,B,150' ],
-    [ 'label', true,  { qw(R 100 G 200 B 150) }, '.R=100.G=200.B=150' ],
-    [ 'label', false, { 'R.X' => '100', G => '200', 'B,Y' => '150' }, '.R%2EX,100,G,200,B%2CY,150' ],
-    [ 'label', true,  { 'R.X' => '100', G => '200', 'B=Y' => '150' }, '.R%2EX=100.G=200.B%3DY=150' ],
+    [
+      [ qw(style content input) ],
+      [ 'label',  undef, '' ],
+      [ 'label',  0, '.0' ],
+      [ 'label',  1, '.1' ],
+      [ 'label',  false, '.' ],
+      [ 'label',  false, '.0' ],
+      [ 'label',  true, '.1' ],
+      [ 'label',  false, '.false' ],
+      [ 'label',  true, '.true' ],
+      [ 'label',  3, '.3' ],
+      [ 'label',  '', '.' ],
+      [ 'label',  'red', '.red' ],
+      [ 'label',  'red﹠gr.e.en', '.red%EF%B9%A0gr%2Ee%2Een' ], # . is in "unreserved" - must be manually encoded
+    ],
+    [
+      [ qw(style explode content input) ],
+      [ 'label', false, [], '' ],
+      [ 'label', true,  [], '' ],
+      [ 'label', false, {}, '' ],
+      [ 'label', true,  {}, '' ],
+      [ 'label', false, [], '.' ],    # not reversible
+      [ 'label', true,  [], '.' ],    # not reversible
+      [ 'label', false, {}, '.' ],    # not reversible
+      [ 'label', true,  {}, '.' ],    # not reversible
+      [ 'label', false, [ '', '', '' ], '.,,' ],
+      [ 'label', true,  [ '', '', '' ], '...' ],
+      [ 'label', false, { R => '', G => '', B => '' }, '.R,,G,,B,' ],
+      [ 'label', true,  { R => '', G => '', B => '' }, '.R.G.B' ],
+      [ 'label', false, { R => '100', G => '200', B => '' }, '.R,100,G,200,B,' ],
+      [ 'label', true,  { R => '100', G => '200', B => '' }, '.R=100.G=200.B' ],
+      [ 'label', false, [ qw(blue black brown) ], '.blue,black,brown' ],
+      [ 'label', true,  [ qw(blue black brown) ], '.blue.black.brown' ],
+      [ 'label', false, [ 'red.green', 'blue' ], '.red%2Egreen,blue' ],
+      [ 'label', true,  [ 'red.green', 'blue' ], '.red%2Egreen.blue' ],
+      [ 'label', false, { qw(R 100 G 200 B 150) }, '.R,100,G,200,B,150' ],
+      [ 'label', true,  { qw(R 100 G 200 B 150) }, '.R=100.G=200.B=150' ],
+      [ 'label', false, { 'R.X' => '100', G => '200', 'B,Y' => '150' }, '.R%2EX,100,G,200,B%2CY,150' ],
+      [ 'label', true,  { 'R.X' => '100', G => '200', 'B=Y' => '150' }, '.R%2EX=100.G=200.B%3DY=150' ],
+    ],
 
     {
       name => 'any type is permitted, default to string',
@@ -831,22 +847,25 @@ subtest 'path parameters' => sub {
     },
   );
 
-  foreach my $test (@tests) {
-    $test = +{
-      name => 'explode='.($test->[1]?'true':'false'),
-      param_obj => {
-        name => 'color',
-        style => $test->[0],
-        explode => $test->[1],
-        schema => { type => get_type($test->[2]) },
-      },
-      input => $test->[3],
-      content => $test->[2],
-    } if ref $test eq 'ARRAY';
+  @tests = map +(
+    ref eq 'ARRAY'
+      ? map +{
+          name => defined $_->{explode} ? 'explode='.($_->{explode}?'true':'false') : '',
+          param_obj => {
+            name => 'color',
+            style => $_->{style},
+            defined $_->{explode} ? (explode => $_->{explode}) : (),
+            schema => { type => get_type($_->{content}) },
+          },
+          $_->%{qw(input content)},
+        }, arrays_to_hashes($_)->@*
+      : $_
+  ), @tests;
 
+  foreach my $test (@tests) {
     subtest 'path '
         .($test->{param_obj}{content} ? 'encoded with media-type' : 'style='.($test->{param_obj}{style}//'simple'))
-        .', '.$test->{name}.': '
+        .(length $test->{name} ? ', '.$test->{name} : '').': '
         .(defined $test->{input} ? '"'.$test->{input}.'"' : '<missing>')
         .' -> '.$::dumper->encode($test->{content}) => sub {
 
@@ -1117,35 +1136,42 @@ subtest 'header parameters' => sub {
 
     # style=simple
 
-    # explode, deserialized data, list of header strings
-    [ false, undef, [''] ],
-    [ false, false, [''] ],
-    [ false, false, ['0'] ],
-    [ false, true, ['1'] ],
-    [ false, '', [''] ],
-    [ false, 'i have spaces', [" i have spaces  \t "] ],
-    [ false, 'foo', ['foo'] ],
-    [ false, 'foo,bar', [' foo ', ' bar '] ],
-    [ false, 'foo,  bar', [' foo,  bar '] ],      # internal comma-separated values are not altered
-    [ false, 'red﹠green', [ "red\xef\xb9\xa0green" ] ],
-    [ false, ['foo'], ['foo'] ],  # a single header is passed as an array iff when array is requested
-    [ true,  ['foo'], ['foo'] ],
-    [ false, ['foo', 'bar'], [' foo,  bar '] ],   # split individual values on comma when type=array
-    [ true,  ['foo', 'bar'], [' foo,  bar '] ],
-    [ false, ['foo', 'bar', 'baz'], [' foo,  bar ', ' baz '] ],
-    [ true,  ['foo', 'bar', 'baz'], [' foo,  bar ', ' baz '] ],
-    [ false, [ 'blue−black', 'blackish﹠green', '100𝑥brown' ],
-      [ "blue\xe2\x88\x92black,blackish\xef\xb9\xa0green,100\xf0\x9d\x91\xa5brown" ] ],
-    [ true,  [ 'blue−black', 'blackish﹠green', '100𝑥brown' ],
-      [ "blue\xe2\x88\x92black,blackish\xef\xb9\xa0green,100\xf0\x9d\x91\xa5brown" ] ],
-    [ false, { qw(R 100 G 200 B 150) }, [' R, 100 ', ' G, 200,  B , 150 '] ],
-    [ true,  { qw(R 100 G 200 B 150) }, [' R=100  , G=200 ', '  B=150 '] ],
-    [ false, { foo => 'bar', baz => '' }, [ 'foo, bar, baz' ] ],
-    [ true,  { foo => 'bar', baz => '' }, [ 'foo=bar, baz=' ] ],
-    [ false, { 'blue−black', 'yes!', 'blackish﹠green', '¿no?', '100𝑥brown', 'fl¡p' },
-      [ "blue\xe2\x88\x92black,yes!,blackish\xef\xb9\xa0green,\xc2\xbfno?,100\xf0\x9d\x91\xa5brown,fl\xc2\xa1p" ] ],
-    [ true,  { 'blue−black', 'yes!', 'blackish﹠green', '¿no?', '100𝑥brown', 'fl¡p' },
-      [ "blue\xe2\x88\x92black=yes!,blackish\xef\xb9\xa0green=\xc2\xbfno?,100\xf0\x9d\x91\xa5brown=fl\xc2\xa1p" ] ],
+    [
+      # deserialized data, list of header strings
+      [ qw(content values) ],
+      [ undef, [''] ],
+      [ false, [''] ],
+      [ false, ['0'] ],
+      [ true, ['1'] ],
+      [ '', [''] ],
+      [ 'i have spaces', [" i have spaces  \t "] ],
+      [ 'foo', ['foo'] ],
+      [ 'foo,bar', [' foo ', ' bar '] ],
+      [ 'foo,  bar', [' foo,  bar '] ],      # internal comma-separated values are not altered
+      [ 'red﹠green', [ "red\xef\xb9\xa0green" ] ],
+    ],
+    [
+      # explode, deserialized data, list of header strings
+      [ qw(explode content values) ],
+      [ false, ['foo'], ['foo'] ],  # a single header is passed as an array iff when array is requested
+      [ true,  ['foo'], ['foo'] ],
+      [ false, ['foo', 'bar'], [' foo,  bar '] ],   # split individual values on comma when type=array
+      [ true,  ['foo', 'bar'], [' foo,  bar '] ],
+      [ false, ['foo', 'bar', 'baz'], [' foo,  bar ', ' baz '] ],
+      [ true,  ['foo', 'bar', 'baz'], [' foo,  bar ', ' baz '] ],
+      [ false, [ 'blue−black', 'blackish﹠green', '100𝑥brown' ],
+        [ "blue\xe2\x88\x92black,blackish\xef\xb9\xa0green,100\xf0\x9d\x91\xa5brown" ] ],
+      [ true,  [ 'blue−black', 'blackish﹠green', '100𝑥brown' ],
+        [ "blue\xe2\x88\x92black,blackish\xef\xb9\xa0green,100\xf0\x9d\x91\xa5brown" ] ],
+      [ false, { qw(R 100 G 200 B 150) }, [' R, 100 ', ' G, 200,  B , 150 '] ],
+      [ true,  { qw(R 100 G 200 B 150) }, [' R=100  , G=200 ', '  B=150 '] ],
+      [ false, { foo => 'bar', baz => '' }, [ 'foo, bar, baz' ] ],
+      [ true,  { foo => 'bar', baz => '' }, [ 'foo=bar, baz=' ] ],
+      [ false, { 'blue−black', 'yes!', 'blackish﹠green', '¿no?', '100𝑥brown', 'fl¡p' },
+        [ "blue\xe2\x88\x92black,yes!,blackish\xef\xb9\xa0green,\xc2\xbfno?,100\xf0\x9d\x91\xa5brown,fl\xc2\xa1p" ] ],
+      [ true,  { 'blue−black', 'yes!', 'blackish﹠green', '¿no?', '100𝑥brown', 'fl¡p' },
+        [ "blue\xe2\x88\x92black=yes!,blackish\xef\xb9\xa0green=\xc2\xbfno?,100\xf0\x9d\x91\xa5brown=fl\xc2\xa1p" ] ],
+    ],
 
     {
       header_obj => { name => 'Missing', required => true },
@@ -1208,18 +1234,20 @@ subtest 'header parameters' => sub {
     },
   );
 
-  foreach my $test (@tests) {
-    $test = +{
-      name => "style=simple, explode=".($test->[0]?'true':'false'),
-      header_obj => {
-        style => 'simple',
-        explode => $test->[0],
-        schema => { type => get_type($test->[1]) },
-      },
-      values => $test->[2],
-      content => $test->[1],
-    } if ref $test eq 'ARRAY';
+  @tests = map +(
+    ref eq 'ARRAY'
+      ? map +{
+          name => defined $_->{explode} ? 'explode='.($_->{explode}?'true':'false') : '',
+          header_obj => {
+            defined $_->{explode} ? (explode => $_->{explode}) : (),
+            schema => { type => get_type($_->{content}) },
+          },
+          $_->%{qw(values content)},
+        }, arrays_to_hashes($_)->@*
+      : $_
+  ), @tests;
 
+  foreach my $test (@tests) {
     subtest 'header '
         .($test->{header_obj}{content} ? 'encoded with media-type' : 'style=simple')
         .(length $test->{name} ? ', '.$test->{name}.': '
@@ -1230,7 +1258,7 @@ subtest 'header parameters' => sub {
 
       my $param_obj = +{
         name => 'My-Header',
-        exists $test->{header_obj}{content} ? () : (schema => { type => 'string' }),
+        exists $test->{header_obj}{content} ? () : (style => 'simple', schema => { type => 'string' }),
         $test->{header_obj}->%*,
         in => 'header',
       };
