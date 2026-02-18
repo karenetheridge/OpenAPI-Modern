@@ -140,6 +140,16 @@ subtest 'path parameters' => sub {
       [ 'simple', true,  [ qw(blue black brown) ], 'blue,black,brown' ],
       [ 'simple', false, { R => '', G => '', B => '' }, 'R,,G,,B,' ],
       [ 'simple', true,  { R => '', G => '', B => '' }, 'R,G,B' ],
+
+      [ 'simple', false, { foo => 'bar', baz => '' }, 'foo,bar,baz,' ],
+      [ 'simple', true,  { foo => 'bar', baz => '' }, 'foo=bar,baz' ],
+      [ 'simple', false, { 'foo=bar' => 'baz', bloop => '' },                'foo=bar,baz,bloop,' ],
+      [ 'simple', true,  { foo => 'bar', baz => '', bloop => '', '' => '' }, 'foo=bar,baz,bloop,' ],
+      [ 'simple', false, { foo => 'bar=baz', bloop => '' },                  'foo,bar=baz,bloop,' ],
+      [ 'simple', true,  { foo => '', bar => 'baz', bloop => '', '' => '' }, 'foo,bar=baz,bloop,' ],
+      [ 'simple', false, { 'foo=bar=baz' => 'bloop' },                       'foo=bar=baz,bloop' ],
+      [ 'simple', true,  { foo => 'bar=baz' => bloop => '' },                'foo=bar=baz,bloop' ],
+
       [ 'simple', false, { R => '100', G => '200', B => '' }, 'R,100,G,200,B,' ],
       [ 'simple', true,  { R => '100', G => '200', B => '' }, 'R=100,G=200,B' ],
       [ 'simple', false, { qw(R 100 G 200 B 150) }, 'R,100,G,200,B,150' ],
@@ -216,8 +226,8 @@ subtest 'path parameters' => sub {
     {
       name => 'explode=false, array with non-ascii name and values',
       param_obj => { name => 'cølör', schema => { type => 'array' } },
-      input => 'blue%E2%88%92black,blackish%2Cgreen,100%F0%9D%91%A5brown',
-      content => [ 'blue−black', 'blackish,green', '100𝑥brown' ],
+      input => 'blue%E2%88%92black,blackish%2Cgreen,100%F0%9D%91%A5brown=fl%C2%A1p',
+      content => [ 'blue−black', 'blackish,green', '100𝑥brown=fl¡p' ],
     },
     {
       name => 'explode=true, array with non-string items',
@@ -236,8 +246,8 @@ subtest 'path parameters' => sub {
     {
       name => 'explode=true, array with non-ascii name and values',
       param_obj => { name => 'cølör', explode => true, schema => { type => 'array' } },
-      input => 'blue%E2%88%92black,blackish%2Cgreen,100%F0%9D%91%A5brown',
-      content => [ 'blue−black', 'blackish,green', '100𝑥brown' ],
+      input => 'blue%E2%88%92black,blackish%2Cgreen,100%F0%9D%91%A5brown=fl%C2%A1p',
+      content => [ 'blue−black', 'blackish,green', '100𝑥brown=fl¡p' ],
     },
     {
       name => 'string or object prefers object',
@@ -512,7 +522,7 @@ subtest 'path parameters' => sub {
     {
       name => 'explode=true, array with non-ascii name and values',
       param_obj => { name => 'cølör', style => 'matrix', explode => true, schema => { type => 'array' } },
-      input => ';c%C3%B8l%C3%B6r=blue%E2%88%92black;c%C3%B8l%C3%B6r=blackish%2Cgreen;c%C3%B8l%C3%B6r=100%F0%9D%91%A5brown=fl%C2%A1p',
+      input => ';c%C3%B8l%C3%B6r=blue%E2%88%92black;c%C3%B8l%C3%B6r=blackish%2Cgreen;c%C3%B8l%C3%B6r=100%F0%9D%91%A5brown',
       content => [ 'blue−black', 'blackish,green', '100𝑥brown' ],
     },
     {
@@ -1145,28 +1155,45 @@ subtest 'header parameters' => sub {
       [ true, ['1'] ],
       [ '', [''] ],
       [ 'i have spaces', [" i have spaces  \t "] ],
-      [ 'foo', ['foo'] ],
-      [ 'foo,bar', [' foo ', ' bar '] ],
-      [ 'foo,  bar', [' foo,  bar '] ],      # internal comma-separated values are not altered
-      [ 'red﹠green', [ "red\xef\xb9\xa0green" ] ],
+      [ 'foo,bar', [' foo ', ' bar '] ],         # leading/trailing whitespace is removed
+      [ 'foo,  bar', [' foo,  bar '] ],          # for strings, internal ws is not not altered
+      [ 'red﹠green', ["red\xef\xb9\xa0green"] ],
     ],
     [
       # explode, deserialized data, list of header strings
       [ qw(explode content values) ],
       [ false, ['foo'], ['foo'] ],  # a single header is passed as an array iff when array is requested
       [ true,  ['foo'], ['foo'] ],
-      [ false, ['foo', 'bar'], [' foo,  bar '] ],   # split individual values on comma when type=array
-      [ true,  ['foo', 'bar'], [' foo,  bar '] ],
-      [ false, ['foo', 'bar', 'baz'], [' foo,  bar ', ' baz '] ],
-      [ true,  ['foo', 'bar', 'baz'], [' foo,  bar ', ' baz '] ],
+      [ false, [ qw(foo bar) ], [' foo, bar '] ],   # split individual values on comma when type=array
+      [ true,  [ qw(foo bar) ], [' foo, bar '] ],
+      [ false, [ qw(foo bar baz) ], [' foo, bar ', ' baz '] ],
+      [ true,  [ qw(foo bar baz) ], [' foo, bar ', ' baz '] ],
+      [ false, [ qw(foo bar) ], [ ' foo ', ' bar ' ] ],  # ""
+      [ false, [ qw(foo bar) ], [ ' foo, bar ' ] ],      # internal OWS is stripped for arrays
       [ false, [ 'blue−black', 'blackish﹠green', '100𝑥brown' ],
         [ "blue\xe2\x88\x92black,blackish\xef\xb9\xa0green,100\xf0\x9d\x91\xa5brown" ] ],
       [ true,  [ 'blue−black', 'blackish﹠green', '100𝑥brown' ],
         [ "blue\xe2\x88\x92black,blackish\xef\xb9\xa0green,100\xf0\x9d\x91\xa5brown" ] ],
       [ false, { qw(R 100 G 200 B 150) }, [' R, 100 ', ' G, 200,  B , 150 '] ],
       [ true,  { qw(R 100 G 200 B 150) }, [' R=100  , G=200 ', '  B=150 '] ],
+
       [ false, { foo => 'bar', baz => '' }, [ 'foo, bar, baz' ] ],
-      [ true,  { foo => 'bar', baz => '' }, [ 'foo=bar, baz=' ] ],
+      [ true,  { foo => 'bar', baz => '' }, [ 'foo=bar, baz' ] ],
+      [ false, { 'foo=bar' => 'baz', bloop => '' },                [ 'foo=bar,baz,bloop,' ] ],
+      [ true,  { foo => 'bar', baz => '', bloop => '', '' => '' }, [ 'foo=bar,baz,bloop,' ] ],
+      [ false, { foo => 'bar=baz', bloop => '' },                  [ 'foo, bar=baz, bloop, ' ] ],
+      [ false, { 'foo=bar' => 'baz', bloop => '' },                [ 'foo=bar, baz, bloop, ' ] ],
+      [ true,  { foo => 'bar', baz => '', bloop => '', '' => '' }, [ 'foo=bar,baz,bloop, ' ] ],
+      [ false, { foo => 'bar=baz', bloop => '' },                  [ 'foo,bar=baz,bloop,' ] ],
+      [ true,  { foo => '', bar => 'baz', bloop => '', '' => '' }, [ 'foo,bar=baz,bloop,' ] ],
+      [ false, { 'foo=bar=baz' => 'bloop' },                       [ 'foo=bar=baz, bloop' ] ],
+      [ true,  { foo => 'bar=baz' => bloop => '' },                [ 'foo=bar=baz, bloop' ] ],
+      [ true,  { foo => 'bar', baz => '' },                        [ 'foo=bar, baz=' ] ],
+      [ false, { foo => 'bar', baz => '' },                        [ 'foo, bar, baz, ' ] ],
+      [ true,  { foo => 'bar', baz => '' },                        [ 'foo=bar, baz' ] ],
+      [ false, { foo => 'bar' },                                   [ ' foo ', ' bar ' ] ],
+      [ false, { foo => 'bar' }, [ ' foo, bar ' ] ],     # internal OWS ws is stripped for objects
+
       [ false, { 'blue−black', 'yes!', 'blackish﹠green', '¿no?', '100𝑥brown', 'fl¡p' },
         [ "blue\xe2\x88\x92black,yes!,blackish\xef\xb9\xa0green,\xc2\xbfno?,100\xf0\x9d\x91\xa5brown,fl\xc2\xa1p" ] ],
       [ true,  { 'blue−black', 'yes!', 'blackish﹠green', '¿no?', '100𝑥brown', 'fl¡p' },

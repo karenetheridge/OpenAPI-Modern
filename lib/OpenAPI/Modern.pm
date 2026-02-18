@@ -790,7 +790,7 @@ sub _validate_path_parameter ($self, $state, $param_obj, $path_captures) {
   # path parameters are always percent-encoded
   return E({ %$state, data_path => jsonp($state->{data_path}, $param_obj->{name}) },
       'non-ascii character detected in parameter value: not deserializable')
-    if $data =~ /[^\x00-\x7F]/;
+    if ($data//'') =~ /[^\x00-\x7F]/;
 
   if (exists $param_obj->{content}) {
     $data = uri_decode($data);
@@ -912,12 +912,12 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
   my $data;
 
   if (@types != 6 and any { $_ eq 'array' || $_ eq 'object' } @types) {
-    @values = map +(s/^\s*//r =~ s/\s*\z//r), map +(split /,/), @values;
+    @values = map +(s/^\s*//r =~ s/\s*\z//r), map +(split /,/, $_, -1), @values;
 
     if (any { $_ eq 'object' } @types) {
       if ($header_obj->{explode}//false) {
         # style=simple, explode=true: "R=100,G=200,B=150" -> { "R": 100, "G": 200, "B": 150 }
-        $data = +{ map split(/=/, $_, -1), @values };
+        $data = +{ map {; my ($k, $v) = split /=/, $_, 2; ($k//'', $v//'') } @values };
       }
       else {
         # style=simple, explode=false: "R,100,G,200,B,150" -> { "R": 100, "G": 200, "B": 150 }
@@ -974,8 +974,8 @@ sub _validate_querystring_parameter ($self, $state, $param_obj, $uri) {
 # This method is not appropriate for header parameters, which should never be percent-decoded.
 # %opt is (:$style, :$explode, :$name, :$schema)
 sub _deserialize_style ($self, $data, $state, %opt) {
-  # numbers and builtin bools can be treated as strings, but reject undef and references
-  croak 'only strings can be deserialized' if not defined $data or ref $data;
+  # numbers and builtin bools can be treated as strings, but reject references
+  croak 'only strings can be deserialized' if ref $data;
 
   my ($style, $explode, $name, $schema) = @opt{qw(style explode name schema)};
   my @types = $self->_type_in_schema($schema, { %$state, keyword_path => $state->{keyword_path}.'/schema' });
@@ -986,7 +986,7 @@ sub _deserialize_style ($self, $data, $state, %opt) {
     # RFC6570 §3.2.1: "A variable that is undefined (Section 2.3) has no value and is ignored by the
     # expansion process. If all of the variables in an expression are undefined, then the
     # expression's expansion is the empty string."
-    if ($data eq '') {
+    if (($data//'') eq '') {
       if (any { $_ eq 'null' } @types) {
         return undef;
       }
@@ -1048,12 +1048,13 @@ sub _deserialize_style ($self, $data, $state, %opt) {
         map {
           ++$idx;
           # RFC6570 §3.2.1-6: empty value does not use '='
-          my ($key, $val) = split(/=/, $_, -1);
+          my ($key, $val) = split(/=/, $_, 2);
+
           ()= E({ %$state, keyword => 'style', errors => \@errors },
               'data does not match indicated style "%s" for %s (invalid separator at %s)',
               $style, $type, $type eq 'object' ? 'key "'.$key.'"' : 'index '.$idx)
             if defined $val and not length $val;
-          ($key, $val//'');
+          ($key//'', $val//'');
         }
         @values;
 
