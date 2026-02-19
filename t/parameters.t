@@ -1174,11 +1174,9 @@ subtest 'header parameters' => sub {
         [ "blue\xe2\x88\x92black,blackish\xef\xb9\xa0green,100\xf0\x9d\x91\xa5brown" ] ],
       [ true,  [ 'blue−black', 'blackish﹠green', '100𝑥brown' ],
         [ "blue\xe2\x88\x92black,blackish\xef\xb9\xa0green,100\xf0\x9d\x91\xa5brown" ] ],
-      [ false, { qw(R 100 G 200 B 150) }, [' R, 100 ', ' G, 200,  B , 150 '] ],
-      [ true,  { qw(R 100 G 200 B 150) }, [' R=100  , G=200 ', '  B=150 '] ],
+      [ false, { qw(R 100 G 200 B 150) }, [' R, 100 ', ' G, 200, B, 150 '] ],
+      [ true,  { qw(R 100 G 200 B 150) }, [' R=100, G=200 ', '  B=150 '] ],
 
-      [ false, { foo => 'bar', baz => '' }, [ 'foo, bar, baz' ] ],
-      [ true,  { foo => 'bar', baz => '' }, [ 'foo=bar, baz' ] ],
       [ false, { 'foo=bar' => 'baz', bloop => '' },                [ 'foo=bar,baz,bloop,' ] ],
       [ true,  { foo => 'bar', baz => '', bloop => '', '' => '' }, [ 'foo=bar,baz,bloop,' ] ],
       [ false, { foo => 'bar=baz', bloop => '' },                  [ 'foo, bar=baz, bloop, ' ] ],
@@ -1188,7 +1186,6 @@ subtest 'header parameters' => sub {
       [ true,  { foo => '', bar => 'baz', bloop => '', '' => '' }, [ 'foo,bar=baz,bloop,' ] ],
       [ false, { 'foo=bar=baz' => 'bloop' },                       [ 'foo=bar=baz, bloop' ] ],
       [ true,  { foo => 'bar=baz' => bloop => '' },                [ 'foo=bar=baz, bloop' ] ],
-      [ true,  { foo => 'bar', baz => '' },                        [ 'foo=bar, baz=' ] ],
       [ false, { foo => 'bar', baz => '' },                        [ 'foo, bar, baz, ' ] ],
       [ true,  { foo => 'bar', baz => '' },                        [ 'foo=bar, baz' ] ],
       [ false, { foo => 'bar' },                                   [ ' foo ', ' bar ' ] ],
@@ -1253,6 +1250,32 @@ subtest 'header parameters' => sub {
       header_obj => { explode => true, schema => { type => 'object', additionalProperties => { type => 'number' } } },
       values => [ 'R=100,G=200,B=150' ],
       content => { R => 100, G => 200, B => 150 },
+    },
+    {
+      name => 'object with missing , delimiter',
+      header_obj => { explode => false, schema => { type => 'object' } },
+      values => [ 'foo, bar, baz' ],
+      errors => [
+        {
+          instanceLocation => '/response/header/My-Header',
+          keywordLocation => $keyword_path,
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path,
+          error => 'cannot deserialize to requested type',
+        },
+      ],
+    },
+    {
+      name => 'object with bad = delimiter',
+      header_obj => { explode => true, schema => { type => 'object' } },
+      values => [ 'foo=bar, baz=' ],
+      errors => [
+        {
+          instanceLocation => '/response/header/My-Header',
+          keywordLocation => $keyword_path.'/style',
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path.'/style',
+          error => 'data does not match indicated style "simple" for object (invalid separator at key "baz")',
+        },
+      ],
     },
     {
       header_obj => { name => 'Cølör' },

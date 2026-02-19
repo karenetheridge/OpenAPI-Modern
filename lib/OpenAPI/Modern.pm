@@ -29,7 +29,7 @@ use Feature::Compat::Try;
 use Encode 2.89 ();
 use JSON::Schema::Modern;
 use JSON::Schema::Modern::Utilities qw(jsonp unjsonp canonical_uri E abort is_equal true false get_type);
-use OpenAPI::Modern::Utilities qw(add_vocab_and_default_schemas uri_decode intersect_types coerce_primitive);
+use OpenAPI::Modern::Utilities qw(add_vocab_and_default_schemas uri_decode intersect_types coerce_primitive uri_encode);
 use JSON::Schema::Modern::Document::OpenAPI;
 use MooX::TypeTiny 0.002002;
 use Types::Standard qw(InstanceOf Bool);
@@ -879,17 +879,15 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
     return 1;
   }
 
-  $state->{data_path} = jsonp($state->{data_path}, $header_name);
-
-  return E($state, 'wide character detected in header value: not deserializable')
+  return E({ %$state, data_path => jsonp($state->{data_path}, $header_name) },
+      'wide character detected in header value: not deserializable')
     if any { /[^\x00-\xFF]/ } $headers->every_header($encoded_header_name)->@*;
 
   # validate as a single comma-concatenated string, presumably to be decoded
-  return $self->_validate_parameter_content({ %$state, depth => $state->{depth}+1 },
+  return $self->_validate_parameter_content({ %$state, depth => $state->{depth}+1,
+        data_path => jsonp($state->{data_path}, $header_name) },
       $header_obj, \ $headers->header($encoded_header_name))
     if exists $header_obj->{content};
-
-  my @types = $self->_type_in_schema($header_obj->{schema}, { %$state, keyword_path => $state->{keyword_path}.'/schema' });
 
   # RFC9112 §5.1-3: "The field line value does not include that leading or trailing whitespace: OWS
   # occurring before the first non-whitespace octet of the field line value, or after the last
@@ -902,46 +900,33 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
   # by a comma (",") and optional whitespace (OWS, defined in Section 5.6.3). For consistency, use
   # comma SP."
 
-  # headers must be UTF-8-encoded, so we decode here first before parsing the string
+  # Headers must be UTF-8-encoded, so we decode here first before parsing the string
   # (style delimiters are all ascii so are unaffected)
+  # In order to deserialize from a single string using the "simple" style, we concatenate all header
+  # lines together, after removing leading and trailing whitespace and then pct-encoding the result
+  # (as it is decoded again after splitting on delimiters). OWS after commas are parsed out later.
 
-  my @values = map s/^\s*//r =~ s/\s*\z//r,
-    map Encode::decode('UTF-8', $_, Encode::DIE_ON_ERR | Encode::LEAVE_SRC),
-    $headers->every_header($encoded_header_name)->@*;
+  my $data = $self->_deserialize_style(
+    # , and = delimiters are not percent-encoded
+    Mojo::Util::url_escape(join(',',
+        map s/^\s*//r =~ s/\s*\z//r, $headers->every_header($encoded_header_name)->@*),
+      '^A-Za-z0-9\-._~:/?#[\]@!$&\'()*+,;='),  # unreserved and reserved
+    my $s = { %$state, errors => [] },
+    style => $header_obj->{style}//'simple',
+    explode => $header_obj->{explode}//false,
+    name => $header_name,
+    schema => $header_obj->{schema},
+    strip_internal_ws => 1,
+  );
 
-  my $data;
-
-  if (@types != 6 and any { $_ eq 'array' || $_ eq 'object' } @types) {
-    @values = map +(s/^\s*//r =~ s/\s*\z//r), map +(split /,/, $_, -1), @values;
-
-    if (any { $_ eq 'object' } @types) {
-      if ($header_obj->{explode}//false) {
-        # style=simple, explode=true: "R=100,G=200,B=150" -> { "R": 100, "G": 200, "B": 150 }
-        $data = +{ map {; my ($k, $v) = split /=/, $_, 2; ($k//'', $v//'') } @values };
-      }
-      else {
-        # style=simple, explode=false: "R,100,G,200,B,150" -> { "R": 100, "G": 200, "B": 150 }
-        $data = +{ @values, (@values % 2 ? '' : ()) };
-      }
-      $self->_coerce_object_elements($data, $header_obj->{schema}, { %$state, keyword_path => $state->{keyword_path}.'/schema' });
-    }
-    else {
-      # array, style=simple, explode=false or true: "blue,black,brown" -> ["blue","black","brown"]
-      $data = \@values;
-      $self->_coerce_array_elements($data, $header_obj->{schema}, { %$state, keyword_path => $state->{keyword_path}.'/schema' });
-    }
-  }
-  elsif (any { $_ eq 'string' || $_ eq 'number' || $_ eq 'boolean' || $_ eq 'null' } @types) {
-    return E($state, 'cannot deserialize to %s type%s', 'requested', @types > 1 ? 's' : '')
-      if not coerce_primitive(\($data = join(',', @values)), \@types);
-  }
-
-  else {
-    return E($state, 'cannot deserialize to %s type%s', !@types ? 'any' : 'requested', @types > 1 ? 's' : '');
+  if ($s->{errors}->@*) {
+    push $state->{errors}->@*, $s->{errors}->@*;
+    return;
   }
 
   $self->_evaluate_subschema(\$data, $header_obj->{schema},
-    { %$state, keyword_path => $state->{keyword_path}.'/schema', depth => $state->{depth}+1 });
+    { %$state, data_path => jsonp($state->{data_path}, $header_name),
+      keyword_path => $state->{keyword_path}.'/schema', depth => $state->{depth}+1 });
 }
 
 sub _validate_cookie_parameter ($self, $state, $param_obj, @args) {
@@ -977,8 +962,12 @@ sub _deserialize_style ($self, $data, $state, %opt) {
   # numbers and builtin bools can be treated as strings, but reject references
   croak 'only strings can be deserialized' if ref $data;
 
-  my ($style, $explode, $name, $schema) = @opt{qw(style explode name schema)};
-  my @types = $self->_type_in_schema($schema, { %$state, keyword_path => $state->{keyword_path}.'/schema' });
+  my ($style, $explode, $name, $schema, $strip_internal_ws) =
+    @opt{qw(style explode name schema strip_internal_ws)};
+
+  my @types = $self->_type_in_schema($schema, { %$state,
+      data_path => jsonp($state->{data_path}, $name),
+      keyword_path => $state->{keyword_path}.'/schema' });
 
   if ($style eq 'simple' or $style eq 'matrix' or $style eq 'label') {
     my $state = +{ %$state, data_path => jsonp($state->{data_path}, $name) };
@@ -1014,7 +1003,8 @@ sub _deserialize_style ($self, $data, $state, %opt) {
       if length $prefix and $data !~ s/^$prefix//;
 
     my $delimiter =
-        !$explode ? ','
+        $style eq 'simple' && $strip_internal_ws ? ',(?:%20)?'
+      : !$explode ? ','
       : $style eq 'simple' ? ','
       : $style eq 'matrix' ? ';'
       : $style eq 'label' ? '\.'

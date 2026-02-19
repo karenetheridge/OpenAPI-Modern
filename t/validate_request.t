@@ -2519,6 +2519,9 @@ YAML
     'headers can be parsed into an array in order to test multiple values without sorting',
   );
 
+  {
+  my $todo = todo 'HTTP::Message::to_psgi fetches all headers as a single concatenated string'
+    if $::TYPE eq 'plack' or $::TYPE eq 'catalyst' or $::TYPE eq 'dancer2';
   $request = request('GET', 'http://example.com/foo', [
     MultipleValuesAsArray => '  one',
     MultipleValuesAsArray => ' one ',
@@ -2539,8 +2542,12 @@ YAML
     },
     'headers that appear more than once are parsed into an array',
   );
+  }
 
 
+  {
+  my $todo = todo 'HTTP::Message::to_psgi fetches all headers as a single concatenated string'
+    if $::TYPE eq 'plack' or $::TYPE eq 'catalyst' or $::TYPE eq 'dancer2';
   $request = request('GET', 'http://example.com/foo', [
       MultipleValuesAsObjectExplodeFalse => ' R, 100 ',
       MultipleValuesAsObjectExplodeFalse => ' B, 150,  G , 200 ',
@@ -2580,6 +2587,7 @@ YAML
     },
     'headers can be parsed into an object, represented in two ways depending on explode value',
   );
+  }
 
   $request = request('GET', 'http://example.com/foo', [
       ArrayWithRef => 'one, one, three',
