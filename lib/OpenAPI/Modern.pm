@@ -787,6 +787,11 @@ sub _validate_path_parameter ($self, $state, $param_obj, $path_captures) {
 
   my $data = $path_captures->{$param_obj->{name}};
 
+  # path parameters are always percent-encoded
+  return E({ %$state, data_path => jsonp($state->{data_path}, $param_obj->{name}) },
+      'non-ascii character detected in parameter value: not deserializable')
+    if $data =~ /[^\x00-\x7F]/;
+
   if (exists $param_obj->{content}) {
     $data = uri_decode($data);
     return $self->_validate_parameter_content({ %$state, depth => $state->{depth}+1,
@@ -949,11 +954,17 @@ sub _validate_querystring_parameter ($self, $state, $param_obj, $uri) {
   return E({ %$state, keyword => 'required' }, 'missing querystring')
     if $param_obj->{required} and not length $uri->query->{string};
 
+  my $content = $uri->query->{string};
+
+  # query parameters are always percent-encoded
+  return E($state, 'non-ascii character detected in parameter value: not deserializable')
+    if $content =~ /[^\x00-\x7F]/;
+
   # Replace "+" with whitespace, unescape and decode as in Mojo::Parameters::pairs
   # We do not UTF-8-decode the content: this is the responsibility of the media-type decoder.
-  my $content = url_unescape($uri->query->{string} =~ s/\+/ /gr);
 
-  $self->_validate_parameter_content({ %$state, depth => $state->{depth}+1 }, $param_obj, \$content)
+  $self->_validate_parameter_content({ %$state, depth => $state->{depth}+1 },
+    $param_obj, \ url_unescape($content =~ s/\+/ /gr));
 }
 
 # data comes in as a string

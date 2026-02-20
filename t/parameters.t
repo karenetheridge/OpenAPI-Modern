@@ -72,6 +72,19 @@ subtest 'path parameters' => sub {
       ],
     },
     {
+      name => 'non-ascii characters in path captures must be percent-encoded',
+      param_obj => { name => 'color', content => { 'application/json' => { schema => {} } } },
+      input => 'cølör',
+      errors => [
+        {
+          instanceLocation => '/request/uri/path/color',
+          keywordLocation => $keyword_path,
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path,
+          error => 'non-ascii character detected in parameter value: not deserializable',
+        },
+      ],
+    },
+    {
       name => 'numeric string',
       param_obj => { name => 'json_content', content => { 'application/json' => { schema => {} } } },
       input => '3',
@@ -120,6 +133,19 @@ subtest 'path parameters' => sub {
     [ 'simple', false, { 'R,X' => '100', G => '200', 'B,Y' => '150' }, 'R%2CX,100,G,200,B%2CY,150' ],
     [ 'simple', true,  { 'R,X' => '100', G => '200', 'B=Y' => '150' }, 'R%2CX=100,G=200,B%3DY=150' ],
 
+    {
+      name => 'non-ascii characters in path captures must be percent-encoded',
+      param_obj => { name => 'color' },
+      input => 'cølör',
+      errors => [
+        {
+          instanceLocation => '/request/uri/path/color',
+          keywordLocation => $keyword_path,
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path,
+          error => 'non-ascii character detected in parameter value: not deserializable',
+        },
+      ],
+    },
     {
       name => 'any type is permitted, default to string',
       param_obj => { name => 'color', schema => {} },
@@ -855,8 +881,7 @@ subtest 'path parameters' => sub {
       };
 
       my $valid = $openapi->_validate_path_parameter($state, $param_obj,
-        { defined $test->{input}
-          ? ($param_obj->{name} => substr(Mojo::URL->new('http://example.com/'.$test->{input})->path, 1)) : () });
+        { defined $test->{input} ? ($param_obj->{name} => $test->{input}) : () });
       die 'validity inconsistent with error count' if $valid xor !$state->{errors}->@*;
 
       my $todo;
