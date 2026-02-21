@@ -112,6 +112,14 @@ foreach my $uri (sort keys %files) {
   die $result->dump if not $result->valid;
 }
 
+# update checksums for other dirty files
+if (keys %checksums) {
+  foreach my $file (glob('share/3.*/*')) {
+    system(qw(git diff --quiet --stat), $file);
+    $checksums{$file} = md5_hex(path($file)->slurp) if $?;
+  }
+}
+
 # compute checksums and record them in the test, preserving unaffected entries
 my $checksums_file = path('t/checksums.t');
 my $checksums_content = $checksums_file->slurp;
