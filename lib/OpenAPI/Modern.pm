@@ -2135,12 +2135,16 @@ C<number>, C<string>.
 
 =head1 LIMITATIONS
 
-All message validation is done using L<Mojolicious> objects (L<Mojo::Message::Request> and
+=head2 HTTP Support Libraries
+
+All message parsing and manipulation is done using L<Mojolicious> objects (L<Mojo::Message::Request> and
 L<Mojo::Message::Response>). If messages of other types are passed, conversion is done on a
 best-effort basis, but since different implementations have different levels of adherence to the RFC
 specs, some validation errors may occur e.g. if a certain required header is missing on the
 original. For best results in validating real messages from the network, parse them directly into
 Mojolicious messages (see L<Mojo::Message/parse>).
+
+=head2 Use of Parameter Definitions
 
 Parameter deserialization is performed with the assumption that the request URI has been correctly
 percent-encoded. Failing to encode certain characters that are also used as delimiters for the
@@ -2149,20 +2153,18 @@ encoding characters that are not canonically required to be encoded according to
 L<RFC3986 §2.1|https://www.rfc-editor.org/rfc/rfc3986#section-2.1>, may result in the message not
 being correctly deserialized nor parameter values correctly extracted.
 
-Only certain permutations of OpenAPI documents are supported at this time:
+=head2 Unimplemented sections of the specification
 
 =for :list
 * for query parameters, only C<style: form> and C<explode: true> is supported, only the first value
   of each parameter name is considered, and C<allowEmptyValue> and C<allowReserved> are not checked
 * cookie parameters are not checked at all yet
-* C<multipart/*> messages are not yet supported
-* OpenAPI descriptions must be contained in a single document; while C<$ref>erences to other
-  documents (such as within a C</components> structure) are supported, C</paths> entries in other
-  documents are not considered at this time.
+* C<multipart/*> messages
+* C<application/x-www-form-urlencoded> messages and the C<encoding> object within media-type objects
 * The use of C<$ref> within a path-item object is only allowed when not adjacent to any other
   path-item properties (C<parameters>, C<servers>, request methods)
-* Security schemes in the OpenAPI description, and the use of any C<Authorization> headers in
-  requests, are not currently supported.
+* The C<Authorization> header is not verified against any security schemes specified in the OpenAPI
+  description. This may in future be implemented via plugins for each security scheme implementation.
 
 =head1 SEE ALSO
 
