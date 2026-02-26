@@ -629,7 +629,7 @@ sub upgrade ($self, $to_version = SUPPORTED_OAD_VERSIONS->[-1]) {
     }
   }
 
-  if ($to_oas_version eq '3.2') {
+  if ($to_oas_version ge '3.2') {
     foreach my $schema_path ($self->get_entity_locations('response')) {
       my $subschema = $self->get($schema_path);
       delete $subschema->{description}
