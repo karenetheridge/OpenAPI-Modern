@@ -1,6 +1,7 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - support "defaultMapping" in the 3.2.0 discriminator object
 
 0.128     2026-02-21 23:11:29Z
           - header parameters now support Unicode header names and

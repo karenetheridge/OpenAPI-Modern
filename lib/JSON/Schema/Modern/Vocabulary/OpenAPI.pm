@@ -59,13 +59,18 @@ sub _eval_keyword_discriminator ($self, $data, $schema, $state) {
   # Note: the spec is unclear of the expected behaviour when the data instance is not an object
   return 1 if not is_type('object', $data);
 
+  # v3.1.2 §4.8.25.1: "This property SHOULD be required in the payload schema, as the behavior when
+  # the property is absent is undefined."
+  # v3.2.0 §4.25.1: "The discriminating property MAY be defined as required or optional, but when
+  # defined as optional the Discriminator Object MUST include a defaultMapping field that specifies
+  # which schema is expected to validate the structure of the model when the discriminating property
+  # is not present."
   my $discriminator_key = $schema->{discriminator}{propertyName};
+  return E($state, 'missing required discriminator property "%s" and no defaultMapping present',
+      $discriminator_key)
+    if not exists $data->{$discriminator_key} and not exists $schema->{discriminator}{defaultMapping};
 
-  # property with name <propertyName> MUST be present in the data payload
-  return E($state, 'missing required discriminator property "%s"', $discriminator_key)
-    if not exists $data->{$discriminator_key};
-
-  my $discriminator_value = $data->{$discriminator_key};
+  my $discriminator_value = $data->{$discriminator_key} // $schema->{discriminator}{defaultMapping};
 
   if (exists $schema->{discriminator}{mapping} and exists $schema->{discriminator}{mapping}{$discriminator_value}) {
     # use 'mapping' to determine which schema to use.
