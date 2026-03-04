@@ -957,9 +957,9 @@ sub _validate_querystring_parameter ($self, $state, $param_obj, $uri) {
 # data comes in as a string
 # when parsing fails, $state->{errors} is populated;
 # otherwise, the return value is the fully deserialized data, parsed into the correct type(s)
-# (which may be undef = null; note the difference from () which indicates an error)
-# This method is not appropriate for header parameters, which should never be percent-decoded.
-# %opt is (:$style, :$explode, :$name, :$schema)
+# (which may be undef = null; note the difference from () which indicates no data, and possibly an
+# error)
+# %opt is (:$style, :$explode, :$name, :$schema, $strip_internal_ws)
 sub _deserialize_style ($self, $data, $state, %opt) {
   # numbers and builtin bools can be treated as strings, but reject references
   croak 'only strings can be deserialized' if ref $data;
