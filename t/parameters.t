@@ -1127,16 +1127,16 @@ subtest 'header parameters' => sub {
       content => 3, # number, not string!
     },
     {
-      header_obj => { name => 'Cølör', content => { 'application/json' => { schema => { type => 'string' } } } },
+      header_obj => { content => { 'application/json' => { schema => { type => 'string' } } } },
       values => [ "\"red\xef\xb9\xa0green\"" ],
       content => 'red﹠green',
     },
     {
-      header_obj => { name => 'Cølör', content => { 'application/json' => { schema => { type => 'string' } } } },
+      header_obj => { content => { 'application/json' => { schema => { type => 'string' } } } },
       values => [ 'ಠ_ಠ' ],
       errors => [
         {
-          instanceLocation => '/response/header/Cølör',
+          instanceLocation => '/response/header/My-Header',
           keywordLocation => $keyword_path,
           absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path,
           error => 'wide character detected in header value: not deserializable',
@@ -1210,23 +1210,23 @@ subtest 'header parameters' => sub {
       ],
     },
     {
-      header_obj => { name => 'Mîssiñg', required => true },
+      header_obj => { name => 'Missing', required => true },
       values => undef,
       errors => [
         {
           instanceLocation => '/response/header',
           keywordLocation => $keyword_path.'/required',
           absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path.'/required',
-          error => 'missing header: Mîssiñg',
+          error => 'missing header: Missing',
         },
       ],
     },
     {
-      header_obj => { name => 'Cølör' },
+      header_obj => {},
       values => [ 'ಠ_ಠ' ],
       errors => [
         {
-          instanceLocation => '/response/header/Cølör',
+          instanceLocation => '/response/header/My-Header',
           keywordLocation => $keyword_path,
           absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path,
           error => 'wide character detected in header value: not deserializable',
@@ -1278,7 +1278,7 @@ subtest 'header parameters' => sub {
       ],
     },
     {
-      header_obj => { name => 'Cølör' },
+      header_obj => {},
       values => [ "red\xef\xb9\xa0green" ],
       content => 'red﹠green',
     },

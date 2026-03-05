@@ -872,10 +872,11 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
 
   return 1 if grep fc $header_name eq fc $_, qw(Accept Content-Type Authorization);
 
-  # header names and values must be utf8-encoded for transmission
-  my $encoded_header_name = Encode::encode('UTF-8', $header_name, Encode::DIE_ON_ERR | Encode::LEAVE_SRC);
+  # temporary, until the ABNF is enforced in the OAD schema
+  return E($state, 'non-ascii character detected in header name: not deserializable')
+    if $header_name =~ /[^\x00-\x7F]/;
 
-  if (not $headers->every_header($encoded_header_name)->@*) {
+  if (not $headers->every_header($header_name)->@*) {
     return E({ %$state, keyword => 'required' }, 'missing header: %s', $header_name)
       if $header_obj->{required};
     return 1;
@@ -883,12 +884,12 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
 
   return E({ %$state, data_path => jsonp($state->{data_path}, $header_name) },
       'wide character detected in header value: not deserializable')
-    if any { /[^\x00-\xFF]/ } $headers->every_header($encoded_header_name)->@*;
+    if any { /[^\x00-\xFF]/ } $headers->every_header($header_name)->@*;
 
   # validate as a single comma-concatenated string, presumably to be decoded
   return $self->_validate_parameter_content({ %$state, depth => $state->{depth}+1,
         data_path => jsonp($state->{data_path}, $header_name) },
-      $header_obj, \ $headers->header($encoded_header_name))
+      $header_obj, \ $headers->header($header_name))
     if exists $header_obj->{content};
 
   # RFC9112 §5.1-3: "The field line value does not include that leading or trailing whitespace: OWS
@@ -911,7 +912,7 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
   my $data = $self->_deserialize_style(
     # , and = delimiters are not percent-encoded
     Mojo::Util::url_escape(join(',',
-        map s/^\s*//r =~ s/\s*\z//r, $headers->every_header($encoded_header_name)->@*),
+        map s/^\s*//r =~ s/\s*\z//r, $headers->every_header($header_name)->@*),
       '^A-Za-z0-9\-._~:/?#[\]@!$&\'()*+,;='),  # unreserved and reserved
     my $s = { %$state, errors => [] },
     style => $header_obj->{style}//'simple',
