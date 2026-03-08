@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.130     2026-03-08 23:12:28Z
           - type inference calculations are now cached on the document object,
             for faster runtime performance
