@@ -1,5 +1,6 @@
-use strictures 2;
+# vim: set ft=perl ts=8 sts=2 sw=2 tw=100 et :
 # no package, so things defined here appear in the namespace of the parent.
+use strictures 2;
 use 5.020;
 use stable 0.031 'postderef';
 use experimental 'signatures';
@@ -12,19 +13,18 @@ no if "$]" >= 5.041009, feature => 'smartmatch';
 no feature 'switch';
 use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 
+use Test2::V0 qw(!bag !bool !warnings !subtest), -no_pragmas => 1;  # prefer Test::Deep and Test2::Warnings versions of these exports
+use if $ENV{AUTHOR_TESTING}, 'Test2::Warnings';
+sub subtest { Test2::V0::subtest(@_); bail_if_not_passing() if $ENV{AUTHOR_TESTING}; }
+use if $ENV{AUTHOR_TESTING} || -d '.git', 'Test2::Plugin::SubtestFilter';
 use Safe::Isa;
 use List::Util 'pairs';
 use Mojo::Message::Request;
 use Mojo::Message::Response;
 use Carp 'croak';
-use Test2::V0 qw(!bag !bool !warnings !subtest), -no_pragmas => 1;  # prefer Test::Deep and Test2::Warnings versions of these exports
-use Test2::API 'context_do';
 use Test::Needs;
-use if $ENV{AUTHOR_TESTING}, 'Test2::Warnings';
-
-sub subtest { Test2::V0::subtest(@_); bail_if_not_passing() if $ENV{AUTHOR_TESTING}; }
-use if $ENV{AUTHOR_TESTING}, 'Test2::Plugin::SubtestFilter';
 use Test::Deep qw(!array !hash); # import symbols: ignore, re etc
+use Test2::API 'context_do';
 use Test::File::ShareDir -share => { -dist => { 'OpenAPI-Modern' => 'share' } };
 use JSON::Schema::Modern::Document::OpenAPI;
 use JSON::Schema::Modern::Utilities 0.628 qw(true false);
