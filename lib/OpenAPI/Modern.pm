@@ -64,6 +64,11 @@ has debug => (
   default => $DEBUG,
 );
 
+has with_defaults => (
+  is => 'ro',
+  isa => Bool,
+);
+
 around BUILDARGS => sub ($orig, $class, @args) {
   my $args = $class->$orig(@args);
 
@@ -78,7 +83,7 @@ around BUILDARGS => sub ($orig, $class, @args) {
   $args->{evaluator} //= JSON::Schema::Modern->new(
     validate_formats => 1,
     max_traversal_depth => 80,
-    %$extra_args, # may include other arguments recognized by JSM
+    %$extra_args, # may include with_defaults, or other arguments recognized by JSM
   );
 
   $args->{openapi_document} //= JSON::Schema::Modern::Document::OpenAPI->new(
@@ -103,7 +108,10 @@ sub validate_request ($self, $request, $options = {}) {
     if $options->{request} and $request != $options->{request};
 
   # mostly populated by find_path_item
-  my $state = { data_path => '/request' };
+  my $state = {
+    data_path => '/request',
+    $self->with_defaults ? (defaults => {}) : (),
+  };
 
   try {
     $options->{request} //= $request;
@@ -256,7 +264,10 @@ sub validate_response ($self, $response, $options = {}) {
     if $options->{response} and $response != $options->{response};
 
   # mostly populated by find_path_item
-  my $state = { data_path => '/response' };
+  my $state = {
+    data_path => '/response',
+    $self->with_defaults ? (defaults => {}) : (),
+  };
 
   try {
     # we only need the operation location, and do not need to verify the request uri, path template
@@ -836,8 +847,14 @@ sub _validate_parameter ($self, $state, $param_obj, %args) {
 
   $state->{data_path} = jsonp($state->{data_path}, $name) if $in ne 'querystring';
 
-  # value is missing, but not required
-  return 1 if not @result;
+  if (not @result) {
+    # value is missing, but not required - populate with defaults
+    $state->{defaults}{$state->{data_path}} =
+        ref $schema->{default} ? dclone($schema->{default}) : $schema->{default}
+      if $state->{defaults} and ref $schema eq 'HASH' and exists $schema->{default};
+
+    return 1;
+  }
 
   my $data = shift @result;
   jsonp_set($state->{data}, $state->{data_path}, $data);
@@ -1582,6 +1599,7 @@ sub _result ($self, $state, $is_exception = 0, $is_response = 0) {
       : (errors => $state->{errors}),
     $is_response ? (recommended_response => undef) : (),  # responses don't have responses
     $state->%{data},
+    $state->{defaults} ? $state->%{defaults} : (),
   );
 }
 
@@ -1907,6 +1925,7 @@ sub _evaluate_subschema ($self, $dataref, $schema, $state) {
       data_path => $state->{data_path},
       traversed_keyword_path => $state->{traversed_keyword_path}.$state->{keyword_path},
       $state->{stringy_numbers} ? (stringy_numbers => 1) : (),
+      $state->{with_defaults} ? (with_defaults => 1) : (),
     },
   );
 
@@ -1914,6 +1933,10 @@ sub _evaluate_subschema ($self, $dataref, $schema, $state) {
   push $state->{annotations}->@*, $result->annotations;
 
   jsonp_set($state->{data}, $state->{data_path}, jsonp_get($result->data, $state->{data_path}));
+
+  $state->{defaults}->%* = (
+    $state->{defaults}->%*, $result->defaults->%*
+  ) if $state->{defaults} and $result->defaults;
 
   return $result;
 }
@@ -2198,6 +2221,12 @@ Boolean; defaults to false (can also be set via C<$DEBUG>).
 
 When set, useful diagnostic information is stored in the C<$options> hash used in public methods
 described below.
+
+=head2 with_defaults
+
+When set, missing values from parameter and body schemas that have a corresponding C<default>
+keyword will be returned in the L<JSON::Schema::Modern::Result> object under the C<defaults>
+property, and are also populated into C<data>. See example in L</validate_request>.
 
 =head1 METHODS
 

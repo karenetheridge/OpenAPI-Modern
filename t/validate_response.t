@@ -1048,6 +1048,191 @@ YAML
   );
 };
 
+subtest $::TYPE.': validation with schema defaults' => sub {
+  my ($openapi, $result);
+  my $schema = $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML');
+paths:
+  /:
+    get:
+      operationId: me
+      parameters: []
+      responses:
+        default:
+          headers: {}
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+YAML
+
+  $schema->{paths}{'/'}{get}{responses}{default}{headers}->%* = (
+    'header-array' => +{
+      explode => false,
+      schema => {
+        type => 'array',
+        prefixItems => [ map +{ type => 'number', default => $_ }, 0..1 ],
+        items => { type => 'number', default => 42 },
+      },
+    },
+    'header-object' => {
+      explode => false, # forces form style to use ?$name=$key0,$val0,$key1,$val1,$key2,$val2
+      schema => {
+        type => 'object',
+        properties => +{ map +($_ => +{ type => 'string', default => $_.'_value' }), 'a'..'b' },
+      },
+    },
+  );
+
+  $schema->{paths}{'/'}{get}{responses}{default}{content}{'application/json'}{schema}{properties}->%* = (
+    'body-array' => {
+      type => 'array',
+      prefixItems => [ map +{ type => 'number', default => $_ }, 0..1 ],
+      items => { type => 'number', default => 42 },
+    },
+    'body-object' => {
+      type => 'object',
+      properties => +{ map +($_ => +{ type => 'string', default => $_.'_value' }), 'a'..'b' },
+    },
+  );
+
+  $openapi = OpenAPI::Modern->new(openapi_uri => $doc_uri_rel, openapi_schema => $schema);
+
+  is_equal(
+    ($result = $openapi->validate_response(response('200',
+        [ 'header-array' => '', 'header-object' => '', 'Content-Type' => 'application/json' ],
+        '{"body-array":[],"body-object":{}}',
+    ), { operation_id => 'me' }))->TO_JSON,
+    { valid => true },
+    'no defaults are included by default',  # ha!
+  );
+  is_equal(
+    $result->data,
+    {
+      response => {
+        header => {
+          'header-array' => [],
+          'header-object' => {},
+        },
+        body => {
+          content => {
+            'body-array' => [],
+            'body-object' => {},
+          },
+        },
+      },
+    },
+    'data is correctly deserialized, without defaults',
+  );
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri_rel,
+    openapi_schema => $schema,
+    with_defaults => 1,
+  );
+
+  is_equal(
+    ($result = $openapi->validate_response(response('200',
+        [ 'header-array' => '', 'header-object' => '' ],
+    ), { operation_id => 'me' }))->TO_JSON,
+    {
+      valid => true,
+      defaults => {
+        '/response/header/header-array/0' => 0,
+        '/response/header/header-array/1' => 1,
+        '/response/header/header-object/a' => 'a_value',
+        '/response/header/header-object/b' => 'b_value',
+      },
+    },
+    'with empty headers, styled header defaults are included when with_defaults is set on the evaluator',
+  );
+  is_equal(
+    $result->data,
+    {
+      response => {
+        header => {
+          'header-array' => [ 0, 1 ],
+          'header-object' => { a => 'a_value', b => 'b_value' },
+        },
+      },
+    },
+    'styled parameter data now includes defaults',
+  );
+
+
+  $schema->{paths}{'/'}{get}{responses}{default}{headers}->%* = (
+    'header-array' => +{
+      content => {
+        'application/json' => {
+          schema => {
+            type => 'array',
+            prefixItems => [ map +{ type => 'number', default => $_ }, 0..1 ],
+            items => { type => 'number', default => 42 },
+            default => [ 10, 11, 12 ],
+          },
+        },
+      },
+    },
+    'header-object' => {
+      content => {
+        'application/json' => {
+          schema => {
+            type => 'object',
+            properties => +{ map +($_ => +{ type => 'string', default => $_.'_value' }), 'a'..'b' },
+            default => { x => 'j', y => 'k', z => 'l' },
+          },
+        },
+      },
+    },
+  );
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri_rel,
+    openapi_schema => $schema,
+    with_defaults => 1,
+  );
+
+  is_equal(
+    ($result = $openapi->validate_response(response('200',
+        [ 'header-array' => '[]', 'header-object' => '{}', 'Content-Type' => 'application/json' ],
+        '{"body-array":[],"body-object":{}}',
+    ), { operation_id => 'me' }))->TO_JSON,
+    {
+      valid => true,
+      defaults => {
+        '/response/header/header-array/0' => 0,
+        '/response/header/header-array/1' => 1,
+        '/response/header/header-object/a' => 'a_value',
+        '/response/header/header-object/b' => 'b_value',
+        '/response/body/content/body-array/0' => 0,
+        '/response/body/content/body-array/1' => 1,
+        '/response/body/content/body-object/a' => 'a_value',
+        '/response/body/content/body-object/b' => 'b_value',
+      },
+    },
+    'with empty parameters, media-type parameter and body defaults are included when with_defaults is set on the evaluator',
+  );
+  is_equal(
+    $result->data,
+    {
+      response => {
+        header => {
+          'header-array' => [ 0, 1 ],
+          'header-object' => { a => 'a_value', b => 'b_value' },
+        },
+        body => {
+          content => {
+            'body-array' => [ 0, 1 ],
+            'body-object' => { a => 'a_value', b => 'b_value' },
+          },
+        },
+      },
+    },
+    'media-type parameter and body data now includes defaults',
+  );
+};
+
 if (++$type_index < @::TYPES) {
   bail_if_not_passing if $ENV{AUTHOR_TESTING};
   goto START;

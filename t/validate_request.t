@@ -3906,6 +3906,800 @@ YAML
   );
 };
 
+subtest $::TYPE.': validation with schema defaults' => sub {
+
+  # 1. empty values for parameters provided:  [], {}
+  #  a. no defaults configs: no defaults in result; data is not populated with defaults.
+  #   b. with_defaults is enabled. defaults in result; data is populated with defaults.
+  #
+  # 2. parameter data is entirely missing (for query, no querystring; for Cookies and headers,
+  #    headers entirely missing)
+  #   a. no defaults configs: no defaults in result; data is not populated with defaults.
+  #   b. with_defaults is enabled. top-level defaults in result: default: false. data is populated
+  #      with top-level defaults.
+  #
+  # ---- schemas change here
+  #   c. with_defaults is enabled; now schemas are 'true' (not a hashref!). no defaults in result;
+  #      data is not populated with anything.
+  #   d. with_defaults is enabled; now schemas are missing. (only valid for media-types)
+  #
+  # 3. applicable to cookies only: Cookie header exists, but the named parameter does not exist.
+  #   a. no defaults configs: no defaults in result; data is not populated with defaults.
+  #   b. with_defaults is enabled. top-level defaults in result: default: false. data is populated
+  #      with top-level defaults.
+
+  my ($openapi, $result);
+  my $schema = $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML');
+paths:
+  /{path-array}/{path-object}:    # styled parameters, and media-type parameters and body
+    get:
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: {}
+  /querystring-array:             # querystring
+    get:
+      parameters: []
+  /querystring-object:            # querystring
+    get:
+      parameters: []
+YAML
+
+  ### styled parameters
+
+  $schema->{paths}{'/{path-array}/{path-object}'}{get}{parameters}->@* = map +(
+    +{
+      name => $_.'-array',
+      in => $_,
+      $_ eq 'path' ? (required => true) : (),
+      explode => ($_ eq 'cookie' ? true : false),
+      schema => {
+        type => 'array',
+        prefixItems => [ map +{ type => 'number', default => $_ }, 0..1 ],
+        items => { type => 'number', default => 42 },
+        $_ eq 'path' ? () : (default => [ 10, 11 ]),
+        default => false, # this is okay because we do not validate the default values
+      },
+    },
+    {
+      name => $_.'-object',
+      in => $_,
+      $_ eq 'cookie' ? (style => 'cookie') : (),
+      $_ eq 'path' ? (required => true) : (),
+      explode => ($_ eq 'cookie' ? true : false),
+      schema => {
+        type => 'object',
+        properties => +{ map +($_ => +{ type => 'string', default => $_.'_value' }), 'a'..'b' },
+        default => false,
+      },
+    },
+  ), qw(path query header cookie);
+
+  $openapi = OpenAPI::Modern->new(openapi_uri => $doc_uri_rel, openapi_schema => $schema);
+
+  # 1a
+  $result = $openapi->validate_request(request(GET => 'http://example.com//?query-array=&query-object=',
+    [ 'header-array' => '', 'header-object' => '', Cookie => 'cookie-array=4' ]));
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      { valid => true },
+      {
+        request => {
+          uri => {
+            path => {
+              'path-array' => [],
+              'path-object' => {},
+            },
+            query => {
+              'query-array' => [],
+              'query-object' => {},
+            },
+          },
+          header => {
+            'header-array' => [],
+            'header-object' => {},
+            Cookie => {
+              'cookie-array' => [ 4 ],
+              'cookie-object' => { 'cookie-array' => '4' },
+            },
+          },
+        },
+      },
+    ],
+    'styled parameter data with missing items/properties is deserialized, with no defaults by default',
+  );
+
+  # 2a
+  $result = $openapi->validate_request(request(GET => 'http://example.com//'));
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      { valid => true },
+      { request => { uri => { path => { 'path-array' => [], 'path-object' => {} } } } },
+    ],
+    'styled parameters with missing data is deserialized, with no defaults by default',
+  );
+
+  # 3a
+  $result = $openapi->validate_request(request(GET => 'http://example.com//',
+    [ Cookie => 'alpha=1; beta=2' ]));
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      { valid => true },
+      { request => {
+          uri => { path => { 'path-array' => [], 'path-object' => {} } },
+          header => {
+            Cookie => {
+              'cookie-object' => { alpha => '1', beta => '2' },
+            },
+          },
+        },
+      },
+    ],
+    'styled cookie data with missing values is deserialized, with no defaults by default',
+  );
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri_rel,
+    openapi_schema => $schema,
+    with_defaults => 1,
+  );
+
+  # 1b
+  $result = $openapi->validate_request(request(GET => 'http://example.com//?query-array=&query-object=',
+    [ 'header-array' => '', 'header-object' => '', Cookie => 'cookie-array=4' ]));
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      {
+        valid => true,
+        defaults => {
+          '/request/uri/path/path-array/0' => 0,
+          '/request/uri/path/path-array/1' => 1,
+          '/request/uri/path/path-object/a' => 'a_value',
+          '/request/uri/path/path-object/b' => 'b_value',
+          '/request/uri/query/query-array/0' => 0,
+          '/request/uri/query/query-array/1' => 1,
+          '/request/uri/query/query-object/a' => 'a_value',
+          '/request/uri/query/query-object/b' => 'b_value',
+          '/request/header/header-array/0' => 0,
+          '/request/header/header-array/1' => 1,
+          '/request/header/header-object/a' => 'a_value',
+          '/request/header/header-object/b' => 'b_value',
+          '/request/header/Cookie/cookie-array/1' => 1,
+          '/request/header/Cookie/cookie-object/a' => 'a_value',
+          '/request/header/Cookie/cookie-object/b' => 'b_value',
+        },
+      },
+      {
+        request => {
+          uri => {
+            path => {
+              'path-array' => [ 0, 1 ],
+              'path-object' => { a => 'a_value', b => 'b_value' },
+            },
+            query => {
+              'query-array' => [ 0, 1 ],
+              'query-object' => { a => 'a_value', b => 'b_value' },
+            },
+          },
+          header => {
+            'header-array' => [ 0, 1 ],
+            'header-object' => { a => 'a_value', b => 'b_value' },
+            Cookie => {
+              'cookie-array' => [ 4, 1 ],
+              'cookie-object' => { 'cookie-array' => '4', a => 'a_value', b => 'b_value' },
+            },
+          },
+        },
+      },
+    ],
+    'styled parameter data with empty values, missing items or properties are included when with_defaults is set',
+  );
+
+  # 2b
+  $result = $openapi->validate_request(request(GET => 'http://example.com//'));
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      {
+        valid => true,
+        defaults => {
+          '/request/uri/path/path-array/0' => 0,          # path parameters are never entirely missing
+          '/request/uri/path/path-array/1' => 1,
+          '/request/uri/path/path-object/a' => 'a_value',
+          '/request/uri/path/path-object/b' => 'b_value',
+          '/request/uri/query/query-array' => false,
+          '/request/uri/query/query-object' => false,
+          '/request/header/header-array' => false,
+          '/request/header/header-object' => false,
+          '/request/header/Cookie/cookie-array' => false,
+          '/request/header/Cookie/cookie-object' => false,
+          # no body default - how would we know what media-type to use?
+        },
+      },
+      {
+        request => {
+          uri => {
+            path => {
+              'path-array' => [ 0, 1 ],
+              'path-object' => { a => 'a_value', b => 'b_value' },
+            },
+            query => { 'query-array' => false, 'query-object' => false },
+          },
+          header => {
+            'header-array' => false,
+            'header-object' => false,
+            Cookie => { 'cookie-array' => false, 'cookie-object' => false },
+          },
+        },
+      }
+    ],
+    'styled parameter data now includes defaults when values are missing',
+  );
+
+  # 3b
+  $result = $openapi->validate_request(request(GET => 'http://example.com//',
+    [ Cookie => 'alpha=1; beta=2' ]));
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      {
+        valid => true,
+        defaults => {
+          '/request/uri/path/path-array/0' => 0,          # path parameters are never entirely missing
+          '/request/uri/path/path-array/1' => 1,
+          '/request/uri/path/path-object/a' => 'a_value',
+          '/request/uri/path/path-object/b' => 'b_value',
+          '/request/uri/query/query-array' => false,
+          '/request/uri/query/query-object' => false,
+          '/request/header/header-array' => false,
+          '/request/header/header-object' => false,
+          '/request/header/Cookie/cookie-array' => false,
+          '/request/header/Cookie/cookie-object/a' => 'a_value',
+          '/request/header/Cookie/cookie-object/b' => 'b_value',
+          # no body default - how would we know what media-type to use?
+        },
+      },
+      {
+        request => {
+          uri => {
+            path => {
+              'path-array' => [ 0, 1 ],
+              'path-object' => { a => 'a_value', b => 'b_value' },
+            },
+            query => { 'query-array' => false, 'query-object' => false },
+          },
+          header => {
+            'header-array' => false,
+            'header-object' => false,
+            Cookie => {
+              'cookie-array' => false,
+              'cookie-object' => {
+                alpha => '1',
+                beta => '2',
+                a => 'a_value',
+                b => 'b_value',
+              },
+            },
+          },
+        },
+      }
+    ],
+    'styled cookie data now includes defaults when some values are missing',
+  );
+
+
+  # 2c
+  $schema->{paths}{'/{path-array}/{path-object}'}{get}{parameters}[$_]{schema} = true
+    foreach 0..7; # (array, object) x (path, query, header, cookie)
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri_rel,
+    openapi_schema => $schema,
+    with_defaults => 1,
+  );
+
+  $result = $openapi->validate_request(request(GET => 'http://example.com//'));
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      {
+        valid => true,
+        defaults => {},
+      },
+      # we no longer know to style this as an array
+      { request => { uri => { path => { 'path-array' => '', 'path-object' => '' } } } },
+    ],
+    'styled parameter data does not include any defaults when schemas are a boolean',
+  );
+
+
+  ### media-type parameters and body
+
+  $schema->{paths}{'/{path-array}/{path-object}'}{get}{parameters}->@* = map +(
+    +{
+      name => $_.'-array',
+      in => $_,
+      content => {
+        'application/json' => {
+          schema => {
+            type => 'array',
+            prefixItems => [ map +{ type => 'number', default => $_ }, 0..1 ],
+            items => { type => 'number', default => 42 },
+            default => false, # this is okay because we do not validate the default values
+          },
+        },
+      },
+    },
+    {
+      name => $_.'-object',
+      in => $_,
+      content => {
+        'application/json' => {
+          schema => {
+            type => 'object',
+            properties => +{ map +($_ => +{ type => 'string', default => $_.'_value' }), 'a'..'b' },
+            default => false,
+          },
+        },
+      },
+    },
+  ), qw(path query header cookie);
+
+  $schema->{paths}{'/{path-array}/{path-object}'}{get}{requestBody}{content}{'application/json'}{schema}{properties}->%* = (
+    'body-array' => {
+      type => 'array',
+      prefixItems => [ map +{ type => 'number', default => $_ }, 0..1 ],
+      items => { type => 'number', default => 42 },
+      default => false, # never used: what media-type would we use?
+    },
+    'body-object' => {
+      type => 'object',
+      properties => +{ map +($_ => +{ type => 'string', default => $_.'_value' }), 'a'..'b' },
+      default => false, # never used: what media-type would we use?
+    },
+  );
+
+  $openapi = OpenAPI::Modern->new(openapi_uri => $doc_uri_rel, openapi_schema => $schema);
+
+  # 1a
+  $result = $openapi->validate_request(request(GET => 'http://example.com/[]/{}?query-array=[]&query-object={}',
+    [ 'header-array' => '[]', 'header-object' => '{}', Cookie => 'cookie-array=[]; cookie-object={}', 'Content-Type' => 'application/json' ],
+    '{"body-array":[],"body-object":{}}'));
+
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      { valid => true },
+      {
+        request => {
+          uri => {
+            path => { 'path-array' => [], 'path-object' => {} },
+            query => { 'query-array' => [], 'query-object' => {} },
+          },
+          header => {
+            'header-array' => [],
+            'header-object' => {},
+            Cookie => { 'cookie-array' => [], 'cookie-object' => {} },
+          },
+          body => { content => { 'body-array' => [], 'body-object' => {} } },
+        },
+      },
+    ],
+    'media-type parameter and body data with incomplete values is deserialized, with no defaults',
+  );
+
+  # 2a
+  $result = $openapi->validate_request(request(GET => 'http://example.com/[]/{}'));
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      { valid => true },
+      { request => { uri => { path => { 'path-array' => [], 'path-object' => {} } } } },
+    ],
+    'media-type parameters with missing data is deserialized, with no defaults by default',
+  );
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri_rel,
+    openapi_schema => $schema,
+    with_defaults => 1,
+  );
+
+  # 1b
+  $result = $openapi->validate_request(request(GET => 'http://example.com/[]/{}?query-array=[]&query-object={}',
+    [ 'header-array' => '[]', 'header-object' => '{}', Cookie => 'cookie-array=[]; cookie-object={}', 'Content-Type' => 'application/json' ],
+    '{"body-array":[],"body-object":{}}'));
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      {
+        valid => true,
+        defaults => {
+          '/request/uri/path/path-array/0' => 0,
+          '/request/uri/path/path-array/1' => 1,
+          '/request/uri/path/path-object/a' => 'a_value',
+          '/request/uri/path/path-object/b' => 'b_value',
+          '/request/uri/query/query-array/0' => 0,
+          '/request/uri/query/query-array/1' => 1,
+          '/request/uri/query/query-object/a' => 'a_value',
+          '/request/uri/query/query-object/b' => 'b_value',
+          '/request/header/header-array/0' => 0,
+          '/request/header/header-array/1' => 1,
+          '/request/header/header-object/a' => 'a_value',
+          '/request/header/header-object/b' => 'b_value',
+          '/request/header/Cookie/cookie-array/0' => 0,
+          '/request/header/Cookie/cookie-array/1' => 1,
+          '/request/header/Cookie/cookie-object/a' => 'a_value',
+          '/request/header/Cookie/cookie-object/b' => 'b_value',
+          '/request/body/content/body-array/0' => 0,
+          '/request/body/content/body-array/1' => 1,
+          '/request/body/content/body-object/a' => 'a_value',
+          '/request/body/content/body-object/b' => 'b_value',
+        },
+      },
+      {
+        request => {
+          uri => {
+            path => {
+              'path-array' => [ 0, 1 ],
+              'path-object' => { a => 'a_value', b => 'b_value' },
+            },
+            query => {
+              'query-array' => [ 0, 1 ],
+              'query-object' => { a => 'a_value', b => 'b_value' },
+            },
+          },
+          header => {
+            'header-array' => [ 0, 1 ],
+            'header-object' => { a => 'a_value', b => 'b_value' },
+            Cookie => {
+              'cookie-array' => [ 0, 1 ],
+              'cookie-object' => { a => 'a_value', b => 'b_value' },
+            },
+          },
+          body => {
+            content => {
+              'body-array' => [ 0, 1 ],
+              'body-object' => { a => 'a_value', b => 'b_value' },
+            },
+          },
+        },
+      },
+    ],
+    'media-type parameter and body data with empty values, missing items or properties are included when with_defaults is set',
+  );
+
+  # 2b
+  $result = $openapi->validate_request(request(GET => 'http://example.com/[]/{}'));
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      {
+        valid => true,
+        defaults => {
+          '/request/uri/path/path-array/0' => 0,          # path parameters are never entirely missing
+          '/request/uri/path/path-array/1' => 1,
+          '/request/uri/path/path-object/a' => 'a_value',
+          '/request/uri/path/path-object/b' => 'b_value',
+          '/request/uri/query/query-array' => false,
+          '/request/uri/query/query-object' => false,
+          '/request/header/header-array' => false,
+          '/request/header/header-object' => false,
+          '/request/header/Cookie/cookie-array' => false,
+          '/request/header/Cookie/cookie-object' => false,
+          # no body default - how would we know what media-type to use?
+        },
+      },
+      {
+        request => {
+          uri => {
+            path => {
+              'path-array' => [ 0, 1 ],
+              'path-object' => { a => 'a_value', b => 'b_value' },
+            },
+            query => { 'query-array' => false, 'query-object' => false },
+          },
+          header => {
+            'header-array' => false,
+            'header-object' => false,
+            Cookie => { 'cookie-array' => false, 'cookie-object' => false, },
+          },
+          # no body default - how would we know what media-type to use?
+        },
+      },
+    ],
+    'media-type parameter and body data now includes defaults when values are missing',
+  );
+
+
+  $schema->{paths}{'/{path-array}/{path-object}'}{get}{requestBody}{content}{'application/json'}{schema} = true;
+  $schema->{paths}{'/{path-array}/{path-object}'}{get}{parameters}[$_]{content}{'application/json'}{schema} = true
+    foreach 0..7; # (array, object) x (path, query, header, cookie)
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri_rel,
+    openapi_schema => $schema,
+    with_defaults => 1,
+  );
+
+  # 2c
+  $result = $openapi->validate_request(request(GET => 'http://example.com/1/2'));
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      {
+        valid => true,
+        defaults => {},
+      },
+      { request => { uri => { path => { 'path-array' => 1, 'path-object' => 2 } } } },
+    ],
+    'media-type parameter and body data does not include any defaults when schemas are a boolean',
+  );
+
+
+  $schema->{paths}{'/{path-array}/{path-object}'}{get}{requestBody}{content}{'application/json'} = {};
+  $schema->{paths}{'/{path-array}/{path-object}'}{get}{parameters}[$_]{content}{'application/json'} = {}
+    foreach 0..7; # (array, object) x (path, query, header, cookie)
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri_rel,
+    openapi_schema => $schema,
+    with_defaults => 1,
+  );
+
+  # 2d
+  $result = $openapi->validate_request(request(GET => 'http://example.com/1/2'));
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      {
+        valid => true,
+        defaults => {},
+      },
+      { request => { uri => { path => { 'path-array' => 1, 'path-object' => 2 } } } },
+    ],
+    'media-type parameter and body data does not include any defaults when schemas do not exist',
+  );
+
+  ### querystring parameters
+
+  $schema->{paths}{'/querystring-array'}{get}{parameters}->@* = +{
+    name => 'querystring-array',
+    in => 'querystring',
+    content => {
+      'application/json' => {
+        schema => {
+          type => 'array',
+          prefixItems => [ map +{ type => 'number', default => $_ }, 0..1 ],
+          items => { type => 'number', default => 42 },
+          default => false, # this is okay because we do not validate the default values
+        },
+      },
+    },
+  };
+
+  $schema->{paths}{'/querystring-object'}{get}{parameters}->@* = +{
+    name => 'querystring-object',
+    in => 'querystring',
+    content => {
+      'application/json' => {
+        schema => {
+          type => 'object',
+          properties => +{ map +($_ => +{ type => 'string', default => $_.'_value' }), 'a'..'b' },
+          default => false,
+        },
+      },
+    },
+  };
+
+  $openapi = OpenAPI::Modern->new(openapi_uri => $doc_uri_rel, openapi_schema => $schema);
+
+  # 1a
+  $result = $openapi->validate_request(request(GET => 'http://example.com/querystring-array?[]'));
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      { valid => true },
+      { request => { uri => { query => [] } } },
+    ],
+    'querystring array parameter data with incomplete values is deserialized, with no defaults by default',
+  );
+
+  # 1a
+  $result = $openapi->validate_request(request(GET => 'http://example.com/querystring-object?{}'));
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      { valid => true },
+      { request => { uri => { query => {} } } },
+    ],
+    'querystring object parameter data with incomplete values is deserialized, with no defaults by default',
+  );
+
+  # 2a
+  $result = $openapi->validate_request(request(GET => 'http://example.com/querystring-array'));
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      { valid => true },
+      {},
+    ],
+    'missing querystring is deserialized, with no defaults by default',
+  );
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri_rel,
+    openapi_schema => $schema,
+    with_defaults => 1,
+  );
+
+  # 1b
+  $result = $openapi->validate_request(request(GET => 'http://example.com/querystring-array?[]'));
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      {
+        valid => true,
+        defaults => {
+          '/request/uri/query/0' => 0,
+          '/request/uri/query/1' => 1,
+        },
+      },
+      { request => { uri => { query => [ 0, 1 ] } } },
+    ],
+    'querystring array parameter data with empty values, missing items are included when with_defaults is set',
+  );
+
+  # 1b
+  $result = $openapi->validate_request(request(GET => 'http://example.com/querystring-object?{}'));
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      {
+        valid => true,
+        defaults => {
+          '/request/uri/query/a' => 'a_value',
+          '/request/uri/query/b' => 'b_value',
+        },
+      },
+      { request => { uri => { query => { a => 'a_value', b => 'b_value' } } } },
+    ],
+    'querystring object parameter data with empty values, missing properties are included when with_defaults is set',
+  );
+
+  # 2b
+  $result = $openapi->validate_request(request(GET => 'http://example.com/querystring-array'));
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      {
+        valid => true,
+        defaults => {
+          '/request/uri/query' => false,
+        },
+      },
+      { request => { uri => { query => false } } },
+    ],
+    'querystring parameter array data now includes defaults when values are missing',
+  );
+
+
+  $schema->{paths}{'/querystring-array'}{get}{parameters}[0]{content}{'application/json'}{schema} = true;
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri_rel,
+    openapi_schema => $schema,
+    with_defaults => 1,
+  );
+
+  # 2c
+  $result = $openapi->validate_request(request(GET => 'http://example.com/querystring-array'));
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      {
+        valid => true,
+        defaults => {},
+      },
+      {},
+    ],
+    'querystring parameter data does not include any defaults when schemas are a boolean',
+  );
+
+
+  $schema->{paths}{'/querystring-array'}{get}{parameters}[0]{content}{'application/json'} = {};
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri_rel,
+    openapi_schema => $schema,
+    with_defaults => 1,
+  );
+
+  # 2d
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      {
+        valid => true,
+        defaults => {},
+      },
+      {},
+    ],
+    'querystring parameter data does not include any defaults when schemas do not exist',
+  );
+};
+
 if (++$type_index < @::TYPES) {
   bail_if_not_passing if $ENV{AUTHOR_TESTING};
   goto START;
