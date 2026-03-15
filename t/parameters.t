@@ -1631,30 +1631,31 @@ YAML
       [ true,     [qw(null boolean number string object array)] ],
 
       # valid coercions
-      [ '',       [qw(null boolean number string object array)], 'null', undef ],
-      [ '',       [qw(boolean number string object array)], 'boolean', false ],
-      [ '0',      [qw(boolean number string object array)], 'boolean', false ],
-      [ '1',      [qw(boolean number string object array)], 'boolean', true ],
-      [ 0,        [qw(boolean number string object array)], 'boolean', false ],
-      [ 1,        [qw(boolean number string object array)], 'boolean', true ],
-      [ 'false',  [qw(boolean number string object array)], 'boolean', false ],
-      [ 'true',   [qw(boolean number string object array)], 'boolean', true ],
-      [ '0',      [qw(null number string object array)], 'number', 0 ],
-      [ '1',      [qw(null number string object array)], 'number', 1 ],
-      [ '-42',    [qw(null boolean number string object array)], 'number', -42 ],
-      [ '4e2',    [qw(null boolean number string object array)], 'number', 400 ],
-      [ 20,       [qw(null boolean string object array)], 'string', '20' ],
+      [ '',       [qw(null boolean number string object array)], undef ],
+      [ '',       [qw(boolean number string object array)], false ],
+      [ '0',      [qw(boolean number string object array)], false ],
+      [ '1',      [qw(boolean number string object array)], true ],
+      [ 0,        [qw(boolean number string object array)], false ],
+      [ 1,        [qw(boolean number string object array)], true ],
+      [ 'false',  [qw(boolean number string object array)], false ],
+      [ 'true',   [qw(boolean number string object array)], true ],
+      [ '0',      [qw(null number string object array)], 0 ],
+      [ '1',      [qw(null number string object array)], 1 ],
+      [ '-42',    [qw(null boolean number string object array)], -42 ],
+      [ '4e2',    [qw(null boolean number string object array)], 400 ],
+      [ 20,       [qw(null boolean string object array)], '20' ],
 
       # no change
-      [ 20,       ['boolean', 'number'], 'number', 20 ],
-      [ 20,       [qw(null boolean number string object array)], 'number', 20 ],
-      [ '20',     [qw(null boolean string object array)], 'string', '20' ],
-      [ '',       [qw(number string object array)], 'string', '' ],
-      [ 'hi',     ['string'], 'string', 'hi' ],
-      [ 'hi',     [qw(null boolean number string object array)], 'string', 'hi' ],
+      [ 20,       ['boolean', 'number'], 20 ],
+      [ 20,       [qw(null boolean number string object array)], 20 ],
+      [ '20',     [qw(null boolean string object array)], '20' ],
+      [ '',       [qw(number string object array)], '' ],
+      [ 'hi',     ['string'], 'hi' ],
+      [ 'hi',     [qw(null boolean number string object array)], 'hi' ],
 
     ) {
-      my ($data, $types, $expected_type, $expected_data) = @$test;
+      my ($data, $types, $expected_data) = @$test;
+      my $expected_type = @$test > 2 ? get_type($expected_data) : undef;
 
       subtest $expected_type ? 'coerce '.$::dumper->encode($data).' to ' .join(', ', @$types).'; want '.$expected_type
           : 'cannot coerce '.$::dumper->encode($data) => sub {
