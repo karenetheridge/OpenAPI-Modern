@@ -966,8 +966,8 @@ sub _validate_querystring_parameter ($self, $state, $param_obj, $uri) {
 # error)
 # %opt is (:$style, :$explode, :$name, :$schema, $strip_internal_ws)
 sub _deserialize_style ($self, $data, $state, %opt) {
-  # numbers and builtin bools can be treated as strings, but reject references
-  croak 'only strings can be deserialized' if ref $data;
+  # numbers and builtin bools can be treated as strings, but reject undef and references
+  croak 'only strings can be deserialized' if not defined $data or ref $data;
 
   my ($style, $explode, $name, $schema, $strip_internal_ws) =
     @opt{qw(style explode name schema strip_internal_ws)};
@@ -979,10 +979,10 @@ sub _deserialize_style ($self, $data, $state, %opt) {
   if ($style eq 'simple' or $style eq 'matrix' or $style eq 'label') {
     my $state = +{ %$state, data_path => jsonp($state->{data_path}, $name) };
 
-    # RFC6570 §3.2.1: "A variable that is undefined (Section 2.3) has no value and is ignored by the
+    # RFC6570 §3.2.1: "A variable that is undefined (§2.3) has no value and is ignored by the
     # expansion process. If all of the variables in an expression are undefined, then the
     # expression's expansion is the empty string."
-    if (($data//'') eq '') {
+    if ($data eq '' and ($style ne 'simple' or @types != 6)) {
       if (any { $_ eq 'null' } @types) {
         return undef;
       }
@@ -1111,7 +1111,7 @@ sub _deserialize_style ($self, $data, $state, %opt) {
     }
 
     $data = uri_decode($data);
-    return $data if coerce_primitive(\$data, \@types);
+    return $data if @types == 6 or coerce_primitive(\$data, \@types);
 
     if (@errors) {
       push $state->{errors}->@*, @errors;

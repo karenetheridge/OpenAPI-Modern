@@ -195,6 +195,24 @@ subtest 'path parameters' => sub {
     ],
 
     {
+      name => 'with boolean schema, return empty string as string',
+      param_obj => { name => 'color', schema => true },
+      input => '',
+      content => '',
+    },
+    {
+      name => 'with boolean schema, return encoded data as decoded string',
+      param_obj => { name => 'color', schema => true },
+      input => 'red%EF%B9%A0green',
+      content => 'red﹠green',
+    },
+    {
+      name => 'with boolean schema, return numeric data as string',
+      param_obj => { name => 'color', schema => true },
+      input => 20,
+      content => '20',
+    },
+    {
       name => 'non-ascii characters in path captures must be percent-encoded',
       param_obj => { name => 'color' },
       input => 'cølör',
@@ -430,6 +448,12 @@ subtest 'path parameters' => sub {
         ';blue%E2%88%92black=yes!;blackish%2Cgreen=%C2%BFno%3f;100%F0%9D%91%A5brown=fl%C2%A1p' ],
     ],
 
+    {
+      name => 'with boolean schema, empty string is null',
+      param_obj => { style => 'matrix', name => 'color', schema => true },
+      input => '',
+      content => undef,
+    },
     {
       name => 'any type is permitted, default to string',
       param_obj => { name => 'color', style => 'matrix', schema => {} },
@@ -687,6 +711,12 @@ subtest 'path parameters' => sub {
         '.blue%E2%88%92black=yes!.blackish%2Cgr%2Ee%2Een=%C2%BFno%3f.100%F0%9D%91%A5brown=fl%C2%A1p' ],
     ],
 
+    {
+      name => 'with boolean schema, empty string is null',
+      param_obj => { style => 'label', name => 'color', schema => true },
+      input => '',
+      content => undef,
+    },
     {
       name => 'any type is permitted, default to string',
       param_obj => { name => 'color', style => 'label', schema => {} },
@@ -1631,6 +1661,8 @@ YAML
       [ true,     [qw(null boolean number string object array)] ],
 
       # valid coercions
+
+      # note this may not be optimal for some usecases, e.g. path parameter
       [ '',       [qw(null boolean number string object array)], undef ],
       [ '',       [qw(boolean number string object array)], false ],
       [ '0',      [qw(boolean number string object array)], false ],
