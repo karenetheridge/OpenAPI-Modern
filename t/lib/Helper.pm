@@ -317,8 +317,15 @@ sub is_equal ($got, $expected, $test_name = undef) {
     }
     else {
       $ctx->fail($test_name);
-      $ctx->note('structures differ'.($state->{path} ? ' starting at '.$state->{path} : ''));
-      $ctx->${$ENV{AUTOMATED_TESTING} ? \'diag' : \'note'}("got result:\n".$encoder->encode($got));
+      my $method =
+        # be less noisy for expected failures
+        (grep $_->{todo}, Test2::API::test2_stack->top->{_pre_filters}->@*) ? 'note'
+          : $ENV{AUTHOR_TESTING} || $ENV{AUTOMATED_TESTING} ? 'diag' : 'note';
+
+      $ctx->$method('structures differ'.($state->{path} ? ' starting at '.$state->{path} : ''));
+      my ($equal, $stack) = Test::Deep::cmp_details($got, $expected);
+      $ctx->$method(Test::Deep::deep_diag($stack)) if not $equal;
+      $ctx->$method("got result:\n".$encoder->encode($got));
     }
     return $equal;
   } $got, $expected, $test_name;
