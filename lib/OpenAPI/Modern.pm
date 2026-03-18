@@ -642,8 +642,8 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
   $uri->path->leading_slash(1); # no effect on stringified URI unless path is empty
 
   # v3.2.0 §4.8.2, "Path Templating": "The value for these path parameters MUST NOT contain any
-  # unescaped “generic syntax” characters described by [RFC3986]: forward slashes (/), question
-  # marks (?), or hashes (#)."
+  # unescaped “generic syntax” characters described by RFC3986 Section 3: forward slashes (/),
+  # question marks (?), or hashes (#)."
   my $path_pattern = join '',
     map +(substr($_, 0, 1) eq '{' ? '([^/?#]*)' : quotemeta($_)), # { for the editor
     split /(\{[^{}]+\})/, $path_template;
@@ -903,8 +903,6 @@ sub _validate_header_parameter ($self, $state, $header_name, $header_obj, $heade
   # by a comma (",") and optional whitespace (OWS, defined in Section 5.6.3). For consistency, use
   # comma SP."
 
-  # Headers must be UTF-8-encoded, so we decode here first before parsing the string
-  # (style delimiters are all ascii so are unaffected)
   # In order to deserialize from a single string using the "simple" style, we concatenate all header
   # lines together, after removing leading and trailing whitespace and then pct-encoding the result
   # (as it is decoded again after splitting on delimiters). OWS after commas are parsed out later.
