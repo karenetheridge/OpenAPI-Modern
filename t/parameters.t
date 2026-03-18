@@ -146,7 +146,7 @@ subtest 'path parameters' => sub {
       [ 'simple', 'red%green', 'red%25green' ],
       [ 'simple', " i have spaces  \t ", " i have spaces  \t " ],
       [ 'simple', ' red,  green ', ' red,  green ' ],
-      [ 'simple', 'red﹠green', "red%EF%B9%A0green" ],
+      [ 'simple', 'red﹠green', 'red%EF%B9%A0green' ],
     ],
     [
       [ qw(style explode content input) ],
