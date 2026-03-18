@@ -819,7 +819,7 @@ subtest 'path parameters' => sub {
     },
     {
       name => 'explode=true, prefer object',
-      param_obj => { name => 'color', style => 'label', explode =>true, schema => { type => [qw(array object)] } },
+      param_obj => { name => 'color', style => 'label', explode => true, schema => { type => [qw(array object)] } },
       input => '.R=100.G=200.B=150',
       content => { R => '100', G => '200', B => '150' },
     },
