@@ -80,7 +80,7 @@ subtest 'path parameters' => sub {
     # encoded with media-type
     {
       name => 'missing',
-      param_obj => { name => 'missing_json_content', content => { 'application/json' => { schema => {} } } },
+      param_obj => { name => 'missing_json_content', content => { 'application/json' => {} } },
       input => undef,
       errors => [
         {
@@ -93,7 +93,7 @@ subtest 'path parameters' => sub {
     },
     {
       name => 'non-ascii characters in path captures must be percent-encoded',
-      param_obj => { name => 'color', content => { 'application/json' => { schema => {} } } },
+      param_obj => { name => 'color', content => { 'application/json' => {} } },
       input => 'cølör',
       errors => [
         {
@@ -106,7 +106,7 @@ subtest 'path parameters' => sub {
     },
     {
       name => 'numeric string',
-      param_obj => { name => 'json_content', content => { 'application/json' => { schema => {} } } },
+      param_obj => { name => 'json_content', content => { 'application/json' => {} } },
       input => '3',
       content => 3, # numeric, not string!
     },
@@ -952,7 +952,7 @@ subtest 'query parameters' => sub {
     },
     {
       name => 'missing, required',
-      param_obj => { name => 'q', required => true, content => { 'text/plain' => { schema => {} } } },
+      param_obj => { name => 'q', required => true, content => { 'text/plain' => {} } },
       queries => 'foo=1&bar=2',
       errors => [
         {
@@ -965,13 +965,13 @@ subtest 'query parameters' => sub {
     },
     {
       name => 'empty string, allowEmptyValue=true',
-      param_obj => { name => 'q', allowEmptyValue => true, content => { 'text/plain' => { schema => {} } } },
+      param_obj => { name => 'q', allowEmptyValue => true, content => { 'text/plain' => {} } },
       queries => 'foo=1&q=&bar=2',
       # content not extracted, but also no errors
     },
     {
       name => 'empty string, allowEmptyValue=true, required',
-      param_obj => { name => 'q', allowEmptyValue => true, required => true, content => { 'text/plain' => { schema => {} } } },
+      param_obj => { name => 'q', allowEmptyValue => true, required => true, content => { 'text/plain' => {} } },
       queries => 'foo=1&q=&bar=2',
       errors => [
         {
@@ -983,12 +983,12 @@ subtest 'query parameters' => sub {
       ],
     },
     {
-      param_obj => { name => 'foo', content => { 'application/json' => { schema => {} } } },
+      param_obj => { name => 'foo', content => { 'application/json' => {} } },
       queries => 'foo=1&bar=2',
       content => 1, # number, not string!
     },
     {
-      param_obj => { name => 'foo', content => { 'application/json' => { schema => {} } } },
+      param_obj => { name => 'foo', content => { 'application/json' => {} } },
       queries => 'foo=%7B%22a%22:1,%22b%22:2%7D',
       content => { a => 1, b => 2 },
     },
@@ -2240,11 +2240,11 @@ subtest 'cookie parameters' => sub {
 
     {
       name => 'missing header but not required',
-      param_obj => { content => { 'application/json' => { schema => { type => 'object' } } } },
+      param_obj => { content => { 'application/json' => {} } },
     },
     {
       name => 'missing header, required',
-      param_obj => { required => true, content => { 'text/plain' => { schema => {} } } },
+      param_obj => { required => true, content => { 'text/plain' => {} } },
       errors => [
         {
           instanceLocation => '/request/header/Cookie',
@@ -2273,13 +2273,13 @@ subtest 'cookie parameters' => sub {
       ],
     },
     {
-      param_obj => { name => 'foo', content => { 'application/json' => { schema => {} } } },
+      param_obj => { name => 'foo', content => { 'application/json' => {} } },
       cookie => 'foo=1',
       content => 1, # number, not string!
     },
     {
       name => 'adjacent to styled cookie parameters',
-      param_obj => { name => 'color', content => { 'application/json' => { schema => {} } } },
+      param_obj => { name => 'color', content => { 'application/json' => {} } },
       cookie => 'foo=bar; color=1',
       content => 1,  # numeric value, carefully avoiding comma
     },
