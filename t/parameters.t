@@ -855,6 +855,9 @@ subtest 'path parameters' => sub {
   ), @tests;
 
   foreach my $test (@tests) {
+    die 'missing test param "param_obj"' if not exists $test->{param_obj};
+    die 'missing test param "input"' if not exists $test->{input};
+
     subtest 'path '
         .($test->{param_obj}{content} ? 'encoded with media-type' : 'style='.($test->{param_obj}{style}//'simple'))
         .(length $test->{name} ? ', '.$test->{name} : '').': '
@@ -882,7 +885,8 @@ subtest 'path parameters' => sub {
 
       my $valid = $openapi->_validate_path_parameter($state, $param_obj,
         { defined $test->{input} ? ($param_obj->{name} => $test->{input}) : () });
-      die 'validity inconsistent with error count' if $valid xor !$state->{errors}->@*;
+      die 'validity inconsistent with error count; got valid=', 0+!!$valid, ', errors are: ',
+        $::encoder->encode($state->{errors}) if $valid xor !$state->{errors}->@*;
 
       my $todo;
       $todo = todo $test->{todo} if $test->{todo};
@@ -1264,6 +1268,10 @@ subtest 'header parameters' => sub {
   ), @tests;
 
   foreach my $test (@tests) {
+    die 'missing test param "header_obj"' if not exists $test->{header_obj};
+    die 'missing test param "values"' if not exists $test->{values};
+    die 'bad test param "values"' if defined $test->{values} and ref $test->{values} ne 'ARRAY';
+
     subtest 'header '
         .($test->{header_obj}{content} ? 'encoded with media-type' : 'style=simple')
         .(length $test->{name} ? ', '.$test->{name}.': '
@@ -1304,7 +1312,8 @@ subtest 'header parameters' => sub {
         if defined $test->{values};
 
       my $valid = $openapi->_validate_header_parameter($state, $param_obj->{name}, $header_obj, $headers);
-      die 'validity inconsistent with error count' if $valid xor !$state->{errors}->@*;
+      die 'validity inconsistent with error count; got valid=', 0+!!$valid, ', errors are: ',
+        $::encoder->encode($state->{errors}) if $valid xor !$state->{errors}->@*;
 
       my $todo;
       $todo = todo $test->{todo} if $test->{todo};
