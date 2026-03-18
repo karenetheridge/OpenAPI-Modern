@@ -365,6 +365,12 @@ sub find_path_item ($self, $options, $state = {}) {
       and not ($options->{path_template} and exists $options->{method})
       and not exists $options->{operation_id};
 
+  return E({ %$state, exception => 1, recommended_response => [ 500 ] },
+      'provided path_captures values must be strings')
+    if exists $options->{path_captures}
+      and any { $_ ne 'string' and $_ ne 'number' and $_ ne 'integer' }
+        map get_type($_), values $options->{path_captures}->%*;
+
   # now guaranteed to be a Mojo::Message::Request
   if ($options->{request}) {
     $options->{request} = _convert_request($options->{request});
