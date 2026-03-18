@@ -1559,7 +1559,7 @@ YAML
 
   subtest 'type inference of an extracted parameter' => sub {
     foreach my $test (
-      [ [ qw(array object null boolean string number) ], false ],
+      [ [ 'string' ], false ],
       [ [ qw(array object null boolean string number) ], true ],
       [ [ qw(array object boolean string number) ], { '$ref' => 'https://example.com/my_3.0_oad#/components/schemas/true' } ],
       [ [ qw(array object null boolean string number) ], {} ],

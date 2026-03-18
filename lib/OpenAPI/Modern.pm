@@ -1280,7 +1280,7 @@ sub _resolve_dynamicRef ($self, $ref, $state) {
 # determines the type(s) expected in a schema: array, object, null, boolean, string, number
 # (integers will be treated as numbers as they are not a distinct core type)
 sub _type_in_schema ($self, $schema, $state) {
-  return (qw(array object boolean string number), $state->{vocabularies}[0] =~ /::OpenAPI_3_0\z/ ? () : 'null')
+  return $schema ? (qw(array object boolean string number), $state->{vocabularies}[0] =~ /::OpenAPI_3_0\z/ ? () : 'null') : ('string')
     if ref $schema ne 'HASH';
 
   my $schema_info = $self->evaluator->_fetch_from_uri(my $uri = canonical_uri($state));
