@@ -72,7 +72,14 @@ around BUILDARGS => sub ($orig, $class, @args) {
 
   my $had_document = exists $args->{openapi_document};
 
-  $args->{evaluator} //= JSON::Schema::Modern->new(validate_formats => 1, max_traversal_depth => 80);
+  my $extra_args = { %$args };
+  delete $extra_args->@{qw(openapi_document openapi_schema openapi_uri evaluator debug)};
+
+  $args->{evaluator} //= JSON::Schema::Modern->new(
+    validate_formats => 1,
+    max_traversal_depth => 80,
+    %$extra_args, # may include other arguments recognized by JSM
+  );
 
   $args->{openapi_document} //= JSON::Schema::Modern::Document::OpenAPI->new(
     exists $args->{openapi_uri} ? (canonical_uri => $args->{openapi_uri}) : (),
@@ -2131,6 +2138,9 @@ call to C<new()> will throw an exception, which will likely be a L<JSON::Schema:
 object containing details.
 
 Unless otherwise noted, these are also available as read-only accessors.
+
+Any additional constructor arguments that are not listed here will be passed along to the evaluator
+constructor: see L<JSON::Schema::Modern/CONSTRUCTOR ARGUMENTS>.
 
 =head2 openapi_uri
 
