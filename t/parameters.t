@@ -921,7 +921,7 @@ subtest 'path parameters' => sub {
       my $todo;
       $todo = todo $test->{todo} if $test->{todo};
 
-      cmp_result(
+      is_equal(
         [ map $_->TO_JSON, $state->{errors}->@* ],
         $test->{errors}//[],
         ($test->{errors}//[])->@* ? 'the correct error was returned' : 'no errors occurred',
@@ -1348,7 +1348,7 @@ subtest 'header parameters' => sub {
       my $todo;
       $todo = todo $test->{todo} if $test->{todo};
 
-      cmp_result(
+      is_equal(
         [ map $_->TO_JSON, $state->{errors}->@* ],
         $test->{errors}//[],
         ($test->{errors}//[])->@* ? 'the correct error was returned' : 'no errors occurred',
@@ -1638,7 +1638,7 @@ YAML
         foreach grep substr($_, 0, $len) eq $path, keys $openapi->openapi_document->{_type_in_schema}->%*;
 
       my @types = $openapi->_type_in_schema($schema, { %$state });
-      cmp_result(
+      is_equal(
         [ sort @types], [ sort @$expected_types ],
             (is_bool($schema) ? 'schema is boolean'
           : 'schema has '.(!keys %$schema ? 'no keywords'
