@@ -264,7 +264,6 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     {
       collect_annotations => 0,
       validate_formats => 1,
-      with_defaults => 1,
       callbacks => {
         # we avoid producing errors here so we don't create extra errors for "not all additional
         # properties are valid" etc
