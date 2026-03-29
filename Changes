@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.132     2026-03-29 19:14:44Z
           - full support for parsing of "query" parameters: form,
             spaceDelimited, pipeDelimited and deepObject styles, as well as
