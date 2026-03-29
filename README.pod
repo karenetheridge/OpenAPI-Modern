@@ -8,7 +8,7 @@ OpenAPI::Modern - Validate HTTP requests and responses against an OpenAPI v3.0, 
 
 =head1 VERSION
 
-version 0.131
+version 0.132
 
 =head1 SYNOPSIS
 
@@ -137,6 +137,7 @@ aims to be but some features are not yet available.
 =for Pod::Coverage BUILDARGS FREEZE THAW
 
 =for stopwords schema jsonSchemaDialect metaschema subschema perlish operationId openapi Mojolicious
+querystring unencoded
 
 =head1 CONSTRUCTOR ARGUMENTS
 
@@ -498,17 +499,39 @@ encoding characters that are not canonically required to be encoded according to
 L<RFC3986 §2.1|https://www.rfc-editor.org/rfc/rfc3986#section-2.1>, may result in the message not
 being correctly deserialized nor parameter values correctly extracted.
 
-=head2 Unimplemented sections of the specification
+Caution is advised when using non-default settings with parameters, as certain combinations of
+characters in string data will not serialize well with certain delimiters.  The default settings
+for C<path> and C<query> parameters (C<style: simple> and C<explode: false>, and C<style: form> and
+C<explode: true>, respectively) are safe to use; for C<header> parameters, unencoded C<,> should be
+avoided in arrays and objects, and for C<cookie> parameters, always use C<style: cookie> with
+C<explode: true>.
+
+=head2 Querystring parameters
+
+The use of media-type encoding in C<in: querystring> parameters (see
+L<https://spec.openapis.org/oas/latest#parameter-locations>)
+requires the raw string value of the query portion to be preserved in the request URL; directly
+accessing the URL's query parameters in your application can cause can cause request data to become
+normalized according to C<application/x-www-form-urlencoded> rules and some data may be lost,
+resulting in the data being unparsable for OpenAPI validation. To avoid this, do not
+use these constructs in your Mojolicious application in those situations (instead use the more
+specific C<< $c->req->body_params >> or C<< $c->stash >> to access non-query parameters):
 
 =over 4
 
 =item *
 
-for query parameters, only C<style: form> and C<explode: true> is supported, only the first value of each parameter name is considered, and C<allowEmptyValue> and C<allowReserved> are not checked
+C<param>, C<every_param>, C<params>, C<query_params> on C<< $c->req >>
 
 =item *
 
-cookie parameters are not checked at all yet
+C<param>, C<every_param>, C<params> on C<$c>
+
+=back
+
+=head2 Unimplemented sections of the specification
+
+=over 4
 
 =item *
 
