@@ -1980,21 +1980,25 @@ subtest 'query parameters' => sub {
 subtest 'header parameters' => sub {
   my @tests = (
     # name (test name)
+    # header_name
     # header_obj (from OAD)
     # raw header values (as an arrayref; one item per header line)
     # content => expected data to be passed to _evaluate_subschema
     # errors => compared to what is collected from $state, defaults to []
     # todo
     {
-      header_obj => { name => 'Accept' },
+      header_name => 'Accept',
+      header_obj => {},
       values => [ 'application/json' ],
     },
     {
-      header_obj => { name => 'Content-Type' },
+      header_name => 'Content-Type',
+      header_obj => {},
       values => [ 'application/json' ],
     },
     {
-      header_obj => { name => 'Authorization' },
+      header_name => 'Authorization',
+      header_obj => {},
       values => [ 'Basic whargarbl' ],
     },
     {
@@ -2075,26 +2079,20 @@ subtest 'header parameters' => sub {
     ],
 
     {
-      header_obj => { name => 'Missing', required => true },
+      name => 'missing but not required',
+      header_obj => {},
       values => undef,
-      errors => [
-        {
-          instanceLocation => '/response/header',
-          keywordLocation => $keyword_path.'/required',
-          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path.'/required',
-          error => 'missing header: Missing',
-        },
-      ],
     },
     {
-      header_obj => { name => 'Missing', required => true },
+      name => 'missing, required',
+      header_obj => { required => true },
       values => undef,
       errors => [
         {
           instanceLocation => '/response/header',
           keywordLocation => $keyword_path.'/required',
           absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path.'/required',
-          error => 'missing header: Missing',
+          error => 'missing header: My-Header',
         },
       ],
     },
@@ -2181,14 +2179,12 @@ subtest 'header parameters' => sub {
 
     subtest 'header '
         .($test->{header_obj}{content} ? 'encoded with media-type' : 'style=simple')
-        .(length $test->{name} ? ', '.$test->{name}.': '
-          : length $test->{header_obj}{name} ? ', '.$test->{header_obj}{name}.': '
-          : ' ')
+        .(length $test->{name} ? ', '.$test->{name}.': ' : ' ')
         .(defined $test->{values} ? $::dumper->encode($test->{values}) : '<missing>')
         .' -> '.$::dumper->encode($test->{content}) => sub {
 
       my $param_obj = +{
-        name => 'My-Header',
+        name => $test->{header_name} // 'My-Header',
         exists $test->{header_obj}{content} ? () : (style => 'simple', schema => { type => 'string' }),
         $test->{header_obj}->%*,
         in => 'header',
