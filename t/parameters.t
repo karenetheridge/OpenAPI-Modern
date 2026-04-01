@@ -913,8 +913,8 @@ subtest 'path parameters' => sub {
 
       my $state = _init_test('/request/uri/path', +{ $param_obj->%{qw(schema content)} });
 
-      my $valid = $openapi->_validate_path_parameter($state, $param_obj,
-        { defined $test->{input} ? ($param_obj->{name} => $test->{input}) : () });
+      my $valid = $openapi->_validate_parameter($state, $param_obj,
+        path_captures => { defined $test->{input} ? ($param_obj->{name} => $test->{input}) : () });
       die 'validity inconsistent with error count; got valid=', 0+!!$valid, ', errors are: ',
         $::encoder->encode($state->{errors}) if $valid xor !$state->{errors}->@*;
 
@@ -1948,7 +1948,7 @@ subtest 'query parameters' => sub {
 
       my $state = _init_test('/request/uri/query', +{ $param_obj->%{qw(schema content)} });
 
-      my $valid = $openapi->_validate_query_parameter($state, $param_obj, Mojo::URL->new('https://example.com/blah?'.$test->{queries})->query);
+      my $valid = $openapi->_validate_parameter($state, $param_obj, params => Mojo::URL->new('https://example.com/blah?'.$test->{queries})->query);
       die 'validity inconsistent with error count; got valid=', 0+!!$valid, ', errors are: ',
         $::encoder->encode($state->{errors}) if $valid xor !$state->{errors}->@*;
 
@@ -2214,7 +2214,7 @@ subtest 'header parameters' => sub {
       $headers->add(Encode::encode('UTF-8', $param_obj->{name}, Encode::DIE_ON_ERR | Encode::LEAVE_SRC), $test->{values}->@*)
         if defined $test->{values};
 
-      my $valid = $openapi->_validate_header_parameter($state, $param_obj->{name}, $header_obj, $headers);
+      my $valid = $openapi->_validate_parameter($state, $header_obj, $param_obj->%{name}, headers => $headers);
       die 'validity inconsistent with error count; got valid=', 0+!!$valid, ', errors are: ',
         $::encoder->encode($state->{errors}) if $valid xor !$state->{errors}->@*;
 
@@ -2639,7 +2639,7 @@ subtest 'cookie parameters' => sub {
       my $headers = Mojo::Headers->new;
       $headers->add('Cookie', $test->{cookie}) if defined $test->{cookie};
 
-      my $valid = $openapi->_validate_cookie_parameter($state, $param_obj, $headers);
+      my $valid = $openapi->_validate_parameter($state, $param_obj, headers => $headers);
       die 'validity inconsistent with error count; got valid=', 0+!!$valid, ', errors are: ',
         $::encoder->encode($state->{errors}) if $valid xor !$state->{errors}->@*;
 
