@@ -1,6 +1,7 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - add new JSON Schema format "media-range", used in the OAD schema
 
 0.133     2026-04-07 18:37:11Z
           - OpenAPI::Modern constructor now supports passing along arbitrary
