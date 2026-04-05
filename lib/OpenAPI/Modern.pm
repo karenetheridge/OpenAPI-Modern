@@ -28,7 +28,7 @@ use builtin::compat 'indexed';
 use Feature::Compat::Try;
 use Encode 2.89 ();
 use JSON::Schema::Modern;
-use JSON::Schema::Modern::Utilities qw(jsonp unjsonp canonical_uri E abort is_equal true false get_type jsonp_set jsonp_get decode_media_type);
+use JSON::Schema::Modern::Utilities 0.638 qw(jsonp unjsonp canonical_uri E abort is_equal true false get_type jsonp_set jsonp_get decode_media_type match_media_type);
 use OpenAPI::Modern::Utilities qw(add_vocab_and_default_schemas uri_decode intersect_types coerce_primitive uri_encode uri_encode_strict is_cookie_name is_cookie_value);
 use JSON::Schema::Modern::Document::OpenAPI;
 use MooX::TypeTiny 0.002002;
@@ -1494,20 +1494,15 @@ sub _deserialize_media_type ($self, $state, $content_type, $media_type_obj, $con
 }
 
 sub _validate_body_content ($self, $state, $content_obj, $message) {
-  # strip media-type parameters (e.g. charset) from Content-Type
-  my $content_type = (split(/;/, $message->headers->content_type//'', 2))[0] // '';
+  my $content_type = $message->headers->content_type;
 
   return E({ %$state, data_path => $state->{data_path} =~ s{body\z}{header}r, keyword => 'content' },
       'missing header: Content-Type')
     if not length $content_type;
 
-  # FIXME: needs to handle media-type parameters when selecting for a decoder, see RFC9110 §8.3.1
-
   $state->{data_path} .= '/content';
 
-  my $media_type = (first { fc($content_type) eq fc } keys $content_obj->%*)
-    // (first { m{([^/]+)/\*\z} && fc($content_type) =~ m{^\F\Q$1\E/[^/]+\z} } keys $content_obj->%*);
-  $media_type //= '*/*' if exists $content_obj->{'*/*'};
+  my $media_type = match_media_type($content_type, [ keys $content_obj->%* ]);
   return E({ %$state, keyword => 'content', recommended_response => [ 415 ] },
       'incorrect Content-Type "%s"', $content_type)
     if not defined $media_type;
@@ -1540,7 +1535,7 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
   $content_ref = $media_type eq '*/*' ? $content_ref
     : $self->_deserialize_media_type({ %$state, depth => $state->{depth}+1,
         keyword_path => jsonp($state->{keyword_path}, 'content', $media_type) },
-      $message->headers->content_type, $content_obj->{$media_type}, $content_ref);
+      $content_type, $content_obj->{$media_type}, $content_ref);
 
   return if not $content_ref;
 

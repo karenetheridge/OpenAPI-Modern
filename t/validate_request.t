@@ -2359,7 +2359,7 @@ YAML
           instanceLocation => '/request/body/content',
           keywordLocation => jsonp(qw(/paths /foo post requestBody content text/plain)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content text/plain)))->to_string,
-          error => re(qr/^could not decode content as UTF-8: UTF-8 "\\xE9" does not map to Unicode/),
+          error => re(qr{^could not decode content as text/plain; charset=UTF-8: UTF-8 "\\xE9" does not map to Unicode}),
         },
       ],
     },
@@ -2554,6 +2554,81 @@ YAML
     $openapi->validate_request(request('POST', 'http://example.com/foo', [ 'Content-Type' => 'electric/boogaloo' ], 'blah'))->TO_JSON,
     { valid => true },
     '..even when the media-type is unknown',
+  );
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri,
+    openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
+paths:
+  /foo:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ a, b ]
+          application/json; foo=whargarbl:
+            schema:
+              required: [ x, y ]
+YAML
+
+  $request = request('POST', 'http://example.com/foo',
+    [ 'Content-Type' => 'application/schema+json; schema=https://example.com/my_schema/v1' ],
+    '{"a":1,"c":3}');
+  cmp_result(
+    $openapi->validate_request($request)->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/body/content',
+          keywordLocation => jsonp(qw(/paths /foo post requestBody content application/json schema required)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content application/json schema required)))->to_string,
+          error => re(qr/^object is missing property: b/),
+        },
+      ],
+    },
+    'application/schema+json is decoded using the application/json decoder',
+  );
+
+  $request = request('POST', 'http://example.com/foo',
+    [ 'Content-Type' => 'application/schema+json; schema=https://example.com/my_schema/v1' ],
+    '{"a":1,"b":2,"c":3}');
+  is_equal(
+    $openapi->validate_request($request)->TO_JSON,
+    { valid => true },
+    'application/schema+json is decoded using the application/json decoder',
+  );
+
+  $request = request('POST', 'http://example.com/foo',
+    [ 'Content-Type' => 'application/schema+json; foo=whargarbl' ],
+    '{"a":1,"c":3}');
+  cmp_result(
+    $openapi->validate_request($request)->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/body/content',
+          keywordLocation => jsonp(qw(/paths /foo post requestBody content), 'application/json; foo=whargarbl', qw(schema required)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content), 'application/json; foo=whargarbl', qw(schema required)))->to_string,
+          error => re(qr/^object is missing properties: x, y/),
+        },
+      ],
+    },
+    'application/schema+json is decoded using the application/json decoder when parameters match',
+  );
+
+  $request = request('POST', 'http://example.com/foo',
+    [ 'Content-Type' => 'application/schema+json; foo="wh\ar\garb\l"' ],
+    '{"x":1,"y":2}');
+  is_equal(
+    $openapi->validate_request($request)->TO_JSON,
+    { valid => true },
+    'parameter value as quoted string still matches',
   );
 };
 
