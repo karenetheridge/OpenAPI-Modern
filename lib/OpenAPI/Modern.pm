@@ -28,7 +28,7 @@ use builtin::compat 'indexed';
 use Feature::Compat::Try;
 use Encode 2.89 ();
 use JSON::Schema::Modern;
-use JSON::Schema::Modern::Utilities qw(jsonp unjsonp canonical_uri E abort is_equal true false get_type jsonp_set jsonp_get);
+use JSON::Schema::Modern::Utilities qw(jsonp unjsonp canonical_uri E abort is_equal true false get_type jsonp_set jsonp_get decode_media_type);
 use OpenAPI::Modern::Utilities qw(add_vocab_and_default_schemas uri_decode intersect_types coerce_primitive uri_encode uri_encode_strict is_cookie_name is_cookie_value);
 use JSON::Schema::Modern::Document::OpenAPI;
 use MooX::TypeTiny 0.002002;
@@ -54,7 +54,7 @@ has evaluator => (
   is => 'ro',
   isa => InstanceOf['JSON::Schema::Modern'],
   required => 1,
-  handles => [ qw(get_media_type add_media_type) ],
+  handles => [ qw(get_media_type add_media_type) ], # deprecated; may be removed
 );
 
 our $DEBUG;
@@ -1474,34 +1474,23 @@ sub _deserialize_style ($self, $data, $state, %opt) {
 # for message bodies, content_type is the actual type defined in the message's Content-Type header,
 # not necessarily the media-type property being used under the content object
 sub _deserialize_media_type ($self, $state, $content_type, $media_type_obj, $content_ref) {
-  if ($content_type =~ m{^text/}
-      # see Mojo::Content::charset
-      and my $charset = ($content_type =~ /\bcharset\s*=\s*"?([^"\s;]+)"?/i ? $1 : undef)) {
-    try {
-      # we don't use Mojo::Util::decode because it doesn't die on failure
-      $content_ref = \ Encode::decode($charset, $content_ref->$*, Encode::DIE_ON_ERR | Encode::LEAVE_SRC);
-    }
-    catch ($e) {
-      return E($state, 'could not decode content as %s: %s', $charset, $e =~ s/^(.*)\n/$1/r);
-    }
-  }
-
-  my $media_type_decoder = $self->get_media_type($content_type);  # case-insensitive, wildcard lookup
-
-  if (not $media_type_decoder) {
-    # don't fail, and return the original data, if the schema would pass on any input
-    my $schema = $media_type_obj->{schema};
-    return $content_ref if not defined $schema or ref $schema eq 'HASH' ? !keys %$schema : $schema;
-
-    abort($state, 'EXCEPTION: unsupported media type "%s": add support with $openapi->add_media_type(...)', $content_type);
-  }
-
   try {
-    return $media_type_decoder->($content_ref);  # returns reference to content
+    # case-insensitive, wildcard lookup; text/* supports charset
+    $content_ref = decode_media_type($content_type, $content_ref);
   }
   catch ($e) {
     return E($state, 'could not decode content as %s: %s', $content_type, $e =~ s/^(.*)\n/$1/r);
   }
+
+  if (not $content_ref) {
+    # don't fail, and return the original data, if the schema would pass on any input
+    my $schema = $media_type_obj->{schema};
+    return $content_ref if not defined $schema or ref $schema eq 'HASH' ? !keys %$schema : $schema;
+
+    abort($state, 'EXCEPTION: unsupported media type "%s": add support with JSON::Schema::Modern::Utilities::add_media_type(...)', $content_type);
+  }
+
+  return $content_ref;
 }
 
 sub _validate_body_content ($self, $state, $content_obj, $message) {
@@ -1551,8 +1540,7 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
   $content_ref = $media_type eq '*/*' ? $content_ref
     : $self->_deserialize_media_type({ %$state, depth => $state->{depth}+1,
         keyword_path => jsonp($state->{keyword_path}, 'content', $media_type) },
-      $content_type =~ m{^text/} ? $message->headers->content_type : $content_type,
-      $content_obj->{$media_type}, $content_ref);
+      $message->headers->content_type, $content_obj->{$media_type}, $content_ref);
 
   return if not $content_ref;
 
@@ -2453,14 +2441,6 @@ An accessor that delegates to L<JSON::Schema::Modern::Document/canonical_uri>.
 
 An accessor that delegates to L<JSON::Schema::Modern::Document/schema>.
 
-=head2 get_media_type
-
-An accessor that delegates to L<JSON::Schema::Modern/get_media_type>.
-
-=head2 add_media_type
-
-A setter that delegates to L<JSON::Schema::Modern/add_media_type>.
-
 =head1 CACHING
 
 =for stopwords preforking
@@ -2488,8 +2468,8 @@ reloading them (perhaps by using a timestamp or checksum to determine if a fresh
       $openapi = Sereal::Decoder->new->decode($frozen);
     }
 
-    # add custom format validations, media types and encodings here
-    $openapi->evaluator->add_media_type(...);
+    # add custom format validations and encodings here
+    $openapi->evaluator->add_format_validation(...);
 
     return $openapi;
   }
