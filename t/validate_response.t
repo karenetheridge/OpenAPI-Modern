@@ -470,7 +470,7 @@ YAML
           error => 'RFC9112 §6.1-10: "A server MUST NOT send a Transfer-Encoding header field in any response with a status code of 1xx (Informational) or 204 (No Content)"',
         },
         {
-          instanceLocation => '/response/body',
+          instanceLocation => '/response/body/content',
           keywordLocation => jsonp(qw(/paths /foo get responses default $ref content text/* schema maxLength)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/components responses my_default content text/* schema maxLength)))->to_string,
           error => 'length is greater than 3',
@@ -495,7 +495,7 @@ YAML
           error => 'RFC9112 §6.1-10: "A server MUST NOT send a Transfer-Encoding header field in any 2xx (Successful) response to a CONNECT request"',
         },
         {
-          instanceLocation => '/response/body',
+          instanceLocation => '/response/body/content',
           keywordLocation => jsonp(qw(/paths /foo additionalOperations CONNECT responses default $ref content text/* schema maxLength)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/components responses my_default content text/* schema maxLength)))->to_string,
           error => 'length is greater than 3',
@@ -519,7 +519,7 @@ YAML
           error => 'Content-Length cannot appear together with Transfer-Encoding',
         },
         {
-          instanceLocation => '/response/body',
+          instanceLocation => '/response/body/content',
           keywordLocation => jsonp(qw(/paths /foo get responses default $ref content text/* schema maxLength)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/components responses my_default content text/* schema maxLength)))->to_string,
           error => 'length is greater than 3',
@@ -592,7 +592,7 @@ YAML
           error => 'missing header: Content-Length',
         },
         {
-          instanceLocation => '/response/body',
+          instanceLocation => '/response/body/content',
           keywordLocation => jsonp(qw(/paths /foo post responses default $ref content application/json schema type)),
           absoluteKeywordLocation => $doc_uri.'#/components/responses/default/content/application~1json/schema/type',
           error => 'got null, not object',
@@ -609,7 +609,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/response/body',
+          instanceLocation => '/response/body/content',
           keywordLocation => jsonp(qw(/paths /foo post responses default $ref content)),
           absoluteKeywordLocation => $doc_uri.'#/components/responses/default/content',
           error => 'incorrect Content-Type "text/bloop"',
@@ -626,7 +626,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/response/body',
+          instanceLocation => '/response/body/content',
           keywordLocation => jsonp(qw(/paths /foo post responses default $ref content bloop/html)),
           absoluteKeywordLocation => $doc_uri.'#/components/responses/default/content/bloop~1html',
           error => 'EXCEPTION: unsupported media type "bloop/html": add support with $openapi->add_media_type(...)',
@@ -652,19 +652,19 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/response/body/alpha',
+          instanceLocation => '/response/body/content/alpha',
           keywordLocation => jsonp(qw(/paths /foo post responses default $ref content application/json schema properties alpha pattern)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/components responses default content application/json schema properties alpha pattern)))->to_string,
           error => 'pattern does not match',
         },
         {
-          instanceLocation => '/response/body/gamma',
+          instanceLocation => '/response/body/content/gamma',
           keywordLocation => jsonp(qw(/paths /foo post responses default $ref content application/json schema properties gamma const)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/components responses default content application/json schema properties gamma const)))->to_string,
           error => 'value does not match',
         },
         {
-          instanceLocation => '/response/body',
+          instanceLocation => '/response/body/content',
           keywordLocation => jsonp(qw(/paths /foo post responses default $ref content application/json schema properties)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/components responses default content application/json schema properties)))->to_string,
           error => 'not all properties are valid',
@@ -760,7 +760,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/response/body',
+          instanceLocation => '/response/body/content',
           keywordLocation => jsonp(qw(/paths /foo post responses default content text/plain schema minLength)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post responses default content text/plain schema minLength)))->to_string,
           error => 'length is less than 10',
@@ -777,7 +777,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/response/body',
+          instanceLocation => '/response/body/content',
           keywordLocation => jsonp(qw(/paths /foo post responses default content text/plain schema minLength)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post responses default content text/plain schema minLength)))->to_string,
           error => 'length is less than 10',
@@ -809,7 +809,7 @@ YAML
           error => 'missing header: Content-Length',
         },
         {
-          instanceLocation => '/response/body',
+          instanceLocation => '/response/body/content',
           keywordLocation => jsonp(qw(/paths /foo post responses default content text/plain schema minLength)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post responses default content text/plain schema minLength)))->to_string,
           error => 'length is less than 10',
@@ -832,7 +832,7 @@ YAML
           error => 'value does not match',
         },
         {
-          instanceLocation => '/response/body',
+          instanceLocation => '/response/body/content',
           keywordLocation => jsonp(qw(/paths /foo post responses 200 content */* schema maxLength)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post responses 200 content */* schema maxLength)))->to_string,
           error => 'length is greater than 0',
@@ -861,7 +861,7 @@ YAML
           error => 'response header not permitted',
         },
         {
-          instanceLocation => '/response/body',
+          instanceLocation => '/response/body/content',
           keywordLocation => jsonp(qw(/paths /foo post responses 204 content */* schema)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post responses 204 content */* schema)))->to_string,
           error => 'response body not permitted',
@@ -895,7 +895,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/response/body',
+          instanceLocation => '/response/body/content',
           keywordLocation => jsonp(qw(/paths /foo post responses default content */* schema maxLength)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post responses default content */* schema maxLength)))->to_string,
           error => 'length is greater than 0',
@@ -932,13 +932,13 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/response/body/foo',
+          instanceLocation => '/response/body/content/foo',
           keywordLocation => jsonp(qw(/paths /foo post responses 200 content application/json schema unevaluatedProperties)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post responses 200 content application/json schema unevaluatedProperties)))->to_string,
           error => 'additional property not permitted',
         },
         {
-          instanceLocation => '/response/body',
+          instanceLocation => '/response/body/content',
           keywordLocation => jsonp(qw(/paths /foo post responses 200 content application/json schema unevaluatedProperties)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post responses 200 content application/json schema unevaluatedProperties)))->to_string,
           error => 'not all additional properties are valid',
@@ -1020,7 +1020,7 @@ YAML
           error => 'response header not permitted',
         },
         {
-          instanceLocation => '/response/body',
+          instanceLocation => '/response/body/content',
           keywordLocation => jsonp(qw(/paths /foo post responses 200 content */* schema)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post responses 200 content */* schema)))->to_string,
           error => 'response body not permitted',

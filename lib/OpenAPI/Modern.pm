@@ -1513,6 +1513,8 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
 
   # FIXME: needs to handle media-type parameters when selecting for a decoder, see RFC9110 §8.3.1
 
+  $state->{data_path} .= '/content';
+
   my $media_type = (first { fc($content_type) eq fc } keys $content_obj->%*)
     // (first { m{([^/]+)/\*\z} && fc($content_type) =~ m{^\F\Q$1\E/[^/]+\z} } keys $content_obj->%*);
   $media_type //= '*/*' if exists $content_obj->{'*/*'};
@@ -1872,7 +1874,7 @@ sub _evaluate_subschema ($self, $dataref, $schema, $state) {
 
     my @location = unjsonp($state->{data_path});
     my $location =
-        $location[-1] eq 'body' ? join(' ', @location[-2..-1])
+        $location[-1] eq 'content' ? join(' ', @location[-3..-2])                   # body content
       : $location[-2] eq 'query' ? 'query parameter'                                # query
       : $location[-2] eq 'path' ? 'path parameter'                                  # path
       : $location[-2] eq 'header' ? join(' ', @location[-3..-2])                    # header
@@ -2091,21 +2093,21 @@ __END__
 prints:
 
   request:
-  '/request/body/hello': got integer, not string
-  '/request/body': not all properties are valid
+  '/request/body/content/hello': got integer, not string
+  '/request/body/content': not all properties are valid
 
   {
     "errors" : [
       {
         "absoluteKeywordLocation" : "https://production.example.com/api#/paths/~1foo~1%7Bfoo_id%7D~1bar~1%7Bbar_id%7D/post/requestBody/content/application~1json/schema/properties/hello/type",
         "error" : "got integer, not string",
-        "instanceLocation" : "/request/body/hello",
+        "instanceLocation" : "/request/body/content/hello",
         "keywordLocation" : "/paths/~1foo~1{foo_id}~1bar~1%7Bbar_id%7D/post/requestBody/content/application~1json/schema/properties/hello/type"
       },
       {
         "absoluteKeywordLocation" : "https://production.example.com/api#/paths/~1foo~1%7Bfoo_id%7D~1bar~1%7Bbar_id%7D/post/requestBody/content/application~1json/schema/properties",
         "error" : "not all properties are valid",
-        "instanceLocation" : "/request/body",
+        "instanceLocation" : "/request/body/content",
         "keywordLocation" : "/paths/~1foo~1{foo_id}~1bar~1%7Bbar_id%7D/post/requestBody/content/application~1json/schema/properties"
       }
     ],

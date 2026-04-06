@@ -1962,7 +1962,7 @@ YAML
           error => 'Content-Length cannot appear together with Transfer-Encoding',
         },
         {
-          instanceLocation => '/request/body',
+          instanceLocation => '/request/body/content',
           keywordLocation => jsonp(qw(/paths /foo post requestBody content text/plain schema const)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content text/plain schema const)))->to_string,
           error => 'value does not match',
@@ -2024,7 +2024,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/body',
+          instanceLocation => '/request/body/content',
           keywordLocation => jsonp(qw(/paths /foo post requestBody content)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content)))->to_string,
           error => 'incorrect Content-Type "text/bloop"',
@@ -2041,7 +2041,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/body',
+          instanceLocation => '/request/body/content',
           keywordLocation => jsonp(qw(/paths /foo post requestBody content text/plain schema const)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content text/plain schema const)))->to_string,
           error => 'value does not match',
@@ -2058,7 +2058,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/body',
+          instanceLocation => '/request/body/content',
           keywordLocation => jsonp(qw(/paths /foo post requestBody content blOOp/HTml)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content blOOp/HTml)))->to_string,
           error => 'EXCEPTION: unsupported media type "blOOp/HTML": add support with $openapi->add_media_type(...)',
@@ -2078,7 +2078,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/body',
+          instanceLocation => '/request/body/content',
           keywordLocation => jsonp(qw(/paths /foo post requestBody content blOOp/HTml schema not)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content blOOp/HTml schema not)))->to_string,
           error => 'subschema is true',
@@ -2098,7 +2098,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/body',
+          instanceLocation => '/request/body/content',
           keywordLocation => jsonp(qw(/paths /foo post requestBody content unknown/encodingtype schema not)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content unknown/encodingtype schema not)))->to_string,
           error => 'subschema is true',
@@ -2119,7 +2119,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/body',
+          instanceLocation => '/request/body/content',
           keywordLocation => jsonp(qw(/paths /foo post requestBody content iMAgE/* schema not)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content iMAgE/* schema not)))->to_string,
           error => 'subschema is true',
@@ -2137,7 +2137,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/body',
+          instanceLocation => '/request/body/content',
           keywordLocation => jsonp(qw(/paths /foo post requestBody content text/plain)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content text/plain)))->to_string,
           error => re(qr/^could not decode content as UTF-8: UTF-8 "\\xE9" does not map to Unicode/),
@@ -2163,7 +2163,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/body',
+          instanceLocation => '/request/body/content',
           keywordLocation => jsonp(qw(/paths /foo post requestBody content text/plain)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content text/plain)))->to_string,
           error => re(qr/^could not decode content as UTF-8: UTF-8 "\\xE9" does not map to Unicode/),
@@ -2181,7 +2181,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/body',
+          instanceLocation => '/request/body/content',
           keywordLocation => jsonp(qw(/paths /foo post requestBody content application/json)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content application/json)))->to_string,
           error => re(qr/^could not decode content as application\/json: malformed UTF-8 character in JSON string/),
@@ -2199,7 +2199,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/body',
+          instanceLocation => '/request/body/content',
           keywordLocation => jsonp(qw(/paths /foo post requestBody content application/json)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content application/json)))->to_string,
           error => re(qr/^could not decode content as application\/json: /),
@@ -2233,19 +2233,19 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/body/alpha',
+          instanceLocation => '/request/body/content/alpha',
           keywordLocation => jsonp(qw(/paths /foo post requestBody content application/json schema properties alpha pattern)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content application/json schema properties alpha pattern)))->to_string,
           error => 'pattern does not match',
         },
         {
-          instanceLocation => '/request/body/gamma',
+          instanceLocation => '/request/body/content/gamma',
           keywordLocation => jsonp(qw(/paths /foo post requestBody content application/json schema properties gamma const)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content application/json schema properties gamma const)))->to_string,
           error => 'value does not match',
         },
         {
-          instanceLocation => '/request/body',
+          instanceLocation => '/request/body/content',
           keywordLocation => jsonp(qw(/paths /foo post requestBody content application/json schema properties)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content application/json schema properties)))->to_string,
           error => 'not all properties are valid',
@@ -2287,7 +2287,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/body',
+          instanceLocation => '/request/body/content',
           keywordLocation => jsonp(qw(/paths /foo post requestBody content */* schema minLength)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content */* schema minLength)))->to_string,
           error => 'length is less than 10',
@@ -2304,7 +2304,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/body',
+          instanceLocation => '/request/body/content',
           keywordLocation => jsonp(qw(/paths /foo post requestBody content */* schema minLength)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content */* schema minLength)))->to_string,
           error => 'length is less than 10',
@@ -2335,7 +2335,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/body',
+          instanceLocation => '/request/body/content',
           keywordLocation => jsonp(qw(/paths /foo post requestBody content application/json)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content application/json)))->to_string,
           error => re(qr/^could not decode content as application\/json: malformed JSON string/),
@@ -2471,7 +2471,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/body',
+          instanceLocation => '/request/body/content',
           keywordLocation => jsonp(qw(/paths /foo post requestBody content text/plain schema minLength)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content text/plain schema minLength)))->to_string,
           error => 'length is less than 10',
@@ -2556,7 +2556,7 @@ YAML
         },
         # no error from pattern - path value is a number
         {
-          instanceLocation => '/request/body',
+          instanceLocation => '/request/body/content',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id} post requestBody content text/plain schema pattern)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} post requestBody content text/plain schema pattern)))->to_string,
           error => 'pattern does not match',
@@ -2659,7 +2659,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/body',
+          instanceLocation => '/request/body/content',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id} post requestBody content text/plain schema type)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} post requestBody content text/plain schema type)))->to_string,
           error => 'got string, not number',
@@ -2779,7 +2779,7 @@ YAML
           error => 'got string, not integer',
         },
         {
-          instanceLocation => '/request/body',
+          instanceLocation => '/request/body/content',
           keywordLocation => jsonp(qw(/paths /foo/{path_plain}/bar/{path_encoded} post requestBody content text/plain schema type)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{path_plain}/bar/{path_encoded} post requestBody content text/plain schema type)))->to_string,
           error => 'got string, not integer',
@@ -2811,7 +2811,7 @@ YAML
           error => 'got string, not integer',
         },
         {
-          instanceLocation => '/request/body',
+          instanceLocation => '/request/body/content',
           keywordLocation => jsonp(qw(/paths /foo/{path_plain}/bar/{path_encoded} post requestBody content text/plain schema type)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{path_plain}/bar/{path_encoded} post requestBody content text/plain schema type)))->to_string,
           error => 'got string, not integer',
@@ -3152,13 +3152,13 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/body/foo',
+          instanceLocation => '/request/body/content/foo',
           keywordLocation => jsonp(qw(/paths /foo post requestBody content application/json schema unevaluatedProperties)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content application/json schema unevaluatedProperties)))->to_string,
           error => 'additional property not permitted',
         },
         {
-          instanceLocation => '/request/body',
+          instanceLocation => '/request/body/content',
           keywordLocation => jsonp(qw(/paths /foo post requestBody content application/json schema unevaluatedProperties)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content application/json schema unevaluatedProperties)))->to_string,
           error => 'not all additional properties are valid',
@@ -3401,7 +3401,7 @@ YAML
           error => 'cookie parameter not permitted',
         },
         {
-          instanceLocation => '/request/body',
+          instanceLocation => '/request/body/content',
           keywordLocation => jsonp(qw(/paths /foo/{foo_id}/{bar_id} post requestBody content */* schema)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id}/{bar_id} post requestBody content */* schema)))->to_string,
           error => 'request body not permitted',
@@ -3616,13 +3616,13 @@ YAML
       errors => [
         # no error for 'length is less than 10'
         {
-          instanceLocation => '/request/body/b',
+          instanceLocation => '/request/body/content/b',
           keywordLocation => jsonp(qw(/paths /beta get requestBody $ref content application/json schema properties b)),
           absoluteKeywordLocation => '/otherdoc/api/beta_subdir#/properties/b',
           error => 'property not permitted',
         },
         {
-          instanceLocation => '/request/body',
+          instanceLocation => '/request/body/content',
           keywordLocation => jsonp(qw(/paths /beta get requestBody $ref content application/json schema properties)),
           absoluteKeywordLocation => '/otherdoc/api/beta_subdir#/properties',
           error => 'not all properties are valid',
@@ -3641,19 +3641,19 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/body/0',
+          instanceLocation => '/request/body/content/0',
           keywordLocation => jsonp(qw(/paths /beta get requestBody $ref content application/yaml schema items 0 minLength)),
           absoluteKeywordLocation => '/otherdoc/api/second_beta_subdir#/items/0/minLength',
           error => 'length is less than 10',
         },
         {
-          instanceLocation => '/request/body/1',
+          instanceLocation => '/request/body/content/1',
           keywordLocation => jsonp(qw(/paths /beta get requestBody $ref content application/yaml schema items 1)),
           absoluteKeywordLocation => '/otherdoc/api/second_beta_subdir#/items/1',
           error => 'item not permitted',
         },
         {
-          instanceLocation => '/request/body',
+          instanceLocation => '/request/body/content',
           keywordLocation => jsonp(qw(/paths /beta get requestBody $ref content application/yaml schema items)),
           absoluteKeywordLocation => '/otherdoc/api/second_beta_subdir#/items',
           error => 'not all items are valid',
