@@ -954,9 +954,8 @@ sub _validate_cookie_parameter ($self, $state, $param_obj, $headers) {
 
   return E($state, 'RFC6265 §5.4: "When the user agent generates an HTTP request, the user agent MUST NOT attach more than one Cookie header field."') if @$cookie > 1;
 
-  my $data = $cookie->[0] =~ s/^\s*|\s*\z//gr;
-
   # parse into individual cookie parameters as per RFC6265 §4.2.1
+  my $data = $cookie->[0] =~ s/^[\x09\x20]*|[\x09\x20]*\z//gr;
   my @pairs = map [ split /=/, $_, 2 ], split /; /, $data;
 
   if (my @missing_values = grep !defined $_->[1], @pairs) {
@@ -976,7 +975,7 @@ sub _validate_cookie_parameter ($self, $state, $param_obj, $headers) {
   }
 
   if (exists $param_obj->{content}) {
-    $data = ((grep +($_->[0] eq $param_obj->{name}), @pairs)[-1]//[])->[1];
+    my $data = ((grep +($_->[0] eq $param_obj->{name}), @pairs)[-1]//[])->[1];
 
     if (not defined $data) {
       return E({ %$state, keyword => 'required' }, 'missing cookie parameter: %s', $param_obj->{name})
