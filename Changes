@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.133     2026-04-07 18:37:11Z
           - OpenAPI::Modern constructor now supports passing along arbitrary
             configuration options to the JSON::Schema::Modern constructor
           - message validation now also saves all deserialized data to the
