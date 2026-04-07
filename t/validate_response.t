@@ -1284,6 +1284,46 @@ YAML
   );
 };
 
+subtest 'application/x-www-form-urlencoded responses' => sub {
+  my $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri,
+    openapi_schema => decode_yaml(OPENAPI_PREAMBLE.<<'YAML'));
+paths:
+  /foo:
+    post:
+      operationId: me
+      responses:
+        default:
+          content:
+            application/x-www-form-urlencoded: {}
+YAML
+
+  my $result = $openapi->validate_response(response(200,
+      [ 'Content-Type' => 'application/x-www-form-urlencoded' ],
+      'id=f81d4fae-7dec-11d0-a765-00a0c91e6bf6&address=123%20Example%20Dr.'),
+    { operation_id => 'me' });
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      { valid => true },
+      {
+        response => {
+          body => {
+            content => {
+              id => 'f81d4fae-7dec-11d0-a765-00a0c91e6bf6',
+              address => '123 Example Dr.',
+            },
+          },
+        },
+      },
+    ],
+    'single-level object is deserialized from form=urlencoded, no schema or encoding object',
+  );
+};
+
 if (++$type_index < @::TYPES) {
   bail_if_not_passing if $ENV{AUTHOR_TESTING};
   goto START;

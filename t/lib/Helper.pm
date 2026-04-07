@@ -17,7 +17,7 @@ use Test2::V0 qw(!bag !bool !warnings !subtest), -no_pragmas => 1;  # prefer Tes
 use if $ENV{AUTHOR_TESTING}, 'Test2::Warnings', ':report_warnings';
 sub subtest { Test2::V0::subtest(@_); bail_if_not_passing() if $ENV{AUTHOR_TESTING}; }
 use if $ENV{AUTHOR_TESTING} || -d '.git', 'Test2::Plugin::SubtestFilter';
-use List::Util 'pairs';
+use List::Util qw(pairs pairgrep pairmap);
 use Mojo::Message::Request;
 use Mojo::Message::Response;
 use Carp 'croak';
@@ -59,10 +59,14 @@ our @TYPES = $ENV{TYPE} ? split(/,/, $ENV{TYPE}) : qw(mojo lwp plack catalyst da
 our $TYPE = $ENV{TYPE} ? (split(/,/, $ENV{TYPE}))[0] : 'mojo'; # safe default
 
 # Note: if you want your query parameters or uri fragment to be normalized, set them afterwards
+# body_content can be a reference; the Content-Type header is used to determine the encoding format:
+# see _generate_body
 sub request ($method, $uri_string, $headers = [], $body_content = undef) {
   die '$TYPE is not set at ', join(' line ', (caller)[1,2]), ".\n" if not defined $TYPE;
   die 'Wide character in body content at ', join(' line ', (caller)[1,2]), ".\n"
-    if length $body_content and $body_content =~ /[^\x00-\xff]/;
+    if not ref $body_content and length $body_content and $body_content =~ /[^\x00-\xff]/;
+
+  ($headers, $body_content) = _generate_body($headers, $body_content) if ref $body_content;
 
   my $req;
   if (elem($TYPE, [qw(lwp plack catalyst dancer2)])) {
@@ -119,10 +123,14 @@ sub request ($method, $uri_string, $headers = [], $body_content = undef) {
   return $req;
 }
 
+# body_content can be a reference; the Content-Type header is used to determine the encoding format:
+# see _generate_body
 sub response ($code, $headers = [], $body_content = undef) {
   die '$TYPE is not set at ', join(' line ', (caller)[1,2]), ".\n" if not defined $TYPE;
   die 'Wide character in body content at ', join(' line ', (caller)[1,2]), ".\n"
-    if length $body_content and $body_content =~ /[^\x00-\xff]/;
+    if not ref $body_content and length $body_content and $body_content =~ /[^\x00-\xff]/;
+
+  ($headers, $body_content) = _generate_body($headers, $body_content) if ref $body_content;
 
   my $res;
   if ($TYPE eq 'mojo') {
@@ -235,6 +243,42 @@ sub remove_header ($message, $header_name) {
   else {
     die '$TYPE '.$TYPE.' not supported at ', join(' line ', (caller)[1,2]), ".\n";
   }
+}
+
+sub _generate_body ($headers, $body_content) {
+  my (undef, $content_type) = pairgrep { $a eq 'Content-Type' } @$headers;
+
+  die 'missing Content-Type header' if not defined $content_type;
+
+  if ($content_type eq 'application/x-www-form-urlencoded') {
+    $body_content = _form_urlencoded_content($body_content);
+  }
+  else {
+    die 'unsupported Content-Type '.$content_type;
+  }
+
+  return ($headers, $body_content);
+}
+
+# Accepts a form specification as either:
+# - a hashref of names and values: { name1 => value1, name2 => [ value2, value3 ], ... },
+# - or an arrayref of pairs (which preserves order):
+#   [ name1 => value1, name2 => value2, name2 => value3, ... ]
+# Values can also be a form specification, to permit nesting forms (with limitations:
+# an arrayref for a nested form cannot be used inside a hashref)
+# ideally, this output would be deserialized back to the same input.
+sub _form_urlencoded_content ($body_content) {
+    ref $body_content eq 'ARRAY' ? Mojo::Parameters->new->pairs([
+      pairmap { $a, (ref $b ? _form_urlencoded_content($b) : $b) } $body_content->@*
+    ])->to_string
+  : ref $body_content eq 'HASH'
+  ? Mojo::Parameters->new->pairs([
+    pairmap {
+        ref $b eq 'HASH' ? ($a => _form_urlencoded_content($b))
+      : ref $b eq 'ARRAY' ? (map +($a => $_), $b->@*) : ($a, $b) } $body_content->%*
+  ])->to_string
+
+  : die 'unknown ref type';
 }
 
 # prints the method and URI of the request, or the response code and message of the response,
