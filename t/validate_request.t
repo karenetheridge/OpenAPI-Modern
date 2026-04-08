@@ -4934,6 +4934,273 @@ YAML
   );
 };
 
+subtest 'itemSchema' => sub {
+  my $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri,
+    openapi_schema => decode_yaml(OPENAPI_PREAMBLE.<<'YAML'));
+paths:
+  /foo:
+    post:
+      parameters:
+        - name: q
+          in: query
+          content:
+            application/json:
+              itemSchema:
+                const: a
+      requestBody:
+        content:
+          application/json:
+            itemSchema:
+              const: a
+YAML
+
+  is_equal(
+    # q={"x":"y"}
+    $openapi->validate_request(request('POST', 'http://example.com/foo?q=%7B%22x%22:%22y%22%7D',
+      [ 'Content-Type' => 'application/json' ], '{"x":"y"}'))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/uri/query/q',
+          keywordLocation => jsonp(qw(/paths /foo post parameters 0 content application/json itemSchema)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post parameters 0 content application/json itemSchema)))->to_string,
+          error => 'deserialized query parameter content is not an array',
+        },
+        {
+          instanceLocation => '/request/body/content',
+          keywordLocation => jsonp(qw(/paths /foo post requestBody content application/json itemSchema)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content application/json itemSchema)))->to_string,
+          error => 'deserialized message content is not an array',
+        },
+      ],
+    },
+    'non-array is detected by itemSchema',
+  );
+
+  is_equal(
+    # ["a","b"]
+    $openapi->validate_request(request('POST', 'http://example.com/foo?q=%5B%22a%22,%22b%22%5D',
+      [ 'Content-Type' => 'application/json' ], '["a","b"]'))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/uri/query/q/1',
+          keywordLocation => jsonp(qw(/paths /foo post parameters 0 content application/json itemSchema const)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post parameters 0 content application/json itemSchema const)))->to_string,
+          error => 'value does not match',
+        },
+        {
+          instanceLocation => '/request/body/content/1',
+          keywordLocation => jsonp(qw(/paths /foo post requestBody content application/json itemSchema const)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content application/json itemSchema const)))->to_string,
+          error => 'value does not match',
+        },
+      ],
+    },
+    'every array item in the decoded body is evaluated against itemSchema',
+  );
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri,
+    openapi_schema => decode_yaml(OPENAPI_PREAMBLE.<<'YAML'));
+paths:
+  /foo:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items: false
+            itemSchema: false
+YAML
+
+  is_equal(
+    $openapi->validate_request(request('POST', 'http://example.com/foo',
+      [ 'Content-Type' => 'application/json' ], '[0,1]'))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        (map +{
+          instanceLocation => '/request/body/content/'.$_,
+          keywordLocation => jsonp(qw(/paths /foo post requestBody content application/json schema items)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content application/json schema items)))->to_string,
+          error => 'item not permitted',
+        }, 0..1),
+        {
+          instanceLocation => '/request/body/content',
+          keywordLocation => jsonp(qw(/paths /foo post requestBody content application/json schema items)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content application/json schema items)))->to_string,
+          error => 'subschema is not valid against all items',
+        },
+        (map +{
+          instanceLocation => '/request/body/content/'.$_,
+          keywordLocation => jsonp(qw(/paths /foo post requestBody content application/json itemSchema)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content application/json itemSchema)))->to_string,
+          error => 'item not permitted',
+        }, 0..1),
+      ],
+    },
+    'itemSchema evaluates each array item of the data',
+  );
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri,
+    openapi_schema => decode_yaml(OPENAPI_PREAMBLE.<<'YAML'));
+components:
+  mediaTypes:
+    json_object:
+      itemSchema:
+        type: boolean
+        const: true
+    unknown_object:
+      schema: true
+      itemSchema:
+        const: true
+paths:
+  /foo/{path}:
+    post:
+      parameters:
+        - name: path
+          in: path
+          content:
+            application/json:
+              $ref: '#/components/mediaTypes/json_object'
+        - name: q
+          in: query
+          content:
+            application/json:
+              $ref: '#/components/mediaTypes/json_object'
+        - name: header
+          in: header
+          content:
+            application/json:
+              $ref: '#/components/mediaTypes/json_object'
+        - name: cookie
+          in: cookie
+          content:
+            application/json:
+              $ref: '#/components/mediaTypes/json_object'
+        - name: r
+          in: query
+          content:
+            unknown/type:
+              $ref: '#/components/mediaTypes/unknown_object'
+      requestBody:
+        content:
+          application/json:
+            $ref: '#/components/mediaTypes/json_object'
+  /foo:
+    post:
+      parameters:
+        - name: q
+          in: querystring
+          content:
+            application/json:
+              $ref: '#/components/mediaTypes/json_object'
+YAML
+
+  is_equal(
+    (my $result = $openapi->validate_request(request('POST', 'http://example.com/foo/%5Bfalse%5D?q=%5Bfalse%5D',
+      [ 'Header' => '[false]', 'Cookie' => 'cookie=[false]', 'Content-Type' => 'application/json', 'Content-Length' => 7 ], '[false]')))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/uri/path/path/0',
+          keywordLocation => jsonp(qw(/paths /foo/{path} post parameters 0 content application/json $ref itemSchema const)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/mediaTypes/json_object/itemSchema/const')->to_string,
+          error => 'value does not match',
+        },
+        {
+          instanceLocation => '/request/uri/query/q/0',
+          keywordLocation => jsonp(qw(/paths /foo/{path} post parameters 1 content application/json $ref itemSchema const)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/mediaTypes/json_object/itemSchema/const')->to_string,
+          error => 'value does not match',
+        },
+        {
+          instanceLocation => '/request/header/header/0',
+          keywordLocation => jsonp(qw(/paths /foo/{path} post parameters 2 content application/json $ref itemSchema const)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/mediaTypes/json_object/itemSchema/const')->to_string,
+          error => 'value does not match',
+        },
+        {
+          instanceLocation => '/request/header/Cookie/cookie/0',
+          keywordLocation => jsonp(qw(/paths /foo/{path} post parameters 3 content application/json $ref itemSchema const)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/mediaTypes/json_object/itemSchema/const')->to_string,
+          error => 'value does not match',
+        },
+        {
+          instanceLocation => '/request/body/content/0',
+          keywordLocation => jsonp(qw(/paths /foo/{path} post requestBody content application/json $ref itemSchema const)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/mediaTypes/json_object/itemSchema/const')->to_string,
+          error => 'value does not match',
+        },
+      ],
+    },
+    '$ref to media-type is followed to find the itemSchema',
+  );
+  is_equal(
+    $result->data,
+    {
+      request => {
+        uri => {
+          path => { path => [ false ] },
+          query => { q => [ false ] },
+        },
+        header => {
+          Cookie => { cookie => [ false ] },
+          header => [ false ],
+        },
+        body => { content => [ false ] },
+      },
+    },
+    'array-of-boolean data is properly decoded from parameters and request body',
+  );
+
+  is_equal(
+    ($result = $openapi->validate_request(request('POST', 'http://example.com/foo/%5Btrue%5D?r=%5B0%5D')))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/uri/query/r',
+          keywordLocation => jsonp(qw(/paths /foo/{path} post parameters 4 content unknown/type $ref)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/mediaTypes/unknown_object')->to_string,
+          error => 'EXCEPTION: unsupported media type "unknown/type": add support with JSON::Schema::Modern::Utilities::add_media_type(...)',
+        },
+      ],
+    },
+    '$ref to media-type is followed to find the itemSchema, which is defined, but type is unsupported',
+  );
+
+  is_equal(
+    ($result = $openapi->validate_request(request('POST', 'http://example.com/foo?%5Bfalse%5D')))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/uri/query/0',
+          keywordLocation => jsonp(qw(/paths /foo post parameters 0 content application/json $ref itemSchema const)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/mediaTypes/json_object/itemSchema/const')->to_string,
+          error => 'value does not match',
+        },
+      ],
+    },
+    '$ref to media-type is followed to find the itemSchema in querystring',
+  );
+  is_equal(
+    $result->data,
+    { request => { uri => { query => [ false ] } } },
+    'data is properly decoded from querystring',
+  );
+};
+
 if (++$type_index < @::TYPES) {
   bail_if_not_passing if $ENV{AUTHOR_TESTING};
   goto START;

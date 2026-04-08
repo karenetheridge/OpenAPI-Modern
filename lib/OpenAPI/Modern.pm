@@ -22,8 +22,8 @@ no feature 'switch';
 use Carp qw(carp croak);
 use Safe::Isa;
 use List::Util qw(first pairs);
-use if "$]" < 5.041010, 'List::Util' => 'any';
-use if "$]" >= 5.041010, experimental => 'keyword_any';
+use if "$]" < 5.041010, 'List::Util' => qw(all any);
+use if "$]" >= 5.041010, experimental => qw(keyword_all keyword_any);
 use builtin::compat 'indexed';
 use Feature::Compat::Try;
 use Encode 2.89 ();
@@ -861,9 +861,24 @@ sub _validate_parameter ($self, $state, $param_obj, %args) {
 
   jsonp_set($state->{data}, $state->{data_path}, $data_ref->$*);
 
-  return 1 if not exists $obj->{schema};
-  return $self->_evaluate_subschema($data_ref, $obj->{schema},
+  my $valid = 1;
+
+  $valid = 0 if exists $obj->{schema} and not $self->_evaluate_subschema($data_ref, $obj->{schema},
     { %$state, depth => $state->{depth}+1, keyword_path => $state->{keyword_path}.'/schema' });
+
+  if (exists $obj->{itemSchema}) {
+    return E({ %$state, keyword_path => $state->{keyword_path}.'/itemSchema' },
+        'deserialized %s parameter content is not an array', $in)
+      if ref $data_ref->$* ne 'ARRAY';
+
+    foreach my $idx (0..$data_ref->$*->$#*) {
+      $valid = 0 if not $self->_evaluate_subschema(\ $data_ref->$*->[$idx], $obj->{itemSchema},
+      { %$state, depth => $state->{depth}+1, data_path => $state->{data_path}.'/'.$idx,
+        keyword_path => $state->{keyword_path}.'/itemSchema' });
+    }
+  }
+
+  return $valid;
 }
 
 # returns false or reference to deserialized data
@@ -1487,8 +1502,8 @@ sub _deserialize_content ($self, $content_ref, $state, $content_obj, $media_type
 
   if (not $content_ref) {
     # don't fail, and return the original data, if the schema would pass on any input
-    my $schema = $media_type_obj->{schema};
-    return $content_ref if not defined $schema or ref $schema eq 'HASH' ? !keys %$schema : $schema;
+    return $content_ref if all { ref $_ eq 'HASH' ? !keys %$_ : $_ }
+      ($media_type_obj->{schema}//(), $media_type_obj->{itemSchema}//());
 
     abort($state, 'EXCEPTION: unsupported media type "%s": add support with JSON::Schema::Modern::Utilities::add_media_type(...)', $content_type);
   }
@@ -1535,10 +1550,27 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
     $media_type_obj = $self->_resolve_ref('media-type', $ref, $state);
   }
 
-  return 1 if not exists $media_type_obj->{schema};
+  my $valid = 1;
 
-  $self->_evaluate_subschema($content_ref, $media_type_obj->{schema},
-    { %$state, depth => $state->{depth}+1, keyword_path => $state->{keyword_path}.'/schema' });
+  if (exists $media_type_obj->{schema}) {
+    $valid = $self->_evaluate_subschema($content_ref, $media_type_obj->{schema},
+      { %$state, depth => $state->{depth}+1, keyword_path => $state->{keyword_path}.'/schema' });
+  }
+
+  if (exists $media_type_obj->{itemSchema}) {
+    return E({ %$state, keyword_path => $state->{keyword_path}.'/itemSchema' },
+        'deserialized message content is not an array')
+      if ref $content_ref->$* ne 'ARRAY';
+
+    foreach my $idx (0..$content_ref->$*->$#*) {
+      $valid = 0 if not $self->_evaluate_subschema(\ $content_ref->$*->[$idx],
+        $media_type_obj->{itemSchema},
+        { %$state, depth => $state->{depth}+1, data_path => $state->{data_path}.'/'.$idx,
+          keyword_path => $state->{keyword_path}.'/itemSchema' });
+    }
+  }
+
+  return $valid;
 }
 
 # wrap a result object around the errors
@@ -1857,12 +1889,13 @@ sub _evaluate_subschema ($self, $dataref, $schema, $state) {
 
     my @location = unjsonp($state->{data_path});
     my $location =
-        $location[-1] eq 'content' ? join(' ', @location[-3..-2])                   # body content
-      : $location[-2] eq 'query' ? 'query parameter'                                # query
-      : $location[-2] eq 'path' ? 'path parameter'                                  # path
-      : $location[-2] eq 'header' ? join(' ', @location[-3..-2])                    # header
+        $location[-1] eq 'content' ? join(' ', @location[-3..-2])             # request|response body
+      : $location[-1] =~ /^[0-9]+\z/ ? 'item'                                 # body item
+      : $location[-2] eq 'query' ? 'query parameter'                          # query
+      : $location[-2] eq 'path' ? 'path parameter'                            # path
+      : $location[-2] eq 'header' ? join(' ', @location[-3..-2])              # header
       : $location[-3] eq 'header' && $location[-2] eq 'Cookie' ? 'cookie parameter' # cookie
-      : $location[-1] eq 'query' ? 'query parameter'                                # querystring
+      : $location[-1] eq 'query' ? 'query parameter'                          # querystring
       : die 'unknown location';
     return E($state, '%s not permitted', $location);
   }
@@ -1894,7 +1927,7 @@ sub _evaluate_subschema ($self, $dataref, $schema, $state) {
     $state->{defaults}->%*, $result->defaults->%*
   ) if $state->{defaults} and $result->defaults;
 
-  return $result;
+  return $result->valid;
 }
 
 # results may be unsatisfactory if not a valid HTTP request.
