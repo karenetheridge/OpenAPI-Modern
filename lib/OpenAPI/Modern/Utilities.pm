@@ -60,8 +60,6 @@ our %EXPORT_TAGS = (
 use constant SUPPORTED_OAD_VERSIONS => [ '3.0.4', '3.1.2', '3.2.0' ];
 
 # in most things, e.g. schemas, we only use major.minor as the version number
-# we don't actually support OAS 3.0.x, but we will bundle its schema so it can be more easily used
-# for validating v3.0 OADs
 use constant OAS_VERSIONS => [ map s/^\d+\.\d+\K\.\d+\z//r, SUPPORTED_OAD_VERSIONS->@* ];
 
 # see https://spec.openapis.org/#openapi-specification-schemas for the latest links
