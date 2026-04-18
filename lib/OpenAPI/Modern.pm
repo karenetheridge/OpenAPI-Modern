@@ -36,7 +36,7 @@ use Types::Standard qw(InstanceOf Bool);
 use Mojo::Util qw(url_unescape punycode_decode);
 use Mojo::Message::Request;
 use Mojo::Message::Response;
-use Storable 'dclone';
+use Clone 'clone';
 use namespace::clean;
 
 has openapi_document => (
@@ -657,7 +657,7 @@ sub recursive_get ($self, $uri_reference, $entity_type = undef) {
     }
   }
 
-  $schema = dclone($schema);
+  $schema = clone($schema);
   $schema->{$_} = $parent_obj->{$_} foreach keys %$parent_obj;
 
   return wantarray ? ($schema, $base) : $schema;
@@ -850,7 +850,7 @@ sub _validate_parameter ($self, $state, $param_obj, %args) {
   if (not $data_ref) {
     # value is missing, but not required - populate with defaults
     $state->{defaults}{$state->{data_path}} =
-        ref $schema->{default} ? dclone($schema->{default}) : $schema->{default}
+        ref $schema->{default} ? clone($schema->{default}) : $schema->{default}
       if $state->{defaults} and ref $schema eq 'HASH' and exists $schema->{default};
 
     return 1;
