@@ -812,59 +812,58 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
   return;
 }
 
+# $param_obj can be a parameter object or a header object
 # %args can contain any of:
-# - when $in is 'path': 'path_captures', a hashref
-# - when $in is 'query' or 'querystring': 'params', a Mojo::Parameters object
-# - when $in is 'header' or 'cookie': 'headers', a Mojo::Headers object
-# - when $in is missing ('header'): 'name', the parameter name
+# - when $param_obj->{in} is 'path': 'path_captures', a hashref
+# - when $param_obj->{in} is 'query' or 'querystring': 'params', a Mojo::Parameters object
+# - when $param_obj->{in} is 'header' or 'cookie': 'headers', a Mojo::Headers object
+# - when $param_obj->{in} is missing (i.e a header object): 'name', the parameter name
 sub _validate_parameter ($self, $state, $param_obj, %args) {
   my $in = $param_obj->{in} // 'header';        # header objects do not have an 'in' property
   my $name = $param_obj->{name} // $args{name}; # ..or a 'name' property
 
   my ($path_captures, $params, $headers) = @args{qw(path_captures params headers)};
-
-  my $errors = $state->{errors};
-  $state->{errors} = [];
+  my $error_count = $state->{errors}->@*;
 
   # when $data_ref is false, value is missing; otherwise it is a reference to the deserialized data
   my $data_ref =
-      $in eq 'path' ? $self->_deserialize_path_parameter($state, $param_obj, $path_captures)
-    : $in eq 'query' ? $self->_deserialize_query_parameter($state, $param_obj, $params)
-    : $in eq 'header' ? $self->_deserialize_header_parameter($state, $param_obj, $name, $headers)
-    : $in eq 'cookie' ? $self->_deserialize_cookie_parameter($state, $param_obj, $headers)
-    : $in eq 'querystring' ? $self->_deserialize_querystring_parameter($state, $param_obj, $params)
+      $in eq 'path' ? $self->_deserialize_path_parameter({ %$state }, $param_obj, $path_captures)
+    : $in eq 'query' ? $self->_deserialize_query_parameter({ %$state }, $param_obj, $params)
+    : $in eq 'header' ? $self->_deserialize_header_parameter({ %$state }, $param_obj, $name, $headers)
+    : $in eq 'cookie' ? $self->_deserialize_cookie_parameter({ %$state }, $param_obj, $headers)
+    : $in eq 'querystring' ? $self->_deserialize_querystring_parameter({ %$state }, $param_obj, $params)
     : die;
 
-  # when $data_ref is undef, value is missing; otherwise it is a reference to the deserialized data
-  if ($state->{errors}->@*) {
-    push $errors->@*, $state->{errors}->@*;
-    return;
-  }
+  return if $state->{errors}->@* > $error_count;
 
-  my $media_type = exists $param_obj->{content} ? (keys $param_obj->{content}->%*)[0] : ();
-  my $schema = exists $param_obj->{content}
-    ? $param_obj->{content}{$media_type}{schema}
-    : $param_obj->{schema};
+  my $obj = $param_obj;  # $obj can be a parameter, header or media-type object; contains 'schema'
+
+  if (exists $obj->{content}) {
+    my ($media_type) = keys $obj->{content}->%*;
+    $obj = $obj->{content}{$media_type};
+    $state->{keyword_path} = jsonp($state->{keyword_path}, 'content', $media_type);
+    while (defined(my $ref = $obj->{'$ref'})) {
+      $obj = $self->_resolve_ref('media-type', $ref, $state);
+    }
+  }
 
   $state->{data_path} = jsonp($state->{data_path}, $name) if $in ne 'querystring';
 
   if (not $data_ref) {
-    # value is missing, but not required - populate with defaults
+    # value is missing, but not required - populate defaults
     $state->{defaults}{$state->{data_path}} =
-        ref $schema->{default} ? clone($schema->{default}) : $schema->{default}
-      if $state->{defaults} and ref $schema eq 'HASH' and exists $schema->{default};
+        ref $obj->{schema}{default} ? clone($obj->{schema}{default}) : $obj->{schema}{default}
+      if $state->{defaults} and exists $obj->{schema}
+        and ref $obj->{schema} eq 'HASH' and exists $obj->{schema}{default};
 
     return 1;
   }
 
   jsonp_set($state->{data}, $state->{data_path}, $data_ref->$*);
 
-  return 1 if not defined $schema;
-  return $self->_evaluate_subschema($data_ref, $schema,
-    { %$state, errors => $errors, depth => $state->{depth}+1,
-      keyword_path => exists $param_obj->{content}
-        ? jsonp($state->{keyword_path}, 'content', $media_type, 'schema')
-        : $state->{keyword_path}.'/schema' });
+  return 1 if not exists $obj->{schema};
+  return $self->_evaluate_subschema($data_ref, $obj->{schema},
+    { %$state, depth => $state->{depth}+1, keyword_path => $state->{keyword_path}.'/schema' });
 }
 
 # returns false or reference to deserialized data
@@ -882,13 +881,10 @@ sub _deserialize_path_parameter ($self, $state, $param_obj, $path_captures) {
       'non-ascii character detected in parameter value: not deserializable')
     if ($data//'') =~ /[^\x00-\x7F]/;
 
-  if (exists $param_obj->{content}) {
-    my ($media_type) = keys $param_obj->{content}->%*;
-    return $self->_deserialize_media_type({ %$state, depth => $state->{depth}+1,
-        data_path => jsonp($state->{data_path}, $param_obj->{name}),
-        keyword_path => jsonp($state->{keyword_path}, 'content', $media_type) },
-      $media_type, $param_obj->{content}{$media_type}, \ uri_decode($data));
-  }
+  return $self->_deserialize_content(\ uri_decode($data),
+      { %$state, data_path => jsonp($state->{data_path}, $param_obj->{name}) },
+      $param_obj->{content}, ((keys $param_obj->{content}->%*)[0])x2)
+    if exists $param_obj->{content};
 
   return $self->_deserialize_style($data, $state,
     style => $param_obj->{style}//'simple',
@@ -909,11 +905,9 @@ sub _deserialize_query_parameter ($self, $state, $param_obj, $params) {
       return;
     }
 
-    my ($media_type) = keys $param_obj->{content}->%*;
-    return $self->_deserialize_media_type({ %$state, depth => $state->{depth}+1,
-        data_path => jsonp($state->{data_path}, $param_obj->{name}),
-        keyword_path => jsonp($state->{keyword_path}, 'content', $media_type) },
-      $media_type, $param_obj->{content}{$media_type}, \$data);
+    return $self->_deserialize_content(\$data,
+      { %$state, data_path => jsonp($state->{data_path}, $param_obj->{name}) },
+      $param_obj->{content}, ((keys $param_obj->{content}->%*)[0])x2);
   }
 
   # Note that since we already percent-decoded all extracted query components via $params->parse
@@ -924,6 +918,7 @@ sub _deserialize_query_parameter ($self, $state, $param_obj, $params) {
   my $style = $param_obj->{style}//'form';
   my $explode = $param_obj->{explode} // ($style eq 'form' ? true : false);
 
+  my $error_count = $state->{errors}->@*;
   my $data_ref = $self->_deserialize_style($params, $state,
     style => $style,
     explode => $explode,
@@ -931,7 +926,7 @@ sub _deserialize_query_parameter ($self, $state, $param_obj, $params) {
     $param_obj->%{qw(in name schema)},
   );
 
-  return if $state->{errors}->@*;
+  return if $state->{errors}->@* > $error_count;
 
   if (not $data_ref) {
     if ($param_obj->{required}) {
@@ -950,6 +945,7 @@ sub _deserialize_query_parameter ($self, $state, $param_obj, $params) {
 }
 
 # validates a header, from either the request or the response
+# $header_obj can be a parameter object or a header object ('in' and 'name' might be absent)
 # returns false or reference to deserialized data
 sub _deserialize_header_parameter ($self, $state, $header_obj, $header_name, $headers) {
   croak '$headers must be a Mojo::Headers object' if not $headers->$_isa('Mojo::Headers');
@@ -971,13 +967,10 @@ sub _deserialize_header_parameter ($self, $state, $header_obj, $header_name, $he
     if any { /[^\x00-\xFF]/ } $headers->every_header($header_name)->@*;
 
   # validate as a single comma-concatenated string, presumably to be decoded
-  if (exists $header_obj->{content}) {
-    my ($media_type) = keys $header_obj->{content}->%*;
-    return $self->_deserialize_media_type({ %$state, depth => $state->{depth}+1,
-        data_path => jsonp($state->{data_path}, $header_name),
-        keyword_path => jsonp($state->{keyword_path}, 'content', $media_type) },
-      $media_type, $header_obj->{content}{$media_type}, \ $headers->header($header_name));
-  }
+  return $self->_deserialize_content(\ $headers->header($header_name),
+      { %$state, data_path => jsonp($state->{data_path}, $header_name) },
+      $header_obj->{content}, ((keys $header_obj->{content}->%*)[0])x2)
+    if exists $header_obj->{content};
 
   # RFC9112 §5.1-3: "The field line value does not include that leading or trailing whitespace: OWS
   # occurring before the first non-whitespace octet of the field line value, or after the last
@@ -1022,6 +1015,8 @@ sub _deserialize_cookie_parameter ($self, $state, $param_obj, $headers) {
 
   return E($state, 'RFC6265 §5.4: "When the user agent generates an HTTP request, the user agent MUST NOT attach more than one Cookie header field."') if @$cookie > 1;
 
+  my $error_count = $state->{errors}->@*;
+
   # parse into individual cookie parameters as per RFC6265 §4.2.1
   my $data = $cookie->[0] =~ s/^[\x09\x20]*|[\x09\x20]*\z//gr;
   my @pairs = map [ split /=/, $_, 2 ], split /; /, $data;
@@ -1041,7 +1036,7 @@ sub _deserialize_cookie_parameter ($self, $state, $param_obj, $headers) {
       'invalid cookie value: "%s"', $_->[1] =~ s/"/\\"/gr) foreach @bad_values;
   }
 
-  return if $state->{errors}->@*;
+  return if $state->{errors}->@* > $error_count;
 
   if (exists $param_obj->{content}) {
     my $data = ((grep +($_->[0] eq $param_obj->{name}), @pairs)[-1]//[])->[1];
@@ -1052,11 +1047,9 @@ sub _deserialize_cookie_parameter ($self, $state, $param_obj, $headers) {
       return;
     }
 
-    my ($media_type) = keys $param_obj->{content}->%*;
-    return $self->_deserialize_media_type({ %$state, depth => $state->{depth}+1,
-        data_path => jsonp($state->{data_path}, $param_obj->{name}),
-        keyword_path => jsonp($state->{keyword_path}, 'content', $media_type) },
-      $media_type, $param_obj->{content}{$media_type}, \$data);
+    return $self->_deserialize_content(\$data,
+      { %$state, data_path => jsonp($state->{data_path}, $param_obj->{name}) },
+      $param_obj->{content}, ((keys $param_obj->{content}->%*)[0])x2);
   }
 
   my $style = $param_obj->{style}//'form';
@@ -1088,16 +1081,14 @@ sub _deserialize_cookie_parameter ($self, $state, $param_obj, $headers) {
 
   # for style=cookie, we send the entire header string to be parsed
 
-  # We put the return value into an array so we can tell the difference between null: (undef) and
-  # the value not existing: (); we cannot check for existence here because different styles use
-  # different parts of the header string
+  die if $error_count != $state->{errors}->@*;
   my $data_ref = $self->_deserialize_style($data, $state,
     style => $style,
     explode => $explode,
     $param_obj->%{qw(in name schema)},
   );
 
-  return if $state->{errors}->@*;
+  return if $state->{errors}->@* > $error_count;
 
   if (not $data_ref) {
     if ($param_obj->{required}) {
@@ -1141,11 +1132,9 @@ sub _deserialize_querystring_parameter ($self, $state, $param_obj, $params) {
   # We do not UTF-8-decode the content: this is the responsibility of the media-type decoder.
   $data = url_unescape($data =~ s/\+/ /gr);
 
-  my ($media_type) = keys $param_obj->{content}->%*;
-  return $self->_deserialize_media_type({ %$state, depth => $state->{depth}+1,
-      data_path => jsonp($state->{data_path}, $param_obj->{name}),
-      keyword_path => jsonp($state->{keyword_path}, 'content', $media_type) },
-    $media_type, $param_obj->{content}{$media_type}, \$data);
+  return $self->_deserialize_content(\$data,
+    { %$state, data_path => jsonp($state->{data_path}, $param_obj->{name}) },
+    $param_obj->{content}, ((keys $param_obj->{content}->%*)[0])x2);
 }
 
 # Data comes in as a string, or for some styles as a Mojo::Parameters object.
@@ -1478,10 +1467,16 @@ sub _deserialize_style ($self, $data, $state, %opt) {
     @types ? ' ('.join(', ', @types).')' : '');
 }
 
-# for message bodies, content_type is the actual type defined in the message's Content-Type header,
-# not necessarily the media-type property being used under the content object
+# $media_type is the media-type property to be used under the content object;
+# $content_type is what is used for the content decoding (the Content-Type header of the message)
 # returns false or reference to deserialized data
-sub _deserialize_media_type ($self, $state, $content_type, $media_type_obj, $content_ref) {
+sub _deserialize_content ($self, $content_ref, $state, $content_obj, $media_type, $content_type) {
+  my $media_type_obj = $content_obj->{$media_type};
+  $state->{keyword_path} = jsonp($state->{keyword_path}, 'content', $media_type);
+  while (defined(my $ref = $media_type_obj->{'$ref'})) {
+    $media_type_obj = $self->_resolve_ref('media-type', $ref, $state);
+  }
+
   try {
     # case-insensitive, wildcard lookup; text/* supports charset
     $content_ref = decode_media_type($content_type, $content_ref);
@@ -1496,6 +1491,11 @@ sub _deserialize_media_type ($self, $state, $content_type, $media_type_obj, $con
     return $content_ref if not defined $schema or ref $schema eq 'HASH' ? !keys %$schema : $schema;
 
     abort($state, 'EXCEPTION: unsupported media type "%s": add support with JSON::Schema::Modern::Utilities::add_media_type(...)', $content_type);
+  }
+
+  if ($content_type =~ m{^\Fmultipart/} or fc($content_type) eq 'application/x-www-form-urlencoded'
+      and any { exists $content_obj->{$media_type}{$_} } qw(encoding prefixEncoding itemEncoding)) {
+    return E({ %$state, keyword => 'encoding' }, 'encoding not yet supported');
   }
 
   return $content_ref;
@@ -1515,43 +1515,30 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
       'incorrect Content-Type "%s"', $content_type)
     if not defined $media_type;
 
-  # §4.14, "Media Type Object -> encoding": "The encoding field SHALL only apply when the media type
-  # is multipart or application/x-www-form-urlencoded."
-  if ($content_type =~ m{^\Fmultipart/} or fc($content_type) eq 'application/x-www-form-urlencoded') {
-    if (exists $content_obj->{$media_type}{encoding}) {
-      my $state = { %$state, keyword_path => jsonp($state->{keyword_path}, 'content', $media_type) };
-      # v3.1 §4.8.14.1: "The key, being the property name, MUST exist in the schema as a property."
-      # TODO: encoding semantics have been changed and improved; see the 3.2 spec.
-      foreach my $property (sort keys $content_obj->{$media_type}{encoding}->%*) {
-        ()= E({ $state, keyword_path => jsonp($state->{keyword_path}, 'schema', 'properties', $property) },
-            'encoding property "%s" requires a matching property definition in the schema')
-          if not exists(($content_obj->{$media_type}{schema}{properties}//{})->{$property});
-      }
-      return E({ %$state, keyword => 'encoding' }, 'encoding not yet supported');
-    }
-
-    return E($state, '%s is not yet supported', $content_type);
-  }
+  my $content_ref = \ $message->body;
 
   # TODO: handle Content-Encoding header; https://github.com/OAI/OpenAPI-Specification/issues/2868
-
-  my $content_ref = \ $message->body;
 
   # we decode using the original Content-Type, NOT the possibly wildcard media type from the openapi
   # document. decoder lookup is case-insensitive and falls back to wildcard definitions
   # If "*/*" was in the content object and there is no better match, keep the original content
   $content_ref = $media_type eq '*/*' ? $content_ref
-    : $self->_deserialize_media_type({ %$state, depth => $state->{depth}+1,
-        keyword_path => jsonp($state->{keyword_path}, 'content', $media_type) },
-      $content_type, $content_obj->{$media_type}, $content_ref);
+    : $self->_deserialize_content($content_ref, { %$state }, $content_obj, $media_type, $content_type);
 
   return if not $content_ref;
 
   jsonp_set($state->{data}, $state->{data_path}, $content_ref->$*);
-  return 1 if not exists $content_obj->{$media_type}{schema};
 
-  $state = { %$state, keyword_path => jsonp($state->{keyword_path}, 'content', $media_type, 'schema'), depth => $state->{depth}+1 };
-  $self->_evaluate_subschema($content_ref, $content_obj->{$media_type}{schema}, $state);
+  my $media_type_obj = $content_obj->{$media_type};
+  $state->{keyword_path} = jsonp($state->{keyword_path}, 'content', $media_type);
+  while (defined(my $ref = $media_type_obj->{'$ref'})) {
+    $media_type_obj = $self->_resolve_ref('media-type', $ref, $state);
+  }
+
+  return 1 if not exists $media_type_obj->{schema};
+
+  $self->_evaluate_subschema($content_ref, $media_type_obj->{schema},
+    { %$state, depth => $state->{depth}+1, keyword_path => $state->{keyword_path}.'/schema' });
 }
 
 # wrap a result object around the errors
@@ -1572,6 +1559,7 @@ sub _result ($self, $state, $is_exception = 0, $is_response = 0) {
 }
 
 sub _resolve_ref ($self, $entity_type, $ref, $state, $keyword = '$ref') {
+  $self->openapi_document->__entity_type->($entity_type);
   my $uri = Mojo::URL->new($ref)->to_abs($state->{initial_schema_uri});
 
   my $schema_info = $self->evaluator->_fetch_from_uri($uri);

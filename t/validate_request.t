@@ -2064,6 +2064,157 @@ YAML
   $openapi = OpenAPI::Modern->new(
     openapi_uri => $doc_uri,
     openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
+components:
+  mediaTypes:
+    json_object:
+      schema:
+        type: boolean
+        const: true
+    unknown_object:
+      schema:
+        const: true
+paths:
+  /foo/{path}:
+    post:
+      parameters:
+        - name: path
+          in: path
+          content:
+            application/json:
+              $ref: '#/components/mediaTypes/json_object'
+        - name: q
+          in: query
+          content:
+            application/json:
+              $ref: '#/components/mediaTypes/json_object'
+        - name: header
+          in: header
+          content:
+            application/json:
+              $ref: '#/components/mediaTypes/json_object'
+        - name: cookie
+          in: cookie
+          content:
+            application/json:
+              $ref: '#/components/mediaTypes/json_object'
+        - name: r
+          in: query
+          content:
+            unknown/type:
+              $ref: '#/components/mediaTypes/unknown_object'
+      requestBody:
+        content:
+          application/json:
+            $ref: '#/components/mediaTypes/json_object'
+  /foo:
+    post:
+      parameters:
+        - name: q
+          in: querystring
+          content:
+            application/json:
+              $ref: '#/components/mediaTypes/json_object'
+YAML
+
+  is_equal(
+    ($result = $openapi->validate_request(request('POST', 'http://example.com/foo/false?q=false',
+      [ 'Header' => 'false', 'Cookie' => 'cookie=false', 'Content-Type' => 'application/json', 'Content-Length' => 5 ], 'false')))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/uri/path/path',
+          keywordLocation => jsonp(qw(/paths /foo/{path} post parameters 0 content application/json $ref schema const)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/mediaTypes/json_object/schema/const')->to_string,
+          error => 'value does not match',
+        },
+        {
+          instanceLocation => '/request/uri/query/q',
+          keywordLocation => jsonp(qw(/paths /foo/{path} post parameters 1 content application/json $ref schema const)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/mediaTypes/json_object/schema/const')->to_string,
+          error => 'value does not match',
+        },
+        {
+          instanceLocation => '/request/header/header',
+          keywordLocation => jsonp(qw(/paths /foo/{path} post parameters 2 content application/json $ref schema const)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/mediaTypes/json_object/schema/const')->to_string,
+          error => 'value does not match',
+        },
+        {
+          instanceLocation => '/request/header/Cookie/cookie',
+          keywordLocation => jsonp(qw(/paths /foo/{path} post parameters 3 content application/json $ref schema const)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/mediaTypes/json_object/schema/const')->to_string,
+          error => 'value does not match',
+        },
+        {
+          instanceLocation => '/request/body/content',
+          keywordLocation => jsonp(qw(/paths /foo/{path} post requestBody content application/json $ref schema const)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/mediaTypes/json_object/schema/const')->to_string,
+          error => 'value does not match',
+        },
+      ],
+    },
+    '$ref to media-type is followed to find the schema',
+  );
+  is_equal(
+    $result->data,
+    {
+      request => {
+        uri => {
+          path => { path => false },
+          query => { q => false },
+        },
+        header => {
+          Cookie => { cookie => false },
+          header => false,
+        },
+        body => { content => false },
+      },
+    },
+    'boolean data is properly decoded from parameters and request body',
+  );
+
+  is_equal(
+    ($result = $openapi->validate_request(request('POST', 'http://example.com/foo/true?r=0')))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/uri/query/r',
+          keywordLocation => jsonp(qw(/paths /foo/{path} post parameters 4 content unknown/type $ref)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/mediaTypes/unknown_object')->to_string,
+          error => 'EXCEPTION: unsupported media type "unknown/type": add support with JSON::Schema::Modern::Utilities::add_media_type(...)',
+        },
+      ],
+    },
+    '$ref to media-type is followed to find the schema, which is defined, but type is unsupported',
+  );
+
+  is_equal(
+    ($result = $openapi->validate_request(request('POST', 'http://example.com/foo?false')))->TO_JSON,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/request/uri/query',
+          keywordLocation => jsonp(qw(/paths /foo post parameters 0 content application/json $ref schema const)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/mediaTypes/json_object/schema/const')->to_string,
+          error => 'value does not match',
+        },
+      ],
+    },
+    '$ref to media-type is followed to find the schema in querystring',
+  );
+  is_equal(
+    $result->data,
+    { request => { uri => { query => false } } },
+    'data is properly decoded from querystring',
+  );
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri,
+    openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
 paths:
   /foo:
     get:
@@ -2072,7 +2223,7 @@ paths:
 YAML
 
   is_equal(
-    $openapi->validate_request($request)->TO_JSON,
+    $openapi->validate_request(request('GET', 'http://example.com/foo'))->TO_JSON,
     {
       valid => false,
       errors => [
