@@ -8,7 +8,7 @@ OpenAPI::Modern - Validate HTTP requests and responses against an OpenAPI v3.0, 
 
 =head1 VERSION
 
-version 0.133
+version 0.134
 
 =head1 SYNOPSIS
 
@@ -458,14 +458,6 @@ An accessor that delegates to L<JSON::Schema::Modern::Document/canonical_uri>.
 
 An accessor that delegates to L<JSON::Schema::Modern::Document/schema>.
 
-=head2 get_media_type
-
-An accessor that delegates to L<JSON::Schema::Modern/get_media_type>.
-
-=head2 add_media_type
-
-A setter that delegates to L<JSON::Schema::Modern/add_media_type>.
-
 =head1 CACHING
 
 =for stopwords preforking
@@ -493,8 +485,8 @@ reloading them (perhaps by using a timestamp or checksum to determine if a fresh
       $openapi = Sereal::Decoder->new->decode($frozen);
     }
 
-    # add custom format validations, media types and encodings here
-    $openapi->evaluator->add_media_type(...);
+    # add custom format validations and encodings here
+    $openapi->evaluator->add_format_validation(...);
 
     return $openapi;
   }
