@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.134     2026-04-19 16:29:03Z
           - add new JSON Schema format "media-range", used in the OAD schema
           - improvements to media-type decoding and matching appropriate
