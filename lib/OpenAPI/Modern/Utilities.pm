@@ -237,11 +237,11 @@ sub coerce_primitive ($dataref, $types = []) {
 #                                   CTLs, whitespace, DQUOTE, comma, semicolon, and backslash
 
 sub is_cookie_name ($name) {
-  !!($name =~ /^[A-Za-z0-9!#\$%&'*+.^_`|~-]+\z/);
+  !!(defined $name && $name =~ /^[A-Za-z0-9!#\$%&'*+.^_`|~-]+\z/);
 }
 
 sub is_cookie_value ($value) {
-  !!($value =~ /^("?)[\x21\x23-\x2B\x2D-\x3A\x3C-\x5B\x5D-\x7E]*\1\z/);
+  !!(defined $value && $value =~ /^("?)[\x21\x23-\x2B\x2D-\x3A\x3C-\x5B\x5D-\x7E]*\1\z/);
 }
 
 {

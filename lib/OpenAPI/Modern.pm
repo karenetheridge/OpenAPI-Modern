@@ -1022,20 +1022,21 @@ sub _deserialize_cookie_parameter ($self, $state, $param_obj, $headers) {
   my @pairs = map [ split /=/, $_, 2 ], split /; /, $data;
 
   if (my @missing_values = grep !defined $_->[1], @pairs) {
-    ()= E({ %$state, keyword => 'style' }, 'cookie-string "%s" is missing a value', $_->[0])
-      foreach @missing_values;
-    return;
+    ()= E({ %$state, data_path => jsonp($state->{data_path}, $_->[0]) },
+      'cookie-string "%s" is missing a value', $_->[0] =~ s/"/\\"/gr) foreach @missing_values;
   }
 
-  if (my @bad_names = map s/"/\\"/gr, grep !is_cookie_name($_), map $_->[0], @pairs) {
-    return E($state, 'invalid cookie name%s: "%s"',
-      @bad_names > 1 ? 's' : '', join '", "', @bad_names);
+  if (my @bad_names = grep !is_cookie_name($_), map $_->[0], @pairs) {
+    ()= E({ %$state, data_path => jsonp($state->{data_path}, $_) },
+      'invalid cookie name: "%s"', s/"/\\"/gr) foreach @bad_names;
   }
 
-  if (my @bad_values = map s/"/\\"/gr, grep !is_cookie_value($_), map $_->[1], @pairs) {
-    return E($state, 'invalid cookie value%s: "%s"',
-      @bad_values > 1 ? 's' : '', join '", "', @bad_values);
+  if (my @bad_values = grep defined $_->[1] && !is_cookie_value($_->[1]), @pairs) {
+    ()= E({ %$state, data_path => jsonp($state->{data_path}, $_->[0]) },
+      'invalid cookie value: "%s"', $_->[1] =~ s/"/\\"/gr) foreach @bad_values;
   }
+
+  return if $state->{errors}->@*;
 
   if (exists $param_obj->{content}) {
     my $data = ((grep +($_->[0] eq $param_obj->{name}), @pairs)[-1]//[])->[1];
