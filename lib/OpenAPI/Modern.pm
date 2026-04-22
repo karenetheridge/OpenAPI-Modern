@@ -679,7 +679,7 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
   # unescaped “generic syntax” characters described by RFC3986 Section 3: forward slashes (/),
   # question marks (?), or hashes (#)."
   my $path_pattern = join '',
-    map +(substr($_, 0, 1) eq '{' ? '([^/?#]*)' : quotemeta($_)), # { for the editor
+    map +(substr($_, 0, 1) eq '{' ? '([^/?#]*)' : quotemeta($_)),
     split /(\{[^{}]+\})/, $path_template;
 
   # if the uri doesn't match against the path alone, we can immediately bail (and keep looking for
@@ -1171,13 +1171,13 @@ sub _deserialize_style ($self, $data, $state, %opt) {
       elsif (any { $_ eq 'array' } @types) {
         # RFC6570 §2.3-6: "A variable defined as a list value is considered undefined if the list
         # contains zero members."
-        return \[];
+        return \ [];
       }
       elsif (any { $_ eq 'object' } @types) {
         # RFC6570 §2.3-6: "A variable defined as an associative array of (name, value) pairs is
         # considered undefined if the array contains zero members or if all member names in the
         # array are associated with undefined values."
-        return \{};
+        return \ {};
       }
     }
 
