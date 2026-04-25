@@ -306,6 +306,11 @@ our $dumper = JSON::Schema::Modern::_JSON_BACKEND()->new
 *HTTP::Response::TO_JSON = sub ($obj) { $obj->as_string };
 # Plack and Catalyst don't have serializers
 
+my $yaml = YAML::PP->new(boolean => 'JSON::PP');
+sub decode_yaml ($string) {
+  $yaml->load_string($string);
+}
+
 # deep comparison, with strict typing
 sub is_equal ($got, $expected, $test_name = undef) {
   context_do {

@@ -17,11 +17,9 @@ use Helper;
 use JSON::Schema::Modern::Utilities qw(is_bool get_type is_type jsonp_set);
 use OpenAPI::Modern::Utilities qw(coerce_primitive uri_encode);
 
-my $yamlpp = YAML::PP->new(boolean => 'JSON::PP');
-
 my $openapi = OpenAPI::Modern->new(
   openapi_uri => 'http://localhost:1234/api',
-  openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
+  openapi_schema => decode_yaml(OPENAPI_PREAMBLE.<<'YAML'));
 components: {}
 YAML
 
@@ -2642,7 +2640,7 @@ subtest 'cookie parameters' => sub {
 subtest 'type inference and coercion' => sub {
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => 'http://localhost:1234/api',
-    openapi_schema => $yamlpp->load_string(OPENAPI_PREAMBLE.<<'YAML'));
+    openapi_schema => decode_yaml(OPENAPI_PREAMBLE.<<'YAML'));
 components:
   parameters:
     MyParameter:
@@ -2810,7 +2808,7 @@ YAML
 
   $openapi->evaluator->add_document(JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'https://example.com/my_3.0_oad',
-    schema => my $schema_3_0 = $yamlpp->load_string(<<'YAML')));
+    schema => my $schema_3_0 = decode_yaml(<<'YAML')));
 openapi: 3.0.4
 info:
   title: Test API
