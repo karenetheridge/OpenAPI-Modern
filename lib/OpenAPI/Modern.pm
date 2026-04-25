@@ -1998,7 +1998,7 @@ __END__
 
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => 'https://prod.example.com',  # adjust for each deployment environment
-    openapi_schema => YAML::PP->new(boolean => 'JSON::PP')->load_string(<<'YAML'));
+    openapi_schema => YAML::XS->new->load(<<'YAML'));
   $self: /api         # canonical_uri will become https://prod.example.com/api
   openapi: 3.2.0
   info:

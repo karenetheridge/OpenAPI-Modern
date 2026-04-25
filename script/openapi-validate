@@ -119,9 +119,9 @@ sub parse_input ($input) {
   }
   else {
     # well I suppose it must be yaml
-    require YAML::PP;
-    state $yaml_decoder = YAML::PP->new(boolean => 'JSON::PP');
-    return (yaml => $yaml_decoder->load_string($input));
+    require YAML::XS; YAML::XS->VERSION(0.905.1);
+    state $yaml_decoder = YAML::XS->new;
+    return (yaml => $yaml_decoder->load($input));
   }
 }
 
@@ -137,7 +137,8 @@ sub encode ($input, $filetype = 'json') {
     $encoder->encode($input);
   }
   elsif ($filetype eq 'yaml') {
-    YAML::PP->new(boolean => 'JSON::PP')->dump_string($input);
+    require YAML::XS; YAML::XS->VERSION( 0.905.1);
+    YAML::XS->new->dump($input);
   }
   else {
     die "unsupported file type $filetype";

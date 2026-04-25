@@ -853,7 +853,7 @@ This class inherits all methods from L<JSON::Schema::Modern::Document>. In addit
 
 =head2 upgrade
 
-  Mojo::File->new('new_openapi.yaml')->spew(YAML::PP->new->dump_string($doc->upgrade('3.2')));
+  Mojo::File->new('new_openapi.yaml')->spew(YAML::XS->new->dump($doc->upgrade('3.2')));
 
 Generates the equivalent schema for your document, with syntax altered for the new OpenAPI version.
 Defaults to targeting the latest supported version, if not provided.
