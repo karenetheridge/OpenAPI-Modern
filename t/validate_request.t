@@ -1440,14 +1440,14 @@ paths:
         required: true
         schema:
           type: object
-          const: { blue−black: yes!, blackish﹠green: ¿no?, 100𝑥brown: fl¡p }
+          const: { blue−black: yes!, blackish﹠green: '¿no?', 100𝑥brown: fl¡p }
       - name: path−simple−object−true
         in: path
         required: true
         explode: true
         schema:
           type: object
-          const: { blue−black: yes!, blackish﹠green: ¿no?, 100𝑥brown: fl¡p }
+          const: { blue−black: yes!, blackish﹠green: '¿no?', 100𝑥brown: fl¡p }
       - name: cølör0
         in: path
         required: true
@@ -1475,7 +1475,7 @@ paths:
         style: matrix
         schema:
           type: object
-          const: { blue−black: yes!, blackish﹠green: ¿no?, 100𝑥brown: fl¡p }
+          const: { blue−black: yes!, blackish﹠green: '¿no?', 100𝑥brown: fl¡p }
       - name: cølör4
         in: path
         required: true
@@ -1483,7 +1483,7 @@ paths:
         explode: true
         schema:
           type: object
-          const: { blue−black: yes!, blackish﹠green: ¿no?, 100𝑥brown: fl¡p }
+          const: { blue−black: yes!, blackish﹠green: '¿no?', 100𝑥brown: fl¡p }
       - name: path−label−string
         in: path
         required: true
@@ -1511,7 +1511,7 @@ paths:
         style: label
         schema:
           type: object
-          const: { blue−black: yes!, blackish﹠green: ¿no?, 100𝑥brown: fl¡p }
+          const: { blue−black: yes!, blackish﹠green: '¿no?', 100𝑥brown: fl¡p }
       - name: path−label−object−true
         in: path
         required: true
@@ -1519,7 +1519,7 @@ paths:
         explode: true
         schema:
           type: object
-          const: { blue−black: yes!, blackish﹠green: ¿no?, 100𝑥brown: fl¡p }
+          const: { blue−black: yes!, blackish﹠green: '¿no?', 100𝑥brown: fl¡p }
       - name: header-simple-string
         in: header
         required: true
@@ -1543,14 +1543,14 @@ paths:
         required: true
         schema:
           type: object
-          const: { blue−black: yes!, blackish﹠green: ¿no?, 100𝑥brown: fl¡p }
+          const: { blue−black: yes!, blackish﹠green: '¿no?', 100𝑥brown: fl¡p }
       - name: header-simple-object-true
         in: header
         required: true
         explode: true
         schema:
           type: object
-          const: { blue−black: yes!, blackish﹠green: ¿no?, 100𝑥brown: fl¡p }
+          const: { blue−black: yes!, blackish﹠green: '¿no?', 100𝑥brown: fl¡p }
       - name: query−form−string
         in: query
         required: true
