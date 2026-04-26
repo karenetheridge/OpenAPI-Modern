@@ -1369,7 +1369,7 @@ sub _deserialize_style ($self, $data, $state, %opt) {
         'explode=true is not supported for style=%s', $style)
       if $explode;
 
-    return E({ %$state, data_path => jsonp($state->{data_path}, $name) },
+    return E({ %$state, data_path => jsonp($state->{data_path}, $name), keyword => 'style' },
         '%s style can only deserialize to arrays or objects', $style)
       if not elem([qw(array object)], \@types);
 
@@ -1413,7 +1413,7 @@ sub _deserialize_style ($self, $data, $state, %opt) {
         '"explode" cannot be false with style=deepObject')
       if not $explode and $self->openapi_document->oas_version < '3.2';
 
-    return E({ %$state, data_path => jsonp($state->{data_path}, $name) },
+    return E({ %$state, data_path => jsonp($state->{data_path}, $name), keyword => 'style' },
         'deepObject style can only deserialize to objects')
       if not elem('object', \@types);
 
@@ -1477,7 +1477,7 @@ sub _deserialize_style ($self, $data, $state, %opt) {
     die 'unsupported style ', $style;
   }
 
-  return E({ %$state, data_path => jsonp($state->{data_path}, $name) },
+  return E({ %$state, data_path => jsonp($state->{data_path}, $name), keyword => 'style' },
     'cannot deserialize to %s type%s%s', !@types ? 'any' : 'requested', @types > 1 ? 's' : '',
     @types ? ' ('.join(', ', @types).')' : '');
 }
