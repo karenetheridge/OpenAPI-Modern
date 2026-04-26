@@ -826,6 +826,7 @@ sub _validate_parameter ($self, $state, $param_obj, %args) {
   my $errors = $state->{errors};
   $state->{errors} = [];
 
+  # when $data_ref is false, value is missing; otherwise it is a reference to the deserialized data
   my $data_ref =
       $in eq 'path' ? $self->_deserialize_path_parameter($state, $param_obj, $path_captures)
     : $in eq 'query' ? $self->_deserialize_query_parameter($state, $param_obj, $params)
@@ -866,6 +867,7 @@ sub _validate_parameter ($self, $state, $param_obj, %args) {
         : $state->{keyword_path}.'/schema' });
 }
 
+# returns false or reference to deserialized data
 sub _deserialize_path_parameter ($self, $state, $param_obj, $path_captures) {
   # 'required' is always true for path parameters
   # v3.2.0 §4.12.2.1: "If "in" is "path", the name field MUST correspond to a single template
@@ -895,6 +897,7 @@ sub _deserialize_path_parameter ($self, $state, $param_obj, $path_captures) {
   );
 }
 
+# returns false or reference to deserialized data
 sub _deserialize_query_parameter ($self, $state, $param_obj, $params) {
   croak '$params must be a Mojo::Parameters object' if not $params->$_isa('Mojo::Parameters');
 
@@ -947,6 +950,7 @@ sub _deserialize_query_parameter ($self, $state, $param_obj, $params) {
 }
 
 # validates a header, from either the request or the response
+# returns false or reference to deserialized data
 sub _deserialize_header_parameter ($self, $state, $header_obj, $header_name, $headers) {
   croak '$headers must be a Mojo::Headers object' if not $headers->$_isa('Mojo::Headers');
 
@@ -1005,6 +1009,7 @@ sub _deserialize_header_parameter ($self, $state, $header_obj, $header_name, $he
   );
 }
 
+# returns false or reference to deserialized data
 sub _deserialize_cookie_parameter ($self, $state, $param_obj, $headers) {
   croak '$headers must be a Mojo::Headers object' if not $headers->$_isa('Mojo::Headers');
 
@@ -1108,6 +1113,7 @@ sub _deserialize_cookie_parameter ($self, $state, $param_obj, $headers) {
   return $data_ref;
 }
 
+# returns false or reference to deserialized data
 sub _deserialize_querystring_parameter ($self, $state, $param_obj, $params) {
   die '$params must be a Mojo::Parameters object' if not $params->$_isa('Mojo::Parameters');
 
@@ -1143,7 +1149,7 @@ sub _deserialize_querystring_parameter ($self, $state, $param_obj, $params) {
 }
 
 # Data comes in as a string, or for some styles as a Mojo::Parameters object.
-# When parsing fails, $state->{errors} is populated and undef is returned;
+# When parsing fails, $state->{errors} is populated and false is returned;
 # otherwise, the return value is a reference to the fully deserialized data, parsed into the correct
 # type(s) (which may be undef = null), or undef if no data was extracted
 # %opt is (:$in, :$style, :$explode, :$allowEmptyValue, :$name, :$schema, $strip_internal_ws)
@@ -1474,6 +1480,7 @@ sub _deserialize_style ($self, $data, $state, %opt) {
 
 # for message bodies, content_type is the actual type defined in the message's Content-Type header,
 # not necessarily the media-type property being used under the content object
+# returns false or reference to deserialized data
 sub _deserialize_media_type ($self, $state, $content_type, $media_type_obj, $content_ref) {
   try {
     # case-insensitive, wildcard lookup; text/* supports charset
