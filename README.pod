@@ -8,13 +8,13 @@ OpenAPI::Modern - Validate HTTP requests and responses against an OpenAPI v3.0, 
 
 =head1 VERSION
 
-version 0.134
+version 0.135
 
 =head1 SYNOPSIS
 
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => 'https://prod.example.com',  # adjust for each deployment environment
-    openapi_schema => YAML::PP->new(boolean => 'JSON::PP')->load_string(<<'YAML'));
+    openapi_schema => YAML::XS->new->load(<<'YAML'));
   $self: /api         # canonical_uri will become https://prod.example.com/api
   openapi: 3.2.0
   info:
