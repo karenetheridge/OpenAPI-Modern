@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.135     2026-05-01 23:41:42Z
           - "$ref"s to media-type objects are now respected, new in OpenAPI
             v3.2
