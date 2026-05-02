@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.136     2026-05-02 15:42:44Z
           - revert change of YAML backend in tests from YAML::PP to YAML::XS
 
 0.135     2026-05-01 23:41:42Z
