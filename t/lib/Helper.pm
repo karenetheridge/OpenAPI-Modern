@@ -30,7 +30,7 @@ use JSON::Schema::Modern::Document::OpenAPI;
 use JSON::Schema::Modern::Utilities 0.628 qw(true false);
 use OpenAPI::Modern;
 use OpenAPI::Modern::Utilities;
-use YAML::XS 0.905.1;
+use YAML::PP 0.005;
 
 use constant OAS_VOCABULARIES => [ map 'JSON::Schema::Modern::Vocabulary::'.$_,
   qw(Core Applicator Validation FormatAnnotation Content MetaData Unevaluated OpenAPI) ];
@@ -306,9 +306,9 @@ our $dumper = JSON::Schema::Modern::_JSON_BACKEND()->new
 *HTTP::Response::TO_JSON = sub ($obj) { $obj->as_string };
 # Plack and Catalyst don't have serializers
 
-my $yaml = YAML::XS->new;
+my $yaml = YAML::PP->new(boolean => 'JSON::PP');
 sub decode_yaml ($string) {
-  $yaml->load($string);
+  $yaml->load_string($string);
 }
 
 # deep comparison, with strict typing

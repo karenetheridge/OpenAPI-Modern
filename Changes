@@ -1,12 +1,14 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - revert change of YAML backend in tests from YAML::PP to YAML::XS
 
 0.135     2026-05-01 23:41:42Z
           - "$ref"s to media-type objects are now respected, new in OpenAPI
             v3.2
           - support added for the "itemSchema" keyword in media-type objects,
             new in OpenAPI v3.2
+          - YAML backend in tests changed from YAML::PP to YAML::XS
 
 0.134     2026-04-19 16:29:03Z
           - add new JSON Schema format "media-range", used in the OAD schema
