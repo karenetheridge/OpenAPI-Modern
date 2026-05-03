@@ -206,10 +206,10 @@ sub intersect_types (@lol) {
   return grep $vals{$_} == $count, keys %vals;
 }
 
-# Given a reference to a string, coerce it to the best-matching primitive in the allowed list
-# other than object and array (which must be deserialized according to style rules first)
+# Given a reference to a string or number, coerce it to the best-matching primitive in the allowed
+# list other than object and array (which must be deserialized according to style rules first)
 # The core types are: (array, object, null, boolean, string, number)
-# Returns validity status, allowing the caller to fall back to the string value or generate an error.
+# Returns validity status, allowing the caller to fall back to the original value or generate an error.
 sub coerce_primitive ($dataref, $types = []) {
   return if not @$types;            # no type specified; indicate failure
   return if not defined $$dataref;  # null is an error

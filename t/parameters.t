@@ -3113,7 +3113,8 @@ YAML
             or note 'got type: ', get_type($data);
         }
         else {
-          ok(!$valid, 'coercion was not successful');
+          ok(!$valid, 'coercion was not successful')
+            or note 'got type: ', get_type($data);
         }
       };
     }
