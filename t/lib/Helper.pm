@@ -55,6 +55,7 @@ YAML
 # 'lwp': classes of type URI, HTTP::Headers, HTTP::Request, HTTP::Response
 # 'plack': classes of type Plack::Request, Plack::Response
 # 'catalyst': classes of type Catalyst::Request, Catalyst::Response
+# 'dancer2': classes of type Dancer2::Core::Request, Dancer2::Core::Response
 our @TYPES = $ENV{TYPE} ? split(/,/, $ENV{TYPE}) : qw(mojo lwp plack catalyst dancer2);
 our $TYPE = $ENV{TYPE} ? (split(/,/, $ENV{TYPE}))[0] : 'mojo'; # safe default
 

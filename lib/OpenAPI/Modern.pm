@@ -1406,9 +1406,9 @@ sub _deserialize_style ($self, $data, $state, %opt) {
   elsif ($style eq 'deepObject') {
     croak 'query parameters require a parameter object' if ref $data ne 'Mojo::Parameters';
 
-    # v3.1.1 4.8.12.2.2: "Note that despite false being the default for deepObject, the combination
+    # v3.1.1 §4.8.12.2.2: "Note that despite false being the default for deepObject, the combination
     # of false with deepObject is undefined."
-    # v3.2.0 4.12.2.2: "...when style is "deepObject", [explode] has no effect."
+    # v3.2.0 §4.12.2.2: "...when style is "deepObject", [explode] has no effect."
     return E({ %$state, data_path => jsonp($state->{data_path}, $name), keyword => 'explode' },
         '"explode" cannot be false with style=deepObject')
       if not $explode and $self->openapi_document->oas_version < '3.2';
@@ -1716,7 +1716,7 @@ sub _type_in_schema ($self, $schema, $state) {
   return @final_types;
 }
 
-# given an object, use the subschema for each value to determine the correct value for that value
+# given an object, use the subschema for each value to determine the correct type for that value
 sub _coerce_object_elements ($self, $data, $schema, $state) {
   return if ref $data ne 'HASH';
   return if ref $schema ne 'HASH';
@@ -1798,7 +1798,7 @@ sub _coerce_object_elements ($self, $data, $schema, $state) {
   }
 }
 
-# given an array, use the subschema for each item to determine the correct value for that item
+# given an array, use the subschema for each item to determine the correct type for that value
 sub _coerce_array_elements ($self, $data, $schema, $state) {
   return if ref $data ne 'ARRAY';
   return if ref $schema ne 'HASH';
