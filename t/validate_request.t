@@ -168,6 +168,9 @@ YAML
   $openapi = OpenAPI::Modern->new(
     openapi_uri => $doc_uri,
     openapi_schema => decode_yaml(OPENAPI_PREAMBLE.<<'YAML'));
+components:
+  mediaTypes:
+    bloop: {}
 paths:
   /foo/{foo_id}:
     get:
@@ -177,6 +180,12 @@ paths:
         required: true
         content:
           application/json: {}
+      - name: bloop
+        in: query
+        required: false
+        content:
+          application/json:
+            $ref: '#/components/mediaTypes/bloop'
       - name: Bar
         in: header
         required: false
@@ -185,7 +194,7 @@ paths:
 YAML
 
   cmp_result(
-    $openapi->validate_request(request('GET', 'http://example.com/foo/corrupt_json'))->TO_JSON,
+    $openapi->validate_request(request('GET', 'http://example.com/foo/corrupt_json?bloop=x'))->TO_JSON,
     {
       valid => false,
       errors => [
@@ -195,9 +204,15 @@ YAML
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get parameters 0 content application/json)))->to_string,
           error => re(qr/^could not decode content as application\/json: malformed JSON string/),
         },
+        {
+          instanceLocation => '/request/uri/query/bloop',
+          keywordLocation => jsonp(qw(/paths /foo/{foo_id} get parameters 1 content application/json)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{foo_id} get parameters 1 content application/json)))->to_string,
+          error => re(qr/^could not decode content as application\/json: malformed JSON string/),
+        },
       ],
     },
-    'corrupt data is detected, even when there is no schema',
+    'corrupt data is detected, even when there is no schema; errors are correct, even with a $ref',
   );
 
   is_equal(
@@ -499,6 +514,10 @@ components:
       schema:
         type: string
         pattern: ^[0-9]+$
+  mediaTypes:
+    delta:
+      schema:
+        not: true
 paths:
   /foo:
     parameters:
@@ -530,8 +549,7 @@ paths:
         required: false
         content:
           unknown/encodingtype:
-            schema:
-              not: true
+            $ref: '#/components/mediaTypes/delta'
       - name: epsilon
         in: query
         required: false
@@ -604,8 +622,8 @@ YAML
       errors => [
         {
           instanceLocation => '/request/uri/query/delta',
-          keywordLocation => jsonp(qw(/paths /foo post parameters 4 content unknown/encodingtype schema not)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post parameters 4 content unknown/encodingtype schema not)))->to_string,
+          keywordLocation => jsonp(qw(/paths /foo post parameters 4 content unknown/encodingtype $ref schema not)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/mediaTypes/delta/schema/not')->to_string,
           error => 'subschema is true',
         },
       ],
@@ -2180,8 +2198,9 @@ YAML
       errors => [
         {
           instanceLocation => '/request/uri/query/r',
-          keywordLocation => jsonp(qw(/paths /foo/{path} post parameters 4 content unknown/type $ref)),
+          keywordLocation => jsonp(qw(/paths /foo/{path} post parameters 4 content unknown/type)),
           absoluteKeywordLocation => $doc_uri->clone->fragment('/components/mediaTypes/unknown_object')->to_string,
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{path} post parameters 4 content unknown/type)))->to_string,
           error => 'EXCEPTION: unsupported media type "unknown/type": add support with JSON::Schema::Modern::Utilities::add_media_type(...)',
         },
       ],
@@ -5170,8 +5189,8 @@ YAML
       errors => [
         {
           instanceLocation => '/request/uri/query/r',
-          keywordLocation => jsonp(qw(/paths /foo/{path} post parameters 4 content unknown/type $ref)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment('/components/mediaTypes/unknown_object')->to_string,
+          keywordLocation => jsonp(qw(/paths /foo/{path} post parameters 4 content unknown/type)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo/{path} post parameters 4 content unknown/type)))->to_string,
           error => 'EXCEPTION: unsupported media type "unknown/type": add support with JSON::Schema::Modern::Utilities::add_media_type(...)',
         },
       ],
