@@ -1,6 +1,8 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - support for message bodies encoded with the multipart/form-data
+            media-type (with or without "encoding" objects)
 
 0.143     2026-07-28 20:47:56Z
           - fix more path matching edge cases involving url-escaped characters

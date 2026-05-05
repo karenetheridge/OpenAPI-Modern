@@ -23,7 +23,8 @@ use Mojo::Util qw(url_unescape url_escape);
 use Carp 'croak';
 use if "$]" < 5.041010, 'List::Util' => 'any';
 use if "$]" >= 5.041010, experimental => 'keyword_any';
-use JSON::Schema::Modern::Utilities qw(register_schema load_cached_document true false);
+use builtin::compat 'blessed';
+use JSON::Schema::Modern::Utilities qw(register_schema load_cached_document true false match_media_type);
 use namespace::clean;
 
 use Exporter 'import';
@@ -53,6 +54,7 @@ our @EXPORT_OK = qw(
   is_cookie_name
   is_cookie_value
   elem
+  deserialize_multipart
 );
 
 our %EXPORT_TAGS = (
@@ -207,20 +209,34 @@ sub convert_request ($request) {
     $req->method($request->method);
     $req->url(Mojo::URL->new($request->uri));
     $req->version($request->protocol =~ s{^HTTP/(\d\.\d)\z}{$1}r) if $request->protocol;
-    $req->headers->add(@$_) foreach pairs $request->headers->flatten;
-
     my $body = $request->content;
-    $req->body($body) if length $body;
+
+    if (match_media_type(scalar $request->content_type, ['multipart/form-data'])) {
+      $req->content(Mojo::Content::MultiPart->new);
+      $req->headers->add(@$_) foreach pairs $request->headers->flatten;
+      $req->content->emit(read => $body);
+    }
+    else {
+      $req->headers->add(@$_) foreach pairs $request->headers->flatten;
+      $req->body($body) if length $body;
+    }
   }
   # note: Dancer2::Core::Request inherits from Plack::Request
   elsif ($request->isa('Plack::Request') or $request->isa('Catalyst::Request')) {
-    $req->parse($request->env);
+    # make $request->content work
+    $request = do { +require Plack::Request; Plack::Request->new($request->env) }
+      if not $request->isa('Plack::Request');
 
-    my $plack_request = $request->isa('Plack::Request') ? $request
-      : do { +require Plack::Request; Plack::Request->new($request->env) };
-
-    my $body = $plack_request->content;
-    $req->body($body) if length $body;
+    if (match_media_type($request->content_type, ['multipart/form-data'])) {
+      $req->content(Mojo::Content::MultiPart->new);
+      $req->parse($request->env);
+      $req->content->emit(read => $request->content);
+    }
+    else {
+      $req->parse($request->env); # parsing psgi.input alters it; must read content afterwards
+      my $body = $request->content;
+      $req->body($body) if length $body;
+    }
 
     # Plack is unable to distinguish between %2F and /, so the raw (undecoded) uri can be passed
     # here. see PSGI::FAQ
@@ -248,28 +264,36 @@ sub convert_response ($response) {
 
   my $res = Mojo::Message::Response->new;
 
+  my (@headers, $body);
   if ($response->isa('HTTP::Response')) {
     $res->code($response->code);
     $res->version($response->protocol =~ s{^HTTP/(\d\.\d)\z}{$1}r) if $response->protocol;
-    $res->headers->add(@$_) foreach pairs $response->headers->flatten;
-    my $body = $response->content;
-    $res->body($body) if length $body;
+    @headers = pairs $response->headers->flatten;
+    $body = $response->content;
   }
   elsif ($response->isa('Plack::Response') or $response->isa('Dancer2::Core::Response')) {
     $res->code($response->status);
-    $res->headers->add(@$_) foreach pairs $response->headers->psgi_flatten_without_sort->@*;
-    my $body = $response->content;
-    $res->body($body) if length $body;
+    @headers = pairs $response->headers->psgi_flatten_without_sort->@*;
+    $body = $response->content;
   }
   elsif ($response->isa('Catalyst::Response')) {
     $res->code($response->status);
     HTTP::Headers->VERSION('6.07');
-    $res->headers->add(@$_) foreach pairs $response->headers->flatten;
-    my $body = $response->body;
-    $res->body($body) if length $body;
+    @headers = pairs $response->headers->flatten;
+    $body = $response->body;
   }
   else {
     return $res->error({ message => 'unknown type '.ref($response) });
+  }
+
+  if (match_media_type(scalar $response->content_type, ['multipart/form-data'])) {
+    $res->content(Mojo::Content::MultiPart->new);
+    $res->headers->add(@$_) foreach @headers;
+    $res->content->emit(read => $body);
+  }
+  else {
+    $res->headers->add(@$_) foreach @headers;
+    $res->body($body) if length $body;
   }
 
   # we could call $res->fix_headers here to add a missing Content-Length, but proper responses from
@@ -357,6 +381,30 @@ sub elem ($items, $set) {
   @$items;
 }
 
+# Operates on a Mojo::Content object; returns all parts as an arrayref of objects:
+#   [ { $name => $value }, { ... }, ... ]
+# Only the top level is operated on; if there are parts nested inside of parts, those parts will be
+# returned without deserialization, so this function will need to be called again on those parts.
+# Strings are not decoded with charset here, but individual fields' Content-Type are included so
+# that can be done afterwards (or correlated with an encoding object)
+# Based loosely on Mojo::Message::_parse_formdata
+sub deserialize_multipart ($content) {
+  die 'body is not multipart' if not blessed $content or not $content->is_multipart;
+
+  my @content;
+
+  foreach my $part ($content->parts->@*) {
+    my $disposition = $part->headers->content_disposition;
+    die 'missing Content-Disposition' if not defined $disposition;
+
+    my ($name) = $disposition =~ /[; ]name="((?:\\"|[^;"])*)"/;
+    my $value = $part->is_multipart ? $part : $part->asset->slurp;
+    push @content, { $name => $value };
+  }
+
+  return \@content;
+}
+
 {
   # make all bundled schemas available via JSON::Schema::Modern::load_cached_document
   my $share_dir = dist_dir('OpenAPI-Modern');
@@ -400,6 +448,7 @@ coerce_primitive
 is_cookie_name
 is_cookie_value
 elem
+deserialize_multipart
 
 The constant values are updated automatically by C<update-schemas>, in the root of this distribution.
 
