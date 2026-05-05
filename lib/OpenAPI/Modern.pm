@@ -1509,8 +1509,8 @@ sub _deserialize_content ($self, $content_ref, $state, $content_obj, $media_type
   }
 
   if ($content_type =~ m{^\Fmultipart/} or fc($content_type) eq 'application/x-www-form-urlencoded'
-      and any { exists $content_obj->{$media_type}{$_} } qw(encoding prefixEncoding itemEncoding)) {
-    return E({ %$state, keyword => 'encoding' }, 'encoding not yet supported');
+      and my $keyword = first { exists $content_obj->{$media_type}{$_} } qw(encoding prefixEncoding itemEncoding)) {
+    return E({ %$state, keyword => $keyword }, '%s not yet supported', $keyword);
   }
 
   return $content_ref;
