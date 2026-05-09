@@ -3537,7 +3537,7 @@ YAML
 subtest $::TYPE.': max_depth' => sub {
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => $doc_uri,
-    max_traversal_depth => 15,
+    max_depth => 15,
     openapi_schema => decode_yaml(OPENAPI_PREAMBLE.<<'YAML'));
 components:
   parameters:

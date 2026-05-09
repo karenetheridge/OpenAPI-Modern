@@ -1,6 +1,7 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - switch to non-deprecated JSM config "max_depth"
 
 0.136     2026-05-02 15:42:44Z
           - revert change of YAML backend in tests from YAML::PP to YAML::XS

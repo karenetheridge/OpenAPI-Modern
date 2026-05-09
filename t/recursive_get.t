@@ -17,7 +17,7 @@ use Helper;
 subtest recursive_get => sub {
   my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'http://localhost:1234/api',
-    evaluator => my $js = JSON::Schema::Modern->new(max_traversal_depth => 15),
+    evaluator => my $js = JSON::Schema::Modern->new(max_depth => 15),
     schema => decode_yaml(OPENAPI_PREAMBLE.<<'YAML'));
 components:
   parameters:

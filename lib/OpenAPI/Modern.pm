@@ -82,7 +82,7 @@ around BUILDARGS => sub ($orig, $class, @args) {
 
   $args->{evaluator} //= JSON::Schema::Modern->new(
     validate_formats => 1,
-    max_traversal_depth => 80,
+    max_depth => 80,
     %$extra_args, # may include with_defaults, or other arguments recognized by JSM
   );
 
@@ -634,7 +634,7 @@ sub recursive_get ($self, $uri_reference, $entity_type = undef) {
   my $parent_obj = {};
 
   while ($ref) {
-    croak 'maximum evaluation depth exceeded' if $depth++ > $self->evaluator->max_traversal_depth;
+    croak 'maximum evaluation depth exceeded' if $depth++ > $self->evaluator->max_depth;
     my $uri = Mojo::URL->new($ref)->to_abs($base);
 
     my $schema_info = $self->evaluator->_fetch_from_uri($uri);
@@ -1602,7 +1602,7 @@ sub _resolve_ref ($self, $entity_type, $ref, $state, $keyword = '$ref') {
     if not $schema_info;
 
   abort({ %$state, keyword => $keyword }, 'EXCEPTION: maximum evaluation depth exceeded')
-    if $state->{depth}++ > $self->evaluator->max_traversal_depth;
+    if $state->{depth}++ > $self->evaluator->max_depth;
 
   abort({ %$state, keyword => $keyword }, 'EXCEPTION: bad %s to %s: not a "%s"', $keyword, $schema_info->{canonical_uri}, $entity_type)
     if $schema_info->{document}->get_entity_at_location($schema_info->{document_path}) ne $entity_type;
