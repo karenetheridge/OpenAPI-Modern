@@ -20,6 +20,7 @@ use File::ShareDir 'dist_dir';
 use List::Util 1.45 'uniqstr';
 use Scalar::Util 'looks_like_number';
 use Mojo::Util qw(url_unescape url_escape);
+use Carp 'croak';
 use if "$]" < 5.041010, 'List::Util' => 'any';
 use if "$]" >= 5.041010, experimental => 'keyword_any';
 use JSON::Schema::Modern::Utilities 0.625 qw(register_schema load_cached_document true false);
@@ -48,6 +49,7 @@ our @EXPORT_OK = qw(
   coerce_primitive
   is_cookie_name
   is_cookie_value
+  elem
 );
 
 our %EXPORT_TAGS = (
@@ -215,16 +217,16 @@ sub coerce_primitive ($dataref, $types = []) {
 
   my $data = $$dataref; # make copy to avoid unwanted mutation of the original
 
-  $$dataref = undef, return 1 if $data eq '' and any { $_ eq 'null' } @$types;
+  $$dataref = undef, return 1 if $data eq '' and elem('null', $types);
 
-  if (any { $_ eq 'boolean' } @$types) {
+  if (elem('boolean', $types)) {
     $$dataref = false, return 1 if $data eq '0' or $data eq 'false' or $data eq '';
     $$dataref = true, return 1 if $data eq '1' or $data eq 'true';
   }
 
-  $$dataref = 0+$$dataref, return 1 if any { $_ eq 'number' } @$types and looks_like_number($$dataref);
+  $$dataref = 0+$$dataref, return 1 if elem('number', $types) and looks_like_number($$dataref);
 
-  $$dataref = ''.$$dataref, return 1 if any { $_ eq 'string' } @$types;
+  $$dataref = ''.$$dataref, return 1 if elem('string', $types);
 }
 
 # RFC6265 §3.1 and §4.2.1
@@ -242,6 +244,17 @@ sub is_cookie_name ($name) {
 
 sub is_cookie_value ($value) {
   !!(defined $value && $value =~ /^("?)[\x21\x23-\x2B\x2D-\x3A\x3C-\x5B\x5D-\x7E]*\1\z/);
+}
+
+sub elem ($items, $set) {
+  croak 'set is not an array' if not ref $set eq 'ARRAY';
+  $items = [ $items ] if ref $items ne 'ARRAY';
+
+  any {
+    my $x = $_;
+    any { $x eq $_ } @$items
+  }
+  @$set;
 }
 
 {
@@ -283,6 +296,7 @@ intersect_types
 coerce_primitive
 is_cookie_name
 is_cookie_value
+elem
 
 The constant values are updated automatically by C<update-schemas>, in the root of this distribution.
 

@@ -29,7 +29,7 @@ use Feature::Compat::Try;
 use Encode 2.89 ();
 use JSON::Schema::Modern;
 use JSON::Schema::Modern::Utilities 0.638 qw(jsonp unjsonp canonical_uri E abort is_equal true false get_type jsonp_set jsonp_get decode_media_type match_media_type);
-use OpenAPI::Modern::Utilities qw(add_vocab_and_default_schemas uri_decode intersect_types coerce_primitive uri_encode uri_encode_strict is_cookie_name is_cookie_value);
+use OpenAPI::Modern::Utilities qw(add_vocab_and_default_schemas uri_decode intersect_types coerce_primitive uri_encode uri_encode_strict is_cookie_name is_cookie_value elem);
 use JSON::Schema::Modern::Document::OpenAPI;
 use MooX::TypeTiny 0.002002;
 use Types::Standard qw(InstanceOf Bool);
@@ -559,7 +559,7 @@ sub find_path_item ($self, $options, $state = {}) {
     }
 
     $state->@{qw(operation operation_path_suffix)} =
-        (any { $options->{method} eq $_ } qw(GET PUT POST DELETE OPTIONS HEAD PATCH TRACE QUERY))
+        elem($options->{method}, [qw(GET PUT POST DELETE OPTIONS HEAD PATCH TRACE QUERY)])
       ? ($state->{path_item}{lc $options->{method}}, '/'.lc $options->{method})
       : (($state->{path_item}{additionalOperations}//{})->{$options->{method}}, jsonp('/additionalOperations', $options->{method}));
 
@@ -647,10 +647,10 @@ sub recursive_get ($self, $uri_reference, $entity_type = undef) {
     $entity_type //= $this_entity;
     $schema = $schema_info->{schema};
     $base = $schema_info->{canonical_uri};
-    if (defined($ref = $schema->{'$ref'}) and not any { $this_entity eq $_ } qw(schema callbacks)) {
+    if (defined($ref = $schema->{'$ref'}) and not elem($this_entity, [qw(schema callbacks)])) {
       # OAS reference object or path-item object: copy summary, description
       $parent_obj->{summary} = $schema->{summary}
-        if (any { $this_entity eq $_ } qw(response example path-item))
+        if elem($this_entity, [qw(response example path-item)])
           and exists $schema->{summary} and not exists $parent_obj->{summary};
       $parent_obj->{description} = $schema->{description}
         if exists $schema->{description} and not exists $parent_obj->{description};
@@ -712,7 +712,7 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
   # path_template or (preferably) operationId to be used in the search.
 
   $local_state->@{qw(operation operation_path_suffix)} =
-    (any { $method eq $_ } qw(GET PUT POST DELETE OPTIONS HEAD PATCH TRACE QUERY))
+    elem($method, [qw(GET PUT POST DELETE OPTIONS HEAD PATCH TRACE QUERY)])
       ? ($local_state->{path_item}{lc $method}, '/'.lc $method)
       : (($local_state->{path_item}{additionalOperations}//{})->{$method}, jsonp('/additionalOperations', $method));
 
@@ -799,7 +799,7 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
                   keyword_path => jsonp('/servers', $index, 'variables', $name))
               : (keyword_path => jsonp($state->{keyword_path}.$more_keyword_path, 'servers', $index, 'variables', $name)) },
           'server url value does not match any of the allowed values')
-        if not any { $captures{$name} eq $_ } $server->{variables}{$name}{enum}->@*;
+        if not elem($captures{$name}, $server->{variables}{$name}{enum});
     }
 
     return if not $valid;
@@ -948,7 +948,7 @@ sub _deserialize_query_parameter ($self, $state, $param_obj, $params) {
       my @types = $self->_type_in_schema($param_obj->{schema},
         { %$state, keyword_path => $state->{keyword_path}.'/schema' });
       return E({ %$state, keyword => 'required' },
-        $style eq 'form' && $explode && @types != 6 && (any { $_ eq 'object' } @types)
+        $style eq 'form' && $explode && @types != 6 && elem('object', \@types)
           ? 'missing query parameters'
           : ('missing query parameter: %s', $param_obj->{name}));
     }
@@ -1075,7 +1075,7 @@ sub _deserialize_cookie_parameter ($self, $state, $param_obj, $headers) {
       { %$state, data_path => jsonp($state->{data_path}, $param_obj->{name}),
         keyword_path => $state->{keyword_path}.'/schema' });
 
-    if ($explode and @types != 6 and (any { $_ eq 'object' } @types)) {
+    if ($explode and @types != 6 and elem('object', \@types)) {
       if (@pairs > 1) {
         return E({ %$state, data_path => jsonp($state->{data_path}, $param_obj->{name}),
             keyword => 'style' },
@@ -1110,7 +1110,7 @@ sub _deserialize_cookie_parameter ($self, $state, $param_obj, $headers) {
       my @types = $self->_type_in_schema($param_obj->{schema},
         { %$state, keyword_path => $state->{keyword_path}.'/schema' });
       return E({ %$state, keyword => 'required' },
-        $style eq 'form' && $explode && @types != 6 && (any { $_ eq 'object' } @types)
+        $style eq 'form' && $explode && @types != 6 && elem('object', \@types)
           ? 'missing cookie parameters'
           : ('missing cookie parameter: %s', $param_obj->{name}));
     }
@@ -1176,15 +1176,15 @@ sub _deserialize_style ($self, $data, $state, %opt) {
     # expansion process. If all of the variables in an expression are undefined, then the
     # expression's expansion is the empty string."
     if ($data eq '' and ($style ne 'simple' or @types != 6)) {
-      if (any { $_ eq 'null' } @types) {
+      if (elem('null', \@types)) {
         return \undef;
       }
-      elsif (any { $_ eq 'array' } @types) {
+      elsif (elem('array', \@types)) {
         # RFC6570 §2.3-6: "A variable defined as a list value is considered undefined if the list
         # contains zero members."
         return \ [];
       }
-      elsif (any { $_ eq 'object' } @types) {
+      elsif (elem('object', \@types)) {
         # RFC6570 §2.3-6: "A variable defined as an associative array of (name, value) pairs is
         # considered undefined if the array contains zero members or if all member names in the
         # array are associated with undefined values."
@@ -1221,12 +1221,12 @@ sub _deserialize_style ($self, $data, $state, %opt) {
     # style=matrix, explode=true, array
     # but NOT: explode=false (any style), or style=simple/label, explode=true for arrays.
     if (@types != 6 and $explode
-        and ((($style eq 'simple' or $style eq 'label') and any { $_ eq 'object' } @types)
-          or ($style eq 'matrix' and any { $_ eq 'object' || $_ eq 'array' } @types))) {
+        and ((($style eq 'simple' or $style eq 'label') and elem('object', \@types))
+          or ($style eq 'matrix' and elem([qw(object array)], \@types)))) {
 
       my @values = split($delimiter, $data, -1);
 
-      my $type = (any { $_ eq 'object' } @types) ? 'object' : 'array';
+      my $type = elem('object', \@types) ? 'object' : 'array';
       my $idx = -1;
 
       # we only make one attempt, even if both types are requested, because any errors when
@@ -1268,7 +1268,7 @@ sub _deserialize_style ($self, $data, $state, %opt) {
 
     # process matrix prefix for primitives, and for array and object when explode=false
     if ($style eq 'matrix'
-        and (not $explode or any { $_ eq 'string' || $_ eq 'number' || $_ eq 'boolean' || $_ eq 'null' } @types)
+        and (not $explode or elem([qw(string number boolean null)], \@types))
         # '=' is included after the name iff the variable's value is not empty; name is still encoded
         and ($data !~ s/^([^{}=]+)(?:=(?=.)|$)// or uri_decode($1) ne $name)) {
       ()= E({ %$state, keyword => 'style', errors => \@errors },
@@ -1283,10 +1283,10 @@ sub _deserialize_style ($self, $data, $state, %opt) {
     # style=simple or label, explode=true, array
     # style=matrix, explode=false, array
 
-    if (@types != 6 and any { $_ eq 'array' || $_ eq 'object' } @types) {
+    if (@types != 6 and elem([qw(array object)], \@types)) {
       my @values = map uri_decode($_), split($delimiter, $data, -1);
 
-      if (not $explode and any { $_ eq 'object' } @types) {
+      if (not $explode and elem('object', \@types)) {
         if (not @values % 2) {
           $data = +{ @values };
           $self->_coerce_object_elements($data, $schema, { %$state, keyword_path => $state->{keyword_path}.'/schema' });
@@ -1295,8 +1295,8 @@ sub _deserialize_style ($self, $data, $state, %opt) {
         # fall through to primitive
       }
 
-      if (any { $_ eq 'array' } @types
-          and (any { $style eq $_ } qw(simple label) or ($style eq 'matrix' and not $explode))) {
+      if (elem('array', \@types)
+          and (elem($style, [qw(simple label)]) or ($style eq 'matrix' and not $explode))) {
         $data = \@values;
         $self->_coerce_array_elements($data, $schema, { %$state, keyword_path => $state->{keyword_path}.'/schema' });
         return \$data;
@@ -1320,14 +1320,14 @@ sub _deserialize_style ($self, $data, $state, %opt) {
     # if all types are acceptable, fall through to returning string immediately
 
     if ($explode and @types != 6) {
-      if (any { $_ eq 'array' } @types) {
+      if (elem('array', \@types)) {
         $data = $params->every_param($name);
         $data = [ grep length, @$data ] if $allowEmptyValue;
         $self->_coerce_array_elements($data, $schema, { %$state, keyword_path => $state->{keyword_path}.'/schema' });
         return @$data ? \$data : ();
       }
 
-      if (any { $_ eq 'object' } @types) {
+      if (elem('object', \@types)) {
         # treat the entire querystring as the hash of keys and values; if duplicate, last entry wins
         $data = +{ $params->pairs->@* };
         delete $data->@{grep +(!length $data->{$_}), keys %$data} if $allowEmptyValue;
@@ -1342,17 +1342,17 @@ sub _deserialize_style ($self, $data, $state, %opt) {
     $data = $params->param($name);
     return if not defined $data or $allowEmptyValue and not length $data;
 
-    if ($in ne 'cookie' and not $explode and @types != 6 and any { $_ eq 'array' || $_ eq 'object' } @types) {
+    if ($in ne 'cookie' and not $explode and @types != 6 and elem([qw(array object)], \@types)) {
       # note: all ',' characters will be seen as delimiters, unless double encoding is done (and an
       # extra encoding pass done in the application). If this is a problem, switch from
       # explode=false to explode=true.
       my @values = split /,/, $data, -1;
-      if (not @values % 2 and any { $_ eq 'object' } @types) {
+      if (not @values % 2 and elem('object', \@types)) {
         $data = +{ @values };
         $self->_coerce_object_elements($data, $schema, { %$state, keyword_path => $state->{keyword_path}.'/schema' });
         return \$data;
       }
-      if (any { $_ eq 'array' } @types) {
+      if (elem('array', \@types)) {
         $data = \@values;
         $self->_coerce_array_elements($data, $schema, { %$state, keyword_path => $state->{keyword_path}.'/schema' });
         return \$data;
@@ -1371,7 +1371,7 @@ sub _deserialize_style ($self, $data, $state, %opt) {
 
     return E({ %$state, data_path => jsonp($state->{data_path}, $name) },
         '%s style can only deserialize to arrays or objects', $style)
-      if not any { $_ eq 'array' || $_ eq 'object' } @types;
+      if not elem([qw(array object)], \@types);
 
     # $data argument is a Mojo::Parameters object for this style
     $data = $data->param($name);
@@ -1391,12 +1391,12 @@ sub _deserialize_style ($self, $data, $state, %opt) {
     my $delimiter = $style eq 'spaceDelimited' ? ' ' : $style eq 'pipeDelimited' ? '\|' : die;
     my @values = split /$delimiter/, $data, -1;
 
-    if (not @values % 2 and any { $_ eq 'object' } @types) {
+    if (not @values % 2 and elem('object', \@types)) {
       $data = +{ @values };
       $self->_coerce_object_elements($data, $schema, { %$state, keyword_path => $state->{keyword_path}.'/schema' });
       return \$data;
     }
-    if (any { $_ eq 'array' } @types) {
+    if (elem('array', \@types)) {
       $data = \@values;
       $self->_coerce_array_elements($data, $schema, { %$state, keyword_path => $state->{keyword_path}.'/schema' });
       return \$data;
@@ -1415,7 +1415,7 @@ sub _deserialize_style ($self, $data, $state, %opt) {
 
     return E({ %$state, data_path => jsonp($state->{data_path}, $name) },
         'deepObject style can only deserialize to objects')
-      if not any { $_ eq 'object' } @types;
+      if not elem('object', \@types);
 
     # $data is a Mojo::Parameters object for this style
     croak 'query parameters require a parameter object' if ref $data ne 'Mojo::Parameters';
@@ -1449,13 +1449,13 @@ sub _deserialize_style ($self, $data, $state, %opt) {
     # if all types are acceptable, fall through to returning string immediately
 
     if ($explode and @types != 6) {
-      if (any { $_ eq 'array' } @types) {
+      if (elem('array', \@types)) {
         $data = [ map +($_->[0] eq $name ? $_->[1] : ()), @pairs ];
         $self->_coerce_array_elements($data, $schema, { %$state, keyword_path => $state->{keyword_path}.'/schema' });
         return @$data ? \$data : ();
       }
 
-      if (any { $_ eq 'object' } @types) {
+      if (elem('object', \@types)) {
         # treat the entire header string as the hash of keys and values; if duplicate, last entry wins
         $data = +{ map @$_, @pairs };
         $self->_coerce_object_elements($data, $schema, { %$state, keyword_path => $state->{keyword_path}.'/schema' });
