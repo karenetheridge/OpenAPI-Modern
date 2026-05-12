@@ -1055,7 +1055,7 @@ subtest 'query parameters' => sub {
       [ 'form', false, { 'blue−black', 'yes!', 'blackish﹠green', '¿no?', '100𝑥brown', 'fl¡p' },
         'q=blue%E2%88%92black,yes!,blackish%EF%B9%A0green,%C2%BFno?,100%F0%9D%91%A5brown,fl%C2%A1p' ],
       [ 'form', true,  { 'blue−black', 'yes!', 'blackish﹠green', '¿no?', '100𝑥brown', 'fl¡p' },
-        'blue%E2%88%92black=yes!&blackish%EF%B9%A0green=%C2%Bfno?&100%f0%9D%91%A5brown=fl%C2%A1p' ],
+        'blue%E2%88%92black=yes!&blackish%EF%B9%A0green=%C2%Bfno?&100%F0%9D%91%A5brown=fl%C2%A1p' ],
     ],
     [
       [ qw(style explode name content queries) ],

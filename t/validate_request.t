@@ -1013,7 +1013,7 @@ YAML
   );
 
   is_equal(
-    $openapi->validate_request($request = request('GET', 'http://example.com/string?%e0%b2%a0'))->TO_JSON,
+    $openapi->validate_request($request = request('GET', 'http://example.com/string?%E0%B2%A0'))->TO_JSON,
     { valid => true },
     'text/plain querystring is percent-decoded and then parsed as a string, respecting the charset',
   );
@@ -1070,7 +1070,7 @@ YAML
   );
 
   is_equal(
-    $openapi->validate_request($request = request('GET', 'http://example.com/application/x-www-form-urlencoded?key=%e0%b2%a0&bar=2'))->TO_JSON,
+    $openapi->validate_request($request = request('GET', 'http://example.com/application/x-www-form-urlencoded?key=%E0%B2%A0&bar=2'))->TO_JSON,
     { valid => true },
     'application/x-www-form-urlencoded querystring is url-decoded and properly decoded',
   );
