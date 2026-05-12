@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.137     2026-05-12 18:09:22Z
           - switch to non-deprecated JSM config "max_depth"
 
 0.136     2026-05-02 15:42:44Z
