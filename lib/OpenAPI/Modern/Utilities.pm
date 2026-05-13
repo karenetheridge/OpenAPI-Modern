@@ -246,8 +246,9 @@ sub is_cookie_value ($value) {
   !!(defined $value && $value =~ /^("?)[\x21\x23-\x2B\x2D-\x3A\x3C-\x5B\x5D-\x7E]*\1\z/);
 }
 
+# are any $items a member of $set?
 sub elem ($items, $set) {
-  croak 'set is not an array' if not ref $set eq 'ARRAY';
+  croak 'set is not an array' if ref $set ne 'ARRAY';
   $items = [ $items ] if ref $items ne 'ARRAY';
 
   any {
