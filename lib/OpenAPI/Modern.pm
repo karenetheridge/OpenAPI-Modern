@@ -2663,5 +2663,10 @@ Which will be the value: C<< { a => 1, b => 2 } >>
 * L<https://spec.openapis.org/oas/v3.1>
 * L<https://spec.openapis.org/oas/v3.2>
 * L<https://spec.openapis.org/oas>
+* L<RFC9110: HTTP Semantics|https://datatracker.ietf.org/doc/html/rfc9110>
+* L<RFC9112: HTTP/1.1|https://datatracker.ietf.org/doc/html/rfc9112>
+* L<RFC3986: Uniform Resource Identifier (URI): Generic Syntax|https://datatracker.ietf.org/doc/html/rfc3986>
+* L<RFC6265: HTTP State Management Mechanism|https://datatracker.ietf.org/doc/html/rfc6265>
+* L<RFC6570: URI Template|https://datatracker.ietf.org/doc/html/rfc6570>
 
 =cut
