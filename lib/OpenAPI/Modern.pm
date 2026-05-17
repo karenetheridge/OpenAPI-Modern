@@ -2537,7 +2537,7 @@ L<JSON::Schema::Modern::Utilities/load_cached_document>, e.g.:
 
 =head1 ON THE USE OF JSON SCHEMAS
 
-Embedded JSON Schemas, through the use of the C<schema> keyword, are fully draft2020-12-compliant,
+Embedded JSON Schemas, through the use of the C<$schema> keyword, are fully draft2020-12-compliant,
 as per the spec, and implemented with L<JSON::Schema::Modern>. Unless overridden with the use of the
 L<jsonSchemaDialect|https://spec.openapis.org/oas/latest#specifying-schema-dialects> keyword, their
 metaschema is the "dialect" schema listed at L<https://spec.openapis.org/oas/#schema-iterations>, which allows for use of the
