@@ -749,11 +749,10 @@ __END__
 
 =head1 SYNOPSIS
 
-  use JSON::Schema::Modern::Document::OpenAPI;
-
   my $openapi_document = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'https://example.com/v1/api',
-    schema => decode_json(<<JSON),
+    metaschema_uri => 'https://example.com/my_custom_metaschema',
+    schema => decode_json(<<'JSON'));
   {
     "openapi": "3.2.0",
     "$self": "openapi.json",
@@ -771,8 +770,6 @@ __END__
     }
   }
   JSON
-    metaschema_uri => 'https://example.com/my_custom_metaschema',
-  );
 
 =for Pod::Coverage THAW get_operationId_path
 

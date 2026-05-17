@@ -2488,10 +2488,10 @@ reloading them (perhaps by using a timestamp or checksum to determine if a fresh
       );
       $openapi->evaluator->add_schema(decode_json(...));  # any other needed schemas
       my $frozen = Sereal::Encoder->new({ freeze_callbacks => 1 })->encode($openapi);
-      $serialized_file->spew_raw($frozen);
+      $serialized_file->spew($frozen);
     }
     else {
-      my $frozen = $serialized_file->slurp_raw;
+      my $frozen = $serialized_file->slurp;
       $openapi = Sereal::Decoder->new->decode($frozen);
     }
 
