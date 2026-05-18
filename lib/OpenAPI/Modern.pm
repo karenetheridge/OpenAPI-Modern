@@ -29,7 +29,7 @@ use Feature::Compat::Try;
 use Encode 2.89 ();
 use JSON::Schema::Modern;
 use JSON::Schema::Modern::Utilities qw(jsonp unjsonp canonical_uri E abort is_equal true false get_type is_type jsonp_set jsonp_get decode_media_type match_media_type);
-use OpenAPI::Modern::Utilities qw(add_vocab_and_default_schemas add_formats uri_decode intersect_types coerce_primitive uri_encode uri_encode_strict is_cookie_name is_cookie_value elem);
+use OpenAPI::Modern::Utilities qw(add_vocab_and_default_schemas add_formats convert_request convert_response uri_decode intersect_types coerce_primitive uri_encode uri_encode_strict is_cookie_name is_cookie_value elem);
 use JSON::Schema::Modern::Document::OpenAPI;
 use MooX::TypeTiny 0.002002;
 use Types::Standard qw(InstanceOf Bool);
@@ -298,7 +298,7 @@ sub validate_response ($self, $response, $options = {}) {
     $state->{keyword_path} .= delete $options->{_operation_path_suffix};  # jsonp-encoded
 
     # now guaranteed to be a Mojo::Message::Response
-    $options->{response} = $response = _convert_response($response);
+    $options->{response} = $response = convert_response($response);
 
     return $self->_result($state, 0, 1) if not exists $operation->{responses};
 
@@ -415,7 +415,7 @@ sub find_path_item ($self, $options, $state = {}) {
 
   # now guaranteed to be a Mojo::Message::Request
   if ($options->{request}) {
-    $options->{request} = _convert_request($options->{request});
+    $options->{request} = convert_request($options->{request});
 
     # requests don't have response codes, so if 'error' is set, it is some sort of parsing error
     if (my $error = $options->{request}->error) {
@@ -2199,83 +2199,6 @@ sub _evaluate_subschema ($self, $dataref, $schema, $state) {
   ) if $state->{defaults} and $result->defaults;
 
   return $result->valid;
-}
-
-# results may be unsatisfactory if not a valid HTTP request.
-sub _convert_request ($request) {
-  return $request if $request->isa('Mojo::Message::Request');
-
-  my $req = Mojo::Message::Request->new;
-
-  if ($request->isa('HTTP::Request')) {
-    $req->method($request->method);
-    $req->url(Mojo::URL->new($request->uri));
-    $req->version($request->protocol =~ s{^HTTP/(\d\.\d)\z}{$1}r) if $request->protocol;
-    $req->headers->add(@$_) foreach pairs $request->headers->flatten;
-
-    my $body = $request->content;
-    $req->body($body) if length $body;
-  }
-  # note: Dancer2::Core::Request inherits from Plack::Request
-  elsif ($request->isa('Plack::Request') or $request->isa('Catalyst::Request')) {
-    $req->parse($request->env);
-
-    my $plack_request = $request->isa('Plack::Request') ? $request
-      : do { +require Plack::Request; Plack::Request->new($request->env) };
-
-    my $body = $plack_request->content;
-    $req->body($body) if length $body;
-
-    # Plack is unable to distinguish between %2F and /, so the raw (undecoded) uri can be passed
-    # here. see PSGI::FAQ
-    $req->url(Mojo::URL->new($request->env->{REQUEST_URI})) if exists $request->env->{REQUEST_URI};
-  }
-  else {
-    return $req->error({ message => 'unknown type '.ref($request) });
-  }
-
-  # we could call $req->fix_headers here to add a missing Content-Length or Host, but proper
-  # requests from the network should always have these set.
-
-  $req->finish;
-  return $req;
-}
-
-# results may be unsatisfactory if not a valid HTTP response.
-sub _convert_response ($response) {
-  return $response if $response->isa('Mojo::Message::Response');
-
-  my $res = Mojo::Message::Response->new;
-
-  if ($response->isa('HTTP::Response')) {
-    $res->code($response->code);
-    $res->version($response->protocol =~ s{^HTTP/(\d\.\d)\z}{$1}r) if $response->protocol;
-    $res->headers->add(@$_) foreach pairs $response->headers->flatten;
-    my $body = $response->content;
-    $res->body($body) if length $body;
-  }
-  elsif ($response->isa('Plack::Response') or $response->isa('Dancer2::Core::Response')) {
-    $res->code($response->status);
-    $res->headers->add(@$_) foreach pairs $response->headers->psgi_flatten_without_sort->@*;
-    my $body = $response->content;
-    $res->body($body) if length $body;
-  }
-  elsif ($response->isa('Catalyst::Response')) {
-    $res->code($response->status);
-    HTTP::Headers->VERSION('6.07');
-    $res->headers->add(@$_) foreach pairs $response->headers->flatten;
-    my $body = $response->body;
-    $res->body($body) if length $body;
-  }
-  else {
-    return $res->error({ message => 'unknown type '.ref($response) });
-  }
-
-  # we could call $res->fix_headers here to add a missing Content-Length, but proper responses from
-  # the network should always have it set.
-
-  $res->finish;
-  return $res;
 }
 
 # callback hook for Sereal::Encoder

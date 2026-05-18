@@ -17,7 +17,7 @@ no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 no if "$]" >= 5.041009, feature => 'smartmatch';
 no feature 'switch';
 use File::ShareDir 'dist_dir';
-use List::Util 1.45 'uniqstr';
+use List::Util 1.45 qw(uniqstr pairs);
 use Scalar::Util 'looks_like_number';
 use Mojo::Util qw(url_unescape url_escape);
 use Carp 'croak';
@@ -43,6 +43,8 @@ our @EXPORT_OK = qw(
   OAS_SCHEMAS
   add_vocab_and_default_schemas
   add_formats
+  convert_request
+  convert_response
   uri_decode
   uri_encode
   uri_encode_strict
@@ -190,6 +192,93 @@ sub add_formats ($evaluator, $version = OAS_VERSIONS->[-1]) {
   }) if not $evaluator->_get_format_validation('media-range');
 }
 
+# generates the equivalent Mojo::Message::Request from any of:
+# - HTTP::Request
+# - Plack::Request
+# - Catalyst::Request
+# - Dancer2::Core::Request
+# results may be unsatisfactory if not a valid HTTP request.
+sub convert_request ($request) {
+  return $request if $request->isa('Mojo::Message::Request');
+
+  my $req = Mojo::Message::Request->new;
+
+  if ($request->isa('HTTP::Request')) {
+    $req->method($request->method);
+    $req->url(Mojo::URL->new($request->uri));
+    $req->version($request->protocol =~ s{^HTTP/(\d\.\d)\z}{$1}r) if $request->protocol;
+    $req->headers->add(@$_) foreach pairs $request->headers->flatten;
+
+    my $body = $request->content;
+    $req->body($body) if length $body;
+  }
+  # note: Dancer2::Core::Request inherits from Plack::Request
+  elsif ($request->isa('Plack::Request') or $request->isa('Catalyst::Request')) {
+    $req->parse($request->env);
+
+    my $plack_request = $request->isa('Plack::Request') ? $request
+      : do { +require Plack::Request; Plack::Request->new($request->env) };
+
+    my $body = $plack_request->content;
+    $req->body($body) if length $body;
+
+    # Plack is unable to distinguish between %2F and /, so the raw (undecoded) uri can be passed
+    # here. see PSGI::FAQ
+    $req->url(Mojo::URL->new($request->env->{REQUEST_URI})) if exists $request->env->{REQUEST_URI};
+  }
+  else {
+    return $req->error({ message => 'unknown type '.ref($request) });
+  }
+
+  # we could call $req->fix_headers here to add a missing Content-Length or Host, but proper
+  # requests from the network should always have these set.
+
+  $req->finish;
+  return $req;
+}
+
+# generates the equivalent Mojo::Message::Response from any of:
+# - HTTP::Response
+# - Plack::Response
+# - Catalyst::Response
+# - Dancer2::Core::Response
+# results may be unsatisfactory if not a valid HTTP response.
+sub convert_response ($response) {
+  return $response if $response->isa('Mojo::Message::Response');
+
+  my $res = Mojo::Message::Response->new;
+
+  if ($response->isa('HTTP::Response')) {
+    $res->code($response->code);
+    $res->version($response->protocol =~ s{^HTTP/(\d\.\d)\z}{$1}r) if $response->protocol;
+    $res->headers->add(@$_) foreach pairs $response->headers->flatten;
+    my $body = $response->content;
+    $res->body($body) if length $body;
+  }
+  elsif ($response->isa('Plack::Response') or $response->isa('Dancer2::Core::Response')) {
+    $res->code($response->status);
+    $res->headers->add(@$_) foreach pairs $response->headers->psgi_flatten_without_sort->@*;
+    my $body = $response->content;
+    $res->body($body) if length $body;
+  }
+  elsif ($response->isa('Catalyst::Response')) {
+    $res->code($response->status);
+    HTTP::Headers->VERSION('6.07');
+    $res->headers->add(@$_) foreach pairs $response->headers->flatten;
+    my $body = $response->body;
+    $res->body($body) if length $body;
+  }
+  else {
+    return $res->error({ message => 'unknown type '.ref($response) });
+  }
+
+  # we could call $res->fix_headers here to add a missing Content-Length, but proper responses from
+  # the network should always have it set.
+
+  $res->finish;
+  return $res;
+}
+
 # url-percent-decode and UTF-8-decode a string
 sub uri_decode ($str) {
   Encode::decode('UTF-8', url_unescape($str), Encode::DIE_ON_ERR);
@@ -301,6 +390,8 @@ STRICT_METASCHEMA
 SUPPORTED_OAD_VERSIONS
 add_vocab_and_default_schemas
 add_formats
+convert_request
+convert_response
 uri_decode
 uri_encode
 uri_encode_strict
