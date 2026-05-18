@@ -125,16 +125,7 @@ sub response ($code, $headers = [], $body_content = undef) {
     if length $body_content and $body_content =~ /[^\x00-\xff]/;
 
   my $res;
-  if ($TYPE eq 'lwp') {
-    test_needs('HTTP::Response', 'HTTP::Status');
-
-    $res = HTTP::Response->new($code, HTTP::Status::status_message($code), $headers, $body_content);
-    $res->protocol('HTTP/1.1'); # not added by HTTP::Response constructor
-    $res->headers->header('Content-Length' => length($body_content)//0)
-      if not defined $res->headers->header('Content-Length')
-        and not defined $res->headers->header('Transfer-Encoding');
-  }
-  elsif ($TYPE eq 'mojo') {
+  if ($TYPE eq 'mojo') {
     $res = Mojo::Message::Response->new(code => $code);
     $res->headers->add(@$_) foreach pairs @$headers;
     $res->body($body_content) if defined $body_content;
@@ -142,23 +133,23 @@ sub response ($code, $headers = [], $body_content = undef) {
     # add missing Content-Length, etc
     $res->fix_headers;
   }
+  elsif ($TYPE eq 'lwp') {
+    test_needs('HTTP::Response', 'HTTP::Status');
+
+    $res = HTTP::Response->new($code, HTTP::Status::status_message($code), $headers, $body_content);
+    $res->protocol('HTTP/1.1'); # not added by HTTP::Response constructor
+  }
   elsif ($TYPE eq 'plack') {
     test_needs('Plack::Response', 'HTTP::Message::PSGI', { 'HTTP::Headers::Fast' => 0.21 });
     die 'HTTP::Headers::Fast::XS is buggy and should not be used' if eval { HTTP::Headers::Fast::XS->VERSION };
 
     $res = Plack::Response->new($code, $headers, $body_content);
-    $res->headers->header('Content-Length' => length $body_content)
-      if defined $body_content and not defined $res->headers->header('Content-Length')
-        and not defined $res->headers->header('Transfer-Encoding');
   }
   elsif ($TYPE eq 'catalyst') {
     test_needs('Catalyst::Response', { 'HTTP::Headers' => '6.07' });
 
     $res = Catalyst::Response->new(status => $code, body => $body_content);
     $res->headers->push_header(@$_) foreach pairs @$headers;
-    $res->headers->header('Content-Length' => length $body_content)
-      if defined $body_content and not defined $res->headers->header('Content-Length')
-        and not defined $res->headers->header('Transfer-Encoding');
   }
   elsif ($TYPE eq 'dancer2') {
     test_needs('Dancer2::Core::Response', 'HTTP::Message::PSGI', { 'HTTP::Headers::Fast' => 0.21 });
@@ -169,12 +160,16 @@ sub response ($code, $headers = [], $body_content = undef) {
       headers => $headers,
       defined $body_content ? (content => $body_content) : (),
     );
-    $res->headers->header('Content-Length' => length $body_content)
-      if defined $body_content and not defined $res->headers->header('Content-Length')
-        and not defined $res->headers->header('Transfer-Encoding');
   }
   else {
     die '$TYPE '.$TYPE.' not supported at ', join(' line ', (caller)[1,2]), ".\n";
+  }
+
+  if ($TYPE eq 'lwp' or $TYPE eq 'plack' or $TYPE eq 'catalyst' or $TYPE eq 'dancer2') {
+    $res->headers->header('Content-Length' => length $body_content)
+      if defined $body_content
+        and not defined $res->headers->header('Content-Length')
+        and not defined $res->headers->header('Transfer-Encoding');
   }
 
   return $res;
