@@ -947,6 +947,7 @@ YAML
     'empty querystring still counts as being provided',
   );
 
+  # this test intentionally is only for mojo
   if ($::TYPE eq 'mojo') {
     my @warnings = warnings {
       my $request = request('GET', 'http://example.com/string?hi');
