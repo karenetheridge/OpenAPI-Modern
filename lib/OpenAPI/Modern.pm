@@ -1591,7 +1591,9 @@ sub _deserialize_content ($self, $content_ref, $state, $content_obj, $media_type
     { %$state, keyword_path => $state->{keyword_path}.'/schema' },  # schema_state
     $media_type_obj->{schema},                                      # schema
     { %$state },                                            # encoding_state
-    $media_type_obj,                                        # encoding_parent
+    # v3.1.2 §4.8.14.1: "The encoding field SHALL only apply to Request Body Objects"
+    $state->{data_path} =~ m{^/request/body/} || $self->openapi_document->oas_version >= '3.2'
+      ? $media_type_obj : undef,                            # encoding_parent
     $content_type,                                          # message Content-Type
   );
 

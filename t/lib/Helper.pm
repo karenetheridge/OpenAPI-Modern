@@ -187,7 +187,7 @@ sub uri ($uri_string, @path_parts) {
   die '$TYPE is not set at ', join(' line ', (caller)[1,2]), ".\n" if not defined $TYPE;
 
   my $uri;
-  if (elem($TYPE, [qw(lwp plack catalyst)])) {
+  if (elem($TYPE, [qw(lwp plack catalyst dancer2)])) {
     test_needs('URI');
     $uri = URI->new($uri_string);
     $uri->path_segments(@path_parts) if @path_parts;
@@ -218,6 +218,7 @@ sub query_params ($request, $pairs) {
     # this is the encoded query string portion of the URI
     $request->env->{QUERY_STRING} = Mojo::Parameters->new->pairs($pairs)->to_string;
     $request->env->{REQUEST_URI} .= '?' . $request->env->{QUERY_STRING};
+    $request->uri->query($request->env->{QUERY_STRING}) if $TYPE eq 'catalyst';
     # $request->_clear_parameters if $TYPE eq 'catalyst';  # might need this later
   }
   else {

@@ -15,7 +15,7 @@ use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 
 use lib 't/lib';
 use Helper;
-use JSON::Schema::Modern::Utilities qw(jsonp add_media_type delete_media_type);
+use JSON::Schema::Modern::Utilities qw(jsonp add_media_type delete_media_type encode_media_type);
 
 my $doc_uri_rel = Mojo::URL->new('/api');
 my $doc_uri = $doc_uri_rel->to_abs(Mojo::URL->new('http://example.com'));
@@ -31,6 +31,98 @@ note 'REQUEST/RESPONSE TYPE: '.$::TYPE;
 subtest $::TYPE.': application/x-www-form-urlencoded encoding' => sub {
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => $doc_uri,
+    openapi_schema => decode_yaml((OPENAPI_PREAMBLE =~ s/3\.2/3.1/r).<<'YAML'));
+components:
+  schemas:
+    my_schema:
+      type: object
+      properties:
+        key1:
+          type: number
+        key2:
+          type: object  # when encoding/contentType is missing, default to application/json
+paths:
+  /foo/{my_path}:
+    post:
+      parameters:
+        - name: my_path
+          in: path
+          required: true
+          content:
+            application/x-www-form-urlencoded:
+              schema:
+                $ref: '#/components/schemas/my_schema'
+        - name: my_query
+          in: query
+          required: true
+          content:
+            application/x-www-form-urlencoded:
+              schema:
+                $ref: '#/components/schemas/my_schema'
+        - name: My-Header
+          in: header
+          required: true
+          content:
+            application/x-www-form-urlencoded:
+              schema:
+                $ref: '#/components/schemas/my_schema'
+        - name: my_cookie
+          in: cookie
+          required: true
+          content:
+            application/x-www-form-urlencoded:
+              schema:
+                $ref: '#/components/schemas/my_schema'
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/my_schema'
+YAML
+
+  my $encoded  = encode_media_type('application/x-www-form-urlencoded', # { for the editor
+      \{ key1 => '1e+1', key2 => $::dumper->encode({x=>1}) })->$*;
+  my $decoded = { key1 => 10, key2 => { x => 1 } };
+
+  my $uri = uri('http://example.com', 'foo', $encoded);
+  my $request = request('POST', $uri,
+    [ 'My-Header' => $encoded, Cookie => 'my_cookie='.$encoded, 'Content-Type' => 'application/x-www-form-urlencoded' ], $encoded);
+  query_params($request, [ my_query => $encoded ]);
+
+  is(
+    $::TYPE eq 'mojo' ? $request->url : $request->uri,
+    'http://example.com/foo/key1=1e%252B1&key2=%257B%2522x%2522%253A1%257D?my_query=key1%3D1e%252B1%26key2%3D%257B%2522x%2522%253A1%257D',
+    'request URI is doubly-percent-encoded, including the % and + characters'
+  );
+
+  my $result = $openapi->validate_request($request);
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      { valid => true },
+      {
+        request => {
+          uri => {
+            path => { my_path => $decoded },
+            query => { my_query => $decoded },
+          },
+          header => {
+            'My-Header' => $decoded,
+            Cookie => { my_cookie => $decoded },
+          },
+          body => { content => $decoded },
+        },
+      },
+    ],
+    'parameter and body decoding is successful, with type coercion, even on 3.1',
+  );
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri,
     openapi_schema => decode_yaml(OPENAPI_PREAMBLE.<<'YAML'));
 paths:
   /supported:
@@ -41,7 +133,7 @@ paths:
             schema: {}
 YAML
 
-  my $result = $openapi->validate_request(request('POST', 'http://example.com/supported',
+  $result = $openapi->validate_request(request('POST', 'http://example.com/supported',
     [ 'Content-Type' => 'application/x-www-form-urlencoded' ], 'foo=bar'));
 
   is_equal(
@@ -68,7 +160,7 @@ paths:
           application/x-www-form-urlencoded: {}
 YAML
 
-  $result = $openapi->validate_request(my $request = request('POST', 'http://example.com/foo',
+  $result = $openapi->validate_request($request = request('POST', 'http://example.com/foo',
     [ 'Content-Type' => 'application/x-www-form-urlencoded' ],
     { id => 'f81d4fae-7dec-11d0-a765-00a0c91e6bf6', address => '123 Example Dr.' }));
   is_equal(
