@@ -1509,6 +1509,12 @@ subtest 'query parameters' => sub {
       ],
     },
     {
+      name => 'explode=true, ask for array or object; prefer object',
+      param_obj => { name => 'color', schema => { type => [ qw(array object) ] } },
+      queries => 'color=yes&foo=no&bar=maybe',
+      content => { color => 'yes', foo => 'no', bar => 'maybe' },
+    },
+    {
       name => 'explode=true, object with non-string properties',
       param_obj => { name => 'color', schema => {
           type => 'object',
@@ -2590,6 +2596,13 @@ subtest 'cookie parameters' => sub {
       [ 'cookie', true,  { R => '100', G => '200', B => '' }, 'R=100; G=200; B=' ],
       [ 'cookie', true,  { qw(R 100 G 200 B 150) }, 'R=100; G=200; B=150' ],
     ],
+
+    {
+      name => 'explode=true, ask for array or object; prefer object',
+      param_obj => { style => 'cookie', name => 'color', schema => { type => [ qw(array object) ] } },
+      cookie => 'color=yes; foo=no; bar=maybe',
+      content => { color => 'yes', foo => 'no', bar => 'maybe' },
+    },
   );
 
   @tests = map +(

@@ -1327,19 +1327,19 @@ sub _deserialize_style ($self, $data, $state, %opt) {
     # if all types are acceptable, fall through to returning string immediately
 
     if ($explode and @types != 6) {
-      if (elem('array', \@types)) {
-        $data = $params->every_param($name);
-        $data = [ grep length, @$data ] if $allowEmptyValue;
-        $self->_coerce_array_elements($data, $schema, { %$state, keyword_path => $state->{keyword_path}.'/schema' });
-        return @$data ? \$data : ();
-      }
-
       if (elem('object', \@types)) {
         # treat the entire querystring as the hash of keys and values; if duplicate, last entry wins
         $data = +{ $params->pairs->@* };
         delete $data->@{grep +(!length $data->{$_}), keys %$data} if $allowEmptyValue;
         $self->_coerce_object_elements($data, $schema, { %$state, keyword_path => $state->{keyword_path}.'/schema' });
         return keys %$data ? \$data : ();
+      }
+
+      if (elem('array', \@types)) {
+        $data = $params->every_param($name);
+        $data = [ grep length, @$data ] if $allowEmptyValue;
+        $self->_coerce_array_elements($data, $schema, { %$state, keyword_path => $state->{keyword_path}.'/schema' });
+        return @$data ? \$data : ();
       }
     }
 
@@ -1452,17 +1452,17 @@ sub _deserialize_style ($self, $data, $state, %opt) {
     # if all types are acceptable, fall through to returning string immediately
 
     if ($explode and @types != 6) {
-      if (elem('array', \@types)) {
-        $data = [ map +($_->[0] eq $name ? $_->[1] : ()), @pairs ];
-        $self->_coerce_array_elements($data, $schema, { %$state, keyword_path => $state->{keyword_path}.'/schema' });
-        return @$data ? \$data : ();
-      }
-
       if (elem('object', \@types)) {
         # treat the entire header string as the hash of keys and values; if duplicate, last entry wins
         $data = +{ map @$_, @pairs };
         $self->_coerce_object_elements($data, $schema, { %$state, keyword_path => $state->{keyword_path}.'/schema' });
         return keys %$data ? \$data : ();
+      }
+
+      if (elem('array', \@types)) {
+        $data = [ map +($_->[0] eq $name ? $_->[1] : ()), @pairs ];
+        $self->_coerce_array_elements($data, $schema, { %$state, keyword_path => $state->{keyword_path}.'/schema' });
+        return @$data ? \$data : ();
       }
     }
 
