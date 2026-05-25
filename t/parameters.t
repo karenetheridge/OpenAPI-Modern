@@ -2546,13 +2546,13 @@ subtest 'cookie parameters' => sub {
 
     {
       name => 'with boolean schema, return empty string as string',
-      param_obj => { name => 'color', schema => true },
+      param_obj => { style => 'cookie', name => 'color', schema => true },
       cookie => 'color=',
       content => '',
     },
     {
       name => 'with boolean schema, return data as string',
-      param_obj => { name => 'color', schema => true },
+      param_obj => { style => 'cookie', name => 'color', schema => true },
       cookie => 'color=42',
       content => '42',
     },
