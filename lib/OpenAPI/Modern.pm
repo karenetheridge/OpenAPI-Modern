@@ -1482,43 +1482,6 @@ sub _deserialize_style ($self, $data, $state, %opt) {
     @types ? ' ('.join(', ', @types).')' : '');
 }
 
-# $media_type is the media-type property to be used under the content object;
-# $content_type is what is used for the content decoding (the Content-Type header of the message)
-# returns false or reference to deserialized data
-sub _deserialize_content ($self, $content_ref, $state, $content_obj, $media_type, $content_type) {
-  $state->{keyword_path} = jsonp($state->{keyword_path}, 'content', $media_type);
-
-  try {
-    # case-insensitive, wildcard lookup; text/* supports charset
-    $content_ref = decode_media_type($content_type, $content_ref);
-  }
-  catch ($e) {
-    return E($state, 'could not decode content as %s: %s', $content_type, $e =~ s/^(.*)\n/$1/r);
-  }
-
-  my $saved_state = { %$state };
-
-  my $media_type_obj = $content_obj->{$media_type};
-  while (defined(my $ref = $media_type_obj->{'$ref'})) {
-    $media_type_obj = $self->_resolve_ref('media-type', $ref, $state);
-  }
-
-  if (not $content_ref) {
-    # don't fail, and return the original data, if the schema would pass on any input
-    return $content_ref if all { ref $_ eq 'HASH' ? !keys %$_ : $_ }
-      ($media_type_obj->{schema}//(), $media_type_obj->{itemSchema}//());
-
-    abort($saved_state, 'EXCEPTION: unsupported media type "%s": add support with JSON::Schema::Modern::Utilities::add_media_type(...)', $content_type);
-  }
-
-  if ($content_type =~ m{^\Fmultipart/} or fc($content_type) eq 'application/x-www-form-urlencoded'
-      and my $keyword = first { exists $content_obj->{$media_type}{$_} } qw(encoding prefixEncoding itemEncoding)) {
-    return E({ %$state, keyword => $keyword }, '%s not yet supported', $keyword);
-  }
-
-  return $content_ref;
-}
-
 sub _validate_body_content ($self, $state, $content_obj, $message) {
   my $content_type = $message->headers->content_type;
 
@@ -1574,6 +1537,43 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
   }
 
   return $valid;
+}
+
+# $media_type is the media-type property to be used under the content object;
+# $content_type is what is used for the content decoding (the Content-Type header of the message)
+# returns false or reference to deserialized data
+sub _deserialize_content ($self, $content_ref, $state, $content_obj, $media_type, $content_type) {
+  $state->{keyword_path} = jsonp($state->{keyword_path}, 'content', $media_type);
+
+  try {
+    # case-insensitive, wildcard lookup; text/* supports charset
+    $content_ref = decode_media_type($content_type, $content_ref);
+  }
+  catch ($e) {
+    return E($state, 'could not decode content as %s: %s', $content_type, $e =~ s/^(.*)\n/$1/r);
+  }
+
+  my $saved_state = { %$state };
+
+  my $media_type_obj = $content_obj->{$media_type};
+  while (defined(my $ref = $media_type_obj->{'$ref'})) {
+    $media_type_obj = $self->_resolve_ref('media-type', $ref, $state);
+  }
+
+  if (not $content_ref) {
+    # don't fail, and return the original data, if the schema would pass on any input
+    return $content_ref if all { ref $_ eq 'HASH' ? !keys %$_ : $_ }
+      ($media_type_obj->{schema}//(), $media_type_obj->{itemSchema}//());
+
+    abort($saved_state, 'EXCEPTION: unsupported media type "%s": add support with JSON::Schema::Modern::Utilities::add_media_type(...)', $content_type);
+  }
+
+  if ($content_type =~ m{^\Fmultipart/} or fc($content_type) eq 'application/x-www-form-urlencoded'
+      and my $keyword = first { exists $content_obj->{$media_type}{$_} } qw(encoding prefixEncoding itemEncoding)) {
+    return E({ %$state, keyword => $keyword }, '%s not yet supported', $keyword);
+  }
+
+  return $content_ref;
 }
 
 # wrap a result object around the errors
