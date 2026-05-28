@@ -2643,27 +2643,61 @@ paths:
       requestBody:
         required: true
         content:
-          '*/*':
+          '*/*':        # anything that can be deserialized to an object is valid (json, yaml...)
             schema:
-              minLength: 10
+              type: object
 YAML
 
-  $request = request('POST', 'http://example.com/foo', [ 'Content-Type' => 'unsupported/unsupported' ], '!!!');
+  $result = $openapi->validate_request(request('POST', 'http://example.com/foo',
+    [ 'Content-Type' => 'application/json' ], '{"a":1}'));
   is_equal(
-    $openapi->validate_request($request)->TO_JSON,
-    {
-      valid => false,
-      errors => [
-        {
-          instanceLocation => '/request/body/content',
-          keywordLocation => jsonp(qw(/paths /foo post requestBody content */* schema minLength)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content */* schema minLength)))->to_string,
-          error => 'length is less than 10',
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      { valid => true },
+      {
+        request => {
+          body => {
+            content => { a => 1 },
+          },
         },
-      ],
-    },
+      },
+    ],
+    'application/json can be deserialized, and matches the */* media-type entry',
+  );
+
+  $result = $openapi->validate_request(request('POST', 'http://example.com/foo',
+    [ 'Content-Type' => 'unknown/type' ], '!!!'));
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      {
+        valid => false,
+        errors => [
+          {
+            instanceLocation => '/request/body/content',
+            keywordLocation => jsonp(qw(/paths /foo post requestBody content */* schema type)),
+            absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content */* schema type)))->to_string,
+            error => 'got string, not object',
+          },
+        ],
+      },
+      {
+        request => {
+          body => {
+            content => '!!!',
+          },
+        },
+      },
+    ],
     'unknown content type can still be evaluated if */* is an acceptable media-type',
   );
+
 
   $request = request('POST', 'http://example.com/foo', [ 'Content-Type' => 'a/b' ], '0');
   is_equal(
@@ -2673,9 +2707,9 @@ YAML
       errors => [
         {
           instanceLocation => '/request/body/content',
-          keywordLocation => jsonp(qw(/paths /foo post requestBody content */* schema minLength)),
-          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content */* schema minLength)))->to_string,
-          error => 'length is less than 10',
+          keywordLocation => jsonp(qw(/paths /foo post requestBody content */* schema type)),
+          absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content */* schema type)))->to_string,
+          error => 'got string, not object',
         },
       ],
     },

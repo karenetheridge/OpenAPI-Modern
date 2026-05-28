@@ -1,6 +1,9 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - when the best-matching media-type is "*/*", we will now still
+            attempt to decode the message content, so it can be used in
+            $result->data
 
 0.138     2026-05-30 17:52:03Z
           - adjust tests for changes in JSON::Schema::Modern 0.640
