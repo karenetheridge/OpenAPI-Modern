@@ -1558,12 +1558,17 @@ sub _deserialize_content ($self, $content_ref, $state, $content_obj, $media_type
       or all { ref $_ eq 'HASH' ? !keys %$_ : $_ }
         ($media_type_obj->{schema}//(), $media_type_obj->{itemSchema}//());
 
-    abort($saved_state, 'EXCEPTION: unsupported media type "%s": add support with JSON::Schema::Modern::Utilities::add_media_type(...)', $content_type);
+    # coming soon!
+    abort($saved_state, 'EXCEPTION: unimplemented media type "%s"', $content_type =~ s/;.*\z//r)
+      if match_media_type($content_type, ['multipart/*']);
+
+    abort($saved_state, 'EXCEPTION: unsupported media type "%s": add support with JSON::Schema::Modern::Utilities::add_media_type(...)', $content_type =~ s/;.*\z//r);
   }
 
-  if ($content_type =~ m{^\Fmultipart/} or fc($content_type) eq 'application/x-www-form-urlencoded'
+  # coming soon!
+  if (match_media_type($content_type, ['application/x-www-form-urlencoded', 'multipart/*'])
       and my $keyword = first { exists $content_obj->{$media_type}{$_} } qw(encoding prefixEncoding itemEncoding)) {
-    return E({ %$state, keyword => $keyword }, '%s not yet supported', $keyword);
+    return E({ %$state, keyword => $keyword }, '%s keyword not yet implemented', $keyword);
   }
 
   return $deserialized_content_ref;

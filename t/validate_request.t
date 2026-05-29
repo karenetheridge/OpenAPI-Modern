@@ -5040,7 +5040,7 @@ YAML
   );
 };
 
-subtest 'itemSchema' => sub {
+subtest $::TYPE.': itemSchema' => sub {
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => $doc_uri,
     openapi_schema => decode_yaml(OPENAPI_PREAMBLE.<<'YAML'));
