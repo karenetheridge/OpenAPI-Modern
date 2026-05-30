@@ -28,7 +28,7 @@ use builtin::compat qw(indexed blessed);
 use Feature::Compat::Try;
 use Encode 2.89 ();
 use JSON::Schema::Modern;
-use JSON::Schema::Modern::Utilities qw(jsonp unjsonp canonical_uri E abort is_equal true false get_type is_type jsonp_set jsonp_get decode_media_type match_media_type);
+use JSON::Schema::Modern::Utilities qw(jsonp unjsonp canonical_uri E abort is_equal true false get_type is_type jsonp_set jsonp_get jsonp_elements decode_media_type match_media_type);
 use OpenAPI::Modern::Utilities qw(add_vocab_and_default_schemas add_formats convert_request convert_response uri_decode intersect_types coerce_primitive uri_encode uri_encode_strict is_cookie_name is_cookie_value elem deserialize_multipart);
 use JSON::Schema::Modern::Document::OpenAPI;
 use MooX::TypeTiny 0.002002;
@@ -1615,7 +1615,8 @@ sub _deserialize_content ($self, $content_ref, $state, $content_obj, $media_type
     exists $media_type_obj->{itemSchema}                    # schema_state, schema
       ? ({ %$state, keyword_path => $state->{keyword_path}.'/itemSchema' }, $media_type_obj)
       : ({ %$state, keyword_path => $state->{keyword_path}.'/schema' }, $media_type_obj->{schema}),
-    { %$state },                                            # encoding_state
+    { %$state,                                              # encoding_state
+      $headers_ref ? (header_path => $state->{data_path} =~ s{/content\z}{/header}r) : () },
     # v3.1.2 §4.8.14.1: "The encoding field SHALL only apply to Request Body Objects"
     $state->{data_path} =~ m{^/request/body/} || $self->openapi_document->oas_version >= '3.2'
       ? $media_type_obj : undef,                            # encoding_parent
@@ -1646,6 +1647,8 @@ sub _decode_content ($self, $content_ref, $headers_ref, $schema_state, $schema, 
 
   $encoding_state->{is_form} = match_media_type($content_type, [qw(application/x-www-form-urlencoded multipart/form-data)]);
 
+  my $header_map = {};  # form names to array indices of their originating part
+
   if (match_media_type($content_type, ['multipart/form-data'])) {
     # RFC7578 §4.6: respect parts named '_charset_'
     foreach my $idx (reverse 0..$content_ref->$*->$#*) {
@@ -1670,10 +1673,16 @@ sub _decode_content ($self, $content_ref, $headers_ref, $schema_state, $schema, 
 
         if (not exists $part_hash->{$name}) { # single string value
           $part_hash->{$name} = $value;
+          $header_map->{$name} = $idx;
         }
         else {                                # array of multiple string values
-          $part_hash->{$name} = [ $part_hash->{$name} ] if ref $part_hash->{$name} ne 'ARRAY';
+          if (ref $part_hash->{$name} ne 'ARRAY') {
+            $part_hash->{$name} = [ $part_hash->{$name} ];
+            $header_map->{$name} = [ $header_map->{$name} ];
+          }
+
           push $part_hash->{$name}->@*, $value;
+          push $header_map->{$name}->@*, $idx;
         }
       }
 
@@ -1783,8 +1792,13 @@ sub _decode_content ($self, $content_ref, $headers_ref, $schema_state, $schema, 
           my ($schema_state, $schema) = _adjust_state_for_array($self, $idx, $schema_state, $schema);
 
           my $encoding_state = { %$encoding_state, depth => $encoding_state->{depth}+1,
-            data_path => $encoding_state->{data_path}.'/'.$idx };
+            data_path => $encoding_state->{data_path}.'/'.$idx,
+            match_media_type($content_type, ['multipart/form-data'])
+              ? (header_path => $encoding_state->{header_path}.'/'.$header_map->{$property}[$idx]) : ()
+          };
+
           ()= $self->_decode_content_element(\ $content_ref->$*->{$property}[$idx],
+            $headers ? $headers->[$header_map->{$property}[$idx]] : undef,
             $property, $schema_state, $schema, $encoding_state, $encoding_obj);
         }
       }
@@ -1794,7 +1808,13 @@ sub _decode_content ($self, $content_ref, $headers_ref, $schema_state, $schema, 
         # v3.2.0 §4.15.5 1: "... For all other value types for both top-level non-array properties
         # and for values, including array values, within a top-level array, the Encoding Object
         # MUST be applied to the entire value."
+
+        my $encoding_state = { %$encoding_state,
+          match_media_type($content_type, ['multipart/form-data'])
+            ? (header_path => $encoding_state->{header_path}.'/'.$header_map->{$property}) : () };
+
         ()= $self->_decode_content_element(\ $content_ref->$*->{$property},
+          $headers && $encoding_state->{is_form} ? $headers->[$header_map->{$property}] : undef,
           $property, $schema_state, $schema, $encoding_state, $encoding_obj);
       }
     } # end foreach property
@@ -1804,7 +1824,9 @@ sub _decode_content ($self, $content_ref, $headers_ref, $schema_state, $schema, 
     foreach my $idx (0 .. $content_ref->$*->$#*) {
       my ($schema_state, $schema) = _adjust_state_for_array($self, $idx, $schema_state, $schema);
       my $encoding_state = { %$encoding_state, depth => $encoding_state->{depth}+1,
-        data_path => $encoding_state->{data_path}.'/'.$idx };
+        data_path => $encoding_state->{data_path}.'/'.$idx,
+        match_media_type($content_type, ['multipart/*']) ? (header_path => $encoding_state->{header_path}.'/'.$idx) : (),
+      };
       my $encoding_obj;
 
       if ((($encoding_parent//{})->{prefixEncoding}//[])->[$idx]) {
@@ -1830,13 +1852,14 @@ sub _decode_content ($self, $content_ref, $headers_ref, $schema_state, $schema, 
         $encoding_obj = (($encoding_obj//{})->{encoding}//{})->{$property};
 
         ()= $self->_decode_content_element(\ $content_ref->$*->[$idx]{$property},
-          $property, $schema_state, $schema, $encoding_state, $encoding_obj);
+          $headers->[$idx], $property, $schema_state, $schema, $encoding_state, $encoding_obj);
       }
       else {
         # we are parsing array-based data from some other decoding
 
+        # no headers once we're recursing into a part's data (TODO: need headers for multipart/mixed)
         ()= $self->_decode_content_element(\ $content_ref->$*->[$idx],
-          $idx, $schema_state, $schema, $encoding_state, $encoding_obj);
+          undef, $idx, $schema_state, $schema, $encoding_state, $encoding_obj);
       }
     } # end foreach array item
   } # end ARRAY
@@ -1849,7 +1872,32 @@ sub _decode_content ($self, $content_ref, $headers_ref, $schema_state, $schema, 
 
 # decode one object property value, or one array item value, while iterating over the entire object
 # or array, and continue to recurse on the decoded content
-sub _decode_content_element ($self, $element_ref, $name, $schema_state, $schema, $encoding_state, $encoding_obj) {
+sub _decode_content_element ($self, $element_ref, $headers, $name, $schema_state, $schema, $encoding_state, $encoding_obj) {
+  # validate all encoding headers
+  if (($encoding_obj//{})->{headers} and defined $encoding_state->{header_path}) {
+    foreach my $header_name (keys $encoding_obj->{headers}->%*) {
+      # v3.2.0 §4.15.1.1: "Content-Type is described separately and SHALL be ignored in this section."
+      next if fc $header_name eq fc 'Content-Type';
+
+      my $header_obj = $encoding_obj->{headers}{$header_name};
+      my $state = { %$encoding_state, data_path => $encoding_state->{header_path},
+        keyword_path => jsonp($encoding_state->{keyword_path}, 'headers', $header_name) };
+      while (defined(my $ref = $header_obj->{'$ref'})) {
+        $header_obj = $self->_resolve_ref('header', $ref, $state);
+      }
+
+      my $h = Mojo::Headers->new;
+      $h->add($_ => ref $headers->{$_} eq 'ARRAY' ? $headers->{$_}->@* : $headers->{$_})
+        foreach keys(($headers//{})->%*);
+      if ($self->_validate_parameter({ %$state, depth => $state->{depth}+1 }, $header_obj,
+          name => $header_name, headers => $h)) {
+        my $path = jsonp($state->{data_path}, $header_name);
+        $headers->{$header_name} = jsonp_get($state->{data}, $state->{data_path})->{$header_name}
+          if any { m{^$path(?:/|\z)} } keys jsonp_elements($state->{data})->%*;
+      }
+    }
+  }
+
   my ($element_decoded_ref, $content_type);
 
   # if this element is not a string, we assume it was already correctly decoded into the correct
@@ -1883,15 +1931,23 @@ sub _decode_content_element ($self, $element_ref, $name, $schema_state, $schema,
   else {
     my $local_state;    # used for media-type decoding
 
-    # TODO: split by comma and pick the first media-type that decodes successfully, or for multipart
-    # content we have the Content-Type header available for comparison against the OAD
-    if (defined($content_type = ($encoding_obj//{})->{contentType})) {
+    # prefer Content-Type over encoding/contentType
+    if (defined($content_type = ($headers//{})->{'Content-Type'})) {
+      ()= E({ %$encoding_state, data_path => $encoding_state->{header_path}.'/Content-Type',
+            keyword_path => $encoding_state->{keyword_path}.'/contentType',
+            recommended_response => [ 415 ] },
+          'incorrect Content-Type "%s"', $headers->{'Content-Type'})
+        if defined(($encoding_obj//{})->{contentType})
+          and not match_media_type($content_type, [$encoding_obj->{contentType}]);
+      $local_state = $encoding_state;
+    }
+    elsif (defined($content_type = ($encoding_obj//{})->{contentType})) {
+      # TODO: split contentType by comma and try each of them to see which decodes successfully
       $local_state = { %$encoding_state, keyword_path => $encoding_state->{keyword_path}.'/contentType' };
     }
     elsif (ref $schema eq 'HASH') {
       # v3.2.0 §4.14.1: "If no Encoding Object is provided for a property or item, the behavior is
       # determined by the default values documented for the Encoding Object."
-
       $local_state = { %$schema_state };  # ends in /schema iff at root
       my @types = $self->_type_in_schema($schema, { %$local_state });
       $content_type =

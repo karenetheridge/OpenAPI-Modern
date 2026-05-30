@@ -1495,7 +1495,12 @@ components:
         X-Test:
           $ref: '#/components/headers/multipart'
       content:
-        multipart/form-data: {}
+        multipart/form-data:
+          encoding:
+            a:
+              headers:
+                X-Test:
+                  $ref: '#/components/headers/multipart'
 paths:
   /foo:
     post:
@@ -1506,7 +1511,7 @@ paths:
 YAML
 
   my $result = $openapi->validate_response(response(200,
-      [ 'Content-Type' => 'multipart/form-data', 'X-Test' => 1 ], [ [ a => 1 ] ]),
+      [ 'Content-Type' => 'multipart/form-data', 'X-Test' => 1 ], [ [ a => 1, 'X-Test' => 1 ] ]),
     { operation_id => 'me' });
 
   is_equal(
@@ -1524,12 +1529,18 @@ YAML
             absoluteKeywordLocation => $doc_uri->clone->fragment('/components/headers/multipart/content')->to_string,
             error => 'multipart content is not permitted outside request and response bodies',
           },
+          {
+            instanceLocation => '/response/body/header/0/X-Test',
+            keywordLocation => jsonp(qw(/paths /foo post responses default $ref content multipart/form-data encoding a headers X-Test $ref content)),
+            absoluteKeywordLocation => $doc_uri->clone->fragment('/components/headers/multipart/content')->to_string,
+            error => 'multipart content is not permitted outside request and response bodies',
+          },
         ],
       },
       {
         response => {
           body => {
-            header => [ { 'Content-Disposition' => 'form-data; name="a"' } ],
+            header => [ { 'Content-Disposition' => 'form-data; name="a"', 'X-Test' => '1' } ],
             content => { 'a' => '1' },
           },
         },

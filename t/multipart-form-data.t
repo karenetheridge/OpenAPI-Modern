@@ -186,6 +186,15 @@ paths:
             encoding:
               x:
                 contentType: text/to_upper
+  /nested_encoding_no_schema:
+    post:
+      requestBody:
+        content:
+          multipart/form-data:
+            encoding:
+              x:
+                itemEncoding:
+                  contentType: text/to_upper
 YAML
 
   my $result = $openapi->validate_request(request('POST', 'http://example.com/empty_media_type',
@@ -260,6 +269,34 @@ YAML
     'message parts are returned as-is as an array when there is an empty itemSchema',
   );
 
+  $result = $openapi->validate_request(request('POST', 'http://example.com/empty_media_type',
+    [ 'Content-Type' => 'multipart/form-data' ],
+    [
+      [ x => [ '{"id":123}', '{"address":42}' ], 'Content-Type' => 'application/json' ],
+      [ x => '{"secret":true}', 'Content-Type' => 'application/json' ],
+    ]));
+
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      { valid => true },
+      {
+        request => {
+          body => {
+            header => [ ({ 'Content-Disposition' => 'form-data; name="x"', 'Content-Type' => 'application/json' })x3 ],
+            content => {
+              x => [ { id => 123 }, { address => 42 }, { secret => true } ],
+            },
+          },
+        },
+      },
+    ],
+    'message parts are json-decoded via Content-Type header, even without any schema or encoding object',
+  );
+
 
   $result = $openapi->validate_request(request('POST', 'http://example.com/encoding_no_schema',
     [ 'Content-Type' => 'multipart/form-data' ],
@@ -284,11 +321,38 @@ YAML
     'encoding is still respected when there is no schema for that part of the data',
   );
 
+  $result = $openapi->validate_request(request('POST', 'http://example.com/nested_encoding_no_schema',
+    [ 'Content-Type' => 'multipart/form-data' ],
+    [ [ x => '["Hello","World!"]', 'Content-Type' => 'application/json' ] ]));
+
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      { valid => true },
+      {
+        request => {
+          body => {
+            header => [ { 'Content-Disposition' => 'form-data; name="x"', 'Content-Type' => 'application/json' } ],
+            content => { x => [ 'HELLO', 'WORLD!' ] },
+          },
+        },
+      },
+    ],
+    'itemEncoding is still respected when there is no schema for that part of the data',
+  );
+
 
   $openapi = OpenAPI::Modern->new(
     openapi_uri => $doc_uri,
     openapi_schema => decode_yaml(OPENAPI_PREAMBLE.<<'YAML'));
 components:
+  headers:
+    multipart:
+      content:
+        multipart/form-data: {}
   parameters:
     multipart:
       in: header
@@ -298,7 +362,12 @@ components:
   requestBodies:
     multipart:
       content:
-        multipart/form-data: {}
+        multipart/form-data:
+          encoding:
+            a:
+              headers:
+                X-Test:
+                  $ref: '#/components/headers/multipart'
 paths:
   /foo:
     post:
@@ -309,7 +378,7 @@ paths:
 YAML
 
   $result = $openapi->validate_request(request('POST', 'http://example.com/foo',
-    [ 'Content-Type' => 'multipart/form-data', 'X-Test' => 1 ], [ [ a => 1 ] ]));
+    [ 'Content-Type' => 'multipart/form-data', 'X-Test' => 1 ], [ [ a => 1, 'X-Test' => 1 ] ]));
 
   is_equal(
     [
@@ -326,12 +395,18 @@ YAML
             absoluteKeywordLocation => $doc_uri->clone->fragment('/components/parameters/multipart/content')->to_string,
             error => 'multipart content is not permitted outside request and response bodies',
           },
+          {
+            instanceLocation => '/request/body/header/0/X-Test',
+            keywordLocation => jsonp(qw(/paths /foo post requestBody $ref content multipart/form-data encoding a headers X-Test $ref content)),
+            absoluteKeywordLocation => $doc_uri->clone->fragment('/components/headers/multipart/content')->to_string,
+            error => 'multipart content is not permitted outside request and response bodies',
+          },
         ],
       },
       {
         request => {
           body => {
-            header => [ { 'Content-Disposition' => 'form-data; name="a"' } ],
+            header => [ { 'Content-Disposition' => 'form-data; name="a"', 'X-Test' => '1' } ],
             content => { 'a' => '1' },
           },
         },
@@ -722,6 +797,74 @@ YAML
   $result = $openapi->validate_request(request('POST', 'http://example.com/object',
     [ 'Content-Type' => 'multipart/form-data' ],
     $body = [
+      [ yatta => $yatta_encoded, 'Content-Type' => 'text/plain; charset=Shift_JIS' ],
+      [ yatta2 => [ ($yatta_encoded)x2 ], 'Content-Type' => 'text/plain; charset=Shift_JIS' ],
+    ],
+  ));
+
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      { valid => true },
+      {
+        request => {
+          body => {
+            header => [
+              {
+                'Content-Type' => 'text/plain; charset=Shift_JIS',
+                'Content-Disposition' => 'form-data; name="yatta"',
+              },
+              ({
+                'Content-Type' => 'text/plain; charset=Shift_JIS',
+                'Content-Disposition' => 'form-data; name="yatta2"',
+              })x2,
+            ],
+            $object_data->{request}{body}->%{content},
+          },
+        },
+      },
+    ],
+    'multipart/form-data decoding uses just Content-Type, for object',
+  );
+
+  $result = $openapi->validate_request(request('POST', 'http://example.com/array',
+    [ 'Content-Type' => 'multipart/form-data' ], $body));
+
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      { valid => true },
+      {
+        request => {
+          body => {
+            header => [
+              {
+                'Content-Type' => 'text/plain; charset=Shift_JIS',
+                'Content-Disposition' => 'form-data; name="yatta"',
+              },
+              ({
+                'Content-Type' => 'text/plain; charset=Shift_JIS',
+                'Content-Disposition' => 'form-data; name="yatta2"',
+              })x2,
+            ],
+            $array_data->{request}{body}->%{content},
+          },
+        },
+      },
+    ],
+    'multipart/form-data decoding uses just Content-Type, for array',
+  );
+
+
+  $result = $openapi->validate_request(request('POST', 'http://example.com/object',
+    [ 'Content-Type' => 'multipart/form-data' ],
+    $body = [
       [ yatta => $yatta_encoded ],
       [ yatta2 => [ ($yatta_encoded)x2 ] ],
     ],
@@ -856,6 +999,288 @@ YAML
       $array_data,
     ],
     'multipart/form-data decoding uses contentType for arrays',
+  );
+
+
+  $result = $openapi->validate_request(request('POST', 'http://example.com/object',
+    [ 'Content-Type' => 'multipart/form-data' ],
+    $body = [
+      [ yatta => $yatta_encoded, 'Content-Type' => 'text/plain; charset=Shift_JIS' ],
+      [ yatta2 => [ ($yatta_encoded)x2 ], 'Content-Type' => 'text/plain; charset=Shift_JIS' ],
+    ],
+  ));
+
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      { valid => true },
+      {
+        request => {
+          body => {
+            header => [
+              {
+                'Content-Type' => 'text/plain; charset=Shift_JIS',
+                'Content-Disposition' => 'form-data; name="yatta"',
+              },
+              ({
+                'Content-Type' => 'text/plain; charset=Shift_JIS',
+                'Content-Disposition' => 'form-data; name="yatta2"',
+              })x2,
+            ],
+            $object_data->{request}{body}->%{content},
+          },
+        },
+      },
+    ],
+    'multipart/form-data decoding uses both contentType and Content-Type for objects',
+  );
+
+  $result = $openapi->validate_request(request('POST', 'http://example.com/array',
+    [ 'Content-Type' => 'multipart/form-data' ], $body));
+
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      { valid => true },
+      {
+        request => {
+          body => {
+            header => [
+              {
+                'Content-Type' => 'text/plain; charset=Shift_JIS',
+                'Content-Disposition' => 'form-data; name="yatta"',
+              },
+              ({
+                'Content-Type' => 'text/plain; charset=Shift_JIS',
+                'Content-Disposition' => 'form-data; name="yatta2"',
+              })x2,
+            ],
+            $array_data->{request}{body}->%{content},
+          },
+        },
+      },
+    ],
+    'multipart/form-data decoding uses both contentType and Content-Type for arrays',
+  );
+
+
+  $result = $openapi->validate_request(request('POST', 'http://example.com/object',
+    [ 'Content-Type' => 'multipart/form-data' ],
+    $body = [
+      [ yatta => Encode::encode('UTF-8', 'やった'), 'Content-Type' => 'text/plain; charset=UTF-8' ],
+      [ yatta2 => [ (Encode::encode('UTF-8', 'やった'))x2 ], 'Content-Type' => 'text/plain; charset=UTF-8' ],
+    ],
+  ));
+
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      {
+        valid => false,
+        errors => [
+          {
+            instanceLocation => '/request/body/header/0/Content-Type',
+            keywordLocation => jsonp(qw(/paths /object post requestBody content multipart/form-data encoding yatta contentType)),
+            absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /object post requestBody content multipart/form-data encoding yatta contentType)))->to_string,
+            error => 'incorrect Content-Type "text/plain; charset=UTF-8"',
+          },
+          map +{
+            instanceLocation => '/request/body/header/'.$_.'/Content-Type',
+            keywordLocation => jsonp(qw(/paths /object post requestBody content multipart/form-data encoding yatta2 contentType)),
+            absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /object post requestBody content multipart/form-data encoding yatta2 contentType)))->to_string,
+            error => 'incorrect Content-Type "text/plain; charset=UTF-8"',
+          }, 1..2,
+        ],
+      },
+      {
+        request => {
+          body => {
+            header => [
+              {
+                'Content-Disposition' => 'form-data; name="yatta"',
+                'Content-Type' => 'text/plain; charset=UTF-8',
+              },
+              ({
+                'Content-Disposition' => 'form-data; name="yatta2"',
+                'Content-Type' => 'text/plain; charset=UTF-8',
+              })x2,
+            ],
+            # message payload still successfully decodes using UTF-8 decoding
+            $object_data->{request}{body}->%{content},
+          },
+        },
+      },
+    ],
+    'multipart/form-data object decoding, prefer Content-Type over encoding/contentType, with object',
+  );
+
+  $result = $openapi->validate_request(request('POST', 'http://example.com/array',
+    [ 'Content-Type' => 'multipart/form-data' ], $body));
+
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      {
+        valid => false,
+        errors => [
+          {
+            instanceLocation => '/request/body/header/0/Content-Type',
+            keywordLocation => jsonp(qw(/paths /array post requestBody content multipart/form-data itemEncoding encoding yatta contentType)),
+            absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /array post requestBody content multipart/form-data itemEncoding encoding yatta contentType)))->to_string,
+            error => 'incorrect Content-Type "text/plain; charset=UTF-8"',
+          },
+          map +{
+            instanceLocation => '/request/body/header/'.$_.'/Content-Type',
+            keywordLocation => jsonp(qw(/paths /array post requestBody content multipart/form-data itemEncoding encoding yatta2 contentType)),
+            absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /array post requestBody content multipart/form-data itemEncoding encoding yatta2 contentType)))->to_string,
+            error => 'incorrect Content-Type "text/plain; charset=UTF-8"',
+          }, 1..2,
+        ],
+      },
+      {
+        request => {
+          body => {
+            header => [
+              {
+                'Content-Disposition' => 'form-data; name="yatta"',
+                'Content-Type' => 'text/plain; charset=UTF-8',
+              },
+              ({
+                'Content-Disposition' => 'form-data; name="yatta2"',
+                'Content-Type' => 'text/plain; charset=UTF-8',
+              })x2,
+            ],
+            # message payload still successfully decodes using UTF-8 decoding
+            $array_data->{request}{body}->%{content},
+          },
+        },
+      },
+    ],
+    'multipart/form-data object decoding, prefer Content-Type over encoding/contentType, with array',
+  );
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri,
+    openapi_schema => decode_yaml(OPENAPI_PREAMBLE.<<'YAML'));
+paths:
+  /object:
+    post:
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                yatta:
+                  type: [ array, string ]
+                  items:
+                    type: string
+                yatta2:
+                  type: [ array, string ]
+                  items:
+                    type: string
+            encoding:
+              yatta:
+                contentType: text/plain
+              yatta2:
+                contentType: text/plain
+  /array:
+    post:
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: array
+              items:
+                type: object
+                properties:
+                  yatta:
+                    type: string
+                  yatta2:
+                    type: string
+            itemEncoding:
+              encoding:
+                yatta:
+                  contentType: text/plain
+                yatta2:
+                  contentType: text/plain
+YAML
+
+  $result = $openapi->validate_request(request('POST', 'http://example.com/object',
+    [ 'Content-Type' => 'multipart/form-data' ], $body));
+
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      { valid => true },
+      {
+        request => {
+          body => {
+            header => [
+              {
+                'Content-Disposition' => 'form-data; name="yatta"',
+                'Content-Type' => 'text/plain; charset=UTF-8',
+              },
+              ({
+                'Content-Disposition' => 'form-data; name="yatta2"',
+                'Content-Type' => 'text/plain; charset=UTF-8',
+              })x2,
+            ],
+            # message payload still successfully decodes using UTF-8 decoding
+            $object_data->{request}{body}->%{content},
+          },
+        },
+      },
+    ],
+    'multipart/form-data object decoding, more specific Content-Type is used over encoding/contentType, with object',
+  );
+
+  $result = $openapi->validate_request(request('POST', 'http://example.com/array',
+    [ 'Content-Type' => 'multipart/form-data' ], $body));
+
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      { valid => true },
+      {
+        request => {
+          body => {
+            header => [
+              {
+                'Content-Disposition' => 'form-data; name="yatta"',
+                'Content-Type' => 'text/plain; charset=UTF-8',
+              },
+              ({
+                'Content-Disposition' => 'form-data; name="yatta2"',
+                'Content-Type' => 'text/plain; charset=UTF-8',
+              })x2,
+            ],
+            # message payload still successfully decodes using UTF-8 decoding
+            $array_data->{request}{body}->%{content},
+          },
+        },
+      },
+    ],
+    'multipart/form-data object decoding, more specific Content-Type is used over encoding/contentType, with array',
   );
 
 
@@ -1110,6 +1535,253 @@ YAML
   );
 
   disallow_patterns($dancer_pattern);
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri,
+    openapi_schema => decode_yaml(OPENAPI_PREAMBLE.<<'YAML'));
+components:
+  headers:
+    MyRequiredHeader:
+      required: true
+      schema:
+        # default deserialization is style=simple, explode=false
+        type: array
+        items:
+          type: number
+    MyOptionalHeader:
+      schema: {}
+paths:
+  /object:
+    post:
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                hello:
+                  type: string
+                hello2:
+                  type: [ array, string ]
+                  items:
+                    type: string
+            encoding:
+              hello:
+                headers:
+                  X-Test:
+                    $ref: '#/components/headers/MyRequiredHeader'
+                  Content-Type:
+                    required: true
+                    schema: false
+                  'Null':
+                    $ref: '#/components/headers/MyOptionalHeader'
+              hello2:
+                headers:
+                  X-Test:
+                    $ref: '#/components/headers/MyRequiredHeader'
+                  Content-Type:
+                    required: true
+                    schema: false
+  /array:
+    post:
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: array
+              items:
+                type: object
+                properties:
+                  hello:
+                    type: string
+                  hello2:
+                    type: string
+            itemEncoding:
+              encoding:
+                hello:
+                  headers:
+                    X-Test:
+                      $ref: '#/components/headers/MyRequiredHeader'
+                    Content-Type:
+                      required: true
+                      schema: false
+                    'Null':
+                      $ref: '#/components/headers/MyOptionalHeader'
+                hello2:
+                  headers:
+                    X-Test:
+                      $ref: '#/components/headers/MyRequiredHeader'
+                    Content-Type:
+                      required: true
+                      schema: false
+YAML
+
+  $result = $openapi->validate_request(request('POST', 'http://example.com/object',
+    [ 'Content-Type' => 'multipart/form-data' ],
+    $body = [
+      [ hello => 'yes', 'Content-Type' => 'text/plain' ],
+      ([ hello2 => 'yes', 'Content-Type' => 'text/plain' ])x2,
+    ],
+  ));
+
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      {
+        valid => false,
+        errors => [
+          {
+            instanceLocation => '/request/body/header/0',
+            keywordLocation => jsonp(qw(/paths /object post requestBody content multipart/form-data encoding hello headers X-Test $ref required)),
+            absoluteKeywordLocation => $doc_uri->clone->fragment('/components/headers/MyRequiredHeader/required')->to_string,
+            error => 'missing header: X-Test',
+          },
+          map +{
+            instanceLocation => '/request/body/header/'.$_,
+            keywordLocation => jsonp(qw(/paths /object post requestBody content multipart/form-data encoding hello2 headers X-Test $ref required)),
+            absoluteKeywordLocation => $doc_uri->clone->fragment('/components/headers/MyRequiredHeader/required')->to_string,
+            error => 'missing header: X-Test',
+          }, 1..2,
+        ],
+      },
+      {
+        request => {
+          body => {
+            header => [
+              { 'Content-Disposition' => 'form-data; name="hello"', 'Content-Type' => 'text/plain' },
+              ({ 'Content-Disposition' => 'form-data; name="hello2"', 'Content-Type' => 'text/plain' })x2,
+            ],
+            content => {
+              hello => 'yes',
+              hello2 => [ 'yes', 'yes' ],
+            },
+          },
+        },
+      },
+    ],
+    'multipart/form-data object decoding, error when a part header is missing, as object',
+  );
+
+  $result = $openapi->validate_request(request('POST', 'http://example.com/array',
+    [ 'Content-Type' => 'multipart/form-data' ], $body));
+
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      {
+        valid => false,
+        errors => [
+          {
+            instanceLocation => '/request/body/header/0',
+            keywordLocation => jsonp(qw(/paths /array post requestBody content multipart/form-data itemEncoding encoding hello headers X-Test $ref required)),
+            absoluteKeywordLocation => $doc_uri->clone->fragment('/components/headers/MyRequiredHeader/required')->to_string,
+            error => 'missing header: X-Test',
+          },
+          map +{
+            instanceLocation => '/request/body/header/'.$_,
+            keywordLocation => jsonp(qw(/paths /array post requestBody content multipart/form-data itemEncoding encoding hello2 headers X-Test $ref required)),
+            absoluteKeywordLocation => $doc_uri->clone->fragment('/components/headers/MyRequiredHeader/required')->to_string,
+            error => 'missing header: X-Test',
+          }, 1..2,
+        ],
+      },
+      {
+        request => {
+          body => {
+            header => [
+              { 'Content-Disposition' => 'form-data; name="hello"', 'Content-Type' => 'text/plain' },
+              ({ 'Content-Disposition' => 'form-data; name="hello2"', 'Content-Type' => 'text/plain' })x2,
+            ],
+            content => [
+              { hello => 'yes' },
+              ({ hello2 => 'yes' })x2,
+            ],
+          },
+        },
+      },
+    ],
+    'multipart/form-data array decoding, error when a part header is missing',
+  );
+
+
+  $result = $openapi->validate_request(request('POST', 'http://example.com/object',
+    [ 'Content-Type' => 'multipart/form-data' ],
+    $body = [
+      [ hello => 'yes', 'Content-Type' => 'text/plain', 'X-Test' => '42,99' ],
+      [ hello2 => 'yes', 'Content-Type' => 'text/plain', 'X-Test' => '50,61' ],
+      [ hello2 => 'yes', 'Content-Type' => 'text/plain', 'X-Test' => '90', 'X-Test' => '91' ],
+    ],
+  ));
+
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      { valid => true },
+      $result_data = {
+        request => {
+          body => {
+            header => [
+              {
+                'Content-Disposition' => 'form-data; name="hello"',
+                'Content-Type' => 'text/plain',
+                'X-Test' => [ 42, 99 ],
+              },
+              {
+                'Content-Disposition' => 'form-data; name="hello2"',
+                'Content-Type' => 'text/plain',
+                'X-Test' => [ 50, 61 ],
+              },
+              {
+                'Content-Disposition' => 'form-data; name="hello2"',
+                'Content-Type' => 'text/plain',
+                'X-Test' => [ 90, 91 ],
+              },
+            ],
+            content => {
+              hello => 'yes',
+              hello2 => [ 'yes', 'yes' ],
+            },
+          },
+        },
+      },
+    ],
+    'multipart/form-data object decoding, part headers are style-deserialized, as an object',
+  );
+
+  $result = $openapi->validate_request(request('POST', 'http://example.com/array',
+    [ 'Content-Type' => 'multipart/form-data' ], $body));
+
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      { valid => true },
+      {
+        request => {
+          body => {
+            $result_data->{request}{body}->%{header},
+            content => [
+              { hello => 'yes' },
+              ({ hello2 => 'yes' })x2,
+            ],
+          },
+        },
+      },
+    ],
+    'multipart/form-data object decoding, part headers are style-deserialized, as an array',
+  );
 
 
   $openapi = OpenAPI::Modern->new(
