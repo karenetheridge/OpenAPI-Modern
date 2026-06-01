@@ -1489,8 +1489,6 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
       'missing header: Content-Type')
     if not length $content_type;
 
-  $state->{data_path} .= '/content';
-
   my $media_type = match_media_type($content_type, [ keys $content_obj->%* ]);
   return E({ %$state, keyword => 'content', recommended_response => [ 415 ] },
       'incorrect Content-Type "%s"', $content_type)
@@ -1500,6 +1498,7 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
 
   $content_ref = $self->_deserialize_content($content_ref, { %$state }, $content_obj, $media_type, $content_type);
   return if not $content_ref;
+  $state->{data_path} .= '/content';
 
   jsonp_set($state->{data}, $state->{data_path}, $content_ref->$*);
 

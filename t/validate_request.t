@@ -2374,7 +2374,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/body/content',
+          instanceLocation => '/request/body',
           keywordLocation => jsonp(qw(/paths /foo post requestBody content)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content)))->to_string,
           error => 'incorrect Content-Type "text/bloop"',
@@ -2413,7 +2413,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/body/content',
+          instanceLocation => '/request/body',
           keywordLocation => jsonp(qw(/paths /foo post requestBody content blOOp/HTml)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content blOOp/HTml)))->to_string,
           error => 'EXCEPTION: unsupported media type "blOOp/HTML": add support with JSON::Schema::Modern::Utilities::add_media_type(...)',
@@ -2495,7 +2495,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/body/content',
+          instanceLocation => '/request/body',
           keywordLocation => jsonp(qw(/paths /foo post requestBody content text/plain)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content text/plain)))->to_string,
           error => re(qr/^could not decode content as text\/plain; charset=UTF-8: UTF-8 "\\xE9" does not map to Unicode/),
@@ -2526,7 +2526,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/body/content',
+          instanceLocation => '/request/body',
           keywordLocation => jsonp(qw(/paths /foo post requestBody content text/plain)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content text/plain)))->to_string,
           error => re(qr{^could not decode content as text/plain; charset=UTF-8: UTF-8 "\\xE9" does not map to Unicode}),
@@ -2544,7 +2544,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/body/content',
+          instanceLocation => '/request/body',
           keywordLocation => jsonp(qw(/paths /foo post requestBody content application/json)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content application/json)))->to_string,
           error => re(qr/^could not decode content as application\/json; charset=UTF-8: malformed UTF-8 character in JSON string/),
@@ -2562,7 +2562,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/body/content',
+          instanceLocation => '/request/body',
           keywordLocation => jsonp(qw(/paths /foo post requestBody content application/json)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content application/json)))->to_string,
           error => re(qr/^could not decode content as application\/json; charset=UTF-8: /),
@@ -2737,7 +2737,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/request/body/content',
+          instanceLocation => '/request/body',
           keywordLocation => jsonp(qw(/paths /foo post requestBody content application/json)),
           absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content application/json)))->to_string,
           error => re(qr/^could not decode content as application\/json: malformed JSON string/),

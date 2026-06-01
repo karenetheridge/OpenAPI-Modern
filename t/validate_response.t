@@ -614,7 +614,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/response/body/content',
+          instanceLocation => '/response/body',
           keywordLocation => jsonp(qw(/paths /foo post responses default $ref content)),
           absoluteKeywordLocation => $doc_uri.'#/components/responses/default/content',
           error => 'incorrect Content-Type "text/bloop"',
@@ -631,7 +631,7 @@ YAML
       valid => false,
       errors => [
         {
-          instanceLocation => '/response/body/content',
+          instanceLocation => '/response/body',
           keywordLocation => jsonp(qw(/paths /foo post responses default $ref content bloop/html)),
           absoluteKeywordLocation => $doc_uri.'#/components/responses/default/content/bloop~1html',
           error => 'EXCEPTION: unsupported media type "bloop/html": add support with JSON::Schema::Modern::Utilities::add_media_type(...)',
