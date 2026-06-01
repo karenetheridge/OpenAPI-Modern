@@ -296,19 +296,22 @@ sub _form_urlencoded_content ($body_content) {
 # Accepts an arrayref of message parts; returns a Mojo::Content::MultiPart object
 # only supports multipart/form-data (for now)
 # Each part consists of an arrayref in this format:
-# [ $name => $value ]
-# If value is an arrayref, then a part is created for each value with the same name
+# [ $name => $value, $header_name1 => '..', $header_name2 => '..' ]
+# If value is an arrayref, then a part is created for each value with the same name and headers
 # (see Mojo::UserAgent::Transactor::_parts)
 sub _multipart_body ($raw_parts) {
   my @parts;
   foreach my $part_spec ($raw_parts->@*) {
-    my ($name, $value) = $part_spec->@*;
+    my ($name, $value, @headers) = $part_spec->@*;
 
     foreach my $value (ref $value eq 'ARRAY' ? @$value : ($value)) {
       # construct nested types other than multipart by serializing manually
       die 'unsupported data type '.ref($value) if ref $value;
 
       my $part = Mojo::Content::Single->new->asset(Mojo::Asset::Memory->new->add_chunk($value));
+
+      $part->headers->add($_->[0], ref $_->[1] eq 'ARRAY' ? (map +($_.''), $_->[1]->@*) : $_->[1].'')
+        foreach pairs @headers;
 
       if (not defined $part->headers->content_disposition) {
         $name = Mojo::Util::url_escape($name, '"');

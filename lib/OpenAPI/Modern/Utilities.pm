@@ -381,8 +381,11 @@ sub elem ($items, $set) {
   @$items;
 }
 
-# Operates on a Mojo::Content object; returns all parts as an arrayref of objects:
+# Operates on a Mojo::Content object; returns two values:
+# - all parts as an arrayref of objects:
 #   [ { $name => $value }, { ... }, ... ]
+# - headers for each part as an arrayref of objects:
+#   [ { $header1 => $value, $header2 => $value, ... }, { ... }, ... ]
 # Only the top level is operated on; if there are parts nested inside of parts, those parts will be
 # returned without deserialization, so this function will need to be called again on those parts.
 # Strings are not decoded with charset here, but individual fields' Content-Type are included so
@@ -391,9 +394,13 @@ sub elem ($items, $set) {
 sub deserialize_multipart ($content) {
   die 'body is not multipart' if not blessed $content or not $content->is_multipart;
 
-  my @content;
+  my (@content, @headers);
 
   foreach my $part ($content->parts->@*) {
+    my $headers = $part->headers->to_hash('multi');
+    push @headers, +{ map +($_ => ($headers->{$_}->@* == 1 ? $headers->{$_}[0] : $headers->{$_} )),
+      keys $headers->%* };
+
     my $disposition = $part->headers->content_disposition;
     die 'missing Content-Disposition' if not defined $disposition;
 
@@ -402,7 +409,7 @@ sub deserialize_multipart ($content) {
     push @content, { $name => $value };
   }
 
-  return \@content;
+  return (\@content, \@headers);
 }
 
 {

@@ -1529,6 +1529,7 @@ YAML
       {
         response => {
           body => {
+            header => [ { 'Content-Disposition' => 'form-data; name="a"' } ],
             content => { 'a' => '1' },
           },
         },
@@ -1606,6 +1607,11 @@ YAML
             'X-Test' => 'yes',
           },
           body => {
+            header => [
+              { 'Content-Disposition' => 'form-data; name="id"' },
+              { 'Content-Disposition' => 'form-data; name="profileImage"' },
+              { 'Content-Disposition' => 'form-data; name="address"' },
+            ],
             content => [
               { id => 'f81d4fae-7dec-11d0-a765-00a0c91e6bf6' },
               { profileImage => $raw_image },

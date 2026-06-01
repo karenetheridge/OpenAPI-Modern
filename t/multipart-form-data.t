@@ -143,7 +143,14 @@ YAML
     ],
     [
       { valid => true },
-      { request => { body => { content => { alpha => '42' } } } },
+      {
+        request => {
+          body => {
+            header => [ { 'Content-Disposition' => 'form-data; name="alpha"' } ],
+            content => { alpha => '42' },
+          },
+        },
+      },
     ],
     'multipart/form-data messages with a real multipart body are valid if there is no body schema',
   );
@@ -199,6 +206,9 @@ YAML
       my $result_data = {
         request => {
           body => {
+            header => [
+              ({ 'Content-Disposition' => 'form-data; name="x"' })x3,
+            ],
             content => {
               x => [ '{"id":"123"}', '{"address":"42"}', '{"secret":"hello"}' ],
             },
@@ -237,6 +247,7 @@ YAML
       {
         request => {
           body => {
+            header => [ ({ 'Content-Disposition' => 'form-data; name="x"' })x3 ],
             content => [
               { x => '{"id":"123"}' },
               { x => '{"address":"42"}' },
@@ -264,6 +275,7 @@ YAML
       {
         request => {
           body => {
+            header => [ { 'Content-Disposition' => 'form-data; name="x"' } ],
             content => { x => 'HELLO, WORLD!' },
           },
         },
@@ -297,7 +309,7 @@ paths:
 YAML
 
   $result = $openapi->validate_request(request('POST', 'http://example.com/foo',
-    [ 'Content-Type' => 'multipart/form-data' ], [ [ a => 1 ] ]));
+    [ 'Content-Type' => 'multipart/form-data', 'X-Test' => 1 ], [ [ a => 1 ] ]));
 
   is_equal(
     [
@@ -319,6 +331,7 @@ YAML
       {
         request => {
           body => {
+            header => [ { 'Content-Disposition' => 'form-data; name="a"' } ],
             content => { 'a' => '1' },
           },
         },
@@ -376,10 +389,11 @@ YAML
   $result = $openapi->validate_request(request('POST', 'http://example.com/foo',
     [ 'Content-Type' => 'multipart/form-data', 'X-Test' => 'yes' ],
     [
-      [ id => 'f81d4fae-7dec-11d0-a765-00a0c91e6bf6' ],
-      [ profileImage => $raw_image ],
+      [ id => 'f81d4fae-7dec-11d0-a765-00a0c91e6bf6', 'X-Alpha' => 'foo' ],
+      [ profileImage => $raw_image, 'X-Beta' => 'bar' ],
       [ address => $::dumper->encode(
-        { streetAddress => '123 Example Dr', city => 'Somewhere', state => 'CA', zip => '99999+1234' }) ],
+        { streetAddress => '123 Example Dr', city => 'Somewhere', state => 'CA', zip => '99999+1234' }),
+        'X-Gamma' => 'bloop', 'X-Gamma' => 'blup' ],
     ],
   ));
 
@@ -392,10 +406,13 @@ YAML
       { valid => true },
       {
         request => {
-          header => {
-            'X-Test' => 'yes',
-          },
+          header => { 'X-Test' => 'yes' },
           body => {
+            header => [
+              { 'Content-Disposition' => 'form-data; name="id"', 'X-Alpha' => 'foo' },
+              { 'Content-Disposition' => 'form-data; name="profileImage"', 'X-Beta' => 'bar' },
+              { 'Content-Disposition' => 'form-data; name="address"', 'X-Gamma' => [ 'bloop', 'blup' ] },
+            ],
             content => [
               { id => 'f81d4fae-7dec-11d0-a765-00a0c91e6bf6' },
               { profileImage => $raw_image },
@@ -437,9 +454,9 @@ YAML
   $result = $openapi->validate_request(request('POST', 'http://example.com/foo',
     [ 'Content-Type' => 'multipart/form-data' ],
     [
-      [ alpha => '0' ],
-      [ beta => '1' ],
-      [ gamma => 'a=b&x=y' ],
+      [ alpha => '0', 'X-Alpha' => 'foo' ],
+      [ beta => '1', 'X-Beta' => 'bar' ],
+      [ gamma => 'a=b&x=y', 'X-Gamma' => 'baz' ],
     ],
   ));
 
@@ -453,6 +470,11 @@ YAML
       {
         request => {
           body => {
+            header => [
+              { 'Content-Disposition' => 'form-data; name="alpha"', 'X-Alpha' => 'foo' },
+              { 'Content-Disposition' => 'form-data; name="beta"', 'X-Beta' => 'bar' },
+              { 'Content-Disposition' => 'form-data; name="gamma"', 'X-Gamma' => 'baz' },
+            ],
             content => [
               { alpha => false },
               { beta => true },
@@ -507,8 +529,8 @@ YAML
   $result = $openapi->validate_request(request('POST', 'http://example.com/foo',
     [ 'Content-Type' => 'multipart/form-data' ],
     [
-      [ id => 'f81d4fae-7dec-11d0-a765-00a0c91e6bf6' ],
-      [ profileImage => $raw_image ],
+      [ id => 'f81d4fae-7dec-11d0-a765-00a0c91e6bf6', 'X-Alpha' => 'foo' ],
+      [ profileImage => $raw_image, 'X-Beta' => 'bar' ],
     ],
   ));
   is_equal(
@@ -521,6 +543,10 @@ YAML
       {
         request => {
           body => {
+            header => [
+              { 'Content-Disposition' => 'form-data; name="id"', 'X-Alpha' => 'foo' },
+              { 'Content-Disposition' => 'form-data; name="profileImage"', 'X-Beta' => 'bar' },
+            ],
             content => {
               id => 'f81d4fae-7dec-11d0-a765-00a0c91e6bf6',
               profileImage => $raw_image,
@@ -649,6 +675,10 @@ YAML
       my $object_data = {
         request => {
           body => {
+            header => [
+              { 'Content-Disposition' => 'form-data; name="yatta"' },
+              ({ 'Content-Disposition' => 'form-data; name="yatta2"' })x2,
+            ],
             content => {
               yatta => 'やった',
               yatta2 => [ ('やった')x2 ],
@@ -673,6 +703,10 @@ YAML
       my $array_data = {
         request => {
           body => {
+            header => [
+              { 'Content-Disposition' => 'form-data; name="yatta"' },
+              ({ 'Content-Disposition' => 'form-data; name="yatta2"' })x2,
+            ],
             content => [
               { yatta => 'やった' },
               ({ yatta2 => 'やった' })x2,
@@ -703,6 +737,10 @@ YAML
       {
         request => {
           body => {
+            header => [
+              { 'Content-Disposition' => 'form-data; name="yatta"' },
+              ({ 'Content-Disposition' => 'form-data; name="yatta2"' })x2,
+            ],
             content => {
               yatta => $yatta_encoded,
               yatta2 => [ ($yatta_encoded)x2 ],
@@ -727,6 +765,10 @@ YAML
       {
         request => {
           body => {
+            header => [
+              { 'Content-Disposition' => 'form-data; name="yatta"' },
+              ({ 'Content-Disposition' => 'form-data; name="yatta2"' })x2,
+            ],
             content => [
               { yatta => $yatta_encoded },
               ({ yatta2 => $yatta_encoded })x2,
@@ -904,6 +946,12 @@ YAML
       {
         request => {
           body => {
+            header => [
+              { 'Content-Disposition' => 'form-data; name="yatta"' },
+              { 'Content-Disposition' => 'form-data; name="yatta2"' },
+              ({ 'Content-Disposition' => 'form-data; name="yatta3"' })x2,
+              ({ 'Content-Disposition' => 'form-data; name="yatta4"' })x2,
+            ],
             content => {
               yatta => [ ('やった')x2 ],
               yatta2 => { x => 'やった' },
@@ -930,6 +978,12 @@ YAML
       {
         request => {
           body => {
+            header => [
+              { 'Content-Disposition' => 'form-data; name="yatta"' },
+              { 'Content-Disposition' => 'form-data; name="yatta2"' },
+              ({ 'Content-Disposition' => 'form-data; name="yatta3"' })x2,
+              ({ 'Content-Disposition' => 'form-data; name="yatta4"' })x2,
+            ],
             content => [
               { yatta => [ ('やった')x2 ] },
               { yatta2 => { x => 'やった' } },
@@ -1012,6 +1066,10 @@ YAML
       {
         request => {
           body => {
+            header => [
+              { 'Content-Disposition' => 'form-data; name="yatta"' },
+              ({ 'Content-Disposition' => 'form-data; name="yatta2"' })x2,
+            ],
             content => {
               yatta => 'やった',
               yatta2 => [ ('やった')x2 ],
@@ -1036,6 +1094,10 @@ YAML
       {
         request => {
           body => {
+            header => [
+              { 'Content-Disposition' => 'form-data; name="yatta"' },
+              ({ 'Content-Disposition' => 'form-data; name="yatta2"' })x2,
+            ],
             content => [
               { yatta => 'やった' },
               ({ yatta2 => 'やった' })x2,
@@ -1084,6 +1146,9 @@ YAML
       {
         request => {
           body => {
+            header => [
+              { 'Content-Disposition' => 'form-data; name="thing"' },
+            ],
             content => {
               thing => { dessert => 'éclair' },
             },
@@ -1214,6 +1279,9 @@ YAML
       {
         request => {
           body => {
+            header => [
+              { 'Content-Disposition' => 'form-data; name="addresses"' },
+            ],
             content => {
               addresses => { streetAddress => '123 Example Dr', city => 'Somewhere', state => 'CA', zip => '99999+1234' },
             },
@@ -1224,10 +1292,12 @@ YAML
     'example1: multipart/form-data content with a single value, deserialized to an object',
   );
 
+
+  my $idx = 0;
   $result = $openapi->validate_request(request('POST', 'http://example.com/foo',
     [ 'Content-Type' => 'multipart/form-data' ],
     [
-      map +[ addresses => $::dumper->encode($_) ],
+      map +[ addresses => $::dumper->encode($_), 'X-Item' => $idx++ ],
         { streetAddress => '123 Example Dr', city => 'Somewhere', state => 'CA', zip => '99999+1234' },
         { streetAddress => '996 Orchard Dr', city => 'Lillooet', state => 'BC', zip => 'V0K 1V0' },
     ],
@@ -1243,6 +1313,10 @@ YAML
       $result_data = {
         request => {
           body => {
+            header => [
+              { 'Content-Disposition' => 'form-data; name="addresses"', 'X-Item' => '0' },
+              { 'Content-Disposition' => 'form-data; name="addresses"', 'X-Item' => '1' },
+            ],
             content => {
               addresses => [
                 { streetAddress => '123 Example Dr', city => 'Somewhere', state => 'CA', zip => '99999+1234' },
@@ -1277,6 +1351,7 @@ YAML
       {
         request => {
           body => {
+            header => [ { 'Content-Disposition' => 'form-data; name="addresses"' } ],
             $result_data->{request}{body}->%{content},
           },
         },
@@ -1339,6 +1414,10 @@ YAML
       {
         request => {
           body => {
+            header => [
+              { 'Content-Disposition' => 'form-data; name="alpha"' },
+              { 'Content-Disposition' => 'form-data; name="beta"' },
+            ],
             content => {
               alpha => $yatta_encoded,
               beta => $yatta_encoded,

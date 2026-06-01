@@ -1517,15 +1517,18 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
     if not defined $media_type;
 
   # multipart/* messages will be decoded using its Mojo::Content::MultiPart object, not the raw string
-  my $content_ref = $message->content->is_multipart ? $message->content : \ $message->body;
+  my ($content_ref, $multipart_headers) = $self->_deserialize_content(
+    $message->content->is_multipart ? $message->content : \ $message->body,
+    { %$state }, $content_obj, $media_type, $content_type);
 
-  $content_ref = $self->_deserialize_content($content_ref, { %$state }, $content_obj, $media_type, $content_type);
   return if not $content_ref;
-  $state->{data_path} .= '/content';
 
-  jsonp_set($state->{data}, $state->{data_path}, $content_ref->$*);
+  jsonp_set($state->{data}, $state->{data_path}.'/content', $content_ref->$*);
+  jsonp_set($state->{data}, $state->{data_path}.'/header', $multipart_headers)
+    if defined $multipart_headers and $multipart_headers->@*;
 
   my $media_type_obj = $content_obj->{$media_type};
+  $state->{data_path} .= '/content';
   $state->{keyword_path} = jsonp($state->{keyword_path}, 'content', $media_type);
   while (defined(my $ref = $media_type_obj->{'$ref'})) {
     $media_type_obj = $self->_resolve_ref('media-type', $ref, $state);
@@ -1557,14 +1560,15 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
 # $content_ref is either a reference to a string, or a Mojo::Content::MultiPart object
 # $media_type is the media-type property to be used under the content object;
 # $content_type is what is used for the content decoding (the Content-Type header of the message)
-# returns false or reference to deserialized data
+# returns false or reference to deserialized data in scalar context;
+# returns (false or reference to deserialized data, multipart headers or undef) in list context
 sub _deserialize_content ($self, $content_ref, $state, $content_obj, $media_type, $content_type) {
   $state->{keyword_path} = jsonp($state->{keyword_path}, 'content', $media_type);
 
-  my $deserialized_content_ref;
+  my ($deserialized_content_ref, $headers_ref);
   try {
     if (match_media_type($content_type, ['multipart/form-data'])) {
-      $deserialized_content_ref = \ deserialize_multipart($content_ref);
+      ($deserialized_content_ref, $headers_ref) = \ deserialize_multipart($content_ref);
     }
     elsif (match_media_type($content_type, ['multipart/*'])) { }  # TODO (soon!)
     else {
@@ -1601,13 +1605,13 @@ sub _deserialize_content ($self, $content_ref, $state, $content_obj, $media_type
     abort($saved_state, 'EXCEPTION: unsupported media type "%s": add support with JSON::Schema::Modern::Utilities::add_media_type(...)', $content_type =~ s/;.*\z//r);
   }
 
-  return $deserialized_content_ref
+  return wantarray ? ($deserialized_content_ref, undef) : $deserialized_content_ref
     if not match_media_type($content_type, ['application/x-www-form-urlencoded', 'multipart/*']);
 
   $state->{data_path} .= '/content';
 
   ()= $self->_decode_content(
-    $deserialized_content_ref,
+    $deserialized_content_ref, $headers_ref,
     exists $media_type_obj->{itemSchema}                    # schema_state, schema
       ? ({ %$state, keyword_path => $state->{keyword_path}.'/itemSchema' }, $media_type_obj)
       : ({ %$state, keyword_path => $state->{keyword_path}.'/schema' }, $media_type_obj->{schema}),
@@ -1618,7 +1622,7 @@ sub _deserialize_content ($self, $content_ref, $state, $content_obj, $media_type
     $content_type,                                          # message Content-Type
   );
 
-  return $deserialized_content_ref;
+  return wantarray ? ($deserialized_content_ref, $headers_ref ? $headers_ref->$* : undef) : $deserialized_content_ref;
 }
 
 # Use the encoding object for application/x-www-form-urlencoded and multipart/* messages to
@@ -1634,7 +1638,7 @@ sub _deserialize_content ($self, $content_ref, $state, $content_obj, $media_type
 # - value (of any type) has neither a corresponding encoding object nor a schema
 # - value is a primitive with no further decoding indicated
 # No return value; decoded content overwrites in place the referenced data that was decoded
-sub _decode_content ($self, $content_ref, $schema_state, $schema, $encoding_state, $encoding_parent, $content_type) {
+sub _decode_content ($self, $content_ref, $headers_ref, $schema_state, $schema, $encoding_state, $encoding_parent, $content_type) {
   foreach my $state ($schema_state, $encoding_state) {
     abort($state, 'EXCEPTION: maximum evaluation depth (%d) exceeded', $self->max_depth)
       if $state->{depth}++ > $self->evaluator->max_depth;
@@ -1649,6 +1653,7 @@ sub _decode_content ($self, $content_ref, $schema_state, $schema, $encoding_stat
       if ($name eq '_charset_') {
         $encoding_state->{charset} = $value;
         splice($content_ref->$*->@*, $idx, 1);
+        splice($headers_ref->$*->@*, $idx, 1);
       }
     }
 
@@ -1675,6 +1680,8 @@ sub _decode_content ($self, $content_ref, $schema_state, $schema, $encoding_stat
       $content_ref->$* = $part_hash;
     }
   }
+
+  my $headers = $headers_ref->$* if $headers_ref;
 
   # used for handling of objects-in-array content (encoding by name with multipart/form-data)
   # and top-level object content (application/x-www-form-urlencoded)
@@ -1777,7 +1784,6 @@ sub _decode_content ($self, $content_ref, $schema_state, $schema, $encoding_stat
 
           my $encoding_state = { %$encoding_state, depth => $encoding_state->{depth}+1,
             data_path => $encoding_state->{data_path}.'/'.$idx };
-
           ()= $self->_decode_content_element(\ $content_ref->$*->{$property}[$idx],
             $property, $schema_state, $schema, $encoding_state, $encoding_obj);
         }
@@ -1930,6 +1936,7 @@ sub _decode_content_element ($self, $element_ref, $name, $schema_state, $schema,
 
     ()= $self->_decode_content(
       $element_ref,   # this may be the original data, if nothing was decoded
+      undef,          # no headers once we recurse into the multipart parts
       $schema_state, $schema, $encoding_state, $encoding_obj, $content_type);
   }
 }
@@ -2585,7 +2592,11 @@ C<instanceLocation>s in errors in the Result object):
         },
       },
       body => {
-        content => <deserialized data from body>,
+        header => [
+          <for multipart media-types, an arrayref of headers, one element per part,
+          in the same order as the body parts from the original message>
+        ],
+        content => <deserialized data from body; can be any type>,
       },
     },
   }
@@ -2641,7 +2652,11 @@ C<instanceLocation>s in errors in the Result object):
         ...,
       },
       body => {
-        content => <deserialized data from body>,
+        header => [
+          <for multipart media-types, an arrayref of headers, one element per part,
+          in the same order as the body parts from the original message>
+        ],
+        content => <deserialized data from body; can be any type>,
       },
     },
   }
@@ -2864,6 +2879,8 @@ C<prefixEncoding> and C<itemEncoding>. For more information, see:
 * L<v3.2.0 §4.15: Encoding Object|https://spec.openapis.org/oas/latest#encoding-object>
 * L<v3.2.0 §4.14.5.1: Encoding By Name|https://spec.openapis.org/oas/latest#encoding-by-name>
 * L<OpenAPI Media Type Registry: Forms: Ordered name-value pairs|https://spec.openapis.org/registry/media-type/forms>
+
+Multipart headers are always deserialized as an array of hashrefs, one hashref per part.
 
 =head1 LIMITATIONS
 
