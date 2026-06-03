@@ -2170,6 +2170,46 @@ YAML
     ],
     'style-encoded content is decoded when inside a doubly-form-encoded string',
   );
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri,
+    openapi_schema => decode_yaml(OPENAPI_PREAMBLE.<<'YAML'));
+paths:
+  /foo:
+    post:
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                x:
+                  type: boolean
+            encoding:
+              x:
+                style: form   # to test that the encoding property is seen
+                headers:
+                  X-Test:
+                    required: true
+                    schema: true
+YAML
+
+  $result = $openapi->validate_request(request('POST', 'http://example.com/foo',
+    [ 'Content-Type' => 'application/x-www-form-urlencoded' ], { x => 1 }));
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      { valid => true },
+      {
+        request => { body => { content => { x => true } } },
+      },
+    ],
+    '"headers" object is not used for validation for non-multipart content',
+  );
 };
 
 if (++$type_index < @::TYPES) {
