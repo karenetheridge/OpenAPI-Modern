@@ -3567,6 +3567,58 @@ YAML
     },
     'can correctly use a $ref to "0" when parsing parameter schemas for type hints',
   );
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri,
+    openapi_schema => decode_yaml(OPENAPI_PREAMBLE.<<'YAML'));
+paths:
+  /foo:
+    post:
+      parameters:
+      - name: X-Test1
+        in: header
+        required: true
+        schema:
+          const: '1'
+      - name: X-Test2
+        in: header
+        required: true
+        content:
+          text/plain:
+            schema:
+              const: '1'
+      requestBody:
+        required: true
+        content:
+          text/plain:
+            schema:
+              const: '1'
+YAML
+
+  my $result = $openapi->validate_request(request('POST', 'http://example.com/foo',
+      [ 'Content-Type' => 'text/plain', 'X-Test1' => 1, 'X-Test2' => 1 ], 1));
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      { valid => true },
+      {
+        request => {
+          header => {
+            'X-Test1' => '1',
+            'X-Test2' => '1',
+          },
+          body => {
+            content => '1',
+          },
+        },
+      },
+    ],
+    'numeric header value is treated as a string, whether style-encoded or media-type-encoded',
+  );
 };
 
 subtest $::TYPE.': max_depth' => sub {

@@ -922,6 +922,58 @@ YAML
   );
 };
 
+subtest $::TYPE.': parameter parsing' => sub {
+  my $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri,
+    openapi_schema => decode_yaml(OPENAPI_PREAMBLE.<<'YAML'));
+paths:
+  /foo:
+    post:
+      operationId: my_op
+      responses:
+        default:
+          headers:
+            X-Test1:
+              required: true
+              schema:
+                const: '1'
+            X-Test2:
+              required: true
+              content:
+                text/plain:
+                  schema:
+                    const: '1'
+          content:
+            text/plain:
+              schema:
+                const: '1'
+YAML
+
+  my $result = $openapi->validate_response(response(200,
+    [ 'Content-Type' => 'text/plain', 'X-Test1' => 1, 'X-Test2' => 1 ], 1), { operation_id => 'my_op' });
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      { valid => true },
+      {
+        response => {
+          header => {
+            'X-Test1' => '1',
+            'X-Test2' => '1',
+          },
+          body => {
+            content => '1',
+          },
+        },
+      },
+    ],
+    'numeric header value is treated as a string, whether style-encoded or media-type-encoded',
+  );
+};
+
 subtest $::TYPE.': unevaluatedProperties and annotations' => sub {
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => $doc_uri,
