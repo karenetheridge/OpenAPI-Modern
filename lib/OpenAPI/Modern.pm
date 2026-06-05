@@ -901,7 +901,8 @@ sub _deserialize_path_parameter ($self, $state, $param_obj, $path_captures) {
       $param_obj->{content}, ((keys $param_obj->{content}->%*)[0])x2)
     if exists $param_obj->{content};
 
-  return $self->_deserialize_style($data, $state,
+  return $self->_deserialize_style($data,
+    { %$state, data_path => jsonp($state->{data_path}, $param_obj->{name}) },
     style => $param_obj->{style}//'simple',
     explode => $param_obj->{explode}//false,
     $param_obj->%{qw(in name schema)},
@@ -934,7 +935,8 @@ sub _deserialize_query_parameter ($self, $state, $param_obj, $params) {
   my $explode = $param_obj->{explode} // ($style eq 'form' ? true : false);
 
   my $error_count = $state->{errors}->@*;
-  my $data_ref = $self->_deserialize_style($params, $state,
+  my $data_ref = $self->_deserialize_style($params,
+    { %$state, data_path => jsonp($state->{data_path}, $param_obj->{name}) },
     style => $style,
     explode => $explode,
     allowEmptyValue => $param_obj->{allowEmptyValue}//false,
@@ -1007,7 +1009,7 @@ sub _deserialize_header_parameter ($self, $state, $header_obj, $header_name, $he
     Mojo::Util::url_escape(join(',',
         map s/^\s*//r =~ s/\s*\z//r, $headers->every_header($header_name)->@*),
       '^A-Za-z0-9\-._~:/?#[\]@!$&\'()*+,;='),  # unreserved and reserved
-    $state,
+    { %$state, data_path => jsonp($state->{data_path}, $header_name) },
     in => 'header',
     style => $header_obj->{style}//'simple',
     explode => $header_obj->{explode}//false,
@@ -1097,7 +1099,8 @@ sub _deserialize_cookie_parameter ($self, $state, $param_obj, $headers) {
   # for style=cookie, we send the entire header string to be parsed
 
   die if $error_count != $state->{errors}->@*;
-  my $data_ref = $self->_deserialize_style($data, $state,
+  my $data_ref = $self->_deserialize_style($data,
+    { %$state, data_path => jsonp($state->{data_path}, $param_obj->{name}) },
     style => $style,
     explode => $explode,
     $param_obj->%{qw(in name schema)},
@@ -1147,8 +1150,7 @@ sub _deserialize_querystring_parameter ($self, $state, $param_obj, $params) {
   # We do not UTF-8-decode the content: this is the responsibility of the media-type decoder.
   $data = url_unescape($data =~ s/\+/ /gr);
 
-  return $self->_deserialize_content(\$data,
-    { %$state, data_path => jsonp($state->{data_path}, $param_obj->{name}) },
+  return $self->_deserialize_content(\$data, $state,
     $param_obj->{content}, ((keys $param_obj->{content}->%*)[0])x2);
 }
 
@@ -1166,12 +1168,9 @@ sub _deserialize_style ($self, $data, $state, %opt) {
     @opt{qw(in style explode allowEmptyValue name schema strip_internal_ws)};
 
   my @types = $self->_type_in_schema($schema, { %$state,
-      data_path => jsonp($state->{data_path}, $name),
       keyword_path => $state->{keyword_path}.'/schema' });
 
   if ($style eq 'simple' or $style eq 'matrix' or $style eq 'label') {
-    my $state = +{ %$state, data_path => jsonp($state->{data_path}, $name) };
-
     # RFC6570 §3.2.1: "A variable that is undefined (§2.3) has no value and is ignored by the
     # expansion process. If all of the variables in an expression are undefined, then the
     # expression's expansion is the empty string."
@@ -1365,12 +1364,10 @@ sub _deserialize_style ($self, $data, $state, %opt) {
   elsif ($style eq 'spaceDelimited' or $style eq 'pipeDelimited') {
     croak 'query parameters require a parameter object' if ref $data ne 'Mojo::Parameters';
 
-    return E({ %$state, data_path => jsonp($state->{data_path}, $name), keyword => 'explode' },
-        'explode=true is not supported for style=%s', $style)
+    return E({ %$state, keyword => 'explode' }, 'explode=true is not supported for style=%s', $style)
       if $explode;
 
-    return E({ %$state, data_path => jsonp($state->{data_path}, $name), keyword => 'style' },
-        '%s style can only deserialize to arrays or objects', $style)
+    return E({ %$state, keyword => 'style' }, '%s style can only deserialize to arrays or objects', $style)
       if not elem([qw(array object)], \@types);
 
     # $data argument is a Mojo::Parameters object for this style
@@ -1409,12 +1406,10 @@ sub _deserialize_style ($self, $data, $state, %opt) {
     # v3.1.1 §4.8.12.2.2: "Note that despite false being the default for deepObject, the combination
     # of false with deepObject is undefined."
     # v3.2.0 §4.12.2.2: "...when style is "deepObject", [explode] has no effect."
-    return E({ %$state, data_path => jsonp($state->{data_path}, $name), keyword => 'explode' },
-        '"explode" cannot be false with style=deepObject')
+    return E({ %$state, keyword => 'explode' }, '"explode" cannot be false with style=deepObject')
       if not $explode and $self->openapi_document->oas_version < '3.2';
 
-    return E({ %$state, data_path => jsonp($state->{data_path}, $name), keyword => 'style' },
-        'deepObject style can only deserialize to objects')
+    return E({ %$state, keyword => 'style' }, 'deepObject style can only deserialize to objects')
       if not elem('object', \@types);
 
     # $data is a Mojo::Parameters object for this style
@@ -1477,7 +1472,7 @@ sub _deserialize_style ($self, $data, $state, %opt) {
     die 'unsupported style ', $style;
   }
 
-  return E({ %$state, data_path => jsonp($state->{data_path}, $name), keyword => 'style' },
+  return E({ %$state, keyword => 'style' },
     'cannot deserialize to %s type%s%s', !@types ? 'any' : 'requested', @types > 1 ? 's' : '',
     @types ? ' ('.join(', ', @types).')' : '');
 }
