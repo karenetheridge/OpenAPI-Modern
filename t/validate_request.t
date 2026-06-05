@@ -17,7 +17,7 @@ use lib 't/lib';
 use Helper;
 use Test2::Warnings qw(:no_end_test warnings had_no_warnings);
 use JSON::Schema::Modern::Utilities qw(jsonp get_type add_media_type delete_media_type);
-use OpenAPI::Modern::Utilities 'uri_encode';
+use OpenAPI::Modern::Utilities qw(uri_encode elem);
 
 my $doc_uri_rel = Mojo::URL->new('/api');
 my $doc_uri = $doc_uri_rel->to_abs(Mojo::URL->new('http://example.com'));
@@ -2343,7 +2343,7 @@ YAML
 
   {
     my $todo = todo 'mojo will strip the content body when parsing a stringified request that lacks Content-Length'
-      if $::TYPE eq 'lwp' or $::TYPE eq 'plack' or $::TYPE eq 'catalyst' or $::TYPE eq 'dancer2';
+      if elem($::TYPE, [qw(lwp plack catalyst dancer2)]);
 
     # this works without a charset because all characters fit into a single byte, essentially
     # acting like latin1.
@@ -3390,7 +3390,7 @@ YAML
 
   {
   my $todo = todo 'HTTP::Message::to_psgi fetches all headers as a single concatenated string'
-    if $::TYPE eq 'plack' or $::TYPE eq 'catalyst' or $::TYPE eq 'dancer2';
+    if elem($::TYPE, [qw(plack catalyst dancer2)]);
   $request = request('GET', 'http://example.com/foo', [
       MultipleValuesAsString => '  one ',
       MultipleValuesAsString => ' two  ',
@@ -3412,7 +3412,7 @@ YAML
 
   {
   my $todo = todo 'HTTP::Message::to_psgi fetches all headers as a single concatenated string'
-    if $::TYPE eq 'plack' or $::TYPE eq 'catalyst' or $::TYPE eq 'dancer2';
+    if elem($::TYPE, [qw(plack catalyst dancer2)]);
   $request = request('GET', 'http://example.com/foo', [
     MultipleValuesAsArray => '  one',
     MultipleValuesAsArray => ' one ',
@@ -3438,7 +3438,7 @@ YAML
 
   {
   my $todo = todo 'HTTP::Message::to_psgi fetches all headers as a single concatenated string'
-    if $::TYPE eq 'plack' or $::TYPE eq 'catalyst' or $::TYPE eq 'dancer2';
+    if elem($::TYPE, [qw(plack catalyst dancer2)]);
   $request = request('GET', 'http://example.com/foo', [
       MultipleValuesAsObjectExplodeFalse => ' R, 100 ',
       MultipleValuesAsObjectExplodeFalse => ' B, 150,  G , 200 ',
@@ -3782,7 +3782,7 @@ YAML
 
 SKIP: {
   # "Bad Content-Length: maybe client disconnect? (1 bytes remaining)"
-  skip 'plack dies on this input', 3 if $::TYPE eq 'plack' or $::TYPE eq 'catalyst' or $::TYPE eq 'dancer2';
+  skip 'plack dies on this input', 3 if elem($::TYPE, [qw(plack catalyst dancer2)]);
   is_equal(
     $openapi->validate_request(request($_, 'http://example.com/foo', [ 'Content-Length' => 1 ]))->TO_JSON,
     {
