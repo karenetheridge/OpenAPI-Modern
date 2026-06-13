@@ -1,6 +1,10 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - support added for message bodies encoded with sequential
+            multipart/* media-types such as multipart/mixed or
+            multipart/bytestream (with or without "encoding" objects),
+            including header collection from parts
 
 0.146     2026-08-07 16:48:10Z
           - bump (optional) dependency on Dancer2 to avoid incompatible

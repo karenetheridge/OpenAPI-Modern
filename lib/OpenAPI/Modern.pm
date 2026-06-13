@@ -1567,10 +1567,9 @@ sub _deserialize_content ($self, $content_ref, $state, $content_obj, $media_type
 
   my ($deserialized_content_ref, $headers_ref);
   try {
-    if (match_media_type($content_type, ['multipart/form-data'])) {
+    if (match_media_type($content_type, ['multipart/*'])) {
       ($deserialized_content_ref, $headers_ref) = \ deserialize_multipart($content_ref);
     }
-    elsif (match_media_type($content_type, ['multipart/*'])) { }  # TODO (soon!)
     else {
       # TODO: handle Content-Encoding header(s)
 
@@ -1589,18 +1588,13 @@ sub _deserialize_content ($self, $content_ref, $state, $content_obj, $media_type
     $media_type_obj = $self->_resolve_ref('media-type', $ref, $state);
   }
 
-  if (not $deserialized_content_ref and not match_media_type($content_type, ['multipart/form-data'])) {
+  if (not $deserialized_content_ref and not match_media_type($content_type, ['multipart/*'])) {
     # don't fail, and return the original data, if the best-matching media-type object is under */*
     # or the schema would pass on any input
-    return (ref $content_ref eq 'SCALAR' && !match_media_type($content_type, ['multipart/*'])
-        ? $content_ref : \'TODO')
+    return $content_ref
       if $media_type eq '*/*'
         or all { ref $_ eq 'HASH' ? !keys %$_ : $_ }
           ($media_type_obj->{schema}//(), $media_type_obj->{itemSchema}//());
-
-    # coming soon!
-    abort($saved_state, 'EXCEPTION: unimplemented media type "%s"', $content_type =~ s/;.*\z//r)
-      if match_media_type($content_type, ['multipart/*']);
 
     abort($saved_state, 'EXCEPTION: unsupported media type "%s": add support with JSON::Schema::Modern::Utilities::add_media_type(...)', $content_type =~ s/;.*\z//r);
   }
@@ -1808,9 +1802,8 @@ sub _decode_content ($self, $content_ref, $headers_ref, $schema_state, $schema, 
         # v3.2.0 §4.15.5 1: "... For all other value types for both top-level non-array properties
         # and for values, including array values, within a top-level array, the Encoding Object
         # MUST be applied to the entire value."
-
         my $encoding_state = { %$encoding_state,
-          match_media_type($content_type, ['multipart/form-data'])
+          match_media_type($content_type, ['multipart/*'])
             ? (header_path => $encoding_state->{header_path}.'/'.$header_map->{$property}) : () };
 
         ()= $self->_decode_content_element(\ $content_ref->$*->{$property},
@@ -1855,11 +1848,11 @@ sub _decode_content ($self, $content_ref, $headers_ref, $schema_state, $schema, 
           $headers->[$idx], $property, $schema_state, $schema, $encoding_state, $encoding_obj);
       }
       else {
-        # we are parsing array-based data from some other decoding
-
-        # no headers once we're recursing into a part's data (TODO: need headers for multipart/mixed)
+        # we are parsing array-based multipart data (other than multipart/form-data), or data from
+        # some other decoding
         ()= $self->_decode_content_element(\ $content_ref->$*->[$idx],
-          undef, $idx, $schema_state, $schema, $encoding_state, $encoding_obj);
+          $headers && match_media_type($content_type, ['multipart/*']) ? $headers->[$idx] : undef,
+          $idx, $schema_state, $schema, $encoding_state, $encoding_obj);
       }
     } # end foreach array item
   } # end ARRAY
@@ -2945,6 +2938,12 @@ C<prefixEncoding> and C<itemEncoding>. For more information, see:
 * L<v3.2.0 §4.14.5.1: Encoding By Name|https://spec.openapis.org/oas/latest#encoding-by-name>
 * L<OpenAPI Media Type Registry: Forms: Ordered name-value pairs|https://spec.openapis.org/registry/media-type/forms>
 
+Other multipart media-types are deserialized to an array, one item per part. See:
+
+=for :list
+* L<v3.2.0 §4.14.5.2: Encoding By Position|https://spec.openapis.org/oas/latest#encoding-by-position>
+* L<OpenAPI Media Type Registry: Sequential Multipart: Multipart subtypes with unnamed parts|https://spec.openapis.org/registry/media-type/sequential_multipart>
+
 Multipart headers are always deserialized as an array of hashrefs, one hashref per part.
 
 =head1 LIMITATIONS
@@ -2993,7 +2992,6 @@ specific C<< $c->req->body_params >> or C<< $c->stash >> to access non-query par
 =head2 Unimplemented sections of the specification
 
 =for :list
-* C<multipart/*> messages (except for C<multipart/form-data>)
 * The use of C<$ref> within a path-item object is only allowed when not adjacent to any other
   path-item properties (C<parameters>, C<servers>, request methods)
 * The C<Authorization> header is not verified against any security schemes specified in the OpenAPI
@@ -3058,5 +3056,6 @@ Which will be the value: C<< { a => 1, b => 2 } >>
 * L<RFC6570: URI Template|https://datatracker.ietf.org/doc/html/rfc6570>
 * L<Web Hypertext Application Technology Working Group (WHATWG): application/x-www-form-urlencoded|https://url.spec.whatwg.org/#application/x-www-form-urlencoded>
 * L<RFC7578: Returning Values from Forms: multipart/form-data|https://datatracker.ietf.org/doc/html/rfc7578>
+* L<RFC2046 §5.1: Multipart Media Type|https://www.rfc-editor.org/info/rfc2046/#section-5.1>
 
 =cut

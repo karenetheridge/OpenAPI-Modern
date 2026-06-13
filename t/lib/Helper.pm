@@ -26,7 +26,7 @@ use Test::Deep qw(!array !hash); # import symbols: ignore, re etc
 use Test2::API 'context_do';
 use Test::File::ShareDir -share => { -dist => { 'OpenAPI-Modern' => 'share' } };
 use JSON::Schema::Modern::Document::OpenAPI;
-use JSON::Schema::Modern::Utilities qw(true false);
+use JSON::Schema::Modern::Utilities qw(true false match_media_type);
 use OpenAPI::Modern;
 use OpenAPI::Modern::Utilities qw(:constants elem);
 use YAML::PP 0.005;
@@ -254,11 +254,11 @@ sub _generate_body ($headers, $body_content) {
   if ($content_type eq 'application/x-www-form-urlencoded') {
     $body_content = _form_urlencoded_content($body_content);
   }
-  elsif ($content_type eq 'multipart/form-data') {
+  elsif (match_media_type($content_type, ['multipart/*'])) {
     # Content-Type is constructed by _multipart_body
     @$headers = pairgrep { fc($a) ne fc('Content-Type') } @$headers;
 
-    $body_content = _multipart_body($body_content);
+    $body_content = _multipart_body($content_type, $body_content);
 
     if ($TYPE ne 'mojo') {
       push @$headers, 'Content-Type', $body_content->headers->content_type;
@@ -293,16 +293,18 @@ sub _form_urlencoded_content ($body_content) {
   : die 'unknown ref type';
 }
 
-# Accepts an arrayref of message parts; returns a Mojo::Content::MultiPart object
-# only supports multipart/form-data (for now)
+# Accepts a content-type and an arrayref of message parts; returns a Mojo::Content::MultiPart object
 # Each part consists of an arrayref in this format:
-# [ $name => $value, $header_name1 => '..', $header_name2 => '..' ]
+# For multipart/form-data: [ $name => $value, $header_name1 => '..', $header_name2 => '..' ]
 # If value is an arrayref, then a part is created for each value with the same name and headers
+# For other multipart:     [ $value, $header_name1 => '..', $header_name2 => '..' ]
 # (see Mojo::UserAgent::Transactor::_parts)
-sub _multipart_body ($raw_parts) {
+sub _multipart_body ($content_type, $raw_parts) {
   my @parts;
   foreach my $part_spec ($raw_parts->@*) {
-    my ($name, $value, @headers) = $part_spec->@*;
+   my @part_spec = $part_spec->@*;
+    unshift @part_spec, undef if $content_type ne 'multipart/form-data';
+    my ($name, $value, @headers) = @part_spec;
 
     foreach my $value (ref $value eq 'ARRAY' ? @$value : ($value)) {
       # construct nested types other than multipart by serializing manually
@@ -313,7 +315,7 @@ sub _multipart_body ($raw_parts) {
       $part->headers->add($_->[0], ref $_->[1] eq 'ARRAY' ? (map +($_.''), $_->[1]->@*) : $_->[1].'')
         foreach pairs @headers;
 
-      if (not defined $part->headers->content_disposition) {
+      if ($content_type eq 'multipart/form-data' and not defined $part->headers->content_disposition) {
         $name = Mojo::Util::url_escape($name, '"');
         $part->headers->content_disposition(qq{form-data; name="$name"});
       }
@@ -322,7 +324,7 @@ sub _multipart_body ($raw_parts) {
   }
 
   my $content = Mojo::Content::MultiPart->new(parts => \@parts);
-  $content->headers->content_type('multipart/form-data');
+  $content->headers->content_type($content_type);
   $content->build_boundary;
   return $content;
 }
