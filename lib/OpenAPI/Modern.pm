@@ -154,6 +154,8 @@ sub validate_request ($self, $request, $options = {}) {
 
         my $fc_name = $param_obj->{in} eq 'header' ? fc($param_obj->{name}) : $param_obj->{name};
 
+        # v3.2.0 §4.10.1:"The list MUST NOT include duplicated parameters. A unique parameter is
+        # defined by a combination of a name and location."
         abort($state, 'duplicate %s parameter "%s"', $param_obj->{in}, $param_obj->{name})
           if (($request_parameters_processed->{$param_obj->{in}}//{})->{$fc_name} // '') eq $section;
 
@@ -164,6 +166,8 @@ sub validate_request ($self, $request, $options = {}) {
         abort({ %$state, data_path => '/request/uri/query' }, 'cannot use more than one querystring')
           if ($seen_q{querystring}//0) >= 2;
 
+        # v3.2.0 §4.10.1: "If a[n operation-level] parameter is already defined at the Path Item,
+        # the new definition will override it but can never remove it."
         { use autovivification qw(exists store);
           next ENTRY if exists $request_parameters_processed->{$param_obj->{in}}{$fc_name};
           $request_parameters_processed->{$param_obj->{in}}{$fc_name} = $section;
