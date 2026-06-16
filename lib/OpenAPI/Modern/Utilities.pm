@@ -253,7 +253,7 @@ sub elem ($items, $set) {
 
   any {
     my $x = $_;
-    any { $x eq $_ } @$items
+    any { defined $x ? (defined $_ && $x eq $_) : (!defined $_) } @$items
   }
   @$set;
 }
