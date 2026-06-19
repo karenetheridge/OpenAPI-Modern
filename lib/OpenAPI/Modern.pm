@@ -20,11 +20,10 @@ no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 no if "$]" >= 5.041009, feature => 'smartmatch';
 no feature 'switch';
 use Carp qw(carp croak);
-use Safe::Isa;
 use List::Util qw(first pairs);
 use if "$]" < 5.041010, 'List::Util' => qw(all any);
 use if "$]" >= 5.041010, experimental => qw(keyword_all keyword_any);
-use builtin::compat 'indexed';
+use builtin::compat qw(indexed blessed);
 use Feature::Compat::Try;
 use Encode 2.89 ();
 use JSON::Schema::Modern;
@@ -240,10 +239,10 @@ sub validate_request ($self, $request, $options = {}) {
     }
   }
   catch ($e) {
-    if ($e->$_isa('JSON::Schema::Modern::Result')) {
+    if (blessed($e) and $e->isa('JSON::Schema::Modern::Result')) {
       return $e;
     }
-    elsif ($e->$_isa('JSON::Schema::Modern::Error')) {
+    elsif (blessed($e) and $e->isa('JSON::Schema::Modern::Error')) {
       push @{$state->{errors}}, $e;
     }
     else {
@@ -258,7 +257,7 @@ sub validate_response ($self, $response, $options = {}) {
   croak 'missing response' if not $response;
 
   # handle the existence of HTTP::Response::request
-  if (my $request = $response->$_call_if_can('request')) {
+  if (my $request = $response->can('request') && $response->request) {
     croak '$response->request and $options->{request} are inconsistent'
       if $request and $options->{request} and $request != $options->{request};
     $options->{request} //= $request;
@@ -358,11 +357,11 @@ sub validate_response ($self, $response, $options = {}) {
       if exists $response_obj->{content} and $response->headers->content_length // $response->body_size;
   }
   catch ($e) {
-    if ($e->$_isa('JSON::Schema::Modern::Result')) {
+    if (blessed($e) and $e->isa('JSON::Schema::Modern::Result')) {
       $e->recommended_response(undef);  # responses don't have responses
       return $e;
     }
-    elsif ($e->$_isa('JSON::Schema::Modern::Error')) {
+    elsif (blessed($e) and $e->isa('JSON::Schema::Modern::Error')) {
       push @{$state->{errors}}, $e;
     }
     else {
@@ -423,7 +422,8 @@ sub find_path_item ($self, $options, $state = {}) {
     $options->{method} = $options->{request}->method;
   }
   elsif (exists $options->{uri}) {
-    $options->{uri} = Mojo::URL->new($options->{uri}.'') if not $options->{uri}->$_isa('Mojo::URL');
+    $options->{uri} = Mojo::URL->new($options->{uri}.'')
+      if not blessed($options->{uri}) or not $options->{uri}->isa('Mojo::URL');
   }
 
   # method from operation_id from options
@@ -915,7 +915,8 @@ sub _deserialize_path_parameter ($self, $state, $param_obj, $path_captures) {
 
 # returns false or reference to deserialized data
 sub _deserialize_query_parameter ($self, $state, $param_obj, $params) {
-  croak '$params must be a Mojo::Parameters object' if not $params->$_isa('Mojo::Parameters');
+  croak '$params must be a Mojo::Parameters object'
+    if not blessed($params) or not $params->isa('Mojo::Parameters');
 
   if (exists $param_obj->{content}) {
     my $data = $params->param($param_obj->{name});
@@ -969,7 +970,8 @@ sub _deserialize_query_parameter ($self, $state, $param_obj, $params) {
 # $header_obj can be a parameter object or a header object ('in' and 'name' might be absent)
 # returns false or reference to deserialized data
 sub _deserialize_header_parameter ($self, $state, $header_obj, $header_name, $headers) {
-  croak '$headers must be a Mojo::Headers object' if not $headers->$_isa('Mojo::Headers');
+  croak '$headers must be a Mojo::Headers object'
+    if not blessed($headers) or not $headers->isa('Mojo::Headers');
 
   return if grep fc $header_name eq fc $_, qw(Accept Content-Type Authorization);
 
@@ -1025,7 +1027,8 @@ sub _deserialize_header_parameter ($self, $state, $header_obj, $header_name, $he
 
 # returns false or reference to deserialized data
 sub _deserialize_cookie_parameter ($self, $state, $param_obj, $headers) {
-  croak '$headers must be a Mojo::Headers object' if not $headers->$_isa('Mojo::Headers');
+  croak '$headers must be a Mojo::Headers object'
+    if not blessed($headers) or not $headers->isa('Mojo::Headers');
 
   my $cookie = $headers->every_header('Cookie');
 
@@ -1128,7 +1131,8 @@ sub _deserialize_cookie_parameter ($self, $state, $param_obj, $headers) {
 
 # returns false or reference to deserialized data
 sub _deserialize_querystring_parameter ($self, $state, $param_obj, $params) {
-  die '$params must be a Mojo::Parameters object' if not $params->$_isa('Mojo::Parameters');
+  die '$params must be a Mojo::Parameters object'
+    if not blessed($params) or not $params->isa('Mojo::Parameters');
 
   # note: if something has caused the Mojo::Parameters object to be normalized (e.g. calling
   # 'pairs'), the raw string value is lost -- we could try stringifying it again, but if the

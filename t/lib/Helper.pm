@@ -17,7 +17,6 @@ use Test2::V0 qw(!bag !bool !warnings !subtest), -no_pragmas => 1;  # prefer Tes
 use if $ENV{AUTHOR_TESTING}, 'Test2::Warnings', ':report_warnings';
 sub subtest { Test2::V0::subtest(@_); bail_if_not_passing() if $ENV{AUTHOR_TESTING}; }
 use if $ENV{AUTHOR_TESTING} || -d '.git', 'Test2::Plugin::SubtestFilter';
-use Safe::Isa;
 use List::Util 'pairs';
 use Mojo::Message::Request;
 use Mojo::Message::Response;
@@ -70,7 +69,7 @@ sub request ($method, $uri_string, $headers = [], $body_content = undef) {
     test_needs('HTTP::Request', 'URI');
 
     my $uri = URI->new($uri_string);
-    my $host = $uri->$_call_if_can('host');
+    my $host = $uri->can('host') && $uri->host;
     $req = HTTP::Request->new($method => $uri, [], $body_content);
     $req->headers->push_header(@$_) foreach pairs @$headers, $host ? (Host => $host) : ();
     $req->headers->header('Content-Length' => length($body_content))
