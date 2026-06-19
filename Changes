@@ -6,6 +6,7 @@ Revision history for OpenAPI-Modern
             $result->data
           - fix load-time validation of path template and server url template
             strings
+          - remove hard dependency on Getopt::Long::Descriptive
 
 0.138     2026-05-30 17:52:03Z
           - adjust tests for changes in JSON::Schema::Modern 0.640
