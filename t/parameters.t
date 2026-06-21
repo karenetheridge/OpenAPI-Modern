@@ -2690,6 +2690,97 @@ subtest 'cookie parameters' => sub {
   }
 };
 
+subtest 'querystring parameters' => sub {
+  my @tests = (
+    # name (test name)
+    # param_obj (from OAD)
+    # queries => raw query string, without leading '?' (or undef if no query string at all)
+    # content => expected data that was parsed from serialized string; omit when nothing is to be found
+    # errors => compared to what is collected from $state, defaults to []
+    # todo
+    {
+      name => 'missing but not required',
+      param_obj => { name => 'q', content => { 'application/json' => { schema => { type => 'object' } } } },
+      queries => undef,
+    },
+    {
+      name => 'missing, required',
+      param_obj => { name => 'q', required => true, content => { 'text/plain' => {} } },
+      queries => undef,
+      errors => [
+        {
+          instanceLocation => '/request/uri/query',
+          keywordLocation => $keyword_path.'/required',
+          absoluteKeywordLocation => $openapi->openapi_uri.'#'.$keyword_path.'/required',
+          error => 'missing querystring',
+        },
+      ],
+    },
+    {
+      param_obj => { name => 'foo', content => { 'application/json' => {} } },
+      queries => '1',
+      content => 1, # number, not string!
+    },
+    {
+      param_obj => { name => 'foo', content => { 'application/json' => {} } },
+      queries => '%7B%22a%22:1,%22b%22:2%7D',
+      content => { a => 1, b => 2 },
+    },
+  );
+
+  foreach my $test (@tests) {
+    die 'missing test param "param_obj"' if not exists $test->{param_obj};
+    die 'missing test param "queries"' if not exists $test->{queries};
+
+    subtest 'querystring'
+        .(length $test->{name} ? ', '.$test->{name} : '').': '
+        .(defined $test->{queries} ? '"'.$test->{queries}.'"' : '<missing>')
+        .(exists $test->{content} ? ' -> '.$::dumper->encode($test->{content}) : '') => sub {
+
+      my $param_obj = +{
+        $test->{param_obj}->%*,
+        in => 'querystring',
+      };
+
+      my $result = $openapi->evaluator->evaluate(
+        $param_obj,
+        OpenAPI::Modern::Utilities::DEFAULT_METASCHEMA()->{'3.2'}.'#/$defs/parameter',
+      );
+      fail('parameter object is valid'), note($result), return if not $result->valid;
+
+      my $state = _init_test('/request/uri/query', $param_obj->{content});
+
+      my $valid = $openapi->_validate_parameter($state, $param_obj,
+        params => Mojo::URL->new('https://example.com/blah'.(defined $test->{queries} ? '?'.$test->{queries} : ''))->query);
+
+      die 'validity inconsistent with error count; got valid=', 0+!!$valid, ', errors are: ',
+        $::encoder->encode($state->{errors}) if $valid xor !$state->{errors}->@*;
+
+      my $todo;
+      $todo = todo $test->{todo} if $test->{todo};
+
+      is_equal(
+        [ map $_->TO_JSON, $state->{errors}->@* ],
+        $test->{errors}//[],
+        ($test->{errors}//[])->@* ? 'the correct error was returned' : 'no errors occurred',
+      );
+
+      if (not exists $test->{content}) {
+        ok(!keys $state->{data}->%*, 'no content was extracted')
+          or note("extracted content:\n", $::encoder->encode($state->{data}));
+      }
+      else {
+        ok(exists $state->{data}{request}{uri}{query}, 'content was extracted');
+        is_equal(
+          $state->{data}{request}{uri}{query},
+          $test->{content},
+          defined $test->{content} ? 'the correct content was extracted' : 'no content was extracted',
+        );
+      }
+    };
+  }
+};
+
 subtest 'type inference and coercion' => sub {
   my $openapi = OpenAPI::Modern->new(
     openapi_uri => 'http://localhost:1234/api',
