@@ -157,6 +157,10 @@ sub validate_request ($self, $request, $options = {}) {
 
         my $fc_name = $param_obj->{in} eq 'header' ? fc($param_obj->{name}) : $param_obj->{name};
 
+        # v3.2.0 §4.12.2.1: "If in is "header" and the name field is "Accept", "Content-Type" or
+        # "Authorization", the parameter definition SHALL be ignored."
+        next if $param_obj->{in} eq 'header' and elem($fc_name, [map fc, qw(Accept Content-Type Authorization)]);
+
         # v3.2.0 §4.10.1:"The list MUST NOT include duplicated parameters. A unique parameter is
         # defined by a combination of a name and location."
         abort($state, 'duplicate %s parameter "%s"', $param_obj->{in}, $param_obj->{name})
@@ -341,7 +345,10 @@ sub validate_response ($self, $response, $options = {}) {
     }
 
     foreach my $header_name (sort keys(($response_obj->{headers}//{})->%*)) {
+      # v3.2.0 §4.17.1: "If a response header is defined with the name "Content-Type", it SHALL be
+      # ignored."
       next if fc $header_name eq fc 'Content-Type';
+
       my $state = { %$state, keyword_path => jsonp($state->{keyword_path}, 'headers', $header_name) };
       my $header_obj = $response_obj->{headers}{$header_name};
       while (defined(my $ref = $header_obj->{'$ref'})) {
@@ -978,8 +985,6 @@ sub _deserialize_query_parameter ($self, $state, $param_obj, $params) {
 sub _deserialize_header_parameter ($self, $state, $header_obj, $header_name, $headers) {
   croak '$headers must be a Mojo::Headers object'
     if not blessed($headers) or not $headers->isa('Mojo::Headers');
-
-  return if grep fc $header_name eq fc $_, qw(Accept Content-Type Authorization);
 
   # temporary, until the ABNF is enforced in the OAD schema
   return E($state, 'non-ascii character detected in header name: not deserializable')
