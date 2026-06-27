@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.139     2026-06-27 23:43:59Z
           - when the best-matching media-type is "*/*", we will now still
             attempt to decode the message content, so it can be used in
