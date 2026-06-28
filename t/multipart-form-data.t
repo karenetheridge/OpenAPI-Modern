@@ -523,7 +523,7 @@ paths:
               encoding:
                 gamma:
                   # style defaults to form
-                  explode: true
+                  explode: false
 YAML
 
   $result = $openapi->validate_request(request('POST', 'http://example.com/foo',
@@ -531,7 +531,7 @@ YAML
     [
       [ alpha => '0', 'X-Alpha' => 'foo' ],
       [ beta => '1', 'X-Beta' => 'bar' ],
-      [ gamma => 'a=b&x=y', 'X-Gamma' => 'baz' ],
+      [ gamma => 'a,b,x,y', 'X-Gamma' => 'baz' ],
     ],
   ));
 
@@ -1801,11 +1801,12 @@ paths:
             encoding:
               thing:
                 style: form
+                explode: false
 YAML
 
   $result = $openapi->validate_request(request('POST', 'http://example.com/foo',
     [ 'Content-Type' => 'multipart/form-data' ],
-    [ [ thing => "dessert=\xc3\xa9clair" ] ],
+    [ [ thing => "dessert,\xc3\xa9clair" ] ],
   ));
 
   is_equal(
@@ -2104,6 +2105,163 @@ YAML
   );
 
   disallow_patterns($dancer_pattern) if $::TYPE eq 'dancer2';
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri,
+    openapi_schema => decode_yaml(OPENAPI_PREAMBLE.<<'YAML'));
+paths:
+  /foo:
+    post:
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                a_form_primitive:
+                  type: number
+                b_form_array_explode_true:
+                  type: array
+                c_form_object_explode_true:
+                  type: object
+                  additionalProperties:
+                    type: number
+                d_form_array_explode_false:
+                  type: array
+                e_form_object_explode_false:
+                  type: object
+                  additionalProperties:
+                    type: number
+                f_spaceDelimited_array:
+                  type: array
+                g_spaceDelimited_object:
+                  type: object
+                  additionalProperties:
+                    type: number
+                h_pipeDelimited_array:
+                  type: array
+                i_pipeDelimited_object:
+                  type: object
+                  additionalProperties:
+                    type: number
+                j_deepObject_object:
+                  type: object
+                  additionalProperties:
+                    type: number
+            encoding:
+              a_form_primitive:
+                style: form
+              b_form_array_explode_true:    # not allowed
+                style: form
+              c_form_object_explode_true:   # not allowed
+                style: form
+              d_form_array_explode_false:
+                explode: false
+              e_form_object_explode_false:
+                explode: false
+              f_spaceDelimited_array:
+                style: spaceDelimited
+                explode: false
+              g_spaceDelimited_object:
+                style: spaceDelimited
+                explode: false
+              h_pipeDelimited_array:
+                style: pipeDelimited
+                explode: false
+              i_pipeDelimited_object:
+                style: pipeDelimited
+                explode: false
+              j_deepObject_object:          # not allowed
+                style: deepObject
+YAML
+
+  $result = $openapi->validate_request(request('POST', 'http://example.com/foo',
+    [ 'Content-Type' => 'multipart/form-data' ],
+    [
+      [ a_form_primitive              => '42' ],
+      [ b_form_array_explode_true     => 'a=1&a=2' ],
+      [ c_form_object_explode_true    => 'a=1&b=2' ],
+      [ d_form_array_explode_false    => 'blue,black,brown' ],
+      [ e_form_object_explode_false   => 'R,100,G,200,B,150' ],
+      [ f_spaceDelimited_array        => 'blue black brown' ],
+      [ g_spaceDelimited_object       => 'R 100 G 200 B 150' ],
+      [ h_pipeDelimited_array         => 'blue|black|brown' ],
+      [ i_pipeDelimited_object        => 'R|100|G|200|B|150' ],
+      [ j_deepObject_object           => 'j_deepObject_object[R]=100&j_deepObject_object[G]=200&j_deepObject_object[B]=150' ],
+    ],
+  ));
+
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      {
+        valid => false,
+        errors => [
+          (map +{
+            instanceLocation => '/request/body/content/'.$_,
+            keywordLocation => jsonp(qw(/paths /foo post requestBody content multipart/form-data encoding), $_, 'explode'),
+            absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content multipart/form-data encoding), $_, 'explode'))->to_string,
+            error => 'explode=true is not supported for '.(split(/_/, $_))[2].'s using style='.(split(/_/, $_))[1].' in forms',
+          }, qw(b_form_array_explode_true c_form_object_explode_true)),
+          {
+            instanceLocation => '/request/body/content/j_deepObject_object',
+            keywordLocation => jsonp(qw(/paths /foo post requestBody content multipart/form-data encoding j_deepObject_object style)),
+            absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content multipart/form-data encoding j_deepObject_object style)))->to_string,
+            error => 'deepObject style cannot be used in forms',
+          },
+          (map +{
+            instanceLocation => '/request/body/content/'.$_,
+            keywordLocation => jsonp(qw(/paths /foo post requestBody content multipart/form-data schema properties), $_, 'type'),
+            absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content multipart/form-data schema properties), $_, 'type'))->to_string,
+            error => 'got string, not '.(split(/_/, $_))[2],
+          }, qw(b_form_array_explode_true c_form_object_explode_true j_deepObject_object)),
+          {
+            instanceLocation => '/request/body/content',
+            keywordLocation => jsonp(qw(/paths /foo post requestBody content multipart/form-data schema properties)),
+            absoluteKeywordLocation => $doc_uri->clone->fragment(jsonp(qw(/paths /foo post requestBody content multipart/form-data schema properties)))->to_string,
+            error => 'not all properties are valid',
+          },
+        ],
+      },
+      {
+        request => {
+          body => {
+            header => [
+              map +{ 'Content-Disposition' => 'form-data; name="'.$_.'"' }, qw(
+                a_form_primitive
+                b_form_array_explode_true
+                c_form_object_explode_true
+                d_form_array_explode_false
+                e_form_object_explode_false
+                f_spaceDelimited_array
+                g_spaceDelimited_object
+                h_pipeDelimited_array
+                i_pipeDelimited_object
+                j_deepObject_object
+              ),
+            ],
+            content => {
+              a_form_primitive              => 42,
+              b_form_array_explode_true     => 'a=1&a=2',
+              c_form_object_explode_true    => 'a=1&b=2',
+              d_form_array_explode_false    => [ qw(blue black brown) ],
+              e_form_object_explode_false   => { R => 100 => G => 200, B => 150 },
+              f_spaceDelimited_array        => [ qw(blue black brown) ],
+              g_spaceDelimited_object       => { R => 100 => G => 200, B => 150 },
+              h_pipeDelimited_array         => [ qw(blue black brown) ],
+              i_pipeDelimited_object        => { R => 100 => G => 200, B => 150 },
+              j_deepObject_object           => 'j_deepObject_object[R]=100&j_deepObject_object[G]=200&j_deepObject_object[B]=150',
+            },
+          },
+        },
+      },
+    ],
+    'some style/explode/type combinations are not valid in forms',
+  );
 };
 
 if (++$type_index < @::TYPES) {

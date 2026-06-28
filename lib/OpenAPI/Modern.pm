@@ -1338,23 +1338,27 @@ sub _deserialize_style ($self, $data, $state, %opt) {
   }
 
   elsif ($style eq 'form') {
-    # $data is a Mojo::Parameters object for this style
-    croak 'form style requires a parameter object' if ref $data ne 'Mojo::Parameters';
-    my $params = $data;
+    # "in" can be "query", "cookie" or "form"
+    croak '"', $style, '" style in "', $in, '" requires a Mojo::Parameters object'
+      if elem($in, [qw(query cookie)]) and ref $data ne 'Mojo::Parameters';
 
     # if all types are acceptable, fall through to returning string immediately
 
     if ($explode and @types != 6) {
       if (elem('object', \@types)) {
+        return E({ %$state, keyword => 'explode' }, 'explode=true is not supported for objects using style=form in forms') if $in eq 'form';
+
         # treat the entire querystring as the hash of keys and values; if duplicate, last entry wins
-        $data = +{ $params->pairs->@* };
+        $data = +{ $data->pairs->@* };
         delete $data->@{grep +(!length $data->{$_}), keys %$data} if $allowEmptyValue;
         $self->_coerce_object_elements($data, $schema, { %$state, keyword_path => $state->{schema_path} });
         return keys %$data ? \$data : ();
       }
 
       if (elem('array', \@types)) {
-        $data = $params->every_param($name);
+        return E({ %$state, keyword => 'explode' }, 'explode=true is not supported for arrays using style=form in forms') if $in eq 'form';
+
+        $data = $data->every_param($name);
         $data = [ grep length, @$data ] if $allowEmptyValue;
         $self->_coerce_array_elements($data, $schema, { %$state, keyword_path => $state->{schema_path} });
         return @$data ? \$data : ();
@@ -1364,7 +1368,7 @@ sub _deserialize_style ($self, $data, $state, %opt) {
     # single parameter value used for primitives, and for array and object when explode=false
     # (explode=false is not valid with array, object for cookies)
     # if the parameter name appears more than once, the last value will be used
-    $data = $params->param($name);
+    $data = $in eq 'form' ? Encode::decode('UTF-8', $data, Encode::DIE_ON_ERR) : $data->param($name);
     return if not defined $data or $allowEmptyValue and not length $data;
 
     if ($in ne 'cookie' and not $explode and @types != 6 and elem([qw(array object)], \@types)) {
@@ -1388,7 +1392,9 @@ sub _deserialize_style ($self, $data, $state, %opt) {
   }
 
   elsif ($style eq 'spaceDelimited' or $style eq 'pipeDelimited') {
-    croak 'query parameters require a parameter object' if ref $data ne 'Mojo::Parameters';
+    # "in" can be "query" or "form"
+    croak '"', $style, '" style in "', $in, '" requires a Mojo::Parameters object'
+      if $in eq 'query' and ref $data ne 'Mojo::Parameters';
 
     return E({ %$state, keyword => 'explode' }, 'explode=true is not supported for style=%s', $style)
       if $explode;
@@ -1396,8 +1402,7 @@ sub _deserialize_style ($self, $data, $state, %opt) {
     return E({ %$state, keyword => 'style' }, '%s style can only deserialize to arrays or objects', $style)
       if not elem([qw(array object)], \@types);
 
-    # $data argument is a Mojo::Parameters object for this style
-    $data = $data->param($name);
+    $data = $in eq 'form' ? Encode::decode('UTF-8', $data, Encode::DIE_ON_ERR) : $data->param($name);
     return if not defined $data or $allowEmptyValue and not length $data;
 
     # we do NOT perform another decoding pass here:
@@ -1427,7 +1432,8 @@ sub _deserialize_style ($self, $data, $state, %opt) {
   }
 
   elsif ($style eq 'deepObject') {
-    croak 'query parameters require a parameter object' if ref $data ne 'Mojo::Parameters';
+    croak '"', $style, '" style in "', $in, '" requires a Mojo::Parameters object'
+      if $in eq 'query' and ref $data ne 'Mojo::Parameters';
 
     # v3.1.1 §4.8.12.2.2: "Note that despite false being the default for deepObject, the combination
     # of false with deepObject is undefined."
@@ -1438,8 +1444,9 @@ sub _deserialize_style ($self, $data, $state, %opt) {
     return E({ %$state, keyword => 'style' }, 'deepObject style can only deserialize to objects')
       if not elem('object', \@types);
 
-    # $data is a Mojo::Parameters object for this style
-    croak 'query parameters require a parameter object' if ref $data ne 'Mojo::Parameters';
+    return E({ %$state, keyword => 'style' }, 'deepObject style cannot be used in forms')
+      if $in eq 'form';
+
     my $params = $data;
     $data = {};
     foreach my $pair (pairs $params->pairs->@*) {
@@ -1910,10 +1917,15 @@ sub _decode_content_element ($self, $element_ref, $headers, $name, $schema_state
       and any { exists $encoding_obj->{$_} } qw(style explode allowReserved)) {
     my $style = $encoding_obj->{style} // 'form';
 
+    # 3.2.0 §C: "When using style and similar keywords to produce a multipart/form-data body, the
+    # query string names are placed in the name parameter of the Content-Disposition part header,
+    # and the values are placed in the corresponding part body; the ?, =, and & characters are not
+    # used, and URI percent encoding is not applied"
     $element_decoded_ref = $self->_deserialize_style(
-      Mojo::Parameters->new($element_ref->$*),
+      $encoding_state->{is_form} eq 'application/x-www-form-urlencoded'
+        ? Mojo::Parameters->new($element_ref->$*) : $element_ref->$*,
       { %$encoding_state, schema_path => $schema_state->{keyword_path}, errors => my $errors = [] },
-      in => 'query',
+      in => ($encoding_state->{is_form} eq 'application/x-www-form-urlencoded' ? 'query' : 'form'),
       style => $style,
       explode => $encoding_obj->{explode} // ($style eq 'form' ? true : false),
       name => $name,
