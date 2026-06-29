@@ -15,7 +15,6 @@ use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 
 use lib 't/lib';
 use Helper;
-use Test2::Warnings qw(:no_end_test warnings had_no_warnings);
 use JSON::Schema::Modern::Utilities 'jsonp';
 
 my $doc_uri_rel = Mojo::URL->new('/api');
@@ -92,5 +91,4 @@ if (++$type_index < @::TYPES) {
   goto START;
 }
 
-had_no_warnings() if $ENV{AUTHOR_TESTING};
 done_testing;

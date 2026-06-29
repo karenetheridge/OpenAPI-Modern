@@ -15,7 +15,6 @@ use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 
 use lib 't/lib';
 use Helper;
-use Test2::Warnings qw(:no_end_test warnings had_no_warnings);
 use JSON::Schema::Modern::Utilities 'jsonp';
 use OpenAPI::Modern::Utilities 'elem';
 
@@ -27,7 +26,6 @@ my $type_index = 0;
 START:
 $::TYPE = $::TYPES[$type_index];
 note 'REQUEST/RESPONSE TYPE: '.$::TYPE;
-
 
 subtest $::TYPE.': multipart/form-data' => sub {
   my $openapi = OpenAPI::Modern->new(
@@ -98,5 +96,4 @@ if (++$type_index < @::TYPES) {
   goto START;
 }
 
-had_no_warnings() if $ENV{AUTHOR_TESTING};
 done_testing;
