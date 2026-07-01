@@ -1497,7 +1497,8 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
       'incorrect Content-Type "%s"', $content_type)
     if not defined $media_type;
 
-  my $content_ref = \ $message->body;
+  # multipart/* messages will be decoded using its Mojo::Content::MultiPart object, not the raw string
+  my $content_ref = $message->content->is_multipart ? $message->content : \ $message->body;
 
   $content_ref = $self->_deserialize_content($content_ref, { %$state }, $content_obj, $media_type, $content_type);
   return if not $content_ref;
@@ -1540,13 +1541,15 @@ sub _validate_body_content ($self, $state, $content_obj, $message) {
 sub _deserialize_content ($self, $content_ref, $state, $content_obj, $media_type, $content_type) {
   $state->{keyword_path} = jsonp($state->{keyword_path}, 'content', $media_type);
 
-  # TODO: respect Content-Encoding header
-
   my $deserialized_content_ref;
   try {
-    # case-insensitive, wildcard lookup; text/* supports charset;
-    # returns undef if no suitable decoder can be found
-    $deserialized_content_ref = decode_media_type($content_type, $content_ref);
+    if (not match_media_type($content_type, ['multipart/*'])) {
+      # TODO: handle Content-Encoding header(s)
+
+      # case-insensitive, wildcard lookup; text/* supports charset;
+      # returns undef if no suitable decoder can be found
+      $deserialized_content_ref = decode_media_type($content_type, $content_ref);
+    }
   }
   catch ($e) {
     return E($state, 'could not decode content as %s: %s', $content_type, $e =~ s/^(.*)\n/$1/r);
@@ -1562,9 +1565,11 @@ sub _deserialize_content ($self, $content_ref, $state, $content_obj, $media_type
   if (not $deserialized_content_ref) {
     # don't fail, and return the original data, if the best-matching media-type object is under */*
     # or the schema would pass on any input
-    return $content_ref if $media_type eq '*/*'
-      or all { ref $_ eq 'HASH' ? !keys %$_ : $_ }
-        ($media_type_obj->{schema}//(), $media_type_obj->{itemSchema}//());
+    return (ref $content_ref eq 'SCALAR' && !match_media_type($content_type, ['multipart/*'])
+        ? $content_ref : \'TODO')
+      if $media_type eq '*/*'
+        or all { ref $_ eq 'HASH' ? !keys %$_ : $_ }
+          ($media_type_obj->{schema}//(), $media_type_obj->{itemSchema}//());
 
     # coming soon!
     abort($saved_state, 'EXCEPTION: unimplemented media type "%s"', $content_type =~ s/;.*\z//r)
