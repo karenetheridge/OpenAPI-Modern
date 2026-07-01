@@ -48,6 +48,7 @@ YAML
 
   my $result = $openapi->validate_request(request('POST', 'http://example.com/supported',
     [ 'Content-Type' => 'multipart/mixed' ], '!!!'));
+
   is_equal(
     [
       $result->TO_JSON,
@@ -59,8 +60,10 @@ YAML
     ],
     'multipart/mixed messages can be validated if there is no body schema',
   );
+
   $result = $openapi->validate_request(request('POST', 'http://example.com/unsupported',
     [ 'Content-Type' => 'multipart/mixed' ], '!!!'));
+
   is_equal(
     [
       $result->TO_JSON,

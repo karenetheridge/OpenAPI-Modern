@@ -49,6 +49,7 @@ YAML
 
   my $result = $openapi->validate_request(request('POST', 'http://example.com/supported',
     [ 'Content-Type' => 'application/x-www-form-urlencoded' ], 'foo=bar'));
+
   is_equal(
     [
       $result->TO_JSON,
@@ -63,6 +64,7 @@ YAML
 
   $result = $openapi->validate_request(request('POST', 'http://example.com/unsupported',
     [ 'Content-Type' => 'application/x-www-form-urlencoded' ], 'foo=bar'));
+
   is_equal(
     [
       $result->TO_JSON,
