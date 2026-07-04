@@ -252,10 +252,10 @@ sub elem ($items, $set) {
   $items = [ $items ] if ref $items ne 'ARRAY';
 
   any {
-    my $x = $_;
-    any { defined $x ? (defined $_ && $x eq $_) : (!defined $_) } @$items
+    my $item = $_;
+    any { defined $item ? (defined $_ && $item eq $_) : (!defined $_) } @$set
   }
-  @$set;
+  @$items;
 }
 
 {
