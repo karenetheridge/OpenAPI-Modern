@@ -15,7 +15,7 @@ use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 
 use lib 't/lib';
 use Helper;
-use JSON::Schema::Modern::Utilities qw(jsonp add_media_type);
+use JSON::Schema::Modern::Utilities qw(jsonp add_media_type jsonp_elements);
 use Mojo::UserAgent::Transactor;
 
 my $doc_uri_rel = Mojo::URL->new('/api');
@@ -636,6 +636,413 @@ YAML
       },
     ],
     'multipart/mixed object decoding, more specific Content-Type is used over encoding/contentType',
+  );
+};
+
+subtest 'deserialize_multipart' => sub {
+  skip_all 'this test works directly with mojo objects' if $::TYPE ne 'mojo';
+
+  my $request = request('POST', 'http://example.com/foo',
+    [ 'Content-Type' => 'multipart/mixed' ],
+    [
+      [                               # first level, first part
+        [                             # ...contains a multipart/mixed:
+          [ '1', 'X-Test' => 'a' ],   # second level, first part
+          [ '2', 'X-Test' => 'b' ],   # second level, second part
+        ],
+        'Content-Type' => 'multipart/mixed',
+        'X-Test' => 'alpha',
+      ],
+      [
+        [
+          [ '1', 'X-Test' => 'x' ],
+          [ '2', 'X-Test' => 'y' ],
+        ],
+        'Content-Type' => 'multipart/mixed',
+        'X-Test' => 'beta',
+      ],
+    ],
+  );
+
+  my @boundaries = get_part_boundaries($request);
+
+  is_equal(
+    [ my ($content, $headers) = OpenAPI::Modern::Utilities::deserialize_multipart($request->content) ],
+    [
+      [
+        [ '1', '2' ],
+        [ '1', '2' ],
+      ],
+      [
+        { # headers for top level part #0.
+          'Content-Type' => 'multipart/mixed; boundary='.$boundaries[0],
+          'X-Test' => 'alpha',
+          0 => { 'X-Test' => 'a' },
+          1 => { 'X-Test' => 'b' },
+        },
+        { # headers for top level part #1.
+          'Content-Type' => 'multipart/mixed; boundary='.$boundaries[1],
+          'X-Test' => 'beta',
+          0 => { 'X-Test' => 'x' },
+          1 => { 'X-Test' => 'y' },
+        },
+      ],
+    ],
+    'recursively deserialized content and headers from nested multipart/mixed body',
+  );
+
+  is_equal(
+    jsonp_elements($headers),
+    {
+      '/0/Content-Type' => 'multipart/mixed; boundary='.$boundaries[0],
+      '/0/X-Test' => 'alpha',
+      '/0/0/X-Test' => 'a',
+      '/0/1/X-Test' => 'b',
+      '/1/Content-Type' => 'multipart/mixed; boundary='.$boundaries[1],
+      '/1/X-Test' => 'beta',
+      '/1/0/X-Test' => 'x',
+      '/1/1/X-Test' => 'y',
+    },
+    'JSON pointer locations for body headers',
+  );
+
+
+  $request = request('POST', 'http://example.com/foo',
+    [ 'Content-Type' => 'multipart/mixed' ],
+    [
+      [                                   # first level, first part
+        [                                 # ...contains a multipart/form-data
+          [ a => '1', 'X-Test' => 'a' ],  # second level, first part
+          [ b => '2', 'X-Test' => 'b' ],  # second level, second part
+        ],
+        'Content-Type' => 'multipart/form-data',
+        'X-Test' => 'alpha',
+      ],
+      [
+        [
+          [ x => '1', 'X-Test' => 'x' ],
+          [ y => '2', 'X-Test' => 'y' ],
+        ],
+        'Content-Type' => 'multipart/form-data',
+        'X-Test' => 'beta',
+      ],
+    ],
+  );
+
+  @boundaries = get_part_boundaries($request);
+
+  is_equal(
+    [ ($content, $headers) = OpenAPI::Modern::Utilities::deserialize_multipart($request->content) ],
+    [
+      # content
+      [
+        [ { a => '1' }, { b => '2' } ],
+        [ { x => '1' }, { y => '2' } ],
+      ],
+      # headers
+      [
+        { # headers for top level part #0.
+          'Content-Type' => 'multipart/form-data; boundary='.$boundaries[0],
+          'X-Test' => 'alpha',
+          0 => { 'Content-Disposition' => 'form-data; name="a"', 'X-Test' => 'a' },
+          1 => { 'Content-Disposition' => 'form-data; name="b"', 'X-Test' => 'b' },
+        },
+        { # headers for top level part #1.
+          'Content-Type' => 'multipart/form-data; boundary='.$boundaries[1],
+          'X-Test' => 'beta',
+          0 => { 'Content-Disposition' => 'form-data; name="x"', 'X-Test' => 'x' },
+          1 => { 'Content-Disposition' => 'form-data; name="y"', 'X-Test' => 'y' },
+        },
+      ],
+    ],
+    'recursively deserialized headers and content from multipart/form-data nested in a multipart/mixed',
+  );
+
+  is_equal(
+    jsonp_elements($headers),
+    {
+      '/0/Content-Type' => 'multipart/form-data; boundary='.$boundaries[0],
+      '/0/X-Test' => 'alpha',
+      '/0/0/Content-Disposition' => 'form-data; name="a"',
+      '/0/0/X-Test' => 'a',
+      '/0/1/Content-Disposition' => 'form-data; name="b"',
+      '/0/1/X-Test' => 'b',
+      '/1/Content-Type' => 'multipart/form-data; boundary='.$boundaries[1],
+      '/1/X-Test' => 'beta',
+      '/1/0/Content-Disposition' => 'form-data; name="x"',
+      '/1/0/X-Test' => 'x',
+      '/1/1/Content-Disposition' => 'form-data; name="y"',
+      '/1/1/X-Test' => 'y',
+    },
+    'JSON pointer locations for body headers',
+  );
+};
+
+subtest 'multipart/mixed with nested multipart/mixed' => sub {
+  my $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri,
+    openapi_schema => decode_yaml(OPENAPI_PREAMBLE.<<'YAML'));
+paths:
+  /foo:
+    post:
+      requestBody:
+        content:
+          multipart/mixed: {}
+YAML
+
+  my $request = request('POST', 'http://example.com/foo',
+    [ 'Content-Type' => 'multipart/mixed' ],
+    [
+      [                               # first level, first part
+        [                             # ...contains a multipart/mixed:
+          [ '1', 'X-Test' => 'a' ],   # second level, first part
+          [ '2', 'X-Test' => 'b' ],   # second level, second part
+        ],
+        'Content-Type' => 'multipart/mixed',
+        'X-Test' => 'alpha',
+      ],
+      [
+        [
+          [ '1', 'X-Test' => 'x' ],
+          [ '2', 'X-Test' => 'y' ],
+        ],
+        'Content-Type' => 'multipart/mixed',
+        'X-Test' => 'beta',
+      ],
+    ],
+  );
+
+  my @boundaries = get_part_boundaries($request);
+  my $result = $openapi->validate_request($request);
+
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      { valid => true },
+      my $result_data = {
+        request => {
+          body => {
+            header => [
+              { # headers for top level part #0.
+                'Content-Type' => 'multipart/mixed; boundary='.$boundaries[0],
+                'X-Test' => 'alpha',
+                0 => { 'X-Test' => 'a' },
+                1 => { 'X-Test' => 'b' },
+              },
+              { # headers for top level part #1.
+                'Content-Type' => 'multipart/mixed; boundary='.$boundaries[1],
+                'X-Test' => 'beta',
+                0 => { 'X-Test' => 'x' },
+                1 => { 'X-Test' => 'y' },
+              },
+            ],
+            content => [
+              [ '1', '2' ],
+              [ '1', '2' ],
+            ],
+          },
+        },
+      },
+    ],
+    'nested multipart/mixed with no schema or encoding deserializes to arrays inside array',
+  );
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri,
+    openapi_schema => decode_yaml(OPENAPI_PREAMBLE.<<'YAML'));
+paths:
+  /foo:
+    post:
+      requestBody:
+        content:
+          multipart/mixed:
+            itemSchema:
+              type: array
+              items:
+                type: number
+YAML
+
+  $result = $openapi->validate_request($request);
+
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      { valid => true },
+      {
+        request => {
+          body => {
+            $result_data->{request}{body}->%{header},
+            content => [
+              [ 1, 2 ],
+              [ 1, 2 ],
+            ],
+          },
+        },
+      },
+    ],
+    'nested multipart/mixed, deserialized to nested arrays, with primitive coercion',
+  );
+};
+
+subtest 'multipart/mixed with nested multipart/form-data' => sub {
+  my $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri,
+    openapi_schema => decode_yaml(OPENAPI_PREAMBLE.<<'YAML'));
+paths:
+  /foo:
+    post:
+      requestBody:
+        content:
+          multipart/mixed: {}
+YAML
+
+  my $request = request('POST', 'http://example.com/foo',
+    [ 'Content-Type' => 'multipart/mixed' ],
+    [
+      [                                   # first level, first part
+        [                                 # ...contains a multipart/form-data
+          [ a => '1', 'X-Test' => 'a' ],  # second level, first part
+          [ b => '2', 'X-Test' => 'b' ],  # second level, second part
+        ],
+        'Content-Type' => 'multipart/form-data',
+        'X-Test' => 'alpha',
+      ],
+      [
+        [
+          [ x => '1', 'X-Test' => 'x' ],
+          [ y => '2', 'X-Test' => 'y' ],
+        ],
+        'Content-Type' => 'multipart/form-data',
+        'X-Test' => 'beta',
+      ],
+    ],
+  );
+
+  my @boundaries = get_part_boundaries($request);
+  my $result = $openapi->validate_request($request);
+
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      { valid => true },
+      my $result_data = {
+        request => {
+          body => {
+            header => [
+              { # headers for top level part #0.
+                'Content-Type' => 'multipart/form-data; boundary='.$boundaries[0],
+                'X-Test' => 'alpha',
+                0 => { 'Content-Disposition' => 'form-data; name="a"', 'X-Test' => 'a' },
+                1 => { 'Content-Disposition' => 'form-data; name="b"', 'X-Test' => 'b' },
+              },
+              { # headers for top level part #1.
+                'Content-Type' => 'multipart/form-data; boundary='.$boundaries[1],
+                'X-Test' => 'beta',
+                0 => { 'Content-Disposition' => 'form-data; name="x"', 'X-Test' => 'x' },
+                1 => { 'Content-Disposition' => 'form-data; name="y"', 'X-Test' => 'y' },
+              },
+            ],
+            content => [
+              { a => '1', b => '2' },
+              { x => '1', y => '2' },
+            ],
+          },
+        },
+      },
+    ],
+    'multipart/form-data nested in multipart/mixed with no schema or encoding defaults to objects inside array',
+  );
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri,
+    openapi_schema => decode_yaml(OPENAPI_PREAMBLE.<<'YAML'));
+paths:
+  /foo:
+    post:
+      requestBody:
+        content:
+          multipart/mixed:
+            itemSchema:
+              type: object
+              additionalProperties:
+                type: number
+YAML
+
+  $result = $openapi->validate_request($request);
+
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      { valid => true },
+      {
+        request => {
+          body => {
+            $result_data->{request}{body}->%{header},
+            content => [
+              { a => 1, b => 2 },
+              { x => 1, y => 2 },
+            ],
+          },
+        },
+      },
+    ],
+    'multipart/form-data nested inside multipart/mixed (objects inside array), with primitive coercion',
+  );
+
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri,
+    openapi_schema => decode_yaml(OPENAPI_PREAMBLE.<<'YAML'));
+paths:
+  /foo:
+    post:
+      requestBody:
+        content:
+          multipart/mixed:
+            itemSchema:
+              type: array
+              items:
+                type: object
+                additionalProperties:
+                  type: number
+YAML
+
+  $result = $openapi->validate_request($request);
+
+  is_equal(
+    [
+      $result->TO_JSON,
+      $result->data,
+    ],
+    [
+      { valid => true },
+      {
+        request => {
+          body => {
+            $result_data->{request}{body}->%{header},
+            content => [
+              [ { a => 1 }, { b => 2 } ],
+              [ { x => 1 }, { y => 2 } ],
+            ],
+          },
+        },
+      },
+    ],
+    'multipart/form-data nested inside multipart/mixed (arrays inside array), with primitive coercion',
   );
 };
 

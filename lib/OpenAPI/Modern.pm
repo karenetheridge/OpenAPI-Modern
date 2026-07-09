@@ -21,7 +21,7 @@ no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 no if "$]" >= 5.041009, feature => 'smartmatch';
 no feature 'switch';
 use Carp qw(carp croak);
-use List::Util qw(first pairs uniq);
+use List::Util qw(first pairs uniq pairkeys pairgrep max);
 use if "$]" < 5.041010, 'List::Util' => qw(all any);
 use if "$]" >= 5.041010, experimental => qw(keyword_all keyword_any);
 use builtin::compat qw(indexed blessed);
@@ -1781,7 +1781,10 @@ sub _decode_content ($self, $content_ref, $headers_ref, $schema_state, $schema, 
 
       # v3.2.0 §4.15.5 1: "Array properties MUST be handled by applying the given Encoding Object to
       # produce one encoded value per array item, each with the same name..."
-      if ($encoding_state->{is_form} and ref $content_ref->$*->{$property} eq 'ARRAY') {
+      if ($encoding_state->{is_form}
+          and ref((match_media_type($content_type, ['multipart/form-data'])
+            ? $header_map : $content_ref->$*)->{$property}) eq 'ARRAY') {
+
         foreach my $idx (0 .. $content_ref->$*->{$property}->$#*) {
           my ($schema_state, $schema) = _adjust_state_for_array($self, $idx, $schema_state, $schema);
 
@@ -1988,14 +1991,32 @@ sub _decode_content_element ($self, $element_ref, $headers, $name, $schema_state
   $element_ref->$* = $element_decoded_ref->$* if $element_decoded_ref;
 
   RECURSE:
-  if (defined $schema or defined $encoding_obj) {
+  if (defined $schema or defined $encoding_obj
+      or $headers and match_media_type($headers->{'Content-Type'}, ['multipart/*'])) {
+
     # do not apply _charset_ to nested strings
     delete $encoding_state->{charset};
 
+    my @charset_indices = pairkeys
+      pairgrep { $a =~ /^[0-9]+\z/ && ($b->{'Content-Disposition'}//'') eq 'form-data; name="_charset_"' }
+      ($headers//{})->%*;
+
     ()= $self->_decode_content(
       $element_ref,   # this may be the original data, if nothing was decoded
-      undef,          # no headers once we recurse into the multipart parts
-      $schema_state, $schema, $encoding_state, $encoding_obj, $content_type);
+      $headers && match_media_type($headers->{'Content-Type'}, ['multipart/*'])
+       ? \[ map +(/^[0-9]+\z/ ? $headers->{$_} : ()), sort keys $headers->%* ]  # nested headers
+       : undef,
+      $schema_state, $schema, $encoding_state, $encoding_obj,
+      $content_type // ($headers//{})->{'Content-Type'});
+
+    # find all _charset_ headers from the original headers hash and splice them out
+    foreach my $idx (sort { $b <=> $a } @charset_indices) {
+      my $max_idx = max(grep /^[0-9]+\z/, keys $headers->%*);
+      delete $headers->{$idx};  # remove header for _charset_ part
+      foreach my $idx ($idx+1 .. $max_idx) {
+        $headers->{$idx-1} = delete $headers->{$idx}; # renumber all subsequent part headers
+      }
+    }
   }
 }
 
@@ -2651,7 +2672,7 @@ C<instanceLocation>s in errors in the Result object):
       },
       body => {
         header => [
-          <for multipart media-types, an arrayref of headers, one element per part,
+          <for multipart media-types, an arrayref of headers, one element per part, possibly nested,
           in the same order as the body parts from the original message>
         ],
         content => <deserialized data from body; can be any type>,
@@ -2711,7 +2732,7 @@ C<instanceLocation>s in errors in the Result object):
       },
       body => {
         header => [
-          <for multipart media-types, an arrayref of headers, one element per part,
+          <for multipart media-types, an arrayref of headers, one element per part, possibly nested,
           in the same order as the body parts from the original message>
         ],
         content => <deserialized data from body; can be any type>,
@@ -2945,6 +2966,64 @@ Other multipart media-types are deserialized to an array, one item per part. See
 * L<OpenAPI Media Type Registry: Sequential Multipart: Multipart subtypes with unnamed parts|https://spec.openapis.org/registry/media-type/sequential_multipart>
 
 Multipart headers are always deserialized as an array of hashrefs, one hashref per part.
+
+Nested multipart messages are also supported. Deserialized body content is presented as nested
+arrays or objects of the multipart parts; deserialized headers are presented as nested hashrefs,
+where the hashref keys correspond to the indices of the nested parts. This looks a bit weird when
+exploded out into perl-style data structures, but the JSON pointers are intuitive, as it allows one
+to pretend that the data structure is both a hashref and an arrayref at the same time. For example:
+
+This deserialized body content, consisting of two multipart/form-data parts inside a
+multipart/form-data message which itself has two parts:
+
+  {
+    alpha => {
+      a => '1',
+      b => '2',
+    },
+    beta => {
+      x => '7',
+      y => '8',
+    },
+  }
+
+..will have its body headers deserialized as:
+
+  [
+    {
+      'Content-Type' => 'multipart/form-data; boundary=XXXXX',
+      'Content-Disposition' => 'form-data; name="alpha"',
+      0 => { 'Content-Disposition' => 'form-data; name="a"' },
+      1 => { 'Content-Disposition' => 'form-data; name="b"' },
+    },
+    {
+      'Content-Type' => 'multipart/form-data; boundary=XXXXX',
+      'Content-Disposition' => 'form-data; name="beta"',
+      0 => { 'Content-Disposition' => 'form-data; name="x"' },
+      1 => { 'Content-Disposition' => 'form-data; name="y"' },
+    },
+  ]
+
+When flattened to a hashref of JSON pointers => values via
+L<JSON::Schema::Modern::Utilities/jsonp_elements>, all the locations and values returned in
+L<JSON::Schema::Modern::Result/data> are:
+
+  {
+    '/request/body/content/alpha/a'                 => '1',
+    '/request/body/content/alpha/b'                 => '2',
+    '/request/body/content/beta/x'                  => '7',
+    '/request/body/content/beta/y'                  => '8',
+    '/request/body/header/0/Content-Type'           => 'multipart/form-data; boundary=XXXXX',
+    '/request/body/header/0/Content-Disposition'    => 'form-data; name="alpha"',
+    '/request/body/header/0/0/Content-Disposition'  => 'form-data; name="a"',
+    '/request/body/header/0/1/Content-Disposition'  => 'form-data; name="b"',
+    '/request/body/header/1/Content-Type'           => 'multipart/form-data; boundary=XXXXX',
+    '/request/body/header/1/Content-Disposition'    => 'form-data; name="beta"',
+    '/request/body/header/1/0/Content-Disposition'  => 'form-data; name="x"',
+    '/request/body/header/1/1/Content-Disposition'  => 'form-data; name="y"',
+  }
+
+You can access the result data via JSON pointers with L<JSON::Schema::Modern::Utilities/jsonp_get>.
 
 =head1 LIMITATIONS
 

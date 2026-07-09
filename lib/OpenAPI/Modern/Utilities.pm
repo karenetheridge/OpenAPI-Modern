@@ -23,7 +23,7 @@ use Mojo::Util qw(url_unescape url_escape);
 use Carp 'croak';
 use if "$]" < 5.041010, 'List::Util' => 'any';
 use if "$]" >= 5.041010, experimental => 'keyword_any';
-use builtin::compat 'blessed';
+use builtin::compat qw(blessed indexed);
 use JSON::Schema::Modern::Utilities qw(register_schema load_cached_document true false match_media_type);
 use namespace::clean;
 
@@ -400,10 +400,18 @@ sub deserialize_multipart ($content) {
 
   foreach my $part ($content->parts->@*) {
     my $headers = $part->headers->to_hash('multi');
-    push @headers, +{ map +($_ => ($headers->{$_}->@* == 1 ? $headers->{$_}[0] : $headers->{$_} )),
+    $headers = +{ map +($_ => ($headers->{$_}->@* == 1 ? $headers->{$_}[0] : $headers->{$_} )),
       keys $headers->%* };
 
-    my $value = $part->is_multipart ? $part : $part->asset->slurp;
+    my $value;
+    if ($part->is_multipart) {
+      ($value, my $new_headers) = deserialize_multipart($part);
+      # new_headers is an arrayref... copy into the $headers hash with array indices as hash keys
+      $headers = { %$headers, indexed $new_headers->@* };
+    }
+    else {
+      $value = $part->asset->slurp;
+    }
 
     if ($is_form) {
       my $disposition = $part->headers->content_disposition;
@@ -414,6 +422,7 @@ sub deserialize_multipart ($content) {
     }
 
     push @content, $value;
+    push @headers, $headers;
   }
 
   # remove empty header entries
