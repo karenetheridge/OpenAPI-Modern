@@ -8,7 +8,7 @@ OpenAPI::Modern - Validate HTTP requests and responses against an OpenAPI v3.0, 
 
 =head1 VERSION
 
-version 0.139
+version 0.140
 
 I use a linearly-increasing version numbering scheme. No meaning should be
 presumed or inferred from the version being less than 1.0.
@@ -617,10 +617,6 @@ C<multipart/*> messages
 
 =item *
 
-C<application/x-www-form-urlencoded> messages and the C<encoding> object within media-type objects
-
-=item *
-
 The use of C<$ref> within a path-item object is only allowed when not adjacent to any other path-item properties (C<parameters>, C<servers>, request methods)
 
 =item *
@@ -666,6 +662,8 @@ To decode the cookie on the server side:
 Which will be the value: C<< { a => 1, b => 2 } >>
 
 =head1 SEE ALSO
+
+=for stopwords WHATWG
 
 =over 4
 
@@ -732,6 +730,10 @@ L<RFC6265: HTTP State Management Mechanism|https://datatracker.ietf.org/doc/html
 =item *
 
 L<RFC6570: URI Template|https://datatracker.ietf.org/doc/html/rfc6570>
+
+=item *
+
+L<Web Hypertext Application Technology Working Group (WHATWG): application/x-www-form-urlencoded|https://url.spec.whatwg.org/#application/x-www-form-urlencoded>
 
 =back
 
