@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.141     2026-07-12 22:33:35Z
           - fix a prereq declaration
 
 0.140     2026-07-11 21:04:43Z
