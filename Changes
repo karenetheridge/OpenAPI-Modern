@@ -1,6 +1,7 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - fix a prereq declaration
 
 0.140     2026-07-11 21:04:43Z
           - support for message bodies encoded with the
