@@ -1493,9 +1493,9 @@ sub _deserialize_style ($self, $data, $state, %opt) {
     die 'unsupported style ', $style;
   }
 
-  return E({ %$state, keyword => 'style' },
-    'cannot deserialize to %s type%s%s', !@types ? 'any' : 'requested', @types > 1 ? 's' : '',
-    @types ? ' ('.join(', ', @types).')' : '');
+  return E({ %$state, keyword => 'schema' }, 'cannot deserialize%s to %s type%s%s',
+    ($in eq 'header' ? '' : ' as '.$style.' style'),
+    !@types ? 'any' : 'requested', @types > 1 ? 's' : '', @types ? ' ('.join(', ', @types).')' : '');
 }
 
 sub _validate_body_content ($self, $state, $content_obj, $message) {
