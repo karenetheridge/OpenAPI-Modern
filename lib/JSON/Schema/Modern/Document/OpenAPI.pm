@@ -129,7 +129,8 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     errors => [],
     evaluator => $evaluator,
     identifiers => {},
-    # note that this is the JSON Schema specification version, not OpenAPI version
+    # note that this is the version of the JSON Schema dialect used to define the OpenAPI document,
+    # not the OpenAPI specification version
     specification_version => $evaluator->SPECIFICATION_VERSION_DEFAULT,
     vocabularies => [],
     subschemas => [],
