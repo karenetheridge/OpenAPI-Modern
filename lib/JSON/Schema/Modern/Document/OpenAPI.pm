@@ -60,8 +60,6 @@ sub _add_operationId { $_[0]->_operationIds->{$_[1]} = json_pointer_type->($_[2]
 has _tags => (
   is => 'bare',
   isa => HashRef[json_pointer_type],
-  lazy => 1,
-  default => sub { {} },
 );
 
 sub tag_path { $_[0]->{_tags}{$_[1]} }
@@ -70,8 +68,6 @@ sub tag_path { $_[0]->{_tags}{$_[1]} }
 has _operation_tags => (
   is => 'bare',
   isa => HashRef[ArrayRef[json_pointer_type]],
-  lazy => 1,
-  default => sub { {} },
 );
 
 sub operations_with_tag { ($_[0]->{_operation_tags}{$_[1]}//[])->@* }
