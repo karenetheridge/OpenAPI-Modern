@@ -180,7 +180,7 @@ sub add_formats ($evaluator, $version = OAS_VERSIONS->[-1]) {
 
   my $OWS = q{[\x09\x20]*};
   my $TOKEN = q{[a-zA-Z0-9!#$%&'*+.^_`|~-]+};
-  my $QUOTED_STRING = q{"(?:[\x09\20\x21\x23-\x5B\x5D-\x7E\x80-\xFF]|\x5C[\x09\x20-\x7E\x80-\xFF])*"};
+  my $QUOTED_STRING = q{"(?:[\x09\x20\x21\x23-\x5B\x5D-\x7E\x80-\xFF]|\x5C[\x09\x20-\x7E\x80-\xFF])*"};
   $evaluator->add_format_validation('media-range' => +{
     type => 'string',
     sub => sub ($x) {
