@@ -42,6 +42,7 @@ our @EXPORT = qw(
 
 our @EXPORT_OK = qw(
   OAS_SCHEMAS
+  MEDIA_RANGE_RE
   add_vocab_and_default_schemas
   add_formats
   convert_request
@@ -137,17 +138,23 @@ use constant OAS_SCHEMAS => {
   }, OAS_VERSIONS->@*
 };
 
-# see RFC9110 §8.3.1: ABNF "OWS": HT SP
-my $OWS = q{[\x09\x20]*};
+my ($OWS, $TOKEN, $QUOTED_STRING);
+BEGIN {
+  # see RFC9110 §8.3.1: ABNF "OWS": HT SP
+  $OWS = q{[\x09\x20]*};
 
-# see RFC9110 §5.6.2: ABNF "token" (identical to RFC2616 §2.2 "token")
-my $TOKEN = q{(?a:[[:alnum:]!#$%&'*+.^_`|~-]+)};
+  # see RFC9110 §5.6.2: ABNF "token" (identical to RFC2616 §2.2 "token")
+  $TOKEN = q{(?a:[[:alnum:]!#$%&'*+.^_`|~-]+)};
 
-# see RFC9110 §5.6.6: ABNF "quoted-string"
-# quoted-string  = DQUOTE *( qdtext / quoted-pair ) DQUOTE
-# qdtext         = HTAB / SP / %x21 / %x23-5B / %x5D-7E / obs-text ; everything but: " \ DEL
-# quoted-pair    = "\" ( HTAB / SP / VCHAR / obs-text )
-my $QUOTED_STRING = q{"((?:[\x09\x20\x21\x23-\x5B\x5D-\x7E\x80-\xFF]|\x5C[\x09\x20-\x7E\x80-\xFF])*)"};
+  # see RFC9110 §5.6.6: ABNF "quoted-string"
+  # quoted-string  = DQUOTE *( qdtext / quoted-pair ) DQUOTE
+  # qdtext         = HTAB / SP / %x21 / %x23-5B / %x5D-7E / obs-text ; everything but: " \ DEL
+  # quoted-pair    = "\" ( HTAB / SP / VCHAR / obs-text )
+  $QUOTED_STRING = q{"((?:[\x09\x20\x21\x23-\x5B\x5D-\x7E\x80-\xFF]|\x5C[\x09\x20-\x7E\x80-\xFF])*)"};
+}
+
+# note: unanchored!
+use constant MEDIA_RANGE_RE => "$TOKEN/$TOKEN(?:$OWS;$OWS$TOKEN=(?:$TOKEN|$QUOTED_STRING))*";
 
 sub add_vocab_and_default_schemas ($evaluator, $version = OAS_VERSIONS->[-1]) {
   return if ($evaluator->{__openapi_vocabs_loaded}//={})->{$version}++;
@@ -198,7 +205,7 @@ sub add_formats ($evaluator, $version = OAS_VERSIONS->[-1]) {
     type => 'string',
     sub => sub ($x) {
       # see RFC9110 §12.5.1: ABNF "media-range", RFC9110 §8.3.1: ABNF "media-type"
-      return 0+!!($x =~ m{^$TOKEN/$TOKEN(?:$OWS;$OWS$TOKEN=(?:$TOKEN|$QUOTED_STRING))*\z});
+      return 0+!!($x =~ ('^'.MEDIA_RANGE_RE.'\z'));
     },
   }) if not $evaluator->_get_format_validation('media-range');
 }
@@ -498,6 +505,7 @@ DEFAULT_BASE_METASCHEMA
 DEFAULT_DIALECT
 DEFAULT_METASCHEMA
 OAS_SCHEMAS
+MEDIA_RANGE_RE
 OAS_VERSIONS
 OAS_VOCABULARY
 STRICT_DIALECT

@@ -93,6 +93,16 @@ has defaults => (
 
 sub default { $_[0]->defaults->{$_[1]} }
 
+# encoding/contentType value => arrayref of media-types (split by comma)
+has _encoding_contentTypes => (
+  is => 'bare',
+  isa => HashRef[ArrayRef[Str]],
+);
+
+sub encoding_contentTypes ($self, $contentType) {
+  $self->{_encoding_contentTypes}{$contentType};
+}
+
 # we define the sub directly, rather than using an 'around', since our root base class is not
 # Moo::Object, so we never got a BUILDARGS to modify
 sub BUILDARGS ($class, @args) {
@@ -256,7 +266,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
 
   # evaluate the document against its metaschema to find any errors, to identify all schema
   # resources within to add to the global resource index, and to extract all operationIds
-  my (@json_schema_paths, @operation_paths, %bad_path_item_refs, @server_paths, @security_requirements, %tag_operation_paths, @bad_3_0_paths, @references);
+  my (@json_schema_paths, @operation_paths, %bad_path_item_refs, @server_paths, @security_requirements, %tag_operation_paths, @bad_3_0_paths, @references, @encodings);
   my $result = $evaluator->evaluate(
     $schema, $self->metaschema_uri,
     {
@@ -290,6 +300,8 @@ sub traverse ($self, $evaluator, $config_override = {}) {
                   if exists $data->{exclusiveMaximum} and not exists $data->{maximum};
               }
 
+              push @encodings, $state->{data_path} if $entity eq 'encoding';
+
               # "$ref" in path-item is not represented in the schema by a Reference object
               push @references, [ '$ref', $state->{data_path}, Mojo::URL->new($data->{'$ref'})->to_abs($self->canonical_uri), 'path-item' ]
                 if $entity eq 'path-item' and exists $data->{'$ref'};
@@ -315,10 +327,12 @@ sub traverse ($self, $evaluator, $config_override = {}) {
             }
           }
           else {
-            # we only need to special-case path-item, because this is the only entity that is
-            # referenced in the schema without an -or-reference
+            # path-item is the only entity (that is, an object that can be $ref'd in an OpenAPI
+            # document) that is defined in the schema without an -or-reference
             ($entity) = (($schema->{'$ref'} =~ m{#/\$defs/([^/]+?)(?:-or-reference)\z}),
-                         ($schema->{'$ref'} =~ m{#/\$defs/(path-item)\z}));
+                         ($schema->{'$ref'} =~ m{#/\$defs/(path-item|encoding)\z}));
+
+            push @encodings, $state->{data_path} if ($entity//'') eq 'encoding';
 
             push @references, [ '$ref', $state->{data_path}, Mojo::URL->new($data->{'$ref'})->to_abs($self->canonical_uri), 'path-item' ]
               if ($entity//'') eq 'path-item' and exists $data->{'$ref'};
@@ -328,6 +342,9 @@ sub traverse ($self, $evaluator, $config_override = {}) {
               push @references, [ '$ref', $state->{data_path}, Mojo::URL->new($data->{'$ref'})->to_abs($self->canonical_uri), $e ];
             }
           }
+
+          # not $reffable at runtime, so no need to track these
+          undef $entity if ($entity//'') eq 'encoding';
 
           $self->_add_entity_location($state->{data_path}, $entity) if $entity;
 
@@ -541,10 +558,39 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     }
   }
 
+  my %encoding_contentType_index;
+  foreach my $encoding_location (@encodings) {
+    my $encoding_obj = $self->get($encoding_location);
+    next if not exists $encoding_obj->{contentType};
+    next if exists $encoding_contentType_index{$encoding_obj->{contentType}};
+
+    # v3.2.1 §4.15.1.1: "The contentType field is defined by the following ABNF syntax:"
+    # encoding-content-type = media-range *( "," OWS media-range )
+    my $re = OpenAPI::Modern::Utilities::MEDIA_RANGE_RE;
+    my $ct = $encoding_obj->{contentType};
+
+    $ct =~ m/^($re)/gc;
+    my @content_types = $1;
+    if (@content_types) {
+      while ($ct =~ m/\G,[\x09\x20]*($re)/gc) {
+        push @content_types, $1;
+      }
+    }
+
+    if (pos($ct) != length($ct)) {
+      ()= E({ %$state, keyword_path => $encoding_location, keyword => 'contentType' },
+        '"%s" is not a valid media-range', substr($ct, pos($ct)) =~ s/^,[\x09\x20]*//r);
+    }
+    else {
+      $encoding_contentType_index{$encoding_obj->{contentType}} = \@content_types;
+    }
+  }
+
   return $state if $state->{errors}->@*;
 
   $self->{_tags} = (HashRef[json_pointer_type])->({ map +($_ => '/tags/'.$tag_to_index{$_}), keys %tag_to_index });
   $self->{_operation_tags} = (HashRef[ArrayRef[json_pointer_type]])->(\%tag_operation_paths);
+  $self->{_encoding_contentTypes} = \%encoding_contentType_index;
 
   # disregard paths that are not the root of each embedded subschema.
   # Because the callbacks are executed after the keyword has (recursively) finished evaluating,
