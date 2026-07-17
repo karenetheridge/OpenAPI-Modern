@@ -1911,6 +1911,8 @@ sub _decode_content_element ($self, $element_ref, $headers, $name, $schema_state
   # type (e.g. as or from a nested json structure), and skip the decoding step
   goto RECURSE if not is_type('string', $element_ref->$*);
 
+  my @content_types;  # we will try to decode with these type(s)
+
   # v3.2.0 §4.15.1.2: "[These fields] SHALL be ignored if the media type is not
   # application/x-www-form-urlencoded or multipart/form-data."
   if ($encoding_state->{is_form} and $encoding_obj
@@ -1944,17 +1946,21 @@ sub _decode_content_element ($self, $element_ref, $headers, $name, $schema_state
     my $local_state;    # used for media-type decoding
 
     # prefer Content-Type over encoding/contentType
-    if (defined($content_type = ($headers//{})->{'Content-Type'})) {
+    if (defined(($headers//{})->{'Content-Type'})) {
       ()= E({ %$encoding_state, data_path => $encoding_state->{header_path}.'/Content-Type',
             keyword_path => $encoding_state->{keyword_path}.'/contentType',
             recommended_response => [ 415 ] },
           'incorrect Content-Type "%s"', $headers->{'Content-Type'})
         if defined(($encoding_obj//{})->{contentType})
-          and not match_media_type($content_type, [$encoding_obj->{contentType}]);
+          and not match_media_type($headers->{'Content-Type'},
+            $encoding_state->{document}->encoding_contentTypes($encoding_obj->{contentType}));
+
+      @content_types = $headers->{'Content-Type'};
       $local_state = $encoding_state;
     }
-    elsif (defined($content_type = ($encoding_obj//{})->{contentType})) {
-      # TODO: split contentType by comma and try each of them to see which decodes successfully
+    elsif (defined(($encoding_obj//{})->{contentType})) {
+      # no way to determine which media-type is the correct one; we will try them all
+      @content_types = $encoding_state->{document}->encoding_contentTypes($encoding_obj->{contentType})->@*;
       $local_state = { %$encoding_state, keyword_path => $encoding_state->{keyword_path}.'/contentType' };
     }
     elsif (ref $schema eq 'HASH') {
@@ -1962,7 +1968,7 @@ sub _decode_content_element ($self, $element_ref, $headers, $name, $schema_state
       # determined by the default values documented for the Encoding Object."
       $local_state = { %$schema_state };  # ends in /schema iff at root
       my @types = $self->_type_in_schema($schema, { %$local_state });
-      $content_type =
+      @content_types =
           @types == 6 || elem([qw(null boolean number)], \@types) ? 'application/octet-stream'
         : elem([qw(object array)], \@types) ? 'application/json'
         : exists(($schema//{})->{contentEncoding}) ? 'application/octet-stream' : 'text/plain';
@@ -1980,19 +1986,37 @@ sub _decode_content_element ($self, $element_ref, $headers, $name, $schema_state
       return;
     }
 
-    $content_type .= '; charset='.$encoding_state->{charset}
-      if fc($content_type) eq 'text/plain' and exists $encoding_state->{charset};
+    my (@errors, @unsupported);
+    foreach my $ct (@content_types) {
+      try {
+        $ct .= '; charset='.$encoding_state->{charset}
+          if fc($ct) eq 'text/plain' and exists $encoding_state->{charset};
 
-    try {
-      $element_decoded_ref = decode_media_type($content_type, $element_ref);
+        $element_decoded_ref = decode_media_type($ct, $element_ref);
+
+        if (defined $element_decoded_ref) {
+          $content_type = $ct;
+          last;
+        }
+        else {
+          push @unsupported, $ct;
+        }
+      }
+      catch ($e) {
+        ()= E({ %$local_state, errors => \@errors },
+          'could not decode content as %s: %s', $ct, $e =~ s/^(.*)\n/$1/r);
+      }
     }
-    catch ($e) {
-      return E($local_state, 'could not decode content as %s: %s', $content_type, $e =~ s/^(.*)\n/$1/r);
-    }
+
+    push $local_state->{errors}->@*, @errors if not defined $content_type and @errors;
 
     # don't fail, and use the original data, if the schema would pass on any input
-    abort($local_state, 'EXCEPTION: unsupported media type "%s": add support with JSON::Schema::Modern::Utilities::add_media_type(...)', $content_type)
-      if not $element_decoded_ref and defined $schema and not (ref $schema eq 'HASH' ? !keys %$schema : $schema);
+    abort($local_state, 'EXCEPTION: unsupported media type%s %s: add support with JSON::Schema::Modern::Utilities::add_media_type(...)',
+        @unsupported > 1 ? 's' : '', join(', ', map '"'.$_.'"', @unsupported))
+      if not defined $content_type and @unsupported
+        and defined $schema and not (ref $schema eq 'HASH' ? !keys %$schema : $schema);
+
+    return if @errors;
   }
 
   $element_ref->$* = $element_decoded_ref->$* if $element_decoded_ref;

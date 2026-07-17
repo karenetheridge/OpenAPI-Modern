@@ -843,7 +843,7 @@ __END__
   }
   JSON
 
-=for Pod::Coverage THAW get_operationId_path
+=for Pod::Coverage THAW get_operationId_path encoding_contentTypes
 
 =head1 DESCRIPTION
 
