@@ -678,7 +678,8 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
 
   # RFC9112 §3.2.1-3: "If the target URI's path component is empty, the client MUST send "/" as the
   # path within the origin-form of request-target." This also lets us match a path template of "/".
-  $uri->path->leading_slash(1); # no effect on stringified URI unless path is empty
+  # we don't call $uri->path->leading_slash(1) because it normalizes escaped characters like /
+  $uri->path('/') if $uri->path eq '';
 
   # v3.2.0 §4.8.2, "Path Templating": "The value for these path parameters MUST NOT contain any
   # unescaped “generic syntax” characters described by RFC3986 Section 3: forward slashes (/),
