@@ -21,7 +21,7 @@ no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 no if "$]" >= 5.041009, feature => 'smartmatch';
 no feature 'switch';
 use Carp qw(carp croak);
-use List::Util qw(first pairs);
+use List::Util qw(first pairs uniq);
 use if "$]" < 5.041010, 'List::Util' => qw(all any);
 use if "$]" >= 5.041010, experimental => qw(keyword_all keyword_any);
 use builtin::compat qw(indexed blessed);
@@ -29,7 +29,7 @@ use Feature::Compat::Try;
 use Encode 2.89 ();
 use JSON::Schema::Modern;
 use JSON::Schema::Modern::Utilities 0.638 qw(jsonp unjsonp canonical_uri E abort is_equal true false get_type is_type jsonp_set jsonp_get decode_media_type match_media_type);
-use OpenAPI::Modern::Utilities qw(add_vocab_and_default_schemas uri_decode intersect_types coerce_primitive uri_encode uri_encode_strict is_cookie_name is_cookie_value elem);
+use OpenAPI::Modern::Utilities qw(add_vocab_and_default_schemas add_formats uri_decode intersect_types coerce_primitive uri_encode uri_encode_strict is_cookie_name is_cookie_value elem);
 use JSON::Schema::Modern::Document::OpenAPI;
 use MooX::TypeTiny 0.002002;
 use Types::Standard qw(InstanceOf Bool);
@@ -93,7 +93,10 @@ around BUILDARGS => sub ($orig, $class, @args) {
   );
 
   # add the OpenAPI vacabulary, formats and metaschemas to the evaluator if they weren't there already
-  add_vocab_and_default_schemas($args->{evaluator}) if $had_document;
+  if ($had_document) {
+    add_vocab_and_default_schemas($args->{evaluator}, $args->{openapi_document}->oas_version);
+    add_formats($args->{evaluator}, $args->{openapi_document}->oas_version);
+  }
 
   # if there were errors, this will die with a JSON::Schema::Modern::Result object
   $args->{evaluator}->add_document($args->{openapi_document});
@@ -2280,6 +2283,14 @@ sub THAW ($class, $serializer, $data) {
     croak "serialization missing attribute '$attr': perhaps your serialized data was produced for an older version of $class?"
       if not exists $self->{$attr};
   }
+
+  my @versions = uniq map $_->oas_version,
+    grep $_->isa('JSON::Schema::Modern::Document::OpenAPI'),
+    map $_->{document},
+    $self->evaluator->_canonical_resources;
+
+  delete $self->evaluator->@{ grep /^__openapi_/, keys $self->evaluator->%* };
+  add_formats($self->evaluator, $_) foreach @versions;
 
   return $self;
 }

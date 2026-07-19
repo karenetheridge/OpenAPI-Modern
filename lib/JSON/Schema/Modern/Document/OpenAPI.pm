@@ -21,7 +21,7 @@ no if "$]" >= 5.041009, feature => 'smartmatch';
 no feature 'switch';
 use JSON::Schema::Modern::Utilities 0.625 qw(E canonical_uri jsonp unjsonp is_equal json_pointer_type assert_keyword_type assert_uri_reference load_cached_document get_type);
 use JSON::Schema::Modern::Result 0.630;
-use OpenAPI::Modern::Utilities qw(:constants add_vocab_and_default_schemas);
+use OpenAPI::Modern::Utilities qw(:constants add_vocab_and_default_schemas add_formats);
 use Carp qw(croak carp);
 use Digest::MD5 'md5_hex';
 use Clone 'clone';
@@ -157,6 +157,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     if defined $oad_version[2] and (split(/\./, $max_supported))[2] < $oad_version[2];
 
   add_vocab_and_default_schemas($evaluator, $self->oas_version);
+  add_formats($evaluator, $self->oas_version);
 
   if (exists $schema->{'$self'}) {
     my $state = { %$state, keyword => '$self', initial_schema_uri => Mojo::URL->new };
@@ -722,7 +723,7 @@ sub _dynamic_metaschema_uri ($self, $json_schema_dialect, $evaluator) {
 
 # callback hook for Sereal::Decoder
 sub THAW ($class, $serializer, $data) {
-  delete $data->{evaluator};
+  delete $data->{evaluator};  # no longer exists on this class
 
   if (defined(my $dialect = delete $data->{json_schema_dialect})) {
     carp "use of no-longer-supported constructor argument: json_schema_dialect = \"$dialect\"; use \"jsonSchemaDialect\": \"...\"  in your OpenAPI document itself";
