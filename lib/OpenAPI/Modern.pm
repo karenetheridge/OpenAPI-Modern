@@ -28,7 +28,7 @@ use builtin::compat qw(indexed blessed);
 use Feature::Compat::Try;
 use Encode 2.89 ();
 use JSON::Schema::Modern;
-use JSON::Schema::Modern::Utilities 0.638 qw(jsonp unjsonp canonical_uri E abort is_equal true false get_type is_type jsonp_set jsonp_get decode_media_type match_media_type);
+use JSON::Schema::Modern::Utilities qw(jsonp unjsonp canonical_uri E abort is_equal true false get_type is_type jsonp_set jsonp_get decode_media_type match_media_type);
 use OpenAPI::Modern::Utilities qw(add_vocab_and_default_schemas add_formats uri_decode intersect_types coerce_primitive uri_encode uri_encode_strict is_cookie_name is_cookie_value elem);
 use JSON::Schema::Modern::Document::OpenAPI;
 use MooX::TypeTiny 0.002002;

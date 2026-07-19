@@ -23,7 +23,7 @@ use Mojo::Util qw(url_unescape url_escape);
 use Carp 'croak';
 use if "$]" < 5.041010, 'List::Util' => 'any';
 use if "$]" >= 5.041010, experimental => 'keyword_any';
-use JSON::Schema::Modern::Utilities 0.625 qw(register_schema load_cached_document true false);
+use JSON::Schema::Modern::Utilities qw(register_schema load_cached_document true false);
 use namespace::clean;
 
 use Exporter 'import';
