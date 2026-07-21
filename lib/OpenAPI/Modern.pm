@@ -485,7 +485,8 @@ sub find_path_item ($self, $options, $state = {}) {
   # path_template from options
   return E({ %$state, ($options->{uri} ? (data_path => '/request/uri') : ()),
         keyword => 'paths' }, 'missing path "%s"', $options->{path_template})
-    if exists $options->{path_template} and not exists $schema->{paths}{$options->{path_template}};
+    if exists $options->{path_template}
+      and not exists(($schema->{paths}//{})->{$options->{path_template}});
 
   my $captures;  # hashref of template variable names -> concrete values from the uri
 

@@ -2951,6 +2951,34 @@ components:
   pathItems:
     my_path_item:
       post:
+        operationId: my_operation_id
+YAML
+
+  ok(!$openapi->find_path_item(my $options = { path_template => '/foo', method => 'GET' }), 'lookup failed');
+  cmp_result(
+    $options,
+    {
+      path_template => '/foo',
+      method => 'GET',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '',
+          keywordLocation => '/paths',
+          absoluteKeywordLocation => $doc_uri.'#/paths',
+          error => 'missing path "/foo"',
+        }),
+      ],
+    },
+    'no /paths in this document',
+  );
+
+  $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri,
+    openapi_schema => decode_yaml(OPENAPI_PREAMBLE.<<'YAML'));
+components:
+  pathItems:
+    my_path_item:
+      post:
         operationId: my_reffed_component_operation
       additionalOperations:
         GeT:
@@ -2981,7 +3009,7 @@ paths:
       operationId: nothing_operation
 YAML
 
-  ok($openapi->find_path_item(my $options = { operation_id => '0' }), 'lookup succeeded');
+  ok($openapi->find_path_item($options = { operation_id => '0' }), 'lookup succeeded');
   cmp_result(
     $options,
     {
