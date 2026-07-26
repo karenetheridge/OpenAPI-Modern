@@ -1,6 +1,8 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - fix more path matching edge cases involving url-escaped characters
+            and a path template of "/"
 
 0.142     2026-07-20 02:07:32Z
           - fix path matching with URIs containing url-escaped characters

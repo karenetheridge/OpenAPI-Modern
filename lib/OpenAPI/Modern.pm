@@ -679,17 +679,13 @@ sub recursive_get ($self, $uri_reference, $entity_type = undef) {
 sub _match_uri ($self, $method, $uri, $path_template, $state) {
   $uri = $uri->clone->fragment(undef)->query('');
 
-  # RFC9112 §3.2.1-3: "If the target URI's path component is empty, the client MUST send "/" as the
-  # path within the origin-form of request-target." This also lets us match a path template of "/".
-  # we don't call $uri->path->leading_slash(1) because it normalizes escaped characters like /
-  $uri->path('/') if $uri->path eq '';
-
   # v3.2.0 §4.8.2, "Path Templating": "The value for these path parameters MUST NOT contain any
   # unescaped “generic syntax” characters described by RFC3986 Section 3: forward slashes (/),
   # question marks (?), or hashes (#)."
-  my $path_pattern = join '',
-    map +(substr($_, 0, 1) eq '{' ? '([^/?#]*)' : quotemeta($_)),
-    split /(\{[^{}]+\})/, $path_template;
+  # If the path template equals '/' then we should ALWAYS match, and propagate to server url matching
+  my $path_pattern = $path_template eq '/' ? ''
+    : join '', map +(substr($_, 0, 1) eq '{' ? '([^/?#]*)' : quotemeta($_)),
+      split /(\{[^{}]+\})/, $path_template;
 
   # if the uri doesn't match against the path alone, we can immediately bail (and keep looking for
   # another /paths entry that might match)... this also saves us needless parsing of server objects
@@ -698,7 +694,7 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
   return if $uri !~ m/$path_pattern\z/;
 
   # identify the unmatched part of the request URI, to be later matched against server urls
-  my $uri_prefix = substr($uri, 0, -length($&));
+  my $uri_prefix = $path_template eq '/' ? $uri : substr($uri, 0, -length($&));
 
   # extract all capture values from path template variables: ($1 .. $n)
   # perldoc perlvar, @-: $n coincides with "substr $_, $-[n], $+[n] - $-[n]" if "$-[n]" is defined
@@ -758,14 +754,18 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
       ->to_abs($self->openapi_document->retrieval_uri)
       ->to_abs($uri);
 
-    # strips slash if path is '/'; otherwise has no effect on stringified URI
-    $normalized_server_url->path->leading_slash(0);
+    my $normalized_host = $normalized_server_url->host;
+
+    # note: this stringifies the uri.
+    # we don't call $uri->path->leading_slash(0) because it normalizes escaped characters like /
+    $normalized_server_url =~ s{/\z}{} if $normalized_server_url->path eq '/';
 
     my $server_pattern = join '',
       map +($_ eq '%00' ? '([^/?#]*)' : quotemeta($_)),
       split /(%00)/, $normalized_server_url;  # all NULs appear as %00 in the stringified form
     do { use autovivification 'store'; push $state->{debug}{uri_patterns}->@*, '^'.$server_pattern }
       if exists $state->{debug};
+
     next if $uri_prefix !~ m/^$server_pattern\z/;
 
     # extract all capture values from server variables: ($1 .. $n)...
@@ -773,7 +773,7 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
     my @server_capture_values = map substr($uri_prefix, $-[$_], $+[$_]-$-[$_]), 1 .. $#-;
 
     # ...and punycode-decode those from the host, and url-unescape those from the path
-    my $host_variable_count = ()= ($normalized_server_url->host//'') =~ /\x00/g;
+    my $host_variable_count = ()= ($normalized_host//'') =~ /\x00/g;
     @server_capture_values = (
       (map +(/^xn--(.+)\z/ ? punycode_decode($1) : $_), @server_capture_values[0 .. $host_variable_count-1]),
       (map uri_decode($_), @server_capture_values[$host_variable_count .. $#server_capture_values]));
