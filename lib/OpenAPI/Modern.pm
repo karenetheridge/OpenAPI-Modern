@@ -2287,7 +2287,7 @@ sub THAW ($class, $serializer, $data) {
 
   foreach my $attr (qw(openapi_document evaluator)) {
     croak "serialization missing attribute '$attr': perhaps your serialized data was produced for an older version of $class?"
-      if not exists $self->{$attr};
+      if not exists $self->{$attr} or not blessed $self->{$attr};
   }
 
   my @versions = uniq map $_->oas_version,
