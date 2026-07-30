@@ -1255,7 +1255,7 @@ sub _deserialize_style ($self, $data, $state, %opt) {
       # where the key names are the parameter name
 
       my @keys_and_values = map uri_decode($_),
-        map {
+        map do {
           ++$idx;
           # RFC6570 §3.2.1-6: empty value does not use '='
           my ($key, $val) = split(/=/, $_, 2);
@@ -1265,17 +1265,17 @@ sub _deserialize_style ($self, $data, $state, %opt) {
               $style, $type, $type eq 'object' ? 'key "'.$key.'"' : 'index '.$idx)
             if defined $val and not length $val;
           ($key//'', $val//'');
-        }
+        },
         @values;
 
       my $data = $type eq 'object' ? +{ @keys_and_values }
-        : [ map {
+        : [ map do {
             ()= E({ %$state, keyword => 'style', errors => \@errors },
                 'data does not match indicated style "matrix" for array (invalid element name%s)',
                 defined $_->[0] ? ' at "'.$_->[0].'"' : '')
               if not defined $_->[0] or $_->[0] ne $name;
             $_->[1];
-          }
+          },
           pairs @keys_and_values
         ];
 

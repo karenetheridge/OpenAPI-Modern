@@ -126,10 +126,10 @@ use constant _BUNDLED_SCHEMAS => {
 # and also made available as s/<date>/latest/
 # { <oas version> => [ <uri>, <uri>, .. ]
 use constant OAS_SCHEMAS => {
-  map {
+  map do {
     my $version = $_;
     $version => [ grep m{/oas/$version/}, keys _BUNDLED_SCHEMAS->%* ]
-  } OAS_VERSIONS->@*
+  }, OAS_VERSIONS->@*
 };
 
 

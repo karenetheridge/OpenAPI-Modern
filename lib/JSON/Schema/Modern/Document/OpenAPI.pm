@@ -144,10 +144,10 @@ sub traverse ($self, $evaluator, $config_override = {}) {
   my @oad_version = split /[.-]/, $schema->{openapi};
   $self->_set_oas_version(join('.', @oad_version[0..1]));
 
-  my ($max_supported) = grep {
+  my ($max_supported) = grep do {
     my @supported = split /\./;
     $supported[0] == $oad_version[0] && $supported[1] == $oad_version[1]
-  } reverse SUPPORTED_OAD_VERSIONS->@*;
+  }, reverse SUPPORTED_OAD_VERSIONS->@*;
 
   ()= E($state, 'unrecognized/unsupported openapi version: "%s"', $schema->{openapi}), return $state
     if not defined $max_supported;
