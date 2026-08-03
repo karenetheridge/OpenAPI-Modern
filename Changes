@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.144     2026-08-03 19:44:51Z
           - support for message bodies encoded with the multipart/form-data
             media-type (with or without "encoding" objects), including header
