@@ -1707,7 +1707,7 @@ YAML
         },
       },
     ],
-    'multipart/form-data array decoding, error when a part header is missing',
+    'multipart/form-data array decoding, error when a part header is missing, as array',
   );
 
 
@@ -1755,7 +1755,7 @@ YAML
         },
       },
     ],
-    'multipart/form-data object decoding, part headers are style-deserialized, as an object',
+    'multipart/form-data object decoding, part headers are style-deserialized, as object',
   );
 
   $result = $openapi->validate_request(request('POST', 'http://example.com/array',
@@ -1780,7 +1780,7 @@ YAML
         },
       },
     ],
-    'multipart/form-data object decoding, part headers are style-deserialized, as an array',
+    'multipart/form-data object decoding, part headers are style-deserialized, as array',
   );
 
 
