@@ -8,7 +8,7 @@ OpenAPI::Modern - Validate HTTP requests and responses against an OpenAPI v3.0, 
 
 =head1 VERSION
 
-version 0.143
+version 0.144
 
 I use a linearly-increasing version numbering scheme. No meaning should be
 presumed or inferred from the version being less than 1.0.
@@ -278,7 +278,11 @@ C<instanceLocation>s in errors in the Result object):
         },
       },
       body => {
-        content => <deserialized data from body>,
+        header => [
+          <for multipart media-types, an arrayref of headers, one element per part,
+          in the same order as the body parts from the original message>
+        ],
+        content => <deserialized data from body; can be any type>,
       },
     },
   }
@@ -335,7 +339,11 @@ C<instanceLocation>s in errors in the Result object):
         ...,
       },
       body => {
-        content => <deserialized data from body>,
+        header => [
+          <for multipart media-types, an arrayref of headers, one element per part,
+          in the same order as the body parts from the original message>
+        ],
+        content => <deserialized data from body; can be any type>,
       },
     },
   }
@@ -556,6 +564,31 @@ When no type constraint is present, the value will remain as a string; otherwise
 are permitted, deserialization is attempted in this order: C<object>, C<array>, C<null>, C<boolean>,
 C<number>, C<string>.
 
+=head2 MULTIPART MESSAGES
+
+C<multipart/form-data> messages can be deserialized into either an array or an object; the default,
+when not specified with a C<type> keyword in the body schema, or the use of C<itemSchema>, is object.
+To specify the encoding mechanism to use for each of the parts, use C<encoding> or
+C<prefixEncoding> and C<itemEncoding>. For more information, see:
+
+=over 4
+
+=item *
+
+L<v3.2.0 §4.15: Encoding Object|https://spec.openapis.org/oas/latest#encoding-object>
+
+=item *
+
+L<v3.2.0 §4.14.5.1: Encoding By Name|https://spec.openapis.org/oas/latest#encoding-by-name>
+
+=item *
+
+L<OpenAPI Media Type Registry: Forms: Ordered name-value pairs|https://spec.openapis.org/registry/media-type/forms>
+
+=back
+
+Multipart headers are always deserialized as an array of hashrefs, one hashref per part.
+
 =head1 LIMITATIONS
 
 =head2 HTTP Support Libraries
@@ -613,7 +646,7 @@ C<param>, C<every_param>, C<params> on C<$c>
 
 =item *
 
-C<multipart/*> messages
+C<multipart/*> messages (except for C<multipart/form-data>)
 
 =item *
 
@@ -734,6 +767,10 @@ L<RFC6570: URI Template|https://datatracker.ietf.org/doc/html/rfc6570>
 =item *
 
 L<Web Hypertext Application Technology Working Group (WHATWG): application/x-www-form-urlencoded|https://url.spec.whatwg.org/#application/x-www-form-urlencoded>
+
+=item *
+
+L<RFC7578: Returning Values from Forms: multipart/form-data|https://datatracker.ietf.org/doc/html/rfc7578>
 
 =back
 
