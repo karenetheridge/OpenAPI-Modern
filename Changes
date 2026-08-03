@@ -1,6 +1,7 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - fix data mutation at a distance issue on perls < 5.36
 
 0.144     2026-08-03 19:44:51Z
           - support for message bodies encoded with the multipart/form-data

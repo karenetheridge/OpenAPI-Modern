@@ -1606,7 +1606,7 @@ paths:
                     Content-Type:
                       required: true
                       schema: false
-                    'Null':
+                    X-Test2:
                       $ref: '#/components/headers/MyOptionalHeader'
                 hello2:
                   headers:

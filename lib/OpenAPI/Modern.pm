@@ -1882,7 +1882,8 @@ sub _decode_content ($self, $content_ref, $headers_ref, $schema_state, $schema, 
 sub _decode_content_element ($self, $element_ref, $headers, $name, $schema_state, $schema, $encoding_state, $encoding_obj) {
   # validate all encoding headers
   if (($encoding_obj//{})->{headers} and defined $encoding_state->{header_path}) {
-    foreach my $header_name (keys $encoding_obj->{headers}->%*) {
+    my $h;
+    foreach my $header_name (sort keys $encoding_obj->{headers}->%*) {
       # v3.2.0 §4.15.1.1: "Content-Type is described separately and SHALL be ignored in this section."
       next if fc $header_name eq fc 'Content-Type';
 
@@ -1893,9 +1894,12 @@ sub _decode_content_element ($self, $element_ref, $headers, $name, $schema_state
         $header_obj = $self->_resolve_ref('header', $ref, $state);
       }
 
-      my $h = Mojo::Headers->new;
-      $h->add($_ => ref $headers->{$_} eq 'ARRAY' ? $headers->{$_}->@* : $headers->{$_})
-        foreach keys(($headers//{})->%*);
+      if (not $h) {
+        $h = Mojo::Headers->new;
+        $h->add($_ => ref $headers->{$_} eq 'ARRAY' ? $headers->{$_}->@* : $headers->{$_})
+          foreach keys(($headers//{})->%*);
+      }
+
       if ($self->_validate_parameter({ %$state, depth => $state->{depth}+1 }, $header_obj,
           name => $header_name, headers => $h)) {
         my $path = jsonp($state->{data_path}, $header_name);
