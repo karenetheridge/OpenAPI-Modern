@@ -2618,6 +2618,28 @@ for OpenAPI documents, or under C</$defs/...> for JSON Schema documents).
 
 Not available as an accessor; use L</openapi_documents> or L</entry_document> instead.
 
+=head2 evaluator
+
+The L<JSON::Schema::Modern> object to use for all URI resolution and JSON Schema evaluation.
+Optional (a default is constructed when omitted).
+
+This must be prepared in advance if custom metaschemas are to be used, as the evaluator is what
+holds the information about all available schemas (which are used by keywords such as
+C<jsonSchemaDialect> and C<$ref>.
+
+=head2 debug
+
+Boolean; defaults to false (can also be set via C<$DEBUG>).
+
+When set, useful diagnostic information is stored in the C<$options> hash used in public methods
+described below.
+
+=head2 with_defaults
+
+When set, missing values from parameter and body schemas that have a corresponding C<default>
+keyword will be returned in the L<JSON::Schema::Modern::Result> object under the C<defaults>
+property, and are also populated into C<data>. See example in L</validate_request>.
+
 =head2 openapi_uri
 
 Optional.
@@ -2658,28 +2680,6 @@ L</openapi_schema> B<MUST> be provided, and L</evaluator> will also be used if p
 B<Deprecated>: instead use L</documents> as a constructor argument, and L</openapi_documents> or
 L</entry_document> as an accessor.
 
-=head2 evaluator
-
-The L<JSON::Schema::Modern> object to use for all URI resolution and JSON Schema evaluation.
-Optional (a default is constructed when omitted).
-
-This must be prepared in advance if custom metaschemas are to be used, as the evaluator is what
-holds the information about all available schemas (which are used by keywords such as
-C<jsonSchemaDialect> and C<$ref>.
-
-=head2 debug
-
-Boolean; defaults to false (can also be set via C<$DEBUG>).
-
-When set, useful diagnostic information is stored in the C<$options> hash used in public methods
-described below.
-
-=head2 with_defaults
-
-When set, missing values from parameter and body schemas that have a corresponding C<default>
-keyword will be returned in the L<JSON::Schema::Modern::Result> object under the C<defaults>
-property, and are also populated into C<data>. See example in L</validate_request>.
-
 =head1 METHODS
 
 =head2 openapi_documents
@@ -2690,18 +2690,6 @@ The list of OpenAPI documents that was provided to the constructor in L</documen
 
 The OpenAPI document used to search for APIs (under C</paths>); this is the first item in the
 L</openapi_documents> list.
-
-=head2 document_get
-
-  my $parameter_data = $openapi->document_get('/paths/~1foo~1{foo_id}~1bar~1%7Bbar_id%7D/post/parameters/0');
-
-Fetches the portion of the main OpenAPI document located at the provided JSON pointer.
-Proxies to L<JSON::Schema::Modern::Document::OpenAPI/get>.
-This is not recursive (does not follow C<$ref> chains) -- for that, use
-C<< $openapi->recursive_get(Mojo::URL->new->fragment($json_pointer)) >>, see
-L</recursive_get>.
-
-B<Deprecated>: use C<< $openapi->entry_document->get(...) >> or C<< $document->get(...) >> instead.
 
 =head2 validate_request
 
@@ -2939,6 +2927,18 @@ prepending C<#> and url-encoding it, e.g. C<< Mojo::URL->new->fragment($jsonp) >
   my $param = $openapi->recursive_get('#/components/parameters/Content-Encoding', 'parameter');
   my $operation_schema = $openapi->recursive_get(Mojo::URL->new('https://example.com/api.json')
     ->fragment(jsonp(qw(/paths /foo/{foo_id} get requestBody content application/json schema)));
+
+=head2 document_get
+
+  my $parameter_data = $openapi->document_get('/paths/~1foo~1{foo_id}~1bar~1%7Bbar_id%7D/post/parameters/0');
+
+Fetches the portion of the main OpenAPI document located at the provided JSON pointer.
+Proxies to L<JSON::Schema::Modern::Document::OpenAPI/get>.
+This is not recursive (does not follow C<$ref> chains) -- for that, use
+C<< $openapi->recursive_get(Mojo::URL->new->fragment($json_pointer)) >>, see
+L</recursive_get>.
+
+B<Deprecated>: use C<< $openapi->entry_document->get(...) >> or C<< $document->get(...) >> instead.
 
 =head1 CACHING
 
