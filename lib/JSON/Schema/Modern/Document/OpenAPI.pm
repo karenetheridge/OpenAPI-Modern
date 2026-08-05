@@ -440,7 +440,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
       'invalid keywords used adjacent to $ref in a path-item: %s', $bad_path_item_refs{$path_item});
   }
 
-  my %seen_url; # indexed by servers object
+  my (%seen_url, %seen_name); # indexed by servers object
   foreach my $server_location (@server_paths) {
     my $server = $self->get($server_location);
 
@@ -454,11 +454,19 @@ sub traverse ($self, $evaluator, $config_override = {}) {
 
     my $servers_location = $server_location =~ s{/[0-9]+\z}{}r;
 
+    # FIXME: this is not a spec requirement, so change this to a linting item
     if (my $first_url = ($seen_url{$servers_location}//{})->{$normalized}) {
       ()= E({ %$state, keyword_path => $server_location.'/url' },
         'duplicate of templated server url "%s"', $first_url);
     }
     { use autovivification 'store'; $seen_url{$servers_location}->{$normalized} = $server->{url}; }
+
+    if (defined $server->{name}) {
+      ()= E({ %$state, keyword_path => $server_location.'/url' }, 'server name "%s" is not unique', $server->{name})
+        if ($seen_name{$servers_location}//{})->{$server->{name}};
+      use autovivification 'store';
+      $seen_name{$servers_location}->{$server->{name}}++
+    }
 
     my $variables_obj = $server->{variables};
     if (not $variables_obj) {
