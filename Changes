@@ -1,6 +1,8 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - bump (optional) dependency on Dancer2 to avoid incompatible
+            warnings in tests
 
 0.145     2026-08-03 22:05:54Z
           - fix data mutation at a distance issue on perls < 5.36
