@@ -500,8 +500,9 @@ sub find_path_item ($self, $options, $state = {}) {
   if (not $options->{path_template} and $options->{uri}) {
     # derive path_template and capture values from the request URI
 
+    my $errors = $state->{errors};  # most likely [], but bound to $options
     foreach my $pt ($self->openapi_document->path_templates->@*) {
-      my $local_state = +{ %$state };
+      my $local_state = +{ %$state, errors => [] };   # we do not keep errors from match attempts
       $local_state->{path_item} = $schema->{paths}{$pt};
       $local_state->{keyword_path} = jsonp('/paths', $pt);
       $captures = $self->_match_uri($options->@{qw(method uri)}, $pt, $local_state);
@@ -513,17 +514,10 @@ sub find_path_item ($self, $options, $state = {}) {
           and (not exists $local_state->{operation}{operationId}
             or $local_state->{operation}{operationId} ne $options->{operation_id});
 
-        %$state = %$local_state;
+        # preserve location of the match
+        %$state = (%$local_state, errors => $errors);
         $options->{path_template} = $pt;
         last;
-      }
-
-      # something went wrong, but the match succeeded so we will stop iterating
-      if ($local_state->{errors}->@*) {
-        %$state = %$local_state;
-        $options->{path_template} = $pt;
-        $options->@{qw(_path_item _operation _operation_path_suffix)} = $state->@{qw(path_item operation operation_path_suffix)};
-        return;
       }
     }
 
@@ -802,7 +796,8 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
           'duplicate template name "%s" in server url and path template', $name)
         if $seen{$name}++;
     }
-    return if not $valid;
+
+    next if not $valid;
 
     my %captures;
     @captures{@server_capture_names} = @server_capture_values;
@@ -819,7 +814,7 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
         if not elem($captures{$name}, $server->{variables}{$name}{enum});
     }
 
-    return if not $valid;
+    next if not $valid;
 
     @captures{@path_capture_names} = @path_capture_values;
     return \%captures;

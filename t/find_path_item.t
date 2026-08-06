@@ -1697,6 +1697,13 @@ components:
         servers: []   # overrides the entry at the path-item level, defaulting to [{url=>'/'}]
     qux-quxid:
       get: {}
+    bad-dog:
+      get:
+        servers:
+          - url: http://{host}.example2.com
+            variables:
+              host:
+                default: boo
     bad-host:
       get:
         servers:
@@ -1704,6 +1711,11 @@ components:
             variables:
               host:
                 default: boo
+          - url: http://alternative.{domain}
+            variables:
+              domain:
+                default: example2.com
+                enum: [ example2.com ]
       post: {}
       servers:
         - url: http://{host}.example2.com
@@ -1738,10 +1750,12 @@ paths:
     $ref: '#/components/pathItems/bar-barid'    # servers at path-item level
   /qux/{qux_id}:
     $ref: '#/components/pathItems/qux-quxid'    # no custom servers; fall back to global
+  /bad/dog:
+    $ref: '#/components/pathItems/bad-dog'      # ""
   /bad/{host}:
-    $ref: '#/components/pathItems/bad-host'
+    $ref: '#/components/pathItems/bad-host'     # servers at operation level
   /worse/{host}:
-    $ref: '#/components/pathItems/worse-host'
+    $ref: '#/components/pathItems/worse-host'   # no custom servers; fall back to global
 YAML
 
   ok(!$openapi->find_path_item($options = { @request = (method => 'GET', uri => 'http://bloop.example.com/foo?x=1') }),
@@ -1780,6 +1794,7 @@ YAML
       operation_uri => str($doc_uri.'#/components/pathItems/foo-fooid/get'),
       errors => [],
       debug => { uri_patterns => [
+          '\/bad\/dog\z',
           '\/bad\/([^/?#]*)\z',
           '\/bar\/([^/?#]*)\z',
           '\/foo\/([^/?#]*)\z',
@@ -1968,20 +1983,16 @@ YAML
     {
       uri => isa('Mojo::URL'),
       method => 'GET',
-      path_template => '/bad/{host}',
-      _path_item => { get => ignore, post => ignore, servers => ignore },
-      _operation => ignore,
-      _operation_path_suffix => '/get',
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/uri',
-          keywordLocation => jsonp(qw(/paths /bad/{host} $ref get servers 0 url)),
-          absoluteKeywordLocation => $doc_uri.'#/components/pathItems/bad-host/get/servers/0/url',
-          error => 'duplicate template name "host" in server url and path template',
+          instanceLocation => '/request',
+          keywordLocation => '/paths',
+          absoluteKeywordLocation => $doc_uri.'#/paths',
+          error => 'no match found for request '.to_str(@request),
         }),
       ],
     },
-    'cannot reuse a template name between a server url and the path template, with operation level servers',
+    'no match when using the same template name between a server url and the path template with different values, with operation level servers',
   );
 
   ok(!$openapi->find_path_item($options = { @request = (method => 'POST', uri => 'http://path-item.example2.com/bad/bar') }),
@@ -1991,20 +2002,16 @@ YAML
     {
       uri => isa('Mojo::URL'),
       method => 'POST',
-      path_template => '/bad/{host}',
-      _path_item => { get => ignore, post => ignore, servers => ignore },
-      _operation => ignore,
-      _operation_path_suffix => '/post',
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/uri',
-          keywordLocation => jsonp(qw(/paths /bad/{host} $ref servers 0 url)),
-          absoluteKeywordLocation => $doc_uri.'#/components/pathItems/bad-host/servers/0/url',
-          error => 'duplicate template name "host" in server url and path template',
+          instanceLocation => '/request',
+          keywordLocation => '/paths',
+          absoluteKeywordLocation => $doc_uri.'#/paths',
+          error => 'no match found for request '.to_str(@request),
         }),
       ],
     },
-    'cannot reuse a template name between a server url and the path template, with path-item level servers',
+    'no match when using the same template name between a server url and the path template with different values, with path-item level servers',
   );
 
   ok(!$openapi->find_path_item($options = { @request = (method => 'GET', uri => 'http://global.example2.com/worse/bar') }),
@@ -2014,23 +2021,19 @@ YAML
     {
       uri => isa('Mojo::URL'),
       method => 'GET',
-      path_template => '/worse/{host}',
-      _path_item => { get => ignore },
-      _operation => ignore,
-      _operation_path_suffix => '/get',
       errors => [
         methods(TO_JSON => {
-          instanceLocation => '/request/uri',
-          keywordLocation => '/servers/3/url',
-          absoluteKeywordLocation => $doc_uri.'#/servers/3/url',
-          error => 'duplicate template name "host" in server url and path template',
+          instanceLocation => '/request',
+          keywordLocation => '/paths',
+          absoluteKeywordLocation => $doc_uri.'#/paths',
+          error => 'no match found for request '.to_str(@request),
         }),
       ],
     },
-    'cannot reuse a template name between a server url and the path template, with global servers',
+    'no match when using the same template name between a server url and the path template with different values, with global servers',
   );
 
-  ok(!$openapi->find_path_item($options = { @request = (method => 'GET', uri => 'http://zip.example2.com/foo/1') }),
+  ok(!$openapi->find_path_item($options = { @request = (method => 'GET', uri => 'http://zip.example2.com/foo/1', path_template => '/foo/{foo_id}') }),
     to_str(@request).': lookup failed');
   cmp_result(
     $options,
@@ -2053,7 +2056,7 @@ YAML
     'server url templated value must match the enum specification; error from servers at operation',
   );
 
-  ok(!$openapi->find_path_item($options = { @request = (method => '~FOO-bar', uri => 'http://zip.example2.com/foo/1') }),
+  ok(!$openapi->find_path_item($options = { @request = (method => '~FOO-bar', uri => 'http://zip.example2.com/foo/1', path_template => '/foo/{foo_id}') }),
     to_str(@request).': lookup failed');
   cmp_result(
     $options,
@@ -2076,7 +2079,7 @@ YAML
     '...and also when using an unconventional method',
   );
 
-  ok(!$openapi->find_path_item($options = { @request = (method => 'GET', uri => 'http://zip.example2.com/bar/1') }),
+  ok(!$openapi->find_path_item($options = { @request = (method => 'GET', uri => 'http://zip.example2.com/bar/1', path_template => '/bar/{bar_id}') }),
     to_str(@request).': lookup failed');
   cmp_result(
     $options,
@@ -2099,7 +2102,7 @@ YAML
     'server url templated value must match the enum specification; error from servers at path-item',
   );
 
-  ok(!$openapi->find_path_item($options = { @request = (method => 'GET', uri => 'http://zip.example2.com/qux/1') }),
+  ok(!$openapi->find_path_item($options = { @request = (method => 'GET', uri => 'http://zip.example2.com/qux/1', path_template => '/qux/{qux_id}') }),
     to_str(@request).': lookup failed');
   cmp_result(
     $options,
@@ -2120,6 +2123,63 @@ YAML
       ],
     },
     'server url templated value must match the enum specification; error from servers at global level',
+  );
+
+  ok(!$openapi->find_path_item($options = { @request = (method => 'GET', uri => 'http://zip.example2.com/foo/1') }),
+    to_str(@request).': lookup failed');
+  cmp_result(
+    $options,
+    {
+      uri => isa('Mojo::URL'),
+      method => 'GET',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '/request',
+          keywordLocation => '/paths',
+          absoluteKeywordLocation => $doc_uri.'#/paths',
+          error => 'no match found for request '.to_str(@request),
+        }),
+      ],
+    },
+    'match failed due to server url templated value not matching the enum specification; error from servers at operation',
+  );
+
+  ok($openapi->find_path_item($options = { @request = (method => 'GET', uri => 'http://alternative.example2.com/bad/bunny') }),
+    to_str(@request).': lookup succeeded');
+  cmp_result(
+    $options,
+    {
+      uri => isa('Mojo::URL'),
+      method => 'GET',
+      path_template => '/bad/{host}',
+      path_captures => { host => 'bunny' },
+      uri_captures => { domain => 'example2.com', host => 'bunny' },
+      _path_item => { map +($_ => ignore), qw(get post servers) },
+      _operation => ignore,
+      _operation_path_suffix => '/get',
+      operation_uri => str($doc_uri.'#/components/pathItems/bad-host/get'),
+      errors => [],
+    },
+    'one server url entry fails due to bad enum, but the second succeeds: match succeeds with no errors',
+  );
+
+  ok($openapi->find_path_item($options = { @request = (method => 'GET', uri => 'http://woof.example2.com/bad/dog') }),
+    to_str(@request).': lookup succeeded');
+  cmp_result(
+    $options,
+    {
+      uri => isa('Mojo::URL'),
+      method => 'GET',
+      path_template => '/bad/dog',
+      path_captures => {},
+      uri_captures => { host => 'woof' },
+      _path_item => { get => ignore },
+      _operation => ignore,
+      _operation_path_suffix => '/get',
+      operation_uri => str($doc_uri.'#/components/pathItems/bad-dog/get'),
+      errors => [],
+    },
+    'one path entry fails due to bad server enum, but the second path entry is valid with no errors',
   );
 
   ok($openapi->find_path_item($options = { @request = (method => 'GET', uri => 'http://dev.example2.com/foo/1?x=1') }),
