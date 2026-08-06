@@ -17,6 +17,7 @@ use lib 't/lib';
 use Helper;
 use JSON::Schema::Modern::Utilities qw(jsonp get_type);
 use OpenAPI::Modern::Utilities qw(uri_encode elem);
+use Mojo::Util 'punycode_encode';
 
 # the absolute uri we will see in errors
 my $doc_uri_rel = Mojo::URL->new('/api.json');
@@ -1974,6 +1975,63 @@ YAML
       errors => [],
     },
     'a relative server url is resolved against the absolute retrieval uri to match the request, with servers at global level',
+  );
+
+  ok($openapi->find_path_item($options = { @request = (method => 'GET', uri => 'http://operation.example2.com/bad/operation') }),
+    to_str(@request).': lookup succeeded');
+  cmp_result(
+    $options,
+    {
+      uri => isa('Mojo::URL'),
+      method => 'GET',
+      path_template => '/bad/{host}',
+      path_captures => { host => 'operation' },
+      uri_captures => { host => 'operation' },
+      _path_item => ignore,
+      _operation => ignore,
+      _operation_path_suffix => '/get',
+      operation_uri => str($doc_uri.'#/components/pathItems/bad-host/get'),
+      errors => [],
+    },
+    'duplicate variable names between server url and path template are acceptable if the values are the same',
+  );
+
+  ok(!$openapi->find_path_item($options = { @request = (method => 'GET', uri => 'http://operation.example2.com/bad/operation2') }),
+    to_str(@request).': lookup failed');
+  cmp_result(
+    $options,
+    {
+      uri => isa('Mojo::URL'),
+      method => 'GET',
+      errors => [
+        methods(TO_JSON => {
+          instanceLocation => '/request',
+          keywordLocation => '/paths',
+          absoluteKeywordLocation => $doc_uri.'#/paths',
+          error => 'no match found for request '.to_str(@request),
+        }),
+      ],
+    },
+    'server url did not match when {host} is reused in path_template and server url with different concrete values',
+  );
+
+  ok($openapi->find_path_item($options = { @request = (method => 'GET', uri => 'http://xn--'.punycode_encode('ಠ_ಠ').'.example2.com/bad/'.uri_encode('ಠ_ಠ')) }),
+    to_str(@request).': lookup succeeded');
+  cmp_result(
+    $options,
+    {
+      uri => isa('Mojo::URL'),
+      method => 'GET',
+      path_template => '/bad/{host}',
+      path_captures => { host => uri_encode('ಠ_ಠ') },
+      uri_captures => { host => 'ಠ_ಠ' },
+      _path_item => ignore,
+      _operation => ignore,
+      _operation_path_suffix => '/get',
+      operation_uri => str($doc_uri->clone->fragment('/components/pathItems/bad-host/get')),
+      errors => [],
+    },
+    'duplicate server variable values are handled even when encoded differently',
   );
 
   ok(!$openapi->find_path_item($options = { @request = (method => 'GET', uri => 'http://operation.example2.com/bad/bar') }),

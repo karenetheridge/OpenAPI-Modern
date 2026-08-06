@@ -5,6 +5,9 @@ Revision history for OpenAPI-Modern
             warnings in tests
           - now trying harder to find a matching server url + path-item
             combination after initial attempts fail
+          - now allowing a server url variable name to be the same as a path
+            template variable name, as long as the corresponding values
+            extracted from the request URI are the same
 
 0.145     2026-08-03 22:05:54Z
           - fix data mutation at a distance issue on perls < 5.36
