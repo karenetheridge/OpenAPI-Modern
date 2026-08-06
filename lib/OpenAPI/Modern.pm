@@ -737,7 +737,8 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
   my @path_capture_values = map substr($uri, $-[$_], $+[$_]-$-[$_]), 1 .. $#-;
 
   # we set aside $state for potential restoration because we might still encounter issues later on
-  # that require us to keep iterating for another URI match
+  # that require us to keep iterating for another URI match, and we use the original $state for
+  # the global servers object
   my $local_state = +{ %$state };
 
   while (defined(my $ref = $local_state->{path_item}{'$ref'})) {
@@ -758,34 +759,52 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
 
   return if not $local_state->{operation};
 
+  my $server_state = +{ %$local_state };  # for errors pertaining to the server object
+
   # we need to keep track of the traversed path to the servers object, as well as its absolute
   # location, for usage in error objects
-  my ($servers, $more_keyword_path, $base_schema_uri) =
-      exists $local_state->{operation}{servers}
-        ? ($local_state->{operation}{servers}, $local_state->{operation_path_suffix})
-    : exists $local_state->{path_item}{servers}
-        ? ($local_state->{path_item}{servers}, '')
-    : exists $self->entry_document->schema->{servers}
-        ? ($self->entry_document->schema->{servers}, '', $self->entry_document->canonical_uri)
-    : ();
+  my $servers;
+  if (exists $local_state->{operation}{servers}) {
+    $servers = $local_state->{operation}{servers};
+    $server_state->{keyword_path} .= $server_state->{operation_path_suffix}.'/servers';
+  }
+  elsif (exists $local_state->{path_item}{servers}) {
+    $servers = $local_state->{path_item}{servers};
+    $server_state->{keyword_path} .= '/servers';
+  }
+  else {
+    # v3.2.1 §4.1.1: "If the servers field is not provided ..., the default value
+    # would be an array consisting of a single Server Object with a url value of `/`."
+    $servers = $state->{document}->schema->{servers} // [{ url => '/' }];
 
-  # v3.2.1 §4.1.1: "If the servers field is not provided, or is an empty array, the default value
+    # The global server object comes from the document containing the original
+    # /paths/<path_template> (via $state), not the document containing the resulting path-item and
+    # operation (via $local_state)
+    $server_state = +{ %$state };
+    $server_state->{initial_schema_uri} = $state->{document}->canonical_uri;
+    $server_state->{traversed_keyword_path} = '';
+    $server_state->{keyword_path} = exists $state->{document}->schema->{servers} ? '/servers' : '';
+  }
+
+  # v3.2.1 §4.1.1: "If the servers field is ... an empty array, the default value
   # would be an array consisting of a single Server Object with a url value of `/`."
-  $servers = [{ url => '/' }] if not $servers or not @$servers;
+  $servers = [{ url => '/' }] if not @$servers;
 
   my @path_capture_names = ($path_template =~ /\{([^{}]+)\}/g);
 
   foreach my $index_and_server (pairs indexed @$servers) {
     my ($server_index, $server) = @$index_and_server;
 
-    # We need a full uri to match against the full uri taken from the request (scheme and host)
-    # we fall back to using the request's scheme, host and port, otherwise the match can never
-    # succeed.
+    # v3.2.1 §4.5.1: "This [server] URL ... MAY be relative, to indicate that the host location is
+    # relative to the location where the document containing the Server Object is being served."
+    # We need a full uri to match against the full uri taken from the request (with scheme and
+    # host). If it is unknown, or relative, then we further resolve against the request's scheme,
+    # host and port, otherwise the match can never succeed.
     # But before we apply URI logic to the server url, we must first protect any templated sections
     # so they are not altered by normalization. We use NUL, as it is unchanged in the host during
     # punycode-encoding
     my $normalized_server_url = Mojo::URL->new($server->{url} =~ s/\{[^{}]+\}/\x00/gr)
-      ->to_abs($self->entry_document->retrieval_uri//())
+      ->to_abs($server_state->{document}->retrieval_uri//())
       ->to_abs($uri);
 
     my $normalized_host = $normalized_server_url->host;
@@ -812,7 +831,8 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
       (map +(/^xn--(.+)\z/ ? punycode_decode($1) : $_), @server_capture_values[0 .. $host_variable_count-1]),
       (map uri_decode($_), @server_capture_values[$host_variable_count .. $#server_capture_values]));
 
-    # we have a match, so preserve our new $state values created via _resolve_ref
+    # we have a match, so preserve our new $state values created via _resolve_ref (but do not change
+    # values being used specifically for the "server" location)
     %$state = %$local_state;
 
     my @server_capture_names = ($server->{url} =~ /\{([^{}]+)\}/g);
@@ -828,11 +848,8 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
       my $name = $server_capture_names[$name_index];
       next if not exists((($server->{variables}//{})->{$name}//{})->{enum});
 
-      $valid = E({ %$state, data_path => '/request/uri', keyword => 'enum',
-            defined $base_schema_uri
-              ? (initial_schema_uri => $base_schema_uri, traversed_keyword_path => '',
-                  keyword_path => jsonp('/servers', $server_index, 'variables', $name))
-              : (keyword_path => jsonp($state->{keyword_path}.$more_keyword_path, 'servers', $server_index, 'variables', $name)) },
+      $valid = E({ %$server_state, data_path => '/request/uri', keyword => 'enum',
+            keyword_path => jsonp($server_state->{keyword_path}, $server_index, 'variables', $name) },
           'server url value does not match any of the allowed values')
         if not elem($server_capture_values[$name_index], $server->{variables}{$name}{enum});
     }
