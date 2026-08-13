@@ -2947,7 +2947,7 @@ When no type constraint is present, the value will remain as a string; otherwise
 are permitted, deserialization is attempted in this order: C<object>, C<array>, C<null>, C<boolean>,
 C<number>, C<string>.
 
-=head2 MULTIPART MESSAGES
+=head1 MULTIPART MESSAGES
 
 C<multipart/form-data> messages can be deserialized into either an array or an object; the default,
 when not specified with a C<type> keyword in the body schema, or the use of C<itemSchema>, is object.
