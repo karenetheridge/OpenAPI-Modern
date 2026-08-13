@@ -2830,7 +2830,7 @@ Given a uri or uri-reference (resolved against the main OpenAPI document's C<can
 get the definition at that location, following any C<$ref>s along the
 way. Include the expected definition type
 (one of C<schema>, C<response>, C<parameter>, C<example>, C<request-body>, C<header>,
-C<security-scheme>, C<link>, C<callbacks>, or C<path-item>)
+C<security-scheme>, C<link>, C<callbacks>, C<path-item>, or C<media-type>)
 for validation of the entire reference chain.
 
 Returns the data in scalar context, or a tuple of the data and the canonical URI of the
