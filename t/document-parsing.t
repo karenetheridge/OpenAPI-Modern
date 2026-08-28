@@ -1089,7 +1089,6 @@ YAML
 };
 
 subtest 'bad references' => sub {
-  test_needs({ 'JSON::Schema::Modern', '0.632'});
   my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'foo/api.json',
     evaluator => my $js = JSON::Schema::Modern->new(strict => 1),
@@ -1276,8 +1275,6 @@ YAML
   );
 
 
-  subtest 'bad references' => sub {
-  test_needs({ 'JSON::Schema::Modern', '0.632'});
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
     canonical_uri => 'foo/api.json',
     evaluator => $js = JSON::Schema::Modern->new(strict => 1),
@@ -1337,7 +1334,6 @@ YAML
     ],
     'bad $refs to local destinations are identified',
   );
-  }; # end test_needs
 
 
   $doc = JSON::Schema::Modern::Document::OpenAPI->new(
