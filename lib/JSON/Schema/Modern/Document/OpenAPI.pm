@@ -315,7 +315,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
                 if ($schema_path =~ s{/oneOf/\K([01])\z}{$1 ^ 1}e) {
                   $entity = lc join('-', split /(?=[A-Z])/, substr($metaschema_doc->get($schema_path)->{'$ref'}, 14));
                   $entity .= 's' if $entity eq 'callback';
-                  push @references, [ '$ref', $state->{data_path}, Mojo::URL->new($data->{'$ref'})->to_abs($self->canonical_uri), $entity ];
+                  push @references, [ '$ref', $state->{data_path}, Mojo::URL->new($data->{'$ref'})->to_abs($self->canonical_uri), $self->__entity_type->($entity) ];
                 }
               }
 
