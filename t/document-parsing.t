@@ -175,37 +175,37 @@ subtest '/paths correctness' => sub {
     },
   );
 
-  cmp_result(
+  is_equal(
     [ map $_->TO_JSON, $doc->errors ],
     [
       {
         keywordLocation => '/paths/~1a~1{b}',
-        absoluteKeywordLocation => str(Mojo::URL->new('http://localhost:1234/api#/paths/~1a~1{b}')),
+        absoluteKeywordLocation => Mojo::URL->new('http://localhost:1234/api#/paths/~1a~1{b}')->to_string,
         error => 'duplicate of templated path "/a/{a}"',
       },
       {
         keywordLocation => '/paths/~1b~1{b}~1hi~1{yes}',
-        absoluteKeywordLocation => str(Mojo::URL->new('http://localhost:1234/api#/paths/~1b~1{b}~1hi~1{yes}')),
+        absoluteKeywordLocation => Mojo::URL->new('http://localhost:1234/api#/paths/~1b~1{b}~1hi~1{yes}')->to_string,
         error => 'duplicate of templated path "/b/{a}/hi/{yes}"',
       },
       {
         keywordLocation => '/paths/~1b~1{x}~1hi~1{no}',
-        absoluteKeywordLocation => str(Mojo::URL->new('http://localhost:1234/api#/paths/~1b~1{x}~1hi~1{no}')),
+        absoluteKeywordLocation => Mojo::URL->new('http://localhost:1234/api#/paths/~1b~1{x}~1hi~1{no}')->to_string,
         error => 'duplicate of templated path "/b/{a}/hi/{yes}"',
       },
       {
         keywordLocation => '/paths/~1c~1{c}~1d~1{c}~1e~1{e}~1f~1{e}',
-        absoluteKeywordLocation => str(Mojo::URL->new('http://localhost:1234/api#/paths/~1c~1{c}~1d~1{c}~1e~1{e}~1f~1{e}')),
+        absoluteKeywordLocation => Mojo::URL->new('http://localhost:1234/api#/paths/~1c~1{c}~1d~1{c}~1e~1{e}~1f~1{e}')->to_string,
         error => 'duplicate path template variable "c"',
       },
       {
         keywordLocation => '/paths/~1c~1{c}~1d~1{c}~1e~1{e}~1f~1{e}',
-        absoluteKeywordLocation => str(Mojo::URL->new('http://localhost:1234/api#/paths/~1c~1{c}~1d~1{c}~1e~1{e}~1f~1{e}')),
+        absoluteKeywordLocation => Mojo::URL->new('http://localhost:1234/api#/paths/~1c~1{c}~1d~1{c}~1e~1{e}~1f~1{e}')->to_string,
         error => 'duplicate path template variable "e"',
       },
       (map +{
         keywordLocation => jsonp('/paths', $_),
-        absoluteKeywordLocation => str(Mojo::URL->new('http://localhost:1234/api#'.jsonp('/paths', $_))),
+        absoluteKeywordLocation => Mojo::URL->new('http://localhost:1234/api#'.jsonp('/paths', $_))->to_string,
         error => 'invalid path template "'.$_.'"',
       }, '/e/{e{}', '/f/?/g', '/h/#/i', '/täst/{id}'),
     ],
@@ -288,11 +288,11 @@ YAML
     schema => decode_yaml($yaml =~ s/operation_id_[a-z]/operation_id_dupe/gr),
   );
 
-  cmp_result(
+  is_equal(
     [ map $_->TO_JSON, $doc->errors ],
     [ map +{
         keywordLocation => $_.'/operationId',
-        absoluteKeywordLocation => str(Mojo::URL->new('http://localhost:1234/api#'.$_.'/operationId')),
+        absoluteKeywordLocation => Mojo::URL->new('http://localhost:1234/api#'.$_.'/operationId')->to_string,
         error => 'duplicate of operationId at /components/callbacks/callback_a/$url_a/patch/callbacks/callback_z/$url_z/delete',
       },
       (
@@ -539,7 +539,7 @@ webhooks:
   bar: {}
 YAML
 
-  cmp_result([ $doc->errors ], [], 'no errors when parsing this document');
+  is_equal([ $doc->errors ], [], 'no errors when parsing this document');
   cmp_result(
     my $index = { $doc->resource_index },
     {
@@ -983,42 +983,42 @@ tags:
     parent: foo
 YAML
 
-  cmp_result(
+  is_equal(
     [ map $_->TO_JSON, $doc->errors ],
     [
       {
         keywordLocation => '/tags/1/parent',
-        absoluteKeywordLocation => str(Mojo::URL->new('http://localhost:1234/api#/tags/1/parent')),
+        absoluteKeywordLocation => Mojo::URL->new('http://localhost:1234/api#/tags/1/parent')->to_string,
         error => 'parent of tag "bar" does not exist: "blech"',
       },
       {
         keywordLocation => '/tags/3/name',
-        absoluteKeywordLocation => str(Mojo::URL->new('http://localhost:1234/api#/tags/3/name')),
+        absoluteKeywordLocation => Mojo::URL->new('http://localhost:1234/api#/tags/3/name')->to_string,
         error => 'duplicate of tag at /tags/0: "foo"',
       },
       {
         keywordLocation => '/tags/4/name',
-        absoluteKeywordLocation => str(Mojo::URL->new('http://localhost:1234/api#/tags/4/name')),
+        absoluteKeywordLocation => Mojo::URL->new('http://localhost:1234/api#/tags/4/name')->to_string,
         error => 'duplicate of tag at /tags/1: "bar"',
       },
       {
         keywordLocation => '/tags/5/parent',
-        absoluteKeywordLocation => str(Mojo::URL->new('http://localhost:1234/api#/tags/5/parent')),
+        absoluteKeywordLocation => Mojo::URL->new('http://localhost:1234/api#/tags/5/parent')->to_string,
         error => 'circular reference between tags: "alpha" -> "beta" -> "alpha"',
       },
       {
         keywordLocation => '/tags/6/parent',
-        absoluteKeywordLocation => str(Mojo::URL->new('http://localhost:1234/api#/tags/6/parent')),
+        absoluteKeywordLocation => Mojo::URL->new('http://localhost:1234/api#/tags/6/parent')->to_string,
         error => 'circular reference between tags: "beta" -> "alpha" -> "beta"',
       },
       {
         keywordLocation => '/tags/7/name',
-        absoluteKeywordLocation => str(Mojo::URL->new('http://localhost:1234/api#/tags/7/name')),
+        absoluteKeywordLocation => Mojo::URL->new('http://localhost:1234/api#/tags/7/name')->to_string,
         error => 'duplicate of tag at /tags/0: "foo"',
       },
       {
         keywordLocation => '/tags/7/parent',
-        absoluteKeywordLocation => str(Mojo::URL->new('http://localhost:1234/api#/tags/7/parent')),
+        absoluteKeywordLocation => Mojo::URL->new('http://localhost:1234/api#/tags/7/parent')->to_string,
         error => 'circular reference between tags: "foo" -> "foo"',
       },
     ],
