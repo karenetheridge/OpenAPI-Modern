@@ -128,6 +128,17 @@ around BUILDARGS => sub ($orig, $class, @args) {
   # if there were errors, this will die with a JSON::Schema::Modern::Result object
   $args->{evaluator}->add_document($_) foreach $args->{documents}->@*;
 
+  foreach my $doc ($args->{documents}->@*) {
+    if ($doc->_deferred_references->@*) {
+      my @refs = $doc->verify_references($args->{evaluator});
+      croak JSON::Schema::Modern::Result->new(
+        output_format => $args->{evaluator}->output_format,
+        errors => [ $doc->errors ],
+        exception => 1,
+      ) if $doc->errors;
+    }
+  }
+
   $args->{openapi_documents} = [ grep $_->isa('JSON::Schema::Modern::Document::OpenAPI'), $args->{documents}->@* ];
   delete $args->{documents};  # no need to save non-OpenAPI documents; they are in the evaluator
 
