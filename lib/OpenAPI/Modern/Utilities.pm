@@ -183,7 +183,7 @@ sub add_formats ($evaluator, $version = OAS_VERSIONS->[-1]) {
     if not $evaluator->_get_format_validation('password');
 
   my $OWS = q{[\x09\x20]*};
-  my $TOKEN = q{[a-zA-Z0-9!#$%&'*+.^_`|~-]+};
+  my $TOKEN = q{(?a:[[:alnum:]!#$%&'*+.^_`|~-]+)};
   my $QUOTED_STRING = q{"(?:[\x09\x20\x21\x23-\x5B\x5D-\x7E\x80-\xFF]|\x5C[\x09\x20-\x7E\x80-\xFF])*"};
   $evaluator->add_format_validation('media-range' => +{
     type => 'string',
@@ -362,7 +362,7 @@ sub coerce_primitive ($dataref, $types = []) {
 #                                   CTLs, whitespace, DQUOTE, comma, semicolon, and backslash
 
 sub is_cookie_name ($name) {
-  !!(defined $name && $name =~ /^[A-Za-z0-9!#\$%&'*+.^_`|~-]+\z/);
+  !!(defined $name && $name =~ /^[[:alnum:]!#\$%&'*+.^_`|~-]+\z/a);
 }
 
 sub is_cookie_value ($value) {
