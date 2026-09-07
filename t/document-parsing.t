@@ -1544,4 +1544,74 @@ YAML
   is($doc->default('/components/parameters/MyParameter/style'), 'simple', '..and for a single value');
 };
 
+subtest 'bad security entries' => sub {
+  my $doc = JSON::Schema::Modern::Document::OpenAPI->new(
+    canonical_uri => 'http://localhost:1234/api',
+    schema => decode_yaml(OPENAPI_PREAMBLE.<<'YAML'));
+components:
+  securitySchemes:
+    basic0:
+      type: http
+      scheme: basic
+    basic1:
+      type: http
+      scheme: basic
+paths:
+  /pets:
+    get:
+      security:
+        - {}  # no security required
+        - basic0:
+            - write:pets
+            - read:pets
+        - basic1: []
+        - '#/components/securitySchemes/basic0': []
+        - unknown: []                                 # looks like a component name
+YAML
+
+  is_equal(
+    [ map $_->TO_JSON, $doc->errors ],
+    [
+      {
+        keywordLocation => jsonp(qw(/paths /pets get security 4 unknown)),
+        absoluteKeywordLocation => 'http://localhost:1234/api#'.jsonp(qw(/paths /pets get security 4 unknown)),
+        error => 'security scheme "unknown" does not exist at "/components/securitySchemes"',
+      },
+    ],
+    'missing security scheme is found',
+  );
+
+  $doc = JSON::Schema::Modern::Document::OpenAPI->new(
+    canonical_uri => 'http://localhost:1234/api',
+    schema => decode_yaml(OPENAPI_PREAMBLE.<<'YAML'));
+paths:
+  /pets:
+    get:
+      security:
+        - '#/components/securitySchemes/unknown': []  # looks like a URI
+security:
+  - 'unknown/foo': []                                 # looks like a URI
+YAML
+
+  is_equal(
+    [ map $_->TO_JSON, $doc->errors ],
+    [
+      {
+        keywordLocation => jsonp(qw(/paths /pets get security 0), '#/components/securitySchemes/unknown'),
+        absoluteKeywordLocation => 'http://localhost:1234/api#'.jsonp(qw(/paths /pets get security 0), '%23/components/securitySchemes/unknown'),
+        error => 'security-scheme target "http://localhost:1234/api#/components/securitySchemes/unknown" is a non-existent location',
+      },
+    ],
+    'a bad reference to security scheme is found',
+  );
+
+  cmp_result(
+    $doc->_deferred_references,
+    [
+      [ undef, jsonp(qw(/security 0 unknown/foo)), str('http://localhost:1234/unknown/foo'), 'security-scheme' ],
+    ],
+    'second unknown security scheme reference points to another document',
+  );
+};
+
 done_testing;
