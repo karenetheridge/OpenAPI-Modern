@@ -4,6 +4,7 @@ Revision history for OpenAPI-Modern
           - now checking for invalid references after adding all documents to
             the OpenAPI object at construction time (references to unknown
             documents are still allowed, for now)
+          - fix load-time syntax checks of the "xml" keyword
 
 0.151     2026-10-30 03:43:50Z
           - fixed some edge cases with how server urls are matched, especially

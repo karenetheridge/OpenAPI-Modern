@@ -111,15 +111,21 @@ sub _traverse_keyword_externalDocs ($self, $schema, $state) {
 sub _traverse_keyword_xml ($self, $schema, $state) {
   return if not assert_keyword_type($state, $schema, 'object');
 
+  my $valid = 1;
+
   foreach my $field (qw(nodeType name namespace prefix)) {
-    ()= E($state, '%s is not a string', $field)
+    next if not exists $schema->{$state->{keyword}}{$field};
+    $valid = E($state, '%s is not a string', $field)
       if not is_type('string', $schema->{$state->{keyword}}{$field});
   }
 
   foreach my $field (qw(attribute wrapped)) {
-    ()= E($state, '%s is not a boolean', $field)
+    next if not exists $schema->{$state->{keyword}}{$field};
+    $valid = E($state, '%s is not a boolean', $field)
       if not is_type('boolean', $schema->{$state->{keyword}}{$field});
   }
+
+  return $valid;
 }
 
 1;
