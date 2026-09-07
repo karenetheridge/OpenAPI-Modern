@@ -22,6 +22,8 @@ use JSON::Schema::Modern;
 use JSON::Schema::Modern::Document::OpenAPI;
 use OpenAPI::Modern::Utilities ':constants';
 
+local $| = 1; # do not buffer stdout
+
 my ($opt, $usage) = Getopt::Long::Descriptive::describe_options(
   "$0 %o [filename] [filename] ...",
   ['help|usage|?|h', 'print usage information and exit', { shortcircuit => 1 } ],
