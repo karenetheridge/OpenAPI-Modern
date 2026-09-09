@@ -403,8 +403,7 @@ sub elem ($items, $set) {
 #   for other multipart/*:   [ $value1, $value2, ... ]
 # - headers for each part as an arrayref of objects:
 #   [ { $header1 => $value, $header2 => $value, ... }, { ... }, ... ]
-# Only the top level is operated on; if there are parts nested inside of parts, those parts will be
-# returned without deserialization, so this function will need to be called again on those parts.
+# Operates recursively; parts within parts are also deserialized.
 # Strings are not decoded with charset here, but individual fields' Content-Type are included so
 # that can be done afterwards (or correlated with an encoding object)
 # Based loosely on Mojo::Message::_parse_formdata
