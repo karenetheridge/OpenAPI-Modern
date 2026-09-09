@@ -2,6 +2,7 @@ Revision history for OpenAPI-Modern
 
 {{$NEXT}}
           - now verifying security requirement objects in OpenAPI documents
+          - new --metaschema-uri option in "openapi-validate" script
 
 0.147     2026-08-13 17:29:08Z
           - support added for message bodies encoded with sequential
