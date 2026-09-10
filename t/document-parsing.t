@@ -1119,27 +1119,27 @@ YAML
       {
         keywordLocation => '/components/responses/response0/$ref',
         absoluteKeywordLocation => 'foo/api.json#/components/responses/response0/$ref',
-        error => '$ref target "foo/api.json#/components/responses/does_not_exist" is a non-existent location',
+        error => 'response target "foo/api.json#/components/responses/does_not_exist" is a non-existent location',
       },
       {
         keywordLocation => '/components/responses/response1/$ref',
         absoluteKeywordLocation => 'foo/api.json#/components/responses/response1/$ref',
-        error => '$ref target "foo/api.json#/components" is not a referenceable location',
+        error => 'response target "foo/api.json#/components" is not a referenceable location',
       },
       {
         keywordLocation => jsonp(qw(/paths /foo/{foo_id}/bar!bloop $ref)),
         absoluteKeywordLocation => Mojo::URL->new('foo/api.json')->fragment(jsonp(qw(/paths /foo/{foo_id}/bar!bloop $ref)))->to_string,
-        error => '$ref target "foo/api.json#/components/pathItems/bloop" is a non-existent location'
+        error => 'path-item target "foo/api.json#/components/pathItems/bloop" is a non-existent location'
       },
       {
         keywordLocation => '/components/schemas/schema1/$ref',
         absoluteKeywordLocation => 'foo/api.json#/components/schemas/schema1/$ref',
-        error => '$ref target "foo/api.json#/components/schemas/does_not_exist" is a non-existent location',
+        error => 'schema target "foo/api.json#/components/schemas/does_not_exist" is a non-existent location',
       },
       {
         keywordLocation => '/components/schemas/schema2/$ref',
         absoluteKeywordLocation => 'foo/api.json#/components/schemas/schema2/$ref',
-        error => '$ref target "'.Mojo::URL->new('foo/api.json')->fragment(jsonp(qw(/paths /foo/{foo_id}/bar!bloop)))->to_string.'" is the wrong object type (path-item, expecting schema)',
+        error => 'schema target "'.Mojo::URL->new('foo/api.json')->fragment(jsonp(qw(/paths /foo/{foo_id}/bar!bloop)))->to_string.'" is the wrong object type (got path-item)',
       },
     ],
     'bad references to local destinations are identified',
@@ -1309,27 +1309,27 @@ YAML
       {
         keywordLocation => '/components/responses/response0/$ref',
         absoluteKeywordLocation => 'foo/api.json#/components/responses/response0/$ref',
-        error => '$ref target "foo/api.json#/components/responses/does_not_exist" is a non-existent location',
+        error => 'response target "foo/api.json#/components/responses/does_not_exist" is a non-existent location',
       },
       {
         keywordLocation => '/components/responses/response1/$ref',
         absoluteKeywordLocation => 'foo/api.json#/components/responses/response1/$ref',
-        error => '$ref target "foo/api.json#/components" is not a referenceable location',
+        error => 'response target "foo/api.json#/components" is not a referenceable location',
       },
       {
         keywordLocation => '/components/schemas/schema1/$ref',
         absoluteKeywordLocation => 'foo/api.json#/components/schemas/schema1/$ref',
-        error => '$ref target "foo/api.json#/components/schemas/does_not_exist" is a non-existent location',
+        error => 'schema target "foo/api.json#/components/schemas/does_not_exist" is a non-existent location',
       },
       {
         keywordLocation => '/components/schemas/schema2/$ref',
         absoluteKeywordLocation => 'foo/api.json#/components/schemas/schema2/$ref',
-        error => '$ref target "'.Mojo::URL->new('foo/api.json')->fragment(jsonp(qw(/paths /foo/{foo_id}/bar!bloop)))->to_string.'" is the wrong object type (path-item, expecting schema)',
+        error => 'schema target "'.Mojo::URL->new('foo/api.json')->fragment(jsonp(qw(/paths /foo/{foo_id}/bar!bloop)))->to_string.'" is the wrong object type (got path-item)',
       },
       {
         keywordLocation => '/paths/~1foo~1{foo_id}~1bar!bloop/$ref',
         absoluteKeywordLocation => 'foo/api.json#/paths/~1foo~1%7Bfoo_id%7D~1bar!bloop/$ref',
-        error => '$ref target "foo/api.json#/components/pathItems/bloop" is a non-existent location'
+        error => 'path-item target "foo/api.json#/components/pathItems/bloop" is a non-existent location'
       },
     ],
     'bad $refs to local destinations are identified',
