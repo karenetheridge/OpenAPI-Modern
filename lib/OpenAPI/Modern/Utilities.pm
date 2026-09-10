@@ -197,7 +197,7 @@ sub add_formats ($evaluator, $version = OAS_VERSIONS->[-1]) {
   $evaluator->add_format_validation('media-range' => +{
     type => 'string',
     sub => sub ($x) {
-      # see ABNF at RFC9110 Appendix A
+      # see RFC9110 §12.5.1: ABNF "media-range", RFC9110 §8.3.1: ABNF "media-type"
       return 0+!!($x =~ m{^$TOKEN/$TOKEN(?:$OWS;$OWS$TOKEN=(?:$TOKEN|$QUOTED_STRING))*\z});
     },
   }) if not $evaluator->_get_format_validation('media-range');
