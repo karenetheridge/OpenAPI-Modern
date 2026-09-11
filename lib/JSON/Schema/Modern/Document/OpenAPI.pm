@@ -826,7 +826,7 @@ __END__
     metaschema_uri => 'https://example.com/my_custom_metaschema',
     schema => decode_json(<<'JSON'));
   {
-    "openapi": "3.2.0",
+    "openapi": "3.2.1",
     "$self": "openapi.json",
     "info": {
       "title": "my title",

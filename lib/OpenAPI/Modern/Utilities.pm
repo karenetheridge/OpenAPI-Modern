@@ -63,10 +63,10 @@ our %EXPORT_TAGS = (
   constants => \@EXPORT,
 );
 
-# it is likely the case that we can support a version beyond what's stated here -- but we may not,
-# so we'll warn to that effect. Every effort will be made to upgrade this implementation to fully
-# support the latest point release as soon as possible.
-use constant SUPPORTED_OAD_VERSIONS => [ '3.0.4', '3.1.2', '3.2.0' ];
+# it is likely the case that we can support a point release beyond what's stated here -- but we may
+# not, so we'll warn to that effect. Every effort will be made to upgrade this implementation to
+# fully support the latest point release as soon as possible.
+use constant SUPPORTED_OAD_VERSIONS => [ '3.0.4', '3.1.2', '3.2.1' ];
 
 # in most things, such as checking for compatibility, we only use major.minor as the version number
 use constant OAS_VERSIONS => [ map s/^\d+\.\d+\K\.\d+\z//ar, SUPPORTED_OAD_VERSIONS->@* ];

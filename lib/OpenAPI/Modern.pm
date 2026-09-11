@@ -740,9 +740,8 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
         ? ($self->openapi_document->schema->{servers}, '', $self->openapi_uri)
     : ();
 
-  # v3.2.0 §4.1.1, "OpenAPI Object -> servers": "If the servers field is not provided, or is an
-  # empty array, the default value would be an array consisting of a single Server Object with a
-  # url value of `/`."
+  # v3.2.1 §4.1.1: "If the servers field is not provided, or is an empty array, the default value
+  # would be an array consisting of a single Server Object with a url value of `/`."
   $servers = [{ url => '/' }] if not $servers or not @$servers;
 
   my @path_capture_names = ($path_template =~ /\{([^{}]+)\}/g);
@@ -2443,7 +2442,7 @@ __END__
     openapi_uri => 'https://prod.example.com',  # adjust for each deployment environment
     openapi_schema => YAML::PP->new(boolean => 'JSON::PP')->load_string(<<'YAML'));
   $self: /api         # canonical_uri will become https://prod.example.com/api
-  openapi: 3.2.0
+  openapi: 3.2.1
   info:
     title: Test API
     version: 1.2.3
