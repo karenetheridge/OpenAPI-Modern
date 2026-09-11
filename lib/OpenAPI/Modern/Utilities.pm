@@ -414,6 +414,7 @@ sub deserialize_multipart ($content) {
   my (@content, @headers);
   my $is_form = match_media_type($content->headers->content_type, ['multipart/form-data']);
 
+  my $part_num = 0;
   foreach my $part ($content->parts->@*) {
     my $headers = $part->headers->to_hash('multi');
     $headers = +{ map +($_ => ($headers->{$_}->@* == 1 ? $headers->{$_}[0] : $headers->{$_} )),
@@ -433,10 +434,30 @@ sub deserialize_multipart ($content) {
       my $disposition = $part->headers->content_disposition;
       die 'missing Content-Disposition' if not defined $disposition;
 
-      my ($name) = $disposition =~ /[; ]name="((?:\\"|[^;"])*)"/;
-      $value = { $name => $value };
+      # see ABNF at RFC2183 §2 (RFC6266 does not apply to multipart/form-data bodies)
+      my ($disposition_type) = ($disposition =~ /^($TOKEN)/);
+      next if $disposition_type ne 'form-data';
+
+      pos($disposition) = length $&;
+      my $leftovers = $';
+      my $params = {};
+      while ($disposition =~ /\G$OWS;$OWS($TOKEN)=($TOKEN|$QUOTED_STRING)/g) {
+        my ($param_name, $value, $qs_value) = ($1, $2, $3);    # $QUOTED_STRING contains $3
+        $leftovers = $';
+        # RFC9110 §5.6.4: "The backslash octet ("\") can be used as a single-octet quoting mechanism
+        # within quoted-string and comment constructs. Recipients that process the value of a
+        # quoted-string MUST handle a quoted-pair as if it were replaced by the octet following the
+        # backslash."
+        $params->{$param_name} = Encode::decode('UTF-8',
+          defined $qs_value ? ($qs_value =~ s/\x5C(.)/$1/gr) : $value,
+          Encode::DIE_ON_ERR | Encode::LEAVE_SRC);
+      }
+
+      next if length $leftovers;
+      $value = { $params->{name} // 'part_'.$part_num => $value };
     }
 
+    $part_num++;
     push @content, $value;
     push @headers, $headers;
   }

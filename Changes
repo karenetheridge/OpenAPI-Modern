@@ -1,6 +1,8 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - fix string escaping in the Content-Disposition header when
+            serializing and deserializing multipart/form-data messages
 
 0.148     2026-09-13 18:00:25Z
           - now verifying security requirement objects in OpenAPI documents

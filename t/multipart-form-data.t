@@ -2407,6 +2407,71 @@ subtest 'deserialize_multipart' => sub {
     },
     'JSON pointer locations for body headers',
   );
+
+
+  foreach my $test (
+    [ 'form-data; name="alpha"', 'alpha' ],
+    [ 'form-data; name=alpha', 'alpha' ],
+    [ 'form-data;bloop=beta;name=alpha', 'alpha' ],
+    [ 'form-data; name="filename=bloop"; filename=blah', 'filename=bloop' ],
+    [ 'form-data; name=";filename=bloop"; filename=blah', ';filename=bloop' ],
+    [ qq{form-data; name="foo\=bar\;baz\x5Cblah\x5C"blo\x5C\x5Cop"}, qq{foo=bar;bazblah"blo\x5Cop} ],
+    [ 'form-data; name=";filename=\""', ';filename="' ],
+    [ 'form-data; blah=bloop', 'part_0' ],
+    [ qq{form-data; name="\xE0\xB2\xA0\x5F\xE0\xB2\xA0"}, 'ಠ_ಠ' ],
+  ) {
+    my ($disposition, $name) = $test->@*;
+    my $body = <<"BODY";
+--iqWxX
+Content-Disposition: $disposition
+
+value
+--iqWxX
+BODY
+
+    $request = Mojo::Message::Request->new
+      ->method('POST')
+      ->url(Mojo::URL->new('http://example.com/foo'))
+      ->version('1.1')
+      ->content(Mojo::Content::MultiPart->new);
+    $request->headers->add('Content-Type' => 'multipart/form-data; boundary=iqWxX');
+    $request->headers->add('Content-Length' => length($body));
+    $request->content->emit(read => $body =~ s/\n\z//r =~ s/\n/\r\n/gr);
+    $request->finish;
+
+    is_equal(
+      [ OpenAPI::Modern::Utilities::deserialize_multipart($request->content) ],
+      [
+        [ { $name => 'value' } ],
+        [ { 'Content-Disposition' => $disposition } ],
+      ],
+      '"Content-Disposition: '.$disposition.'" parses out name as "'.$name.'"',
+    );
+  }
+
+
+  $request = request('POST', 'http://example.com/foo',
+    [ 'Content-Type' => 'multipart/form-data' ],
+    [
+      [ "foo\"bar\x22baz\x5Cbloop" => 'foo' ],
+      [ 'ಠ_ಠ' => 'bar' ],
+    ],
+  );
+
+  is_equal(
+    my $data = [ OpenAPI::Modern::Utilities::deserialize_multipart($request->content) ],
+    [
+      [
+        { "foo\x22bar\x22baz\x5Cbloop" => 'foo' },
+        { 'ಠ_ಠ' => 'bar' },
+      ],
+      [
+        { 'Content-Disposition' => qq{form-data; name="foo\x5C"bar\x5C"baz\x5C\x5Cbloop"} },
+        { 'Content-Disposition' => qq{form-data; name="\xE0\xB2\xA0\x5F\xE0\xB2\xA0"} },
+      ],
+    ],
+    'Content-Disposition headers are constructed correctly, with escaping',
+  );
 };
 
 subtest 'multipart/form-data with nested multipart/form-data' => sub {
