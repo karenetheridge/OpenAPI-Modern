@@ -218,6 +218,7 @@ sub convert_request ($request) {
     $req->method($request->method);
     $req->url(Mojo::URL->new($request->uri));
     $req->version($request->protocol =~ s{^HTTP/(\d\.\d)\z}{$1}ar) if $request->protocol;
+    # remember, if you're constructing $body manually, you need to =~ s/\n/\r\n/g;
     my $body = $request->content;
 
     if (match_media_type(scalar $request->content_type, ['multipart/*'])) {
