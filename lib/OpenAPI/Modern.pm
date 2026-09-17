@@ -985,7 +985,7 @@ sub _deserialize_header_parameter ($self, $state, $header_obj, $header_name, $he
     if not blessed($headers) or not $headers->isa('Mojo::Headers');
 
   # temporary, until the ABNF is enforced in the OAD schema
-  return E($state, 'invalid character detected in header name: not deserializable')
+  return E($state, 'invalid character detected in header name')
     if not is_header_name($header_name);
 
   if (not $headers->every_header($header_name)->@*) {
@@ -994,9 +994,15 @@ sub _deserialize_header_parameter ($self, $state, $header_obj, $header_name, $he
     return;
   }
 
+  # RFC9110 §5.5:
+  # field-value    = *field-content
+  # field-content  = field-vchar [ 1*( SP / HTAB / field-vchar ) field-vchar ]
+  # field-vchar    = VCHAR / obs-text
+  # obs-text       = %x80-FF
   return E({ %$state, data_path => jsonp($state->{data_path}, $header_name) },
-      'wide character detected in header value: not deserializable')
-    if any { /[^\x00-\xFF]/ } $headers->every_header($header_name)->@*;
+      'invalid syntax in header value')
+    if any { !/^(?:[\x21-\x7E\x80-\xFF](?:[\x09\x20-\x7E\x80-\xFF]+[\x21-\x7E\x80-\xFF])?)*\z/ }
+      $headers->every_header($header_name)->@*;
 
   # validate as a single comma-concatenated string, presumably to be decoded
   return $self->_deserialize_content(\ $headers->header($header_name),
@@ -1021,8 +1027,7 @@ sub _deserialize_header_parameter ($self, $state, $header_obj, $header_name, $he
 
   return $self->_deserialize_style(
     # , and = delimiters are not percent-encoded
-    Mojo::Util::url_escape(join(',',
-        map s/^\s*//r =~ s/\s*\z//r, $headers->every_header($header_name)->@*),
+    Mojo::Util::url_escape(join(',', $headers->every_header($header_name)->@*),
       '^A-Za-z0-9\-._~:/?#[\]@!$&\'()*+,;='),  # unreserved and reserved
     { %$state, data_path => jsonp($state->{data_path}, $header_name) },
     in => 'header',
@@ -1050,8 +1055,8 @@ sub _deserialize_cookie_parameter ($self, $state, $param_obj, $headers) {
 
   my $error_count = $state->{errors}->@*;
 
-  # parse into individual cookie parameters as per RFC6265 §4.2.1
-  my $data = $cookie->[0] =~ s/^[\x09\x20]*|[\x09\x20]*\z//gr;
+  # parse into individual cookie parameters as per RFC6265 (see ABNF in OpenAPI::Modern::Utilities)
+  my $data = $cookie->[0];
   my @pairs = map [ split /=/, $_, 2 ], split /; /, $data;
 
   if (my @missing_values = grep !defined $_->[1], @pairs) {
@@ -1070,6 +1075,8 @@ sub _deserialize_cookie_parameter ($self, $state, $param_obj, $headers) {
   }
 
   return if $state->{errors}->@* > $error_count;
+
+  map { $_->[1] =~ s/^"//; $_->[1] =~ s/"\z// } @pairs;
 
   if (exists $param_obj->{content}) {
     my $data = ((grep +($_->[0] eq $param_obj->{name}), @pairs)[-1]//[])->[1];
@@ -1221,7 +1228,7 @@ sub _deserialize_style ($self, $data, $state, %opt) {
       if length $prefix and $data !~ s/^$prefix//;
 
     my $delimiter =
-        $style eq 'simple' && $strip_internal_ws ? ',(?:%20)?'
+        $style eq 'simple' && $strip_internal_ws ? ',(?:%09|%20)*'
       : !$explode ? ','
       : $style eq 'simple' ? ','
       : $style eq 'matrix' ? ';'
