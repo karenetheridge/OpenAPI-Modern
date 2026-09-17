@@ -77,7 +77,7 @@ use constant OAS_VERSIONS => [ map s/^\d+\.\d+\K\.\d+\z//ar, SUPPORTED_OAD_VERSI
 use constant DEFAULT_METASCHEMA => {
   '3.0' => 'https://spec.openapis.org/oas/3.0/schema/2024-10-18',
   '3.1' => 'https://spec.openapis.org/oas/3.1/schema/2025-11-23',
-  '3.2' => 'https://spec.openapis.org/oas/3.2/schema/2025-11-23',
+  '3.2' => 'https://spec.openapis.org/oas/3.2/schema/2026-08-30',
 };
 
 # metaschema for JSON Schemas contained within OpenAPI documents:
@@ -85,7 +85,7 @@ use constant DEFAULT_METASCHEMA => {
 use constant DEFAULT_DIALECT => {
   '3.0' => DEFAULT_METASCHEMA->{'3.0'}.'#/definitions/Schema',
   '3.1' => 'https://spec.openapis.org/oas/3.1/dialect/2024-11-10',
-  '3.2' => 'https://spec.openapis.org/oas/3.2/dialect/2025-09-17',
+  '3.2' => 'https://spec.openapis.org/oas/3.2/dialect/2026-02-26',
 };
 
 # OpenAPI document schema that forces the use of the JSON Schema dialect (no $schema overrides
@@ -93,13 +93,13 @@ use constant DEFAULT_DIALECT => {
 use constant DEFAULT_BASE_METASCHEMA => {
   '3.0' => 'https://spec.openapis.org/oas/3.0/schema/2024-10-18', # same as standard
   '3.1' => 'https://spec.openapis.org/oas/3.1/schema-base/2025-11-23',
-  '3.2' => 'https://spec.openapis.org/oas/3.2/schema-base/2025-11-23',
+  '3.2' => 'https://spec.openapis.org/oas/3.2/schema-base/2026-08-30',
 };
 
 # OpenAPI vocabulary definition
 use constant OAS_VOCABULARY => {
   '3.1' => 'https://spec.openapis.org/oas/3.1/meta/2024-11-10',
-  '3.2' => 'https://spec.openapis.org/oas/3.2/meta/2025-09-17',
+  '3.2' => 'https://spec.openapis.org/oas/3.2/meta/2026-02-26',
 };
 
 # an OpenAPI schema and JSON Schema dialect which prohibit unknown keywords

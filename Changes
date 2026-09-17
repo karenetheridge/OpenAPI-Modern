@@ -4,6 +4,8 @@ Revision history for OpenAPI-Modern
           - fix string escaping in the Content-Disposition header when
             serializing and deserializing multipart/form-data messages
           - fix parsing of surrounding whitespace in header values
+          - updated bundled schemas for OAS version 3.2 to their latest
+            published versions
 
 0.148     2026-09-13 18:00:25Z
           - now verifying security requirement objects in OpenAPI documents

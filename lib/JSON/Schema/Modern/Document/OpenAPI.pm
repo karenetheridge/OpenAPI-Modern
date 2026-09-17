@@ -809,8 +809,8 @@ one of:
 
 =for :list
 * for v3.2 documents:
-  L<https://spec.openapis.org/oas/3.2/schema-base/2025-11-23> (which is a wrapper around
-  L<https://spec.openapis.org/oas/3.2/schema/2025-11-23>),
+  L<https://spec.openapis.org/oas/3.2/schema-base/2026-08-30> (which is a wrapper around
+  L<https://spec.openapis.org/oas/3.2/schema/2026-08-30>),
   and the L<OpenAPI v3.2.x specification|https://spec.openapis.org/oas/v3.2>
 * for v3.1 documents:
   L<https://spec.openapis.org/oas/3.1/schema-base/2025-11-23> (which is a wrapper around
@@ -858,12 +858,12 @@ See also L</retrieval_uri>.
 =head2 metaschema_uri
 
 The URI of the schema that describes the OpenAPI document itself. Defaults to
-C<https://spec.openapis.org/oas/3.2/schema/2025-11-23> (or the equivalent for the
+C<https://spec.openapis.org/oas/3.2/schema/2026-08-30> (or the equivalent for the
 L<OpenAPI version|https://spec.openapis.org/oas/latest#fixed-fields> you specify in the document),
 which permits the customization of
 L<C<jsonSchemaDialect>|https://spec.openapis.org/oas/latest#openapi-object>, which defines the
 JSON Schema dialect to use for embedded JSON Schemas (which itself defaults to
-C<https://spec.openapis.org/oas/3.2/dialect/2025-09-17> (or equivalent).
+C<https://spec.openapis.org/oas/3.2/dialect/2026-02-26> (or equivalent).
 
 Note that if you are using custom schemas, both of these schemas described by C<metaschema_uri> and
 by the C<jsonSchemaDialect> keyword should be loaded into the evaluator in advance with
