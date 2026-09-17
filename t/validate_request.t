@@ -2825,7 +2825,7 @@ paths:
 YAML
 
   $request = request('POST', 'http://example.com/foo',
-    [ 'Content-Type' => 'application/schema+json; schema=https://example.com/my_schema/v1' ],
+    [ 'Content-Type' => 'application/schema+json; schema="https://example.com/my_schema/v1"' ],
     '{"a":1,"c":3}');
   is_equal(
     $openapi->validate_request($request)->TO_JSON,
@@ -2844,7 +2844,7 @@ YAML
   );
 
   $request = request('POST', 'http://example.com/foo',
-    [ 'Content-Type' => 'application/schema+json; schema=https://example.com/my_schema/v1' ],
+    [ 'Content-Type' => 'application/schema+json; schema="https://example.com/my_schema/v1"' ],
     '{"a":1,"b":2,"c":3}');
   is_equal(
     $openapi->validate_request($request)->TO_JSON,
