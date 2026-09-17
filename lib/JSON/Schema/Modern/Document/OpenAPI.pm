@@ -208,7 +208,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
         or $json_schema_dialect eq (STRICT_DIALECT->{$self->oas_version}//'');
 
     if ($json_schema_dialect eq DEFAULT_DIALECT->{'3.0'}
-        or $json_schema_dialect eq (DEFAULT_DIALECT->{'3.0'} =~ s/\b\d{4}-\d{2}-\d{2}\b/latest/r)) {
+        or $json_schema_dialect eq (DEFAULT_DIALECT->{'3.0'} =~ s/\b\d{4}-\d{2}-\d{2}\b/latest/ar)) {
       croak '3.0 dialect with a non-3.0 OAD is not currently supported' if $self->oas_version ne '3.0';
 
       $evaluator->add_vocabulary('JSON::Schema::Modern::Vocabulary::OpenAPI_3_0');

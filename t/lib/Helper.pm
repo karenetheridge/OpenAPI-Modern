@@ -367,7 +367,7 @@ sub _multipart_body_string ($content_obj) {
 sub get_part_boundaries ($message) {
   if ($TYPE eq 'mojo') {
     return map +(
-      ($_->headers->content_type//'') =~ m{^multipart/(?:[\w-]+); boundary=(.+)\z},
+      ($_->headers->content_type//'') =~ m{^multipart/(?:[\w-]+); boundary=(.+)\z}a,
     ), $message->content->parts->@*;
   }
   elsif ($TYPE eq 'lwp') {
@@ -381,7 +381,7 @@ sub get_part_boundaries ($message) {
     $content->headers->content_type($message->content_type);
     $content->emit(read => $message->content);
     return map +(
-      ($_->headers->content_type//'') =~ m{^multipart/(?:[\w-]+); boundary=(.+)\z},
+      ($_->headers->content_type//'') =~ m{^multipart/(?:[\w-]+); boundary=(.+)\z}a,
     ), $content->parts->@*;
   }
 

@@ -66,8 +66,8 @@ our %EXPORT_TAGS = (
 # support the latest point release as soon as possible.
 use constant SUPPORTED_OAD_VERSIONS => [ '3.0.4', '3.1.2', '3.2.0' ];
 
-# in most things, e.g. schemas, we only use major.minor as the version number
-use constant OAS_VERSIONS => [ map s/^\d+\.\d+\K\.\d+\z//r, SUPPORTED_OAD_VERSIONS->@* ];
+# in most things, such as checking for compatibility, we only use major.minor as the version number
+use constant OAS_VERSIONS => [ map s/^\d+\.\d+\K\.\d+\z//ar, SUPPORTED_OAD_VERSIONS->@* ];
 
 # see https://spec.openapis.org/#openapi-specification-schemas for the latest links
 # these are updated automatically at build time via 'update-schemas'
@@ -146,7 +146,7 @@ sub add_vocab_and_default_schemas ($evaluator, $version = OAS_VERSIONS->[-1]) {
     my $document = load_cached_document($evaluator, $uri);
 
     # add "latest" alias for each of these documents, mapping to the same document object
-    $evaluator->add_document(($document->canonical_uri =~ s{/\d{4}-\d{2}-\d{2}\z}{}r).'/latest', $document);
+    $evaluator->add_document(($document->canonical_uri =~ s{/\d{4}-\d{2}-\d{2}\z}{}ar).'/latest', $document);
   }
 }
 
@@ -208,7 +208,7 @@ sub convert_request ($request) {
   if ($request->isa('HTTP::Request')) {
     $req->method($request->method);
     $req->url(Mojo::URL->new($request->uri));
-    $req->version($request->protocol =~ s{^HTTP/(\d\.\d)\z}{$1}r) if $request->protocol;
+    $req->version($request->protocol =~ s{^HTTP/(\d\.\d)\z}{$1}ar) if $request->protocol;
     my $body = $request->content;
 
     if (match_media_type(scalar $request->content_type, ['multipart/*'])) {
@@ -267,7 +267,7 @@ sub convert_response ($response) {
   my (@headers, $body);
   if ($response->isa('HTTP::Response')) {
     $res->code($response->code);
-    $res->version($response->protocol =~ s{^HTTP/(\d\.\d)\z}{$1}r) if $response->protocol;
+    $res->version($response->protocol =~ s{^HTTP/(\d\.\d)\z}{$1}ar) if $response->protocol;
     @headers = pairs $response->headers->flatten;
     $body = $response->content;
   }
