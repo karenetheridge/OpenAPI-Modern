@@ -51,6 +51,7 @@ our @EXPORT_OK = qw(
   uri_encode_strict
   intersect_types
   coerce_primitive
+  is_header_name
   is_cookie_name
   is_cookie_value
   elem
@@ -360,6 +361,13 @@ sub coerce_primitive ($dataref, $types = []) {
   $$dataref = ''.$$dataref, return 1 if elem('string', $types);
 }
 
+
+# RFC9110 §5.1
+# field-name     = token
+sub is_header_name ($name) {
+  !!(defined $name && $name =~ /^$TOKEN\z/);
+}
+
 # RFC6265 §3.1 and §4.2.1
 # cookie-header = "Cookie:" OWS cookie-string OWS
 # cookie-string = cookie-pair *( ";" SP cookie-pair )
@@ -483,6 +491,7 @@ uri_encode
 uri_encode_strict
 intersect_types
 coerce_primitive
+is_header_name
 is_cookie_name
 is_cookie_value
 elem

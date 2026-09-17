@@ -29,7 +29,7 @@ use Feature::Compat::Try;
 use Encode 2.89 ();
 use JSON::Schema::Modern;
 use JSON::Schema::Modern::Utilities qw(jsonp unjsonp canonical_uri E abort is_equal true false get_type is_type jsonp_set jsonp_get jsonp_elements decode_media_type match_media_type);
-use OpenAPI::Modern::Utilities qw(add_vocab_and_default_schemas add_formats convert_request convert_response uri_decode intersect_types coerce_primitive uri_encode uri_encode_strict is_cookie_name is_cookie_value elem deserialize_multipart);
+use OpenAPI::Modern::Utilities qw(add_vocab_and_default_schemas add_formats convert_request convert_response uri_decode intersect_types coerce_primitive uri_encode uri_encode_strict is_header_name is_cookie_name is_cookie_value elem deserialize_multipart);
 use JSON::Schema::Modern::Document::OpenAPI;
 use MooX::TypeTiny 0.002002;
 use Types::Standard qw(InstanceOf Bool);
@@ -985,8 +985,8 @@ sub _deserialize_header_parameter ($self, $state, $header_obj, $header_name, $he
     if not blessed($headers) or not $headers->isa('Mojo::Headers');
 
   # temporary, until the ABNF is enforced in the OAD schema
-  return E($state, 'non-ascii character detected in header name: not deserializable')
-    if $header_name =~ /[^\x00-\x7F]/;
+  return E($state, 'invalid character detected in header name: not deserializable')
+    if not is_header_name($header_name);
 
   if (not $headers->every_header($header_name)->@*) {
     return E({ %$state, keyword => 'required' }, 'missing header: %s', $header_name)
