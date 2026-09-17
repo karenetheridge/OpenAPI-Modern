@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.149     2026-09-17 23:00:57Z
           - fix string escaping in the Content-Disposition header when
             serializing and deserializing multipart/form-data messages
           - fix parsing of surrounding whitespace in header values
