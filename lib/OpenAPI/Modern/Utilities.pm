@@ -77,7 +77,7 @@ use constant OAS_VERSIONS => [ map s/^\d+\.\d+\K\.\d+\z//ar, SUPPORTED_OAD_VERSI
 # the main OpenAPI document schema, with permissive (unvalidated) JSON Schemas
 use constant DEFAULT_METASCHEMA => {
   '3.0' => 'https://spec.openapis.org/oas/3.0/schema/2024-10-18',
-  '3.1' => 'https://spec.openapis.org/oas/3.1/schema/2025-11-23',
+  '3.1' => 'https://spec.openapis.org/oas/3.1/schema/2026-08-03',
   '3.2' => 'https://spec.openapis.org/oas/3.2/schema/2026-08-30',
 };
 
@@ -93,7 +93,7 @@ use constant DEFAULT_DIALECT => {
 # permitted)
 use constant DEFAULT_BASE_METASCHEMA => {
   '3.0' => 'https://spec.openapis.org/oas/3.0/schema/2024-10-18', # same as standard
-  '3.1' => 'https://spec.openapis.org/oas/3.1/schema-base/2025-11-23',
+  '3.1' => 'https://spec.openapis.org/oas/3.1/schema-base/2026-08-03',
   '3.2' => 'https://spec.openapis.org/oas/3.2/schema-base/2026-08-30',
 };
 

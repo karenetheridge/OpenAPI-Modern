@@ -1,6 +1,8 @@
 Revision history for OpenAPI-Modern
 
 {{$NEXT}}
+          - updated bundled schemas for OAS version 3.1 to their latest
+            published versions
 
 0.149     2026-09-17 23:00:57Z
           - fix string escaping in the Content-Disposition header when

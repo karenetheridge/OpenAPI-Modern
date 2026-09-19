@@ -859,8 +859,8 @@ one of:
   L<https://spec.openapis.org/oas/3.2/schema/2026-08-30>),
   and the L<OpenAPI v3.2.x specification|https://spec.openapis.org/oas/v3.2>
 * for v3.1 documents:
-  L<https://spec.openapis.org/oas/3.1/schema-base/2025-11-23> (which is a wrapper around
-  L<https://spec.openapis.org/oas/3.1/schema/2025-11-23>),
+  L<https://spec.openapis.org/oas/3.1/schema-base/2026-08-03> (which is a wrapper around
+  L<https://spec.openapis.org/oas/3.1/schema/2026-08-03>),
   and the L<OpenAPI v3.1.x specification|https://spec.openapis.org/oas/v3.1>
 
 =head1 CONSTRUCTOR ARGUMENTS

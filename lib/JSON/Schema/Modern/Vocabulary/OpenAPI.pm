@@ -139,7 +139,7 @@ or C<https://spec.openapis.org/oas/3.2/vocab/base>
 and formally specified in L<https://spec.openapis.org/oas/latest#schema-object>.
 
 This vocabulary is normally made available by using the default OpenAPI metaschema
-(currently L<https://spec.openapis.org/oas/3.1/schema/2025-11-23> and
+(currently L<https://spec.openapis.org/oas/3.1/schema/2026-08-03> and
 L<https://spec.openapis.org/oas/3.2/schema/2026-08-30>).
 
 =head1 SEE ALSO
