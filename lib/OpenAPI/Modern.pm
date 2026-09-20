@@ -1075,7 +1075,7 @@ sub _deserialize_cookie_parameter ($self, $state, $param_obj, $headers) {
 
   return if $state->{errors}->@* > $error_count;
 
-  map { $_->[1] =~ s/^"//; $_->[1] =~ s/"\z// } @pairs;
+  map do { $_->[1] =~ s/^"//; $_->[1] =~ s/"\z// }, @pairs;
 
   if (exists $param_obj->{content}) {
     my $data = ((grep +($_->[0] eq $param_obj->{name}), @pairs)[-1]//[])->[1];
