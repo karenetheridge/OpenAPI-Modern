@@ -446,22 +446,26 @@ sub deserialize_multipart ($content) {
       next if $disposition_type ne 'form-data';
 
       pos($disposition) = length $&;
-      my $leftovers = $';
-      my $params = {};
+      my ($leftovers, $part_name) = ($');
       while ($disposition =~ /\G$OWS;$OWS($TOKEN)=($TOKEN|$QUOTED_STRING)/g) {
-        my ($param_name, $value, $qs_value) = ($1, $2, $3);    # $QUOTED_STRING contains $3
+        my ($name, $value, $qs_value) = ($1, $2, $3);    # $QUOTED_STRING contains $3
         $leftovers = $';
+        next if $name ne 'name';
         # RFC9110 §5.6.4: "The backslash octet ("\") can be used as a single-octet quoting mechanism
         # within quoted-string and comment constructs. Recipients that process the value of a
         # quoted-string MUST handle a quoted-pair as if it were replaced by the octet following the
         # backslash."
-        $params->{$param_name} = Encode::decode('UTF-8',
+        # RFC9110 §5.6.6: "Parameter names are case-insensitive. Parameter values might or might not
+        # be case-sensitive, depending on the semantics of the parameter name."
+        # RFC7578 §5.1.1: "If non-ASCII field names are unavoidable, form or application creators
+        # SHOULD use UTF-8 uniformly. This will minimize interoperability problems."
+        $part_name = Encode::decode('UTF-8',
           defined $qs_value ? ($qs_value =~ s/\x5C(.)/$1/gr) : $value,
           Encode::DIE_ON_ERR | Encode::LEAVE_SRC);
       }
 
       next if length $leftovers;
-      $value = { $params->{name} // 'part_'.$part_num => $value };
+      $value = { $part_name // 'part_'.$part_num => $value };
     }
 
     $part_num++;
