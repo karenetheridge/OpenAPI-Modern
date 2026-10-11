@@ -2625,7 +2625,7 @@ Optional (a default is constructed when omitted).
 
 This must be prepared in advance if custom metaschemas are to be used, as the evaluator is what
 holds the information about all available schemas (which are used by keywords such as
-C<jsonSchemaDialect> and C<$ref>.
+C<jsonSchemaDialect> and C<$ref>. See L<JSON::Schema::Modern/add_schema>).
 
 =head2 debug
 
