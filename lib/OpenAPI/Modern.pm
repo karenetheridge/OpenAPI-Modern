@@ -785,7 +785,7 @@ sub _match_uri ($self, $method, $uri, $path_template, $state) {
     # so they are not altered by normalization. We use NUL, as it is unchanged in the host during
     # punycode-encoding
     my $normalized_server_url = Mojo::URL->new($server->{url} =~ s/\{[^{}]+\}/\x00/gr)
-      ->to_abs($self->entry_document->retrieval_uri)
+      ->to_abs($self->entry_document->retrieval_uri//())
       ->to_abs($uri);
 
     my $normalized_host = $normalized_server_url->host;

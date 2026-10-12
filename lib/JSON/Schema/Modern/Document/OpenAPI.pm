@@ -185,7 +185,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
 
   # determine canonical uri using rules from v3.2.0 §4.1.2.2.1, "Establishing the Base URI"
   $self->_set_canonical_uri($state->{initial_schema_uri} =
-    Mojo::URL->new($schema->{'$self'}//())->to_abs($self->retrieval_uri));
+    Mojo::URL->new($schema->{'$self'}//())->to_abs($self->retrieval_uri//()));
 
   # /jsonSchemaDialect: https://spec.openapis.org/oas/latest#specifying-schema-dialects
   {
