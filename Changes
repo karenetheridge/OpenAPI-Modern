@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.150     2026-10-15 21:06:52Z
           - updated bundled schemas for OAS version 3.1 to their latest
             published versions
           - the "openapi_document" constructor argument is now deprecated, in

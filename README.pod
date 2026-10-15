@@ -8,7 +8,7 @@ OpenAPI::Modern - Validate HTTP requests and responses against an OpenAPI v3.0, 
 
 =head1 VERSION
 
-version 0.149
+version 0.150
 
 I use a linearly-increasing version numbering scheme. No meaning should be
 presumed or inferred from the version being less than 1.0.
@@ -19,7 +19,7 @@ presumed or inferred from the version being less than 1.0.
     openapi_uri => 'https://prod.example.com',  # adjust for each deployment environment
     openapi_schema => YAML::PP->new(boolean => 'JSON::PP')->load_string(<<'YAML'));
   $self: /api         # canonical_uri will become https://prod.example.com/api
-  openapi: 3.2.0
+  openapi: 3.2.1
   info:
     title: Test API
     version: 1.2.3
@@ -153,33 +153,15 @@ Unless otherwise noted, these are also available as read-only accessors.
 Any additional constructor arguments that are not listed here will be passed along to the evaluator
 constructor: see L<JSON::Schema::Modern/CONSTRUCTOR ARGUMENTS>.
 
-=head2 openapi_uri
+=head2 documents
 
-Optional.
+An arrayref of one or more documents (may be L<JSON::Schema::Modern::Document::OpenAPI> or
+L<JSON::Schema::Modern::Document> objects). The first document must always be an
+L<JSON::Schema::Modern::Document::OpenAPI> object and is used as the source of all APIs; the
+remaining documents are only used as C<$ref> targets (e.g. to definitions under C</components/...>
+for OpenAPI documents, or under C</$defs/...> for JSON Schema documents).
 
-The URI that identifies the OpenAPI document; an alias to C<< ->openapi_document->canonical_uri >>.
-See L<JSON::Schema::Modern::Document::OpenAPI/canonical_uri>.
-Ignored if L</openapi_document> is provided.
-
-This URI will be used at runtime to resolve relative URIs used in
-the OpenAPI document, such as for C<jsonSchemaDialect> or C<servers url> values and C<$ref>
-locations, as well as used for locations in L<JSON::Schema::Modern::Result> objects (see below).
-
-The value of C<$self> in the document (if present) is resolved against this value.
-It is strongly recommended that this resulting URI is absolute.
-
-=head2 openapi_schema
-
-The data structure describing the OpenAPI document (as specified at
-L<https://spec.openapis.org/oas/latest>; an alias to C<< ->openapi_document->schema >>.
-See L<JSON::Schema::Modern::Document::OpenAPI/schema>.
-Ignored if L</openapi_document> is provided, otherwise required.
-
-=head2 openapi_document
-
-The L<JSON::Schema::Modern::Document::OpenAPI> document that holds the OpenAPI information to be
-used for validation. If it is not provided to the constructor, then
-L</openapi_schema> B<MUST> be provided, and L</evaluator> will also be used if provided.
+Not available as an accessor; use L</openapi_documents> or L</entry_document> instead.
 
 =head2 evaluator
 
@@ -188,7 +170,7 @@ Optional (a default is constructed when omitted).
 
 This must be prepared in advance if custom metaschemas are to be used, as the evaluator is what
 holds the information about all available schemas (which are used by keywords such as
-C<jsonSchemaDialect> and C<$ref>.
+C<jsonSchemaDialect> and C<$ref>. See L<JSON::Schema::Modern/add_schema>).
 
 =head2 debug
 
@@ -203,17 +185,56 @@ When set, missing values from parameter and body schemas that have a correspondi
 keyword will be returned in the L<JSON::Schema::Modern::Result> object under the C<defaults>
 property, and are also populated into C<data>. See example in L</validate_request>.
 
+=head2 openapi_uri
+
+Optional.
+
+The URI that identifies the OpenAPI document; as an accessor, is an alias to
+C<< ->entry_document->canonical_uri >>.
+Defaults to C<''>.
+Ignored if L</documents> is provided.
+
+This URI will be used at runtime to resolve relative URIs used in
+the OpenAPI document, such as for C<jsonSchemaDialect> or C<servers url> values and C<$ref>
+locations, as well as used for locations in L<JSON::Schema::Modern::Result> objects (see below).
+
+The value of C<$self> in the document (if present) is resolved against this value.
+It is strongly recommended that this resulting URI is absolute.
+
+The use of this as an accessor is B<deprecated>; instead use
+L<JSON::Schema::Modern::Document::OpenAPI/canonical_uri>
+or L<JSON::Schema::Modern::Document::OpenAPI/retrieval_uri>
+on the relevant document object (see L</entry_document> and L</documents>).
+
+=head2 openapi_schema
+
+The data structure describing the OpenAPI document (as specified at
+L<https://spec.openapis.org/oas/latest>; as an accessor, is an alias to
+C<< ->entry_document->schema >>.
+Ignored if L</documents> is provided, otherwise required.
+
+The use of this as an accessor is B<deprecated>; instead use C<< $openapi->entry_document->schema >>
+(See L<JSON::Schema::Modern::Document::OpenAPI/schema>.)
+
+=head2 openapi_document
+
+The L<JSON::Schema::Modern::Document::OpenAPI> document that holds the OpenAPI information to be
+used for validation. If it is not provided to the constructor, then
+L</openapi_schema> B<MUST> be provided, and L</evaluator> will also be used if provided.
+
+B<Deprecated>: instead use L</documents> as a constructor argument, and L</openapi_documents> or
+L</entry_document> as an accessor.
+
 =head1 METHODS
 
-=head2 document_get
+=head2 openapi_documents
 
-  my $parameter_data = $openapi->document_get('/paths/~1foo~1{foo_id}~1bar~1%7Bbar_id%7D/post/parameters/0');
+The list of OpenAPI documents that was provided to the constructor in L</documents>.
 
-Fetches the portion of the main OpenAPI document located at the provided JSON pointer.
-Proxies to L<JSON::Schema::Modern::Document::OpenAPI/get>.
-This is not recursive (does not follow C<$ref> chains) -- for that, use
-C<< $openapi->recursive_get(Mojo::URL->new->fragment($json_pointer)) >>, see
-L</recursive_get>.
+=head2 entry_document
+
+The OpenAPI document used to search for APIs (under C</paths>); this is the first item in the
+L</openapi_documents> list.
 
 =head2 validate_request
 
@@ -414,9 +435,9 @@ C<uri_captures>: a hashref mapping placeholders in the entire uri template (serv
 
 =item *
 
-C<operation_uri>: a URI indicating the document location of the operation object for the request, after following any references (usually something under C</paths/>, but may be in another document). Use C<< $openapi->evaluator->get($uri) >> to fetch this content (see L<JSON::Schema::Modern/get>). Note that this is the same as:
+C<operation_uri>: a URI indicating the document location of the operation object for the request, after following any references (usually something under C</paths/>, but may be in another document). Use C<< $openapi->evaluator->get($uri) >> to fetch this content (see L<JSON::Schema::Modern/get>). Note that (as long as the operation is in the entry document) this is the same as:
 
-    $openapi->document_get(Mojo::URL->new($openapi->openapi_uri)->fragment($path_to_operation);
+    $openapi->entry_document->get(Mojo::URL->new($openapi->entry_document->canonical_uri)->fragment($path_to_operation));
 
 (See the L<documentation for an operation|https://learn.openapis.org/specification/paths.html#the-endpoints-list>
 or in
@@ -437,7 +458,7 @@ C<uri_patterns>: an arrayref of patterns that were attempted to be matched again
 =back
 
 You can find the associated operation object in the OpenAPI document by using either C<operation_uri>,
-or by calling C<< $openapi->openapi_document->operationId_path($operation_id) >>
+or C<< $openapi->entry_document->operationId_path($operation_id) >>
 (see L<JSON::Schema::Modern::Document::OpenAPI/operationId_path>) (note that the latter will
 be changed in a subsequent release, in order to support operations existing in other documents).
 
@@ -461,13 +482,17 @@ prepending C<#> and url-encoding it, e.g. C<< Mojo::URL->new->fragment($jsonp) >
   my $operation_schema = $openapi->recursive_get(Mojo::URL->new('https://example.com/api.json')
     ->fragment(jsonp(qw(/paths /foo/{foo_id} get requestBody content application/json schema)));
 
-=head2 canonical_uri
+=head2 document_get
 
-An accessor that delegates to L<JSON::Schema::Modern::Document/canonical_uri>.
+  my $parameter_data = $openapi->document_get('/paths/~1foo~1{foo_id}~1bar~1%7Bbar_id%7D/post/parameters/0');
 
-=head2 schema
+Fetches the portion of the main OpenAPI document located at the provided JSON pointer.
+Proxies to L<JSON::Schema::Modern::Document::OpenAPI/get>.
+This is not recursive (does not follow C<$ref> chains) -- for that, use
+C<< $openapi->recursive_get(Mojo::URL->new->fragment($json_pointer)) >>, see
+L</recursive_get>.
 
-An accessor that delegates to L<JSON::Schema::Modern::Document/schema>.
+B<Deprecated>: use C<< $openapi->entry_document->get(...) >> or C<< $document->get(...) >> instead.
 
 =head1 CACHING
 
