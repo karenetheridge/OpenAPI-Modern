@@ -2743,6 +2743,63 @@ YAML
     },
     'braces in the retrieval uri (and therefore in the normalized server url) aren\'t mistaken for template variables',
   );
+
+
+  $openapi = OpenAPI::Modern->new(
+    # note: no retrieval uri
+    debug => 1,
+    openapi_schema => decode_yaml(OPENAPI_PREAMBLE.<<'YAML'));
+servers:
+  - url: /{subdir}
+    variables:
+      subdir:
+        default: x
+paths:
+  /foo:
+    get: {}
+YAML
+
+  ok($openapi->find_path_item($options = { @request = (method => 'GET', uri => 'http://example.com/x/foo') }),
+    to_str(@request).': lookup succeeded');
+  cmp_result(
+    $options,
+    $expected = {
+      uri => isa('Mojo::URL'),
+      method => 'GET',
+      path_template => '/foo',
+      debug => {
+        uri_patterns => [
+          '\\/foo\\z',
+          '^http\\:\\/\\/example\\.com\\/([^/?#]*)',
+        ],
+      },
+      path_captures => {},
+      uri_captures => { subdir => 'x' },
+      _path_item => { get => ignore },
+      _operation => ignore,
+      _operation_path_suffix => '/get',
+      operation_uri => str('#'.jsonp(qw(/paths /foo get))), # note: no host for operation uri
+      errors => [],
+    },
+    'when retrieval uri is undefined, the server url is relative and is resolved against the request URI',
+  );
+
+  ok($openapi->find_path_item($options = { @request = (method => 'GET', uri => 'http://example2.com/z/foo') }),
+    to_str(@request).': lookup succeeded');
+  cmp_result(
+    $options,
+    {
+      %$expected,
+      uri_captures => { subdir => 'z' },
+      debug => {
+        uri_patterns => [
+          '\\/foo\\z',
+          '^http\\:\\/\\/example2\\.com\\/([^/?#]*)',
+        ],
+      },
+    },
+    '..which also means the request URI can use an arbitrary host',
+  );
 };
 
 subtest 'some esoteric match cases' => sub {
