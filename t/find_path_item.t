@@ -1296,52 +1296,6 @@ YAML
 
   $openapi = OpenAPI::Modern->new(
     openapi_uri => $doc_uri,
-    openapi_schema => decode_yaml(OPENAPI_PREAMBLE.<<'YAML'));
-servers:
-  - url: http://example.com
-  - url: http://example2.com/foo
-paths:
-  /:
-    get: {}
-YAML
-
-  @request = (method => 'GET', uri => 'http://example.com');
-  ok($openapi->find_path_item($options = { @request }), 'lookup succeeded');
-  cmp_result(
-    $options,
-    $expected = {
-      uri => isa('Mojo::URL'),
-      path_template => '/',
-      path_captures => {},
-      uri_captures => {},
-      method => 'GET',
-      _path_item => { get => ignore },
-      _operation => ignore,
-      _operation_path_suffix => '/get',
-      operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths / get)))),
-      errors => [],
-    },
-    'path_template inferred from request uri; empty path maps to /',
-  );
-
-  ok($openapi->find_path_item($options = { @request, path_template => '/' }), 'lookup succeeded');
-  cmp_result(
-    $options,
-    $expected,
-    'provided path_template verified against request uri with empty path',
-  );
-
-  @request = (method => 'GET', uri => 'http://example2.com/foo');
-  ok($openapi->find_path_item($options = { @request }), 'lookup succeeded');
-  cmp_result(
-    $options,
-    $expected,
-    'path_template inferred from request uri; empty path (because server url swallows path) maps to /',
-  );
-
-
-  $openapi = OpenAPI::Modern->new(
-    openapi_uri => $doc_uri,
     openapi_schema => $lots_of_options = decode_yaml(OPENAPI_PREAMBLE.<<'YAML'));
 components:
   pathItems:
@@ -1656,6 +1610,53 @@ YAML
       ],
     },
     'error locations are correct after multiple unanchored matches of uri against paths, with bad method',
+  );
+};
+
+subtest 'matching with server urls' => sub {
+  my $openapi = OpenAPI::Modern->new(
+    openapi_uri => $doc_uri,
+    openapi_schema => decode_yaml(OPENAPI_PREAMBLE.<<'YAML'));
+servers:
+  - url: http://example.com
+  - url: http://example2.com/foo
+paths:
+  /:
+    get: {}
+YAML
+
+  my @request = (method => 'GET', uri => 'http://example.com');
+  ok($openapi->find_path_item(my $options = { @request }), 'lookup succeeded');
+  cmp_result(
+    $options,
+    my $expected = {
+      uri => isa('Mojo::URL'),
+      path_template => '/',
+      path_captures => {},
+      uri_captures => {},
+      method => 'GET',
+      _path_item => { get => ignore },
+      _operation => ignore,
+      _operation_path_suffix => '/get',
+      operation_uri => str($doc_uri->clone->fragment(jsonp(qw(/paths / get)))),
+      errors => [],
+    },
+    'path_template inferred from request uri; empty path maps to /',
+  );
+
+  ok($openapi->find_path_item($options = { @request, path_template => '/' }), 'lookup succeeded');
+  cmp_result(
+    $options,
+    $expected,
+    'provided path_template verified against request uri with empty path',
+  );
+
+  @request = (method => 'GET', uri => 'http://example2.com/foo');
+  ok($openapi->find_path_item($options = { @request }), 'lookup succeeded');
+  cmp_result(
+    $options,
+    $expected,
+    'path_template inferred from request uri; empty path (because server url swallows path) maps to /',
   );
 
 
@@ -2742,9 +2743,10 @@ YAML
     },
     'braces in the retrieval uri (and therefore in the normalized server url) aren\'t mistaken for template variables',
   );
+};
 
-
-  $openapi = OpenAPI::Modern->new(
+subtest 'some esoteric match cases' => sub {
+  my $openapi = OpenAPI::Modern->new(
     openapi_uri => $doc_uri,
     openapi_schema => decode_yaml(OPENAPI_PREAMBLE.<<'YAML'));
 paths:
@@ -2774,7 +2776,8 @@ paths:
       operationId: ''
 YAML
 
-  ok($openapi->find_path_item($options = { @request = (method => 'GET', uri => 'http://example.com/user/1'), operation_id => 'user_get' }),
+  my @request = (method => 'GET', uri => 'http://example.com/user/1');
+  ok($openapi->find_path_item(my $options = { @request, operation_id => 'user_get' }),
     to_str(@request).': lookup succeeded');
   cmp_result(
     $options,
