@@ -128,7 +128,7 @@ sub traverse ($self, $evaluator, $config_override = {}) {
     if keys %$config_override;
 
   my $state = {
-    initial_schema_uri => $self->canonical_uri,
+    initial_schema_uri => $self->canonical_uri, # for now, same as original_uri, retrieval_uri
     traversed_keyword_path => '',
     keyword_path => '',
     data_path => '',
@@ -933,7 +933,11 @@ Also available as L<JSON::Schema::Modern::Document/original_uri>, this is known 
 URI" in the OAS specification: the URL the document was originally sourced from, or the URI that
 was used to add the document to the L<OpenAPI::Modern> instance.
 
-In OpenAPI versions before 3.2.0, this is the same as L</canonical_uri>.
+It is used for resolving relative URIs and URI templates used with C<servers url> values for runtime
+request URI matching.
+
+In OpenAPI versions before 3.2.0, this is the same as L</canonical_uri>. (In 3.2.0+,
+C<canonical_uri> is the C<$self> value from the document resolved against the C<retrieval_uri>.)
 
 =head2 oas_version
 

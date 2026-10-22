@@ -2662,21 +2662,27 @@ property, and are also populated into C<data>. See example in L</validate_reques
 Optional.
 
 The URI that identifies the OpenAPI document; as an accessor, is an alias to
-C<< ->entry_document->canonical_uri >>.
-Defaults to C<''>.
+C<< ->entry_document->canonical_uri >> (but this will not necessarily be the value passed in to the
+constructor, see below).
 Ignored if L</documents> is provided.
 
-This URI will be used at runtime to resolve relative URIs used in
-the OpenAPI document, such as for C<jsonSchemaDialect> or C<servers url> values and C<$ref>
-locations, as well as used for locations in L<JSON::Schema::Modern::Result> objects (see below).
-
-The value of C<$self> in the document (if present) is resolved against this value.
+The value of C<$self> in the document (if present) is resolved against this value and then this
+value is reassigned to the result (therefore, if C<$self> is an absolute URI (with host and scheme),
+then no parts of the original URI are used).
 It is strongly recommended that this resulting URI is absolute.
 
-The use of this as an accessor is B<deprecated>; instead use
-L<JSON::Schema::Modern::Document::OpenAPI/canonical_uri>
-or L<JSON::Schema::Modern::Document::OpenAPI/retrieval_uri>
-on the relevant document object (see L</entry_document> and L</documents>).
+The resulting URI will be used at runtime to resolve relative URIs used in the OpenAPI document,
+such as for C<jsonSchemaDialect> and C<$ref> locations, as well as used for locations in
+L<JSON::Schema::Modern::Result> objects (see below).
+
+The originally-provided value is still available as
+L<JSON::Schema::Modern::Document::OpenAPI/original_uri> and
+L<JSON::Schema::Modern::Document::OpenAPI/retrieval_uri>.
+It is used for resolving relative URIs and URI templates used with C<servers url> values for runtime
+request URI matching.
+
+The use of this as an accessor is B<deprecated>; use the accessors on the relevant document directly
+(see L</entry_document> and L</documents>).
 
 =head2 openapi_schema
 
@@ -2906,7 +2912,8 @@ In addition, these values are also populated in the options hash (when available
   L<JSON::Schema::Modern/get>). Note that (as long as the operation is in the entry document) this
   is the same as:
 
-    $openapi->entry_document->get(Mojo::URL->new($openapi->entry_document->canonical_uri)->fragment($path_to_operation));
+    $openapi->entry_document->get(Mojo::URL->new($openapi->entry_document->canonical_uri)
+      ->fragment($path_to_operation));
 
 (See the L<documentation for an operation|https://learn.openapis.org/specification/paths.html#the-endpoints-list>
 or in
