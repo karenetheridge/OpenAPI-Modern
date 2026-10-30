@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.151     2026-10-30 03:43:50Z
           - fixed some edge cases with how server urls are matched, especially
             when multiple OpenAPI documents are used and cross-referenced
 
