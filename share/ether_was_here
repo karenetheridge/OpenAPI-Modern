@@ -1,0 +1,3 @@
+This file exists in the repository, but is not shipped.
+It is used by the adjacent script to determine that a local share directory
+exists that should be used in place of the installed one.
