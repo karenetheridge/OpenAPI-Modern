@@ -111,6 +111,30 @@ subtest 'constructor arguments' => sub {
 };
 
 subtest 'construction with explicit document list' => sub {
+  die_result(
+    sub { OpenAPI::Modern->new(documents => $_) },
+    qr/^"documents" must be a non-empty array/,
+    '"documents" is invalid: '.$::dumper->encode($_),
+  ) foreach undef, 'not an array', {}, [];
+
+  die_result(
+    sub { OpenAPI::Modern->new(documents => [ $_ ]) },
+    qr/^the first document must be a JSON::Schema::Modern::Document::OpenAPI object/,
+    'first document must be a blessed OpenAPI document',
+  ) foreach undef, 'string', false, true, {}, [], JSON::Schema::Modern::Document->new(schema => {});
+
+  die_result(
+    sub {
+      OpenAPI::Modern->new(documents => [
+        JSON::Schema::Modern::Document::OpenAPI->new(schema => decode_yaml(OPENAPI_PREAMBLE."\npaths: {}\n")),
+        $_,
+      ])
+    },
+    qr/all "documents" must be JSON::Schema::Modern::Document::OpenAPI or JSON::Schema::Modern::Document objects/,
+    'all "documents" values must be valid documents',
+  ) foreach undef, 'string', false, true, {}, [];
+
+
   my $evaluator = JSON::Schema::Modern->new;
 
   my $doc1 = JSON::Schema::Modern::Document::OpenAPI->new(

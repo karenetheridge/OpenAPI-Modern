@@ -100,8 +100,16 @@ around BUILDARGS => sub ($orig, $class, @args) {
 
   $args->{documents} = [ delete $args->{openapi_document} ] if exists $args->{openapi_document};
 
+  croak '"documents" must be a non-empty array'
+    if exists $args->{documents} and (ref $args->{documents} ne 'ARRAY' or not $args->{documents}->@*);
+
   croak 'the first document must be a JSON::Schema::Modern::Document::OpenAPI object'
-    if exists $args->{documents} and not $args->{documents}[0]->isa('JSON::Schema::Modern::Document::OpenAPI');
+    if exists $args->{documents} and (not blessed $args->{documents}[0] or not $args->{documents}[0]->isa('JSON::Schema::Modern::Document::OpenAPI'));
+
+  croak 'all "documents" must be JSON::Schema::Modern::Document::OpenAPI or JSON::Schema::Modern::Document objects'
+    if exists $args->{documents} and any {
+        not blessed $_ or not $_->isa('JSON::Schema::Modern::Document')
+      } $args->{documents}->@*;
 
   my $extra_args = { %$args };
   delete $extra_args->@{qw(documents openapi_schema openapi_uri evaluator debug)};
