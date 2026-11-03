@@ -1,5 +1,7 @@
 Revision history for OpenAPI-Modern
 
+{{$NEXT}}
+
 0.152     2026-11-03 22:16:17Z
           - now checking for invalid references after adding all documents to
             the OpenAPI object at construction time (references to unknown
