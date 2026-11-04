@@ -2711,7 +2711,7 @@ C<< ->entry_document->schema >>.
 Ignored if L</documents> is provided, otherwise required.
 
 The use of this as an accessor is B<deprecated>; instead use C<< $openapi->entry_document->schema >>
-(See L<JSON::Schema::Modern::Document::OpenAPI/schema>.)
+(See L<JSON::Schema::Modern::Document::OpenAPI/schema>).
 
 =head2 openapi_document
 
@@ -2727,11 +2727,12 @@ L</entry_document> as an accessor.
 =head2 openapi_documents
 
 The list of OpenAPI documents that was provided to the constructor in L</documents>.
+See also L</documents> for the list of all documents, including JSON Schemas.
 
 =head2 entry_document
 
 The OpenAPI document used to search for APIs (under C</paths>); this is the first item in the
-L</openapi_documents> list.
+L</openapi_documents> and L</documents> lists.
 
 =head2 validate_request
 
@@ -2773,7 +2774,7 @@ C<instanceLocation>s in errors in the Result object):
     request => {
       uri => {
         server => {
-          <server variable name> => <value from the scheme, host or path portion of the URI>,
+          <server variable name> => <value from part of the URI scheme, host or path>,
           ...,
         },
         path => {
@@ -2781,17 +2782,17 @@ C<instanceLocation>s in errors in the Result object):
           ...,
         },
         query => {
-          <query parameter name> => <deserialized data from part of the querystring portion of the URI>,
+          <query parameter name> => <deserialized data from part of the URI querystring>,
           ...,
           OR
-          <deserialized data from the entire querystring portion of the URI>,
+          <deserialized data from the entire URI querystring>,
         },
       },
       header => {
-        <header name> => <deserialized data from header(s)>,
+        <header name> => <deserialized data from request header(s)>,
         ...,
         Cookie => {
-          <cookie parameter name> => <deserialized data from (a portion of) the Cookie header>,
+          <cookie parameter name> => <deserialized data from (a portion of) the Cookie request header>,
           ...,
         },
       },
@@ -2800,7 +2801,7 @@ C<instanceLocation>s in errors in the Result object):
           <for multipart media-types, an arrayref of headers, one element per part, possibly nested,
           in the same order as the body parts from the original message>
         ],
-        content => <deserialized data from body; can be any type>,
+        content => <deserialized data from the request body; can be any type>,
       },
     },
   }
@@ -2852,15 +2853,15 @@ C<instanceLocation>s in errors in the Result object):
   {
     response => {
       header => {
-        <header name> => <deserialized data from header(s)>,
+        <header name> => <deserialized data from response header(s)>,
         ...,
       },
       body => {
         header => [
-          <for multipart media-types, an arrayref of headers, one element per part, possibly nested,
-          in the same order as the body parts from the original message>
+          <for multipart media-types, an arrayref of message part headers, one element per part,
+          possibly nested, in the same order as the body parts from the original message>
         ],
-        content => <deserialized data from body; can be any type>,
+        content => <deserialized data from the response body; can be any type>,
       },
     },
   }
@@ -2906,14 +2907,15 @@ of values can be provided; possible values are:
   to inconsistencies with url-escaping, and this capability may be removed in the future)
 
 All values are optional, and will be derived from each other as needed (albeit less
-efficiently than if they were provided). All passed-in values MUST be consistent with each other and
+efficiently than if they were provided). All provided values MUST be consistent with each other and
 the request or the return value from this method is false and appropriate errors will be included
 in the C<$options> hash.
 
-When successful, the options hash will be populated (or updated) with all the above keys,
+When successful, the options hash will be populated (or updated) with all the above values,
 and the return value is true.
 When not successful, the options hash will be populated with key C<errors>, an arrayref containing
-a L<JSON::Schema::Modern::Error> object, and the return value is false.
+a L<JSON::Schema::Modern::Error> object, and the return value is false (as well as any other values
+that were able to be determined from the originally-provided values).
 
 In addition, these values are also populated in the options hash (when available):
 
@@ -2941,8 +2943,9 @@ L<§4.10 of the specification|https://spec.openapis.org/oas/latest#operation-obj
   additional diagnostic information is stored here in separate keys:
 
 =for :list
+
 * C<uri_patterns>: an arrayref of patterns that were attempted to be matched against the URI,
-  in match order
+  in order of application
 
 =end :list
 
@@ -2973,7 +2976,9 @@ prepending C<#> and url-encoding it, e.g. C<< Mojo::URL->new->fragment($jsonp) >
 
 =head2 document_get
 
-  my $parameter_data = $openapi->document_get('/paths/~1foo~1{foo_id}~1bar~1%7Bbar_id%7D/post/parameters/0');
+  $parameter_data = $openapi->document_get('/paths/~1foo~1{foo_id}~1bar~1{bar_id}/post/parameters/0');
+  # or:
+  $parameter_data = $openapi->document_get(jsonp(qw(/paths/ foo/{foo_id} bar/{bar_id} post parameters 0)));
 
 Fetches the portion of the main OpenAPI document located at the provided JSON pointer.
 Proxies to L<JSON::Schema::Modern::Document::OpenAPI/get>.
