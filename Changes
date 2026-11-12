@@ -1,6 +1,6 @@
 Revision history for OpenAPI-Modern
 
-{{$NEXT}}
+0.153     2026-11-12 18:39:56Z
           - updated bundled schemas for OAS versions 3.1, 3.2 to their latest
             published versions
 
