@@ -855,12 +855,12 @@ one of:
 
 =for :list
 * for v3.2 documents:
-  L<https://spec.openapis.org/oas/3.2/schema-base/2026-08-30> (which is a wrapper around
-  L<https://spec.openapis.org/oas/3.2/schema/2026-08-30>),
+  L<https://spec.openapis.org/oas/3.2/schema-base/2026-11-12> (which is a wrapper around
+  L<https://spec.openapis.org/oas/3.2/schema/2026-11-12>),
   and the L<OpenAPI v3.2.x specification|https://spec.openapis.org/oas/v3.2>
 * for v3.1 documents:
-  L<https://spec.openapis.org/oas/3.1/schema-base/2026-08-03> (which is a wrapper around
-  L<https://spec.openapis.org/oas/3.1/schema/2026-08-03>),
+  L<https://spec.openapis.org/oas/3.1/schema-base/2026-11-05> (which is a wrapper around
+  L<https://spec.openapis.org/oas/3.1/schema/2026-11-05>),
   and the L<OpenAPI v3.1.x specification|https://spec.openapis.org/oas/v3.1>
 
 =head1 CONSTRUCTOR ARGUMENTS
@@ -904,7 +904,7 @@ See also L</retrieval_uri>.
 =head2 metaschema_uri
 
 The URI of the schema that describes the OpenAPI document itself. Defaults to
-C<https://spec.openapis.org/oas/3.2/schema/2026-08-30> (or the equivalent for the
+C<https://spec.openapis.org/oas/3.2/schema/2026-11-12> (or the equivalent for the
 L<OpenAPI version|https://spec.openapis.org/oas/latest#fixed-fields> you specify in the document),
 which permits the customization of
 L<C<jsonSchemaDialect>|https://spec.openapis.org/oas/latest#openapi-object>, which defines the
